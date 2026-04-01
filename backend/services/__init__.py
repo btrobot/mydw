@@ -4,6 +4,7 @@
 from services.publish_service import PublishService, get_publish_service
 from services.scheduler import TaskScheduler, scheduler
 from services.material_service import MaterialService
+from services.task_service import TaskService
 
 __all__ = [
     "PublishService",
@@ -11,4 +12,5 @@ __all__ = [
     "TaskScheduler",
     "scheduler",
     "MaterialService",
+    "TaskService",
 ]

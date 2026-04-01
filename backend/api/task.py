@@ -1,10 +1,10 @@
 """
 任务管理 API
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc
-from typing import List, Optional
+from typing import Optional, List
+from pydantic import BaseModel
 from loguru import logger
 
 from models import Task, Account
@@ -13,9 +13,30 @@ from schemas import (
     TaskCreate, TaskUpdate, TaskResponse, TaskListResponse,
     TaskPublishRequest, TaskBatchCreateRequest
 )
+from services.task_service import TaskService
+from services.scheduler import scheduler
 
 router = APIRouter()
 
+
+# ============ 请求/响应模型 ============
+
+class TaskStatsResponse(BaseModel):
+    total: int
+    pending: int
+    running: int
+    success: int
+    failed: int
+    paused: int
+    today_success: int
+
+
+class AutoGenerateRequest(BaseModel):
+    account_id: int
+    count: int = 10
+
+
+# ============ API 端点 ============
 
 @router.post("/", response_model=TaskResponse, status_code=201)
 async def create_task(
@@ -31,21 +52,8 @@ async def create_task(
     if not account:
         raise HTTPException(status_code=404, detail="账号不存在")
 
-    task = Task(
-        account_id=task_data.account_id,
-        product_id=task_data.product_id,
-        material_id=task_data.material_id,
-        video_path=task_data.video_path,
-        content=task_data.content,
-        topic=task_data.topic,
-        cover_path=task_data.cover_path,
-        status="pending"
-    )
-    db.add(task)
-    await db.commit()
-    await db.refresh(task)
-
-    logger.info(f"创建任务: ID={task.id}")
+    service = TaskService(db)
+    task = await service.create_task(task_data.model_dump())
     return task
 
 
@@ -58,78 +66,26 @@ async def list_tasks(
     db: AsyncSession = Depends(get_db)
 ):
     """获取任务列表"""
-    query = select(Task)
-
-    if status:
-        query = query.where(Task.status == status)
-    if account_id:
-        query = query.where(Task.account_id == account_id)
-
-    # 获取总数
-    count_query = select(func.count(Task.id))
-    if status:
-        count_query = count_query.where(Task.status == status)
-    if account_id:
-        count_query = count_query.where(Task.account_id == account_id)
-
-    total = await db.execute(count_query)
-    total_count = total.scalar()
-
-    # 分页查询
-    query = query.order_by(desc(Task.priority), Task.created_at)
-    query = query.offset(offset).limit(limit)
-
-    result = await db.execute(query)
-    tasks = result.scalars().all()
-
-    return TaskListResponse(total=total_count, items=tasks)
+    service = TaskService(db)
+    total, tasks = await service.get_tasks(status, account_id, limit, offset)
+    return TaskListResponse(total=total, items=tasks)
 
 
-@router.get("/stats")
+@router.get("/stats", response_model=TaskStatsResponse)
 async def get_task_stats(db: AsyncSession = Depends(get_db)):
     """获取任务统计"""
-    # 总数
-    total = await db.execute(select(func.count(Task.id)))
-    total_tasks = total.scalar()
-
-    # 待发布
-    pending = await db.execute(
-        select(func.count(Task.id)).where(Task.status == "pending")
-    )
-    pending_tasks = pending.scalar()
-
-    # 成功
-    success = await db.execute(
-        select(func.count(Task.id)).where(Task.status == "success")
-    )
-    success_tasks = success.scalar()
-
-    # 失败
-    failed = await db.execute(
-        select(func.count(Task.id)).where(Task.status == "failed")
-    )
-    failed_tasks = failed.scalar()
-
-    return {
-        "total": total_tasks or 0,
-        "pending": pending_tasks or 0,
-        "success": success_tasks or 0,
-        "failed": failed_tasks or 0
-    }
+    service = TaskService(db)
+    stats = await service.get_task_stats()
+    return TaskStatsResponse(**stats)
 
 
 @router.get("/{task_id}", response_model=TaskResponse)
-async def get_task(
-    task_id: int,
-    db: AsyncSession = Depends(get_db)
-):
+async def get_task(task_id: int, db: AsyncSession = Depends(get_db)):
     """获取任务详情"""
-    result = await db.execute(select(Task).where(Task.id == task_id))
-    task = result.scalar_one_or_none()
-
+    service = TaskService(db)
+    task = await service.get_task(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
-
     return task
 
 
@@ -140,50 +96,37 @@ async def update_task(
     db: AsyncSession = Depends(get_db)
 ):
     """更新任务"""
-    result = await db.execute(select(Task).where(Task.id == task_id))
-    task = result.scalar_one_or_none()
+    service = TaskService(db)
+    update_dict = task_data.model_dump(exclude_unset=True)
 
+    # 处理枚举类型
+    if 'status' in update_dict and update_dict['status']:
+        update_dict['status'] = update_dict['status'].value
+
+    task = await service.update_task(task_id, update_dict)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
-
-    update_data = task_data.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(task, field, value)
-
-    await db.commit()
-    await db.refresh(task)
-
-    logger.info(f"更新任务: ID={task.id}")
     return task
 
 
 @router.delete("/{task_id}", status_code=204)
-async def delete_task(
-    task_id: int,
-    db: AsyncSession = Depends(get_db)
-):
+async def delete_task(task_id: int, db: AsyncSession = Depends(get_db)):
     """删除任务"""
-    result = await db.execute(select(Task).where(Task.id == task_id))
-    task = result.scalar_one_or_none()
-
-    if not task:
+    service = TaskService(db)
+    success = await service.delete_task(task_id)
+    if not success:
         raise HTTPException(status_code=404, detail="任务不存在")
-
-    await db.delete(task)
-    await db.commit()
-
-    logger.info(f"删除任务: ID={task_id}")
     return None
 
 
 @router.delete("/", status_code=204)
-async def delete_all_tasks(db: AsyncSession = Depends(get_db)):
+async def delete_all_tasks(
+    status: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
     """清空所有任务"""
-    await db.execute(select(Task).execution_options(synchronize_session="fetch"))
-    await db.execute("DELETE FROM tasks")
-    await db.commit()
-
-    logger.warning("清空所有任务")
+    service = TaskService(db)
+    await service.delete_all_tasks(status)
     return None
 
 
@@ -193,17 +136,16 @@ async def publish_task(
     db: AsyncSession = Depends(get_db)
 ):
     """立即发布任务"""
-    result = await db.execute(select(Task).where(Task.id == task_id))
-    task = result.scalar_one_or_none()
-
+    service = TaskService(db)
+    task = await service.get_task(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
 
     if task.status == "running":
         raise HTTPException(status_code=400, detail="任务正在发布中")
 
-    # TODO: 将任务添加到发布队列
-
+    # TODO: 添加到发布队列
+    logger.info(f"任务 {task_id} 已添加到发布队列")
     return {"success": True, "message": "任务已添加到发布队列"}
 
 
@@ -213,26 +155,69 @@ async def batch_create_tasks(
     db: AsyncSession = Depends(get_db)
 ):
     """批量创建任务"""
-    tasks = []
-    for task_data in batch_data.tasks:
-        task = Task(
-            account_id=task_data.account_id,
-            product_id=task_data.product_id,
-            material_id=task_data.material_id,
-            video_path=task_data.video_path,
-            content=task_data.content,
-            topic=task_data.topic,
-            cover_path=task_data.cover_path,
-            status="pending"
-        )
-        db.add(task)
-        tasks.append(task)
+    service = TaskService(db)
 
-    await db.commit()
+    # 检查所有账号是否存在
+    account_ids = set(t.account_id for t in batch_data.tasks)
+    for aid in account_ids:
+        result = await db.execute(select(Account).where(Account.id == aid))
+        if not result.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail=f"账号 {aid} 不存在")
 
-    # 刷新所有任务
-    for task in tasks:
-        await db.refresh(task)
-
-    logger.info(f"批量创建任务: {len(tasks)} 个")
+    tasks_data = [t.model_dump() for t in batch_data.tasks]
+    count, tasks = await service.create_tasks_batch(tasks_data)
     return tasks
+
+
+@router.post("/auto-generate")
+async def auto_generate_tasks(
+    request: AutoGenerateRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """自动生成任务"""
+    # 检查账号
+    result = await db.execute(
+        select(Account).where(Account.id == request.account_id)
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="账号不存在")
+
+    service = TaskService(db)
+    count, tasks = await service.auto_generate_tasks(
+        request.account_id,
+        count=request.count
+    )
+
+    return {
+        "success": True,
+        "message": f"自动生成 {count} 个任务",
+        "count": count
+    }
+
+
+@router.post("/shuffle")
+async def shuffle_tasks(db: AsyncSession = Depends(get_db)):
+    """打乱任务顺序"""
+    return await scheduler.shuffle_tasks(db)
+
+
+@router.post("/init-from-materials")
+async def init_tasks_from_materials(
+    account_id: int,
+    count: int = Query(default=10, ge=1, le=100),
+    db: AsyncSession = Depends(get_db)
+):
+    """从素材初始化任务"""
+    # 检查账号
+    result = await db.execute(select(Account).where(Account.id == account_id))
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="账号不存在")
+
+    service = TaskService(db)
+    count, tasks = await service.auto_generate_tasks(account_id, count=count)
+
+    return {
+        "success": True,
+        "message": f"从素材初始化 {count} 个任务",
+        "count": count
+    }
