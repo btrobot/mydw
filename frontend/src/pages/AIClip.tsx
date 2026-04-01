@@ -28,7 +28,6 @@ import {
 } from '@ant-design/icons'
 import axios from 'axios'
 import { api } from '../services/api'
-import { formatSize } from '../utils/format'
 
 const { Text, Title, Paragraph } = Typography
 
@@ -254,6 +253,7 @@ export default function AIClip() {
 
   // 格式化时间
   const formatTime = (seconds: number): string => {
+    if (isNaN(seconds) || seconds < 0) return '00:00.00'
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
     const ms = Math.floor((seconds % 1) * 100)
@@ -273,7 +273,7 @@ export default function AIClip() {
       dataIndex: 'index',
       key: 'index',
       width: 60,
-      render: (_: any, __: any, index: number) => index + 1
+      render: (_: unknown, __: unknown, index: number) => index + 1
     },
     {
       title: '开始时间',
@@ -293,7 +293,7 @@ export default function AIClip() {
       title: '时长',
       key: 'duration',
       width: 80,
-      render: (_: any, record: HighlightSegment) => formatTime(record.end - record.start)
+      render: (_: unknown, record: HighlightSegment) => formatTime(record.end - record.start)
     },
     {
       title: '原因',
@@ -304,7 +304,7 @@ export default function AIClip() {
       title: '操作',
       key: 'action',
       width: 80,
-      render: (_: any, __: any, index: number) => (
+      render: (_: unknown, __: unknown, index: number) => (
         <Button
           type="link"
           danger
