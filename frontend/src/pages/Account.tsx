@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Table, Tag, Button, Space, Modal, Form, Input, message } from 'antd'
 import { PlusOutlined, DeleteOutlined, LoginOutlined } from '@ant-design/icons'
+import axios from 'axios'
 import { api } from '../services/api'
 
 interface Account {
@@ -45,9 +46,13 @@ export default function Account() {
       message.success('添加账号成功')
       setModalVisible(false)
       fetchAccounts()
-    } catch (error: any) {
-      if (error.errorFields) return
-      message.error(error.response?.data?.detail || '添加失败')
+    } catch (error: unknown) {
+      if (error !== null && typeof error === 'object' && 'errorFields' in error) return
+      if (axios.isAxiosError(error)) {
+        message.error(error.response?.data?.detail || error.message)
+      } else {
+        message.error('添加失败')
+      }
     }
   }
 
@@ -109,7 +114,7 @@ export default function Account() {
       title: '操作',
       key: 'action',
       width: 200,
-      render: (_: any, record: Account) => (
+      render: (_: unknown, record: Account) => (
         <Space>
           <Button
             type="link"
@@ -153,7 +158,7 @@ export default function Account() {
         title="添加账号"
         open={modalVisible}
         onOk={handleSubmit}
-        onCancel={() => setModalVisible(false)}
+        onCancel={() => { setModalVisible(false); form.resetFields() }}
       >
         <Form form={form} layout="vertical">
           <Form.Item

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, Form, InputNumber, Switch, Button, Space, Divider, message } from 'antd'
 import { SaveOutlined } from '@ant-design/icons'
 import { api } from '../services/api'
@@ -7,9 +7,9 @@ export default function Settings() {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
 
-  useState(() => {
+  useEffect(() => {
     fetchConfig()
-  })
+  }, [])
 
   const fetchConfig = async () => {
     try {

@@ -26,7 +26,9 @@ import {
   SyncOutlined,
   CheckCircleOutlined
 } from '@ant-design/icons'
+import axios from 'axios'
 import { api } from '../services/api'
+import { formatSize } from '../utils/format'
 
 const { Text, Title, Paragraph } = Typography
 
@@ -72,8 +74,8 @@ export default function AIClip() {
       const res = await api.get('/ai/video-info', { params: { video_path: videoPath } })
       setVideoInfo(res.data)
       message.success('视频信息获取成功')
-    } catch (error: any) {
-      message.error(error.response?.data?.detail || '获取视频信息失败')
+    } catch (error: unknown) {
+      message.error(axios.isAxiosError(error) ? (error.response?.data?.detail || error.message) : '获取视频信息失败')
       setVideoInfo(null)
     } finally {
       setLoading(false)
@@ -91,8 +93,8 @@ export default function AIClip() {
       const res = await api.get('/ai/detect-highlights', { params: { video_path: videoPath } })
       setSegments(res.data.segments)
       message.success(`检测到 ${res.data.count} 个高光片段`)
-    } catch (error: any) {
-      message.error(error.response?.data?.detail || '检测高光失败')
+    } catch (error: unknown) {
+      message.error(axios.isAxiosError(error) ? (error.response?.data?.detail || error.message) : '检测高光失败')
     } finally {
       setLoading(false)
     }
@@ -132,8 +134,8 @@ export default function AIClip() {
       } else {
         message.error(res.data.error || '剪辑失败')
       }
-    } catch (error: any) {
-      message.error(error.response?.data?.detail || '剪辑失败')
+    } catch (error: unknown) {
+      message.error(axios.isAxiosError(error) ? (error.response?.data?.detail || error.message) : '剪辑失败')
     } finally {
       setClipping(false)
       setProgress(0)
@@ -169,8 +171,8 @@ export default function AIClip() {
       } else {
         message.error(res.data.error || '添加失败')
       }
-    } catch (error: any) {
-      message.error(error.response?.data?.detail || '添加背景音乐失败')
+    } catch (error: unknown) {
+      message.error(axios.isAxiosError(error) ? (error.response?.data?.detail || error.message) : '添加背景音乐失败')
     } finally {
       setClipping(false)
       setProgress(0)
@@ -204,8 +206,8 @@ export default function AIClip() {
       } else {
         message.error(res.data.error || '添加失败')
       }
-    } catch (error: any) {
-      message.error(error.response?.data?.detail || '添加封面失败')
+    } catch (error: unknown) {
+      message.error(axios.isAxiosError(error) ? (error.response?.data?.detail || error.message) : '添加封面失败')
     } finally {
       setClipping(false)
       setProgress(0)
@@ -237,8 +239,8 @@ export default function AIClip() {
       } else {
         message.error(res.data.error || '处理失败')
       }
-    } catch (error: any) {
-      message.error(error.response?.data?.detail || 'AI 剪辑失败')
+    } catch (error: unknown) {
+      message.error(axios.isAxiosError(error) ? (error.response?.data?.detail || error.message) : 'AI 剪辑失败')
     } finally {
       setClipping(false)
       setProgress(0)
