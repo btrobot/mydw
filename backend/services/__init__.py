@@ -3,10 +3,12 @@
 """
 from services.publish_service import PublishService, get_publish_service
 from services.scheduler import TaskScheduler, scheduler
+from services.material_service import MaterialService
 
 __all__ = [
     "PublishService",
     "get_publish_service",
     "TaskScheduler",
     "scheduler",
+    "MaterialService",
 ]

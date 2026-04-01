@@ -2,10 +2,12 @@
 素材管理 API
 """
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
-from typing import List, Optional
+from sqlalchemy import select
+from typing import Optional, List
 from pathlib import Path
+from pydantic import BaseModel
 from loguru import logger
 
 from models import Material
@@ -15,12 +17,47 @@ from schemas import (
     MaterialListResponse, MaterialType
 )
 from core.config import settings
+from services.material_service import MaterialService
 
 router = APIRouter()
 
 # 素材基础路径
 MATERIAL_PATH = Path(settings.MATERIAL_BASE_PATH)
 
+
+# ============ 请求/响应模型 ============
+
+class MaterialStatsResponse(BaseModel):
+    video: dict
+    text: dict
+    cover: dict
+    topic: dict
+    audio: dict
+    _total: dict
+
+
+class ScanRequest(BaseModel):
+    type: Optional[str] = None
+
+
+class ScanResponse(BaseModel):
+    total: int
+    files: List[dict]
+
+
+class ImportResponse(BaseModel):
+    success: int
+    failed: int
+    total: int
+
+
+class MaterialPathResponse(BaseModel):
+    path: str
+    files: List[dict]
+    type: str
+
+
+# ============ API 端点 ============
 
 @router.post("/", response_model=MaterialResponse, status_code=201)
 async def create_material(
@@ -37,8 +74,7 @@ async def create_material(
     db.add(material)
     await db.commit()
     await db.refresh(material)
-
-    logger.info(f"创建素材: {material.name} ({material.type})")
+    logger.info(f"创建素材: {material.name}")
     return material
 
 
@@ -49,18 +85,15 @@ async def upload_material(
     db: AsyncSession = Depends(get_db)
 ):
     """上传素材文件"""
-    # 创建素材目录
     type_dir = MATERIAL_PATH / material_type.value
     type_dir.mkdir(parents=True, exist_ok=True)
 
-    # 保存文件
     file_path = type_dir / file.filename
     content = await file.read()
 
     with open(file_path, "wb") as f:
         f.write(content)
 
-    # 创建素材记录
     material = Material(
         type=material_type.value,
         name=file.filename,
@@ -70,7 +103,6 @@ async def upload_material(
     db.add(material)
     await db.commit()
     await db.refresh(material)
-
     logger.info(f"上传素材: {file.filename}")
     return material
 
@@ -82,91 +114,134 @@ async def list_materials(
 ):
     """获取素材列表"""
     query = select(Material)
-
     if type:
         query = query.where(Material.type == type)
-
     query = query.order_by(Material.created_at.desc())
-
     result = await db.execute(query)
     materials = result.scalars().all()
-
     return MaterialListResponse(total=len(materials), items=materials)
 
 
-@router.get("/path/{material_type}")
+@router.get("/stats", response_model=MaterialStatsResponse)
+async def get_material_stats(db: AsyncSession = Depends(get_db)):
+    """获取素材统计"""
+    service = MaterialService(db, str(MATERIAL_PATH))
+    stats = await service.get_stats()
+    default_stats = {'count': 0, 'size': 0}
+    return MaterialStatsResponse(
+        video=stats.get('video', default_stats),
+        text=stats.get('text', default_stats),
+        cover=stats.get('cover', default_stats),
+        topic=stats.get('topic', default_stats),
+        audio=stats.get('audio', default_stats),
+        _total=stats.get('_total', default_stats)
+    )
+
+
+@router.get("/path/{material_type}", response_model=MaterialPathResponse)
 async def get_material_path(material_type: str):
     """获取素材类型目录"""
     type_dir = MATERIAL_PATH / material_type
-
     if not type_dir.exists():
-        return {"path": str(MATERIAL_PATH), "files": []}
+        type_dir.mkdir(parents=True, exist_ok=True)
+        return MaterialPathResponse(path=str(MATERIAL_PATH), files=[], type=material_type)
 
-    # 列出目录下的文件
     files = []
     for f in type_dir.iterdir():
         if f.is_file():
             files.append({
                 "name": f.name,
                 "path": str(f),
-                "size": f.stat().st_size
+                "size": f.stat().st_size,
+                "type": material_type
             })
+    return MaterialPathResponse(path=str(type_dir), files=files, type=material_type)
 
-    return {"path": str(type_dir), "files": files}
+
+@router.post("/scan", response_model=ScanResponse)
+async def scan_materials(request: ScanRequest = None, db: AsyncSession = Depends(get_db)):
+    """扫描本地素材目录"""
+    material_type = request.type if request else None
+    service = MaterialService(db, str(MATERIAL_PATH))
+    files = await service.scan_directory(material_type)
+    return ScanResponse(total=len(files), files=files)
+
+
+@router.post("/import", response_model=ImportResponse)
+async def import_materials(type: Optional[str] = None, db: AsyncSession = Depends(get_db)):
+    """批量导入本地素材"""
+    service = MaterialService(db, str(MATERIAL_PATH))
+    success, failed = await service.import_directory(type)
+    return ImportResponse(success=success, failed=failed, total=success + failed)
+
+
+@router.post("/import/{material_type}", response_model=ImportResponse)
+async def import_materials_by_type(material_type: str, db: AsyncSession = Depends(get_db)):
+    """导入指定类型的素材"""
+    service = MaterialService(db, str(MATERIAL_PATH))
+    success, failed = await service.import_directory(material_type)
+    return ImportResponse(success=success, failed=failed, total=success + failed)
 
 
 @router.get("/{material_id}", response_model=MaterialResponse)
-async def get_material(
-    material_id: int,
-    db: AsyncSession = Depends(get_db)
-):
+async def get_material(material_id: int, db: AsyncSession = Depends(get_db)):
     """获取素材详情"""
     result = await db.execute(select(Material).where(Material.id == material_id))
     material = result.scalar_one_or_none()
-
     if not material:
         raise HTTPException(status_code=404, detail="素材不存在")
-
     return material
 
 
+@router.get("/{material_id}/content")
+async def get_material_content(material_id: int, db: AsyncSession = Depends(get_db)):
+    """获取素材内容"""
+    result = await db.execute(select(Material).where(Material.id == material_id))
+    material = result.scalar_one_or_none()
+    if not material:
+        raise HTTPException(status_code=404, detail="素材不存在")
+
+    if material.type not in ['text', 'topic']:
+        raise HTTPException(status_code=400, detail="只有文本类素材可以获取内容")
+
+    if not material.content and material.path:
+        try:
+            with open(material.path, 'r', encoding='utf-8') as f:
+                material.content = f.read()
+        except:
+            try:
+                with open(material.path, 'r', encoding='gbk') as f:
+                    material.content = f.read()
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"读取文件失败: {e}")
+
+    return {"id": material.id, "name": material.name, "type": material.type, "content": material.content or ""}
+
+
 @router.put("/{material_id}", response_model=MaterialResponse)
-async def update_material(
-    material_id: int,
-    material_data: MaterialUpdate,
-    db: AsyncSession = Depends(get_db)
-):
+async def update_material(material_id: int, material_data: MaterialUpdate, db: AsyncSession = Depends(get_db)):
     """更新素材"""
     result = await db.execute(select(Material).where(Material.id == material_id))
     material = result.scalar_one_or_none()
-
     if not material:
         raise HTTPException(status_code=404, detail="素材不存在")
 
     update_data = material_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(material, field, value)
-
     await db.commit()
     await db.refresh(material)
-
-    logger.info(f"更新素材: {material.name}")
     return material
 
 
 @router.delete("/{material_id}", status_code=204)
-async def delete_material(
-    material_id: int,
-    db: AsyncSession = Depends(get_db)
-):
+async def delete_material(material_id: int, db: AsyncSession = Depends(get_db)):
     """删除素材"""
     result = await db.execute(select(Material).where(Material.id == material_id))
     material = result.scalar_one_or_none()
-
     if not material:
         raise HTTPException(status_code=404, detail="素材不存在")
 
-    # 删除文件
     if material.path:
         file_path = Path(material.path)
         if file_path.exists():
@@ -174,6 +249,24 @@ async def delete_material(
 
     await db.delete(material)
     await db.commit()
+    return None
 
-    logger.info(f"删除素材: {material.name}")
+
+@router.delete("/", status_code=204)
+async def delete_all_materials(type: Optional[str] = None, db: AsyncSession = Depends(get_db)):
+    """删除所有素材"""
+    query = select(Material)
+    if type:
+        query = query.where(Material.type == type)
+    result = await db.execute(query)
+    materials = result.scalars().all()
+
+    for material in materials:
+        if material.path:
+            file_path = Path(material.path)
+            if file_path.exists():
+                file_path.unlink()
+        await db.delete(material)
+
+    await db.commit()
     return None
