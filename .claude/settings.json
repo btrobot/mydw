@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "name": "dewugojin-tool",
+  "version": "1.0.0",
+  "description": "得物掘金工具 - 自动化视频发布系统",
+  "agents": {
+    "directory": ".claude/agents",
+    "enabled": [
+      "frontend-expert",
+      "backend-expert",
+      "browser-automation",
+      "video-processing",
+      "database-expert"
+    ]
+  },
+  "skills": {
+    "directory": ".claude/skills",
+    "enabled": [
+      "code-review",
+      "browser-automation",
+      "video-processing"
+    ]
+  },
+  "rules": {
+    "enabled": true,
+    "paths": [
+      ".claude/rules/frontend-style.md",
+      ".claude/rules/backend-style.md",
+      ".claude/rules/security.md",
+      ".claude/rules/typescript-guards.md"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "command": "bash .claude/hooks/session-start.sh"
+      }
+    ]
+  }
+}
