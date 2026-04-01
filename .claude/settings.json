@@ -71,6 +71,14 @@
         "command": "PROJECT_ROOT=$(git rev-parse --show-toplevel) && bun \"$PROJECT_ROOT/.claude/hooks/session-end.ts\"",
         "timeout": 10
       }]
+    }],
+    "Bash": [{
+      "matcher": "code-review|security-scan|architecture-review|sprint-plan|task-breakdown",
+      "hooks": [{
+        "type": "command",
+        "command": "PROJECT_ROOT=$(git rev-parse --show-toplevel) && bun \"$PROJECT_ROOT/.claude/hooks/skill-hook.ts\"",
+        "timeout": 5
+      }]
     }]
   }
 }

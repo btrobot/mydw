@@ -16,9 +16,9 @@ Owner:
 
 ## Active Task
 
-**Component**: {component-name}
-**Phase**: {current-phase}
-**Status**: {in-progress|completed|blocked}
+**Component**: TBD
+**Phase**: Planning
+**Status**: in-progress
 
 ## Progress
 
@@ -30,38 +30,29 @@ Owner:
 
 | Decision | Rationale | Date |
 |----------|-----------|------|
-| {decision-1} | {reason} | {date} |
+| - | - | - |
 
 ## Files Being Worked On
 
-- `{file-path-1}` — {purpose}
-- `{file-path-2}` — {purpose}
+- None yet
 
 ## Open Questions
 
-1. **{question}**: {context}
-   - Options: {option-a}, {option-b}
-   - Awaiting: {user-input|clarification}
-
-2. **{question}**: {context}
-   - Options: {option-a}, {option-b}
-   - Awaiting: {user-input|clarification}
+- None
 
 ## Blocker Notes
 
-- **{blocker-description}**: {impact} — {resolution-needed}
+- None
 
 ## Agent Invocations
 
 | Agent | Timestamp | Status | Result |
 |-------|-----------|--------|--------|
-| {agent-name} | {timestamp} | {success|failed|blocked} | {summary} |
+| (No agent invocations yet) | - | - | - |
 
 ## Session Log
 
-### {timestamp}
-- {action taken}
-- {result}
+- (Session started)
 
 ---
 *Last Updated: {timestamp}*
