@@ -22,8 +22,30 @@
 
 - Hooks 使用 `.ps1` 脚本
 - 脚本头部声明: `#Requires -Version 5.1`
-- 颜色使用 ANSI escape codes (` `e[0;32m`)
+- 颜色使用 `$host.UI.RawUI.ForegroundColor`（原生颜色）
 - 路径使用反斜杠或 `Join-Path`
+
+### 不可用命令
+
+Windows + PowerShell 环境下，以下 Unix 命令不可用：
+
+| ❌ 禁止 | ✅ 替代 |
+|---------|--------|
+| `grep` / `rg` | `Grep` 工具 |
+| `cat` | `Read` 工具 |
+| `sed` / `awk` | `Edit` 工具 |
+| `find` | `Glob` 工具 |
+| `bash -c "..."` | 直接写 PowerShell 命令 |
+
+### 编码问题
+
+PowerShell 控制台编码可能为 GB2312/GBK，涉及中文时输出可能乱码。
+
+**必须遵守**：
+1. 搜索含中文的代码：使用 `Grep` 工具（支持 UTF-8）
+2. 读取含中文的文件：使用 `Read` 工具
+3. 禁止在 PowerShell 命令中内联中文字符
+4. 禁止尝试用 `chcp 65001` 修复编码
 
 ### Unix/macOS (可选)
 
