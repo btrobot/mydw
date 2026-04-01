@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import {
   Table, Tag, Button, Space, Modal, Form, Input, Select,
-  DatePicker, message, Popconfirm, Row, Col, Card, Statistic
+  message, Popconfirm, Row, Col, Card, Statistic
 } from 'antd'
 import {
   PlusOutlined, PlayCircleOutlined, PauseCircleOutlined,
-  ReloadOutlined, DeleteOutlined, SwapOutlined, ThunderboltOutlined,
+  ReloadOutlined, SwapOutlined, ThunderboltOutlined,
   SyncOutlined
 } from '@ant-design/icons'
 import { api } from '../services/api'

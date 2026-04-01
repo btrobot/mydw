@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Table, Tag, Button, Space, Tabs, Card, List, Typography, message, Upload, Progress, Row, Col } from 'antd'
-import { PlusOutlined, DeleteOutlined, FolderOpenOutlined, UploadOutlined, SyncOutlined, ScanOutlined, FileOutlined } from '@ant-design/icons'
+import { Table, Button, Space, Tabs, Card, List, Typography, message, Upload, Row, Col } from 'antd'
+import { UploadOutlined, SyncOutlined, ScanOutlined, FileOutlined } from '@ant-design/icons'
 import { api } from '../services/api'
 
-const { Text, Title } = Typography
+const { Text } = Typography
 
 interface Material {
   id: number

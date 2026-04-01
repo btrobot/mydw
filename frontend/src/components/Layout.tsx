@@ -5,6 +5,7 @@ import {
   UserOutlined,
   FileTextOutlined,
   FolderOutlined,
+  ScissorOutlined,
   SettingOutlined,
 } from '@ant-design/icons'
 
@@ -16,6 +17,7 @@ const items = [
   { key: '/account', icon: <UserOutlined />, label: '账号管理' },
   { key: '/task', icon: <FileTextOutlined />, label: '任务管理' },
   { key: '/material', icon: <FolderOutlined />, label: '素材管理' },
+  { key: '/ai-clip', icon: <ScissorOutlined />, label: 'AI 剪辑' },
   { key: '/settings', icon: <SettingOutlined />, label: '系统设置' },
 ]
 
