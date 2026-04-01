@@ -1,0 +1,16 @@
+# Playwright test artifacts
+test-results/
+playwright-report/
+e2e/reports/
+e2e/test-data/*.json
+e2e/test-data/*.state
+
+# Playwright traces
+*.zip
+trace/
+
+# Screenshots
+screenshots/
+
+# Videos
+videos/

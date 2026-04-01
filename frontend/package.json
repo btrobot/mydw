@@ -15,7 +15,13 @@
     "typecheck": "tsc --noEmit",
     "api:generate": "openapi-ts -f openapi.config.ts",
     "api:generate:watch": "openapi-ts -f openapi.config.ts -w",
-    "api:dev": "npm run api:generate && vite"
+    "api:dev": "npm run api:generate && vite",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --project=chromium-headed",
+    "test:e2e:report": "playwright show-report",
+    "test:e2e:install": "playwright install chromium",
+    "test:e2e:codegen": "playwright codegen http://localhost:5173"
   },
   "dependencies": {
     "@ant-design/icons": "^5.2.6",
@@ -31,6 +37,7 @@
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "^0.0.0-next-20260217010724",
+    "@playwright/test": "^1.40.0",
     "@types/node": "^20.10.0",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
@@ -38,6 +45,7 @@
     "concurrently": "^8.2.2",
     "electron": "^28.1.0",
     "electron-builder": "^24.9.1",
+    "patchright": "^1.0.0",
     "prettier": "^3.8.1",
     "typescript": "^5.3.3",
     "vite": "^5.0.10",

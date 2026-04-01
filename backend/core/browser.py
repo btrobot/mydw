@@ -1,11 +1,10 @@
 """
-得物掘金工具 - Playwright 浏览器管理
+得物掘金工具 - Patchright 浏览器管理（反检测版本）
 """
 import asyncio
 import json
-from pathlib import Path
-from typing import Optional, Dict, Any
-from playwright.async_api import async_playwright, Browser, BrowserContext, Page, Playwright
+from typing import Optional, Dict
+from patchright.async_api import async_playwright
 from loguru import logger
 
 from core.config import settings
@@ -13,27 +12,22 @@ from utils.crypto import encrypt_data, decrypt_data
 
 
 class BrowserManager:
-    """Playwright 浏览器管理器"""
+    """Patchright 浏览器管理器（反检测）"""
 
     def __init__(self):
-        self.playwright: Optional[Playwright] = None
-        self.browser: Optional[Browser] = None
-        self.contexts: Dict[int, BrowserContext] = {}  # account_id -> context
+        self.playwright = None
+        self.browser = None
+        self.contexts: Dict[int, any] = {}  # account_id -> context
         self._lock = asyncio.Lock()
 
     async def init(self):
-        """初始化 Playwright"""
+        """初始化 Patchright 浏览器"""
         if not self.playwright:
             self.playwright = await async_playwright().start()
             self.browser = await self.playwright.chromium.launch(
                 headless=settings.PLAYWRIGHT_HEADLESS,
-                args=[
-                    '--disable-blink-features=AutomationControlled',
-                    '--disable-dev-shm-usage',
-                    '--no-sandbox',
-                ]
             )
-            logger.info(f"Playwright 浏览器已启动 (headless={settings.PLAYWRIGHT_HEADLESS})")
+            logger.info(f"Patchright 浏览器已启动 (headless={settings.PLAYWRIGHT_HEADLESS})")
 
     async def close(self):
         """关闭浏览器"""
@@ -50,9 +44,9 @@ class BrowserManager:
                 await self.playwright.stop()
                 self.playwright = None
 
-            logger.info("Playwright 浏览器已关闭")
+            logger.info("Patchright 浏览器已关闭")
 
-    async def create_context(self, account_id: int, storage_state: Optional[str] = None) -> BrowserContext:
+    async def create_context(self, account_id: int, storage_state: Optional[str] = None):
         """为账号创建浏览器上下文"""
         await self.init()
 
@@ -63,8 +57,9 @@ class BrowserManager:
 
             # 创建新上下文
             context = await self.browser.new_context(
-                viewport={"width": 1280, "height": 720},
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                viewport={"width": 1920, "height": 1080},
+                locale="zh-CN",
+                timezone_id="Asia/Shanghai",
             )
 
             # 如果有存储状态，加载它
@@ -80,11 +75,11 @@ class BrowserManager:
             self.contexts[account_id] = context
             return context
 
-    async def get_context(self, account_id: int) -> Optional[BrowserContext]:
+    async def get_context(self, account_id: int):
         """获取账号的浏览器上下文"""
         return self.contexts.get(account_id)
 
-    async def get_or_create_context(self, account_id: int, storage_state: Optional[str] = None) -> BrowserContext:
+    async def get_or_create_context(self, account_id: int, storage_state: Optional[str] = None):
         """获取或创建浏览器上下文"""
         context = await self.get_context(account_id)
         if not context:
@@ -107,7 +102,7 @@ class BrowserManager:
             logger.error(f"保存存储状态失败: {e}")
             return None
 
-    async def new_page(self, account_id: int) -> Optional[Page]:
+    async def new_page(self, account_id: int):
         """为账号创建新页面"""
         context = await self.get_or_create_context(account_id)
         if context:

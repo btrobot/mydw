@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { Table, Tag, Button, Space, Modal, Form, Input, message } from 'antd'
+import { Table, Button, Space, Modal, Form, Input, message } from 'antd'
 import { PlusOutlined, DeleteOutlined, LoginOutlined } from '@ant-design/icons'
-import { useAccounts, useCreateAccount, useDeleteAccount, useLoginAccount } from '../hooks'
+import { useAccounts, useCreateAccount, useDeleteAccount } from '../hooks'
+import LoginModal from '../components/LoginModal'
+import StatusBadge from '../components/StatusBadge'
 
 interface Account {
   id: number
@@ -14,17 +16,31 @@ interface Account {
 
 export default function Account() {
   const [modalVisible, setModalVisible] = useState(false)
+  const [loginModalVisible, setLoginModalVisible] = useState(false)
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
   const [form] = Form.useForm()
 
   // 使用 React Query hooks
   const { data: accounts = [], isLoading, refetch } = useAccounts()
   const createAccount = useCreateAccount()
   const deleteAccount = useDeleteAccount()
-  const loginAccount = useLoginAccount()
 
   const handleAdd = () => {
     form.resetFields()
     setModalVisible(true)
+  }
+
+  // 打开登录弹窗
+  const handleLoginClick = (record: Account) => {
+    setSelectedAccount(record)
+    setLoginModalVisible(true)
+  }
+
+  // 登录成功后刷新
+  const handleLoginSuccess = () => {
+    setLoginModalVisible(false)
+    setSelectedAccount(null)
+    refetch()
   }
 
   const handleSubmit = async () => {
@@ -52,15 +68,6 @@ export default function Account() {
     })
   }
 
-  const handleLogin = async (id: number) => {
-    try {
-      await loginAccount.mutateAsync(id)
-      message.info('请在新窗口中完成登录')
-    } catch (error) {
-      message.error('登录失败')
-    }
-  }
-
   const columns = [
     {
       title: '账号ID',
@@ -76,11 +83,7 @@ export default function Account() {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => {
-        const color = status === 'active' ? 'green' : status === 'error' ? 'red' : 'default'
-        const text = status === 'active' ? '活跃' : status === 'error' ? '异常' : '未激活'
-        return <Tag color={color}>{text}</Tag>
-      },
+      render: (status: string) => <StatusBadge status={status} />,
     },
     {
       title: '最后登录',
@@ -104,7 +107,7 @@ export default function Account() {
             type="link"
             size="small"
             icon={<LoginOutlined />}
-            onClick={() => handleLogin(record.id)}
+            onClick={() => handleLoginClick(record)}
           >
             登录
           </Button>
@@ -161,6 +164,16 @@ export default function Account() {
           </Form.Item>
         </Form>
       </Modal>
+
+      {selectedAccount && (
+        <LoginModal
+          accountId={selectedAccount.id}
+          accountName={selectedAccount.account_name}
+          open={loginModalVisible}
+          onSuccess={handleLoginSuccess}
+          onCancel={() => { setLoginModalVisible(false); setSelectedAccount(null) }}
+        />
+      )}
     </>
   )
 }

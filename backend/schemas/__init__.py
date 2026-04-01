@@ -13,6 +13,23 @@ class AccountStatus(str, Enum):
     ACTIVE = "active"
     INACTIVE = "inactive"
     ERROR = "error"
+    LOGGING_IN = "logging_in"
+
+
+class LoginStatus(str, Enum):
+    """
+    登录流程状态枚举
+
+    用于 SSE 实时推送和登录流程状态管理。
+    状态流转: idle -> waiting_phone -> code_sent -> waiting_verify -> verifying -> success/error
+    """
+    IDLE = "idle"
+    WAITING_PHONE = "waiting_phone"  # 等待输入手机号
+    CODE_SENT = "code_sent"  # 验证码已发送
+    WAITING_VERIFY = "waiting_verify"  # 等待验证（已发送验证码）
+    VERIFYING = "verifying"  # 正在验证
+    SUCCESS = "success"  # 登录成功
+    ERROR = "error"  # 登录失败
 
 
 class TaskStatus(str, Enum):
@@ -75,6 +92,41 @@ class AccountLoginRequest(BaseModel):
 class AccountTestRequest(BaseModel):
     """账号测试请求"""
     account_id: int
+
+
+class LoginRequest(BaseModel):
+    """手机验证码登录请求"""
+    phone: str = Field(..., min_length=11, max_length=11, description="手机号")
+    code: str = Field(..., min_length=4, max_length=6, description="验证码")
+
+
+class LoginResponse(BaseModel):
+    """登录响应"""
+    success: bool
+    message: str
+    status: str = "inactive"
+    storage_state: Optional[str] = None
+
+
+class LoginStatusResponse(BaseModel):
+    """登录状态响应"""
+    is_logged_in: bool
+    status: LoginStatus
+    last_login: Optional[datetime] = None
+    message: str = ""
+
+
+class LoginStreamEvent(BaseModel):
+    """SSE 登录状态事件"""
+    event: str = "status_update"
+    data: "LoginStreamData"
+
+
+class LoginStreamData(BaseModel):
+    """SSE 登录状态数据"""
+    status: LoginStatus
+    message: str
+    progress: Optional[int] = None  # 0-100 进度百分比
 
 
 class AccountStats(BaseModel):
