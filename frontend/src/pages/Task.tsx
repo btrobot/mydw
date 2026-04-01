@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   Table, Tag, Button, Space, Modal, Form, Input, Select,
   message, Popconfirm, Row, Col, Card, Statistic
@@ -8,86 +8,57 @@ import {
   ReloadOutlined, SwapOutlined, ThunderboltOutlined,
   SyncOutlined
 } from '@ant-design/icons'
-import { api } from '../services/api'
+import {
+  useTasks,
+  useAccounts,
+  usePublishStatus,
+  useTaskStats,
+  useCreateTask,
+  useControlPublish,
+  useShuffleTasks,
+  useAutoGenerateTasks,
+  useDeleteTask,
+  useDeleteAllTasks,
+  useInitTasksFromMaterials,
+} from '../hooks'
+import type { AccountResponse } from '@/api'
 
 interface Task {
   id: number
   account_id: number
-  product_id: number | null
-  video_path: string | null
-  content: string | null
-  topic: string | null
-  cover_path: string | null
+  product_id?: number | null
+  video_path?: string | null
+  content?: string | null
+  topic?: string | null
+  cover_path?: string | null
   status: string
-  publish_time: string | null
-  error_msg: string | null
+  publish_time?: string | null
+  error_msg?: string | null
   priority: number
   created_at: string
 }
 
-interface Account {
-  id: number
-  account_name: string
-  status: string
-}
-
-interface TaskStats {
-  total: number
-  pending: number
-  running: number
-  success: number
-  failed: number
-  paused: number
-  today_success: number
-}
-
-interface PublishStatus {
-  status: string
-  current_task_id: number | null
-  total_pending: number
-  total_success: number
-  total_failed: number
-}
-
 export default function Task() {
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [loading, setLoading] = useState(true)
   const [modalVisible, setModalVisible] = useState(false)
-  const [publishStatus, setPublishStatus] = useState<PublishStatus>({
-    status: 'idle',
-    current_task_id: null,
-    total_pending: 0,
-    total_success: 0,
-    total_failed: 0
-  })
-  const [stats, setStats] = useState<TaskStats>({
-    total: 0, pending: 0, running: 0, success: 0, failed: 0, paused: 0, today_success: 0
-  })
   const [form] = Form.useForm()
 
-  useEffect(() => {
-    fetchData()
-  }, [])
+  // 使用 React Query hooks
+  const { data: tasksData, isLoading, refetch: refetchTasks } = useTasks()
+  const { data: accounts = [] } = useAccounts()
+  const { data: publishStatus = { status: 'idle', current_task_id: null, total_pending: 0, total_success: 0, total_failed: 0 } } = usePublishStatus()
+  const { data: stats = { total: 0, pending: 0, running: 0, success: 0, failed: 0, paused: 0, today_success: 0 } } = useTaskStats()
 
-  const fetchData = async () => {
-    try {
-      const [tasksRes, accountsRes, publishRes, statsRes] = await Promise.all([
-        api.get('/tasks?limit=100'),
-        api.get('/accounts'),
-        api.get('/publish/status'),
-        api.get('/tasks/stats')
-      ])
-      setTasks(tasksRes.data.items || [])
-      setAccounts(accountsRes.data || [])
-      setPublishStatus(publishRes.data)
-      setStats(statsRes.data)
-    } catch (error) {
-      message.error('获取数据失败')
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Mutations
+  const createTask = useCreateTask()
+  const controlPublish = useControlPublish()
+  const shuffleTasks = useShuffleTasks()
+  const autoGenerateTasks = useAutoGenerateTasks()
+  const deleteTask = useDeleteTask()
+  const deleteAllTasks = useDeleteAllTasks()
+  const initTasksFromMaterials = useInitTasksFromMaterials()
+
+  // 规范化 tasks 数据
+  const tasks = tasksData?.items || []
 
   const handleAdd = () => {
     form.resetFields()
@@ -97,21 +68,21 @@ export default function Task() {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields()
-      await api.post('/tasks', values)
+      await createTask.mutateAsync(values)
       message.success('添加任务成功')
       setModalVisible(false)
-      fetchData()
-    } catch (error: any) {
-      if (error.errorFields) return
-      message.error(error.response?.data?.detail || '添加失败')
+      refetchTasks()
+    } catch (error: unknown) {
+      if (error !== null && typeof error === 'object' && 'errorFields' in error) return
+      message.error('添加失败')
     }
   }
 
   const handlePublish = async (action: 'start' | 'pause' | 'stop') => {
     try {
-      await api.post('/publish/control', { action })
+      await controlPublish.mutateAsync({ action })
       message.success(action === 'start' ? '开始发布' : action === 'pause' ? '暂停发布' : '停止发布')
-      fetchData()
+      refetchTasks()
     } catch (error) {
       message.error('操作失败')
     }
@@ -119,9 +90,9 @@ export default function Task() {
 
   const handleShuffle = async () => {
     try {
-      await api.post('/tasks/shuffle')
+      await shuffleTasks.mutateAsync()
       message.success('任务顺序已打乱')
-      fetchData()
+      refetchTasks()
     } catch (error) {
       message.error('操作失败')
     }
@@ -144,7 +115,7 @@ export default function Task() {
             initialValue={accounts[0]?.id}
           >
             <Select>
-              {accounts.map(a => (
+              {accounts.map((a: AccountResponse) => (
                 <Select.Option key={a.id} value={a.id}>{a.account_name}</Select.Option>
               ))}
             </Select>
@@ -162,12 +133,12 @@ export default function Task() {
         const accountId = form.getFieldValue('account_id') || accounts[0]?.id
         const count = form.getFieldValue('count') || 10
         try {
-          const res = await api.post('/tasks/auto-generate', {
+          const res = await autoGenerateTasks.mutateAsync({
             account_id: accountId,
             count: parseInt(count)
-          })
-          message.success(res.data.message)
-          fetchData()
+          }) as { message?: string }
+          message.success(res.message || '生成成功')
+          refetchTasks()
         } catch (error) {
           message.error('生成失败')
         }
@@ -177,9 +148,9 @@ export default function Task() {
 
   const handleDelete = async (id: number) => {
     try {
-      await api.delete(`/tasks/${id}`)
+      await deleteTask.mutateAsync(id)
       message.success('删除成功')
-      fetchData()
+      refetchTasks()
     } catch (error) {
       message.error('删除失败')
     }
@@ -187,9 +158,9 @@ export default function Task() {
 
   const handleClearAll = async () => {
     try {
-      await api.delete('/tasks')
+      await deleteAllTasks.mutateAsync()
       message.success('已清空所有任务')
-      fetchData()
+      refetchTasks()
     } catch (error) {
       message.error('清空失败')
     }
@@ -233,9 +204,9 @@ export default function Task() {
         const accountId = form.getFieldValue('account_id') || accounts[0]?.id
         const count = form.getFieldValue('count') || 10
         try {
-          const res = await api.post(`/tasks/init-from-materials?account_id=${accountId}&count=${count}`)
-          message.success(res.data.message)
-          fetchData()
+          const res = await initTasksFromMaterials.mutateAsync({ account_id: accountId, count }) as { message?: string }
+          message.success(res.message || '初始化成功')
+          refetchTasks()
         } catch (error) {
           message.error('初始化失败')
         }
@@ -263,7 +234,7 @@ export default function Task() {
       dataIndex: 'account_id',
       key: 'account_id',
       width: 120,
-      render: (id: number) => accounts.find(a => a.id === id)?.account_name || `ID:${id}`,
+      render: (id: number) => accounts.find((a: AccountResponse) => a.id === id)?.account_name || `ID:${id}`,
     },
     {
       title: '视频',
@@ -381,7 +352,7 @@ export default function Task() {
                   开始
                 </Button>
               )}
-              <Button size="small" icon={<ReloadOutlined />} onClick={fetchData}>
+              <Button size="small" icon={<ReloadOutlined />} onClick={() => refetchTasks()}>
                 刷新
               </Button>
               <Button size="small" icon={<SwapOutlined />} onClick={handleShuffle}>
@@ -396,7 +367,7 @@ export default function Task() {
         columns={columns}
         dataSource={tasks}
         rowKey="id"
-        loading={loading}
+        loading={isLoading}
         pagination={{ pageSize: 15 }}
         size="small"
       />

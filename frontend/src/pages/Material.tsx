@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Table, Button, Space, Tabs, Card, List, Typography, message, Upload, Row, Col } from 'antd'
 import { UploadOutlined, SyncOutlined, ScanOutlined, FileOutlined } from '@ant-design/icons'
+import { useMaterials, useMaterialStats, useScanMaterials, useImportMaterials, useDeleteMaterial } from '../hooks'
 import { api } from '../services/api'
 
 const { Text } = Typography
@@ -8,10 +9,10 @@ const { Text } = Typography
 interface Material {
   id: number
   type: string
-  name: string
-  path: string | null
-  content: string | null
-  size: number | null
+  name?: string | null
+  path?: string | null  // 改为可选以匹配 MaterialResponse
+  content?: string | null
+  size?: number | null
   created_at: string
 }
 
@@ -20,15 +21,6 @@ interface FileInfo {
   path: string
   size: number
   type: string
-}
-
-interface MaterialStats {
-  video: { count: number; size: number }
-  text: { count: number; size: number }
-  cover: { count: number; size: number }
-  topic: { count: number; size: number }
-  audio: { count: number; size: number }
-  _total: { count: number; size: number }
 }
 
 const typeLabels: Record<string, string> = {
@@ -48,46 +40,20 @@ function formatSize(bytes: number): string {
 }
 
 export default function Material() {
-  const [materials, setMaterials] = useState<Material[]>([])
   const [files, setFiles] = useState<FileInfo[]>([])
-  const [loading, setLoading] = useState(true)
-  const [scanning, setScanning] = useState(false)
-  const [importing, setImporting] = useState(false)
   const [activeTab, setActiveTab] = useState('video')
-  const [stats, setStats] = useState<MaterialStats | null>(null)
 
-  useEffect(() => {
-    fetchStats()
-    fetchMaterials()
-    fetchFiles()
-  }, [])
+  // 使用 React Query hooks
+  const { data: materialsData, refetch: refetchMaterials } = useMaterials()
+  const { data: stats, refetch: refetchStats } = useMaterialStats()
+  const scanMaterials = useScanMaterials()
+  const importMaterials = useImportMaterials()
+  const deleteMaterial = useDeleteMaterial()
 
-  useEffect(() => {
-    fetchMaterials()
-    fetchFiles()
-  }, [activeTab])
+  // 规范化 materials 数据
+  const materials = Array.isArray(materialsData) ? materialsData : []
 
-  const fetchStats = async () => {
-    try {
-      const res = await api.get('/materials/stats')
-      setStats(res.data)
-    } catch (error) {
-      console.error('获取统计失败:', error)
-    }
-  }
-
-  const fetchMaterials = async () => {
-    try {
-      setLoading(true)
-      const res = await api.get(`/materials?type=${activeTab}`)
-      setMaterials(res.data.items || [])
-    } catch (error) {
-      message.error('获取素材失败')
-    } finally {
-      setLoading(false)
-    }
-  }
-
+  // 获取本地文件列表
   const fetchFiles = async () => {
     try {
       const res = await api.get(`/materials/path/${activeTab}`)
@@ -97,39 +63,38 @@ export default function Material() {
     }
   }
 
+  // 当切换标签时刷新文件列表
+  useEffect(() => {
+    fetchFiles()
+  }, [activeTab])
+
   const handleScan = async () => {
     try {
-      setScanning(true)
-      const res = await api.post('/materials/scan', { type: activeTab })
-      message.success(`扫描完成，发现 ${res.data.total} 个文件`)
+      const res = await scanMaterials.mutateAsync({ type: activeTab }) as any
+      message.success(`扫描完成，发现 ${res?.total || 0} 个文件`)
       fetchFiles()
     } catch (error) {
       message.error('扫描失败')
-    } finally {
-      setScanning(false)
     }
   }
 
   const handleImport = async () => {
     try {
-      setImporting(true)
-      const res = await api.post(`/materials/import/${activeTab}`)
-      message.success(`导入完成: 成功 ${res.data.success}, 失败 ${res.data.failed}`)
-      fetchMaterials()
-      fetchStats()
+      const res = await importMaterials.mutateAsync({ type: activeTab }) as any
+      message.success(`导入完成: 成功 ${res?.success || 0}, 失败 ${res?.failed || 0}`)
+      refetchMaterials()
+      refetchStats()
     } catch (error) {
       message.error('导入失败')
-    } finally {
-      setImporting(false)
     }
   }
 
   const handleDelete = async (id: number) => {
     try {
-      await api.delete(`/materials/${id}`)
+      await deleteMaterial.mutateAsync(id)
       message.success('删除成功')
-      fetchMaterials()
-      fetchStats()
+      refetchMaterials()
+      refetchStats()
     } catch (error) {
       message.error('删除失败')
     }
@@ -207,32 +172,32 @@ export default function Material() {
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={4}>
           <Card size="small">
-            <Statistic title="视频" value={stats?.video?.count || 0} suffix={`(${formatSize(stats?.video?.size || 0)})`} />
+            <Statistic title="视频" value={Number(stats?.video?.count) || 0} suffix={`(${formatSize(Number(stats?.video?.size) || 0)})`} />
           </Card>
         </Col>
         <Col span={4}>
           <Card size="small">
-            <Statistic title="文案" value={stats?.text?.count || 0} />
+            <Statistic title="文案" value={Number(stats?.text?.count) || 0} />
           </Card>
         </Col>
         <Col span={4}>
           <Card size="small">
-            <Statistic title="封面" value={stats?.cover?.count || 0} />
+            <Statistic title="封面" value={Number(stats?.cover?.count) || 0} />
           </Card>
         </Col>
         <Col span={4}>
           <Card size="small">
-            <Statistic title="话题" value={stats?.topic?.count || 0} />
+            <Statistic title="话题" value={Number(stats?.topic?.count) || 0} />
           </Card>
         </Col>
         <Col span={4}>
           <Card size="small">
-            <Statistic title="音频" value={stats?.audio?.count || 0} />
+            <Statistic title="音频" value={Number(stats?.audio?.count) || 0} />
           </Card>
         </Col>
         <Col span={4}>
           <Card size="small">
-            <Statistic title="总计" value={stats?._total?.count || 0} valueStyle={{ color: '#1890ff' }} />
+            <Statistic title="总计" value={Number((stats as { total?: { count?: number } })?.total?.count) || 0} valueStyle={{ color: '#1890ff' }} />
           </Card>
         </Col>
       </Row>
@@ -254,9 +219,9 @@ export default function Material() {
               formData.append('file', file as File)
               await api.post(`/materials/upload/${activeTab}`, formData)
               message.success('上传成功')
-              fetchMaterials()
+              refetchMaterials()
               fetchFiles()
-              fetchStats()
+              refetchStats()
               onSuccess?.({})
             } catch (error) {
               message.error('上传失败')
@@ -266,11 +231,11 @@ export default function Material() {
           <Button icon={<UploadOutlined />}>上传{typeLabels[activeTab]}</Button>
         </Upload>
 
-        <Button icon={<ScanOutlined />} onClick={handleScan} loading={scanning}>
+        <Button icon={<ScanOutlined />} onClick={handleScan} loading={scanMaterials.isPending}>
           扫描本地
         </Button>
 
-        <Button icon={<SyncOutlined />} onClick={handleImport} loading={importing}>
+        <Button icon={<SyncOutlined />} onClick={handleImport} loading={importMaterials.isPending}>
           导入到数据库
         </Button>
 
@@ -285,7 +250,7 @@ export default function Material() {
             columns={columns}
             dataSource={materials}
             rowKey="id"
-            loading={loading}
+            loading={materialsData === undefined}
             pagination={{ pageSize: 10 }}
             size="small"
           />

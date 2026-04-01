@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import { Card, Row, Col, Statistic, Table, Tag, Space } from 'antd'
 import {
   UserOutlined,
@@ -6,9 +5,9 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
 } from '@ant-design/icons'
-import { api } from '../services/api'
+import { useSystemStats, useSystemLogs } from '../hooks'
 
-interface Stats {
+interface SystemStats {
   total_accounts: number
   active_accounts: number
   total_tasks: number
@@ -19,16 +18,13 @@ interface Stats {
   total_materials: number
 }
 
-interface Log {
-  id: number
-  level: string
-  module: string
-  message: string
-  created_at: string
-}
-
 export default function Dashboard() {
-  const [stats, setStats] = useState<Stats>({
+  // 使用 React Query hooks
+  const { data: statsData, isLoading: statsLoading, refetch: refetchStats } = useSystemStats()
+  const { data: logsData, isLoading: logsLoading, refetch: refetchLogs } = useSystemLogs()
+
+  // 规范化数据
+  const stats: SystemStats = (statsData as SystemStats) || {
     total_accounts: 0,
     active_accounts: 0,
     total_tasks: 0,
@@ -37,30 +33,13 @@ export default function Dashboard() {
     failed_tasks: 0,
     total_products: 0,
     total_materials: 0,
-  })
-  const [logs, setLogs] = useState<Log[]>([])
-  const [loading, setLoading] = useState(true)
+  }
+  const logs = (logsData as any)?.items || []
 
-  useEffect(() => {
-    fetchData()
-    // 定时刷新
-    const timer = setInterval(fetchData, 30000)
-    return () => clearInterval(timer)
-  }, [])
-
-  const fetchData = async () => {
-    try {
-      const [statsRes, logsRes] = await Promise.all([
-        api.get('/system/stats'),
-        api.get('/system/logs?limit=10'),
-      ])
-      setStats(statsRes.data)
-      setLogs(logsRes.data.items || [])
-    } catch (error) {
-      console.error('获取数据失败:', error)
-    } finally {
-      setLoading(false)
-    }
+  // 统一刷新函数
+  const refreshData = () => {
+    refetchStats()
+    refetchLogs()
   }
 
   const logColumns = [
@@ -104,7 +83,7 @@ export default function Dashboard() {
               value={stats.total_accounts}
               prefix={<UserOutlined />}
               suffix={`/ ${stats.active_accounts} 活跃`}
-              loading={loading}
+              loading={statsLoading}
             />
           </Card>
         </Col>
@@ -115,7 +94,7 @@ export default function Dashboard() {
               value={stats.pending_tasks}
               prefix={<ClockCircleOutlined />}
               suffix={`/ ${stats.total_tasks} 总计`}
-              loading={loading}
+              loading={statsLoading}
             />
           </Card>
         </Col>
@@ -126,7 +105,7 @@ export default function Dashboard() {
               value={stats.success_tasks}
               prefix={<CheckCircleOutlined />}
               valueStyle={{ color: '#3f8600' }}
-              loading={loading}
+              loading={statsLoading}
             />
           </Card>
         </Col>
@@ -137,19 +116,19 @@ export default function Dashboard() {
               value={stats.failed_tasks}
               prefix={<VideoCameraOutlined />}
               valueStyle={{ color: '#cf1322' }}
-              loading={loading}
+              loading={statsLoading}
             />
           </Card>
         </Col>
       </Row>
 
-      <Card title="运行日志" extra={<a onClick={fetchData}>刷新</a>}>
+      <Card title="运行日志" extra={<a onClick={refreshData}>刷新</a>}>
         <Table
           columns={logColumns}
           dataSource={logs}
           rowKey="id"
           pagination={false}
-          loading={loading}
+          loading={logsLoading}
           size="small"
         />
       </Card>

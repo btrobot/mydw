@@ -26,8 +26,7 @@ import {
   SyncOutlined,
   CheckCircleOutlined
 } from '@ant-design/icons'
-import axios from 'axios'
-import { api } from '../services/api'
+import { useVideoInfo, useDetectHighlights, useSmartClip, useAddAudio, useAddCover, useFullPipeline } from '../hooks'
 
 const { Text, Title, Paragraph } = Typography
 
@@ -58,9 +57,19 @@ export default function AIClip() {
   const [outputDir, setOutputDir] = useState('')
   const [outputPath, setOutputPath] = useState('')
 
-  const [loading, setLoading] = useState(false)
-  const [clipping, setClipping] = useState(false)
   const [progress, setProgress] = useState(0)
+
+  // 使用 React Query hooks
+  const videoInfoMutation = useVideoInfo()
+  const detectHighlightsMutation = useDetectHighlights()
+  const smartClipMutation = useSmartClip()
+  const addAudioMutation = useAddAudio()
+  const addCoverMutation = useAddCover()
+  const fullPipelineMutation = useFullPipeline()
+
+  // 统一 loading 状态
+  const loading = videoInfoMutation.isPending || detectHighlightsMutation.isPending
+  const clipping = smartClipMutation.isPending || addAudioMutation.isPending || addCoverMutation.isPending || fullPipelineMutation.isPending
 
   // 获取视频信息
   const handleGetVideoInfo = async () => {
@@ -69,15 +78,12 @@ export default function AIClip() {
       return
     }
     try {
-      setLoading(true)
-      const res = await api.get('/ai/video-info', { params: { video_path: videoPath } })
-      setVideoInfo(res.data)
+      const res = await videoInfoMutation.mutateAsync({ video_path: videoPath })
+      setVideoInfo(res)
       message.success('视频信息获取成功')
     } catch (error: unknown) {
-      message.error(axios.isAxiosError(error) ? (error.response?.data?.detail || error.message) : '获取视频信息失败')
+      message.error('获取视频信息失败')
       setVideoInfo(null)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -88,14 +94,11 @@ export default function AIClip() {
       return
     }
     try {
-      setLoading(true)
-      const res = await api.get('/ai/detect-highlights', { params: { video_path: videoPath } })
-      setSegments(res.data.segments)
-      message.success(`检测到 ${res.data.count} 个高光片段`)
+      const res = await detectHighlightsMutation.mutateAsync({ video_path: videoPath })
+      setSegments((res.segments as unknown as HighlightSegment[]) || [])
+      message.success(`检测到 ${res.count || 0} 个高光片段`)
     } catch (error: unknown) {
-      message.error(axios.isAxiosError(error) ? (error.response?.data?.detail || error.message) : '检测高光失败')
-    } finally {
-      setLoading(false)
+      message.error('检测高光失败')
     }
   }
 
@@ -110,7 +113,6 @@ export default function AIClip() {
       return
     }
     try {
-      setClipping(true)
       setProgress(10)
       const timestamp = new Date().getTime()
       const output = outputDir
@@ -118,25 +120,24 @@ export default function AIClip() {
         : videoPath.replace(/\.[^.]+$/, `_clip_${timestamp}.mp4`)
 
       setProgress(30)
-      const res = await api.post('/ai/smart-clip', {
+      const res = await smartClipMutation.mutateAsync({
         video_path: videoPath,
         segments: segments,
         output_path: output,
         target_duration: targetDuration
-      })
+      }) as { success?: boolean; output_path?: string; error?: string }
 
       setProgress(80)
-      if (res.data.success) {
+      if (res.success) {
         setProgress(100)
-        setOutputPath(res.data.output_path)
+        setOutputPath(res.output_path || output)
         message.success('视频剪辑完成')
       } else {
-        message.error(res.data.error || '剪辑失败')
+        message.error(res.error || '剪辑失败')
       }
     } catch (error: unknown) {
-      message.error(axios.isAxiosError(error) ? (error.response?.data?.detail || error.message) : '剪辑失败')
+      message.error('剪辑失败')
     } finally {
-      setClipping(false)
       setProgress(0)
     }
   }
@@ -148,7 +149,6 @@ export default function AIClip() {
       return
     }
     try {
-      setClipping(true)
       setProgress(10)
       const timestamp = new Date().getTime()
       const output = outputDir
@@ -156,24 +156,23 @@ export default function AIClip() {
         : videoPath.replace(/\.[^.]+$/, `_audio_${timestamp}.mp4`)
 
       setProgress(50)
-      const res = await api.post('/ai/add-audio', {
+      const res = await addAudioMutation.mutateAsync({
         video_path: videoPath,
         audio_path: audioPath,
         output_path: output,
         volume: audioVolume
-      })
+      }) as { success?: boolean; output_path?: string; error?: string }
 
       setProgress(100)
-      if (res.data.success) {
-        setOutputPath(res.data.output_path)
+      if (res.success) {
+        setOutputPath(res.output_path || output)
         message.success('背景音乐添加成功')
       } else {
-        message.error(res.data.error || '添加失败')
+        message.error(res.error || '添加失败')
       }
     } catch (error: unknown) {
-      message.error(axios.isAxiosError(error) ? (error.response?.data?.detail || error.message) : '添加背景音乐失败')
+      message.error('添加背景音乐失败')
     } finally {
-      setClipping(false)
       setProgress(0)
     }
   }
@@ -185,30 +184,28 @@ export default function AIClip() {
       return
     }
     try {
-      setClipping(true)
       setProgress(50)
       const timestamp = new Date().getTime()
       const output = outputDir
         ? `${outputDir}/cover_${timestamp}.mp4`
         : videoPath.replace(/\.[^.]+$/, `_cover_${timestamp}.mp4`)
 
-      const res = await api.post('/ai/add-cover', {
+      const res = await addCoverMutation.mutateAsync({
         video_path: videoPath,
         cover_path: coverPath,
         output_path: output
-      })
+      }) as { success?: boolean; output_path?: string; error?: string }
 
       setProgress(100)
-      if (res.data.success) {
-        setOutputPath(res.data.output_path)
+      if (res.success) {
+        setOutputPath(res.output_path || output)
         message.success('封面添加成功')
       } else {
-        message.error(res.data.error || '添加失败')
+        message.error(res.error || '添加失败')
       }
     } catch (error: unknown) {
-      message.error(axios.isAxiosError(error) ? (error.response?.data?.detail || error.message) : '添加封面失败')
+      message.error('添加封面失败')
     } finally {
-      setClipping(false)
       setProgress(0)
     }
   }
@@ -220,28 +217,26 @@ export default function AIClip() {
       return
     }
     try {
-      setClipping(true)
       setProgress(10)
 
-      const res = await api.post('/ai/full-pipeline', {
+      const res = await fullPipelineMutation.mutateAsync({
         video_path: videoPath,
-        audio_path: audioPath || null,
-        cover_path: coverPath || null,
+        audio_path: audioPath || undefined,
+        cover_path: coverPath || undefined,
         target_duration: targetDuration,
-        output_dir: outputDir || null
-      })
+        output_dir: outputDir || undefined
+      }) as { success?: boolean; output_path?: string; error?: string }
 
       setProgress(100)
-      if (res.data.success) {
-        setOutputPath(res.data.output_path)
+      if (res.success) {
+        setOutputPath(res.output_path || '')
         message.success('AI 剪辑流程完成')
       } else {
-        message.error(res.data.error || '处理失败')
+        message.error(res.error || '处理失败')
       }
     } catch (error: unknown) {
-      message.error(axios.isAxiosError(error) ? (error.response?.data?.detail || error.message) : 'AI 剪辑失败')
+      message.error('AI 剪辑失败')
     } finally {
-      setClipping(false)
       setProgress(0)
     }
   }

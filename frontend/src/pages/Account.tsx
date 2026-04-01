@@ -1,38 +1,26 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Table, Tag, Button, Space, Modal, Form, Input, message } from 'antd'
 import { PlusOutlined, DeleteOutlined, LoginOutlined } from '@ant-design/icons'
-import axios from 'axios'
-import { api } from '../services/api'
+import { useAccounts, useCreateAccount, useDeleteAccount, useLoginAccount } from '../hooks'
 
 interface Account {
   id: number
   account_id: string
   account_name: string
   status: string
-  last_login: string | null
+  last_login?: string | null
   created_at: string
 }
 
 export default function Account() {
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [loading, setLoading] = useState(true)
   const [modalVisible, setModalVisible] = useState(false)
   const [form] = Form.useForm()
 
-  useEffect(() => {
-    fetchAccounts()
-  }, [])
-
-  const fetchAccounts = async () => {
-    try {
-      const res = await api.get('/accounts')
-      setAccounts(res.data)
-    } catch (error) {
-      message.error('获取账号列表失败')
-    } finally {
-      setLoading(false)
-    }
-  }
+  // 使用 React Query hooks
+  const { data: accounts = [], isLoading, refetch } = useAccounts()
+  const createAccount = useCreateAccount()
+  const deleteAccount = useDeleteAccount()
+  const loginAccount = useLoginAccount()
 
   const handleAdd = () => {
     form.resetFields()
@@ -42,17 +30,13 @@ export default function Account() {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields()
-      await api.post('/accounts', values)
+      await createAccount.mutateAsync(values)
       message.success('添加账号成功')
       setModalVisible(false)
-      fetchAccounts()
+      refetch()
     } catch (error: unknown) {
       if (error !== null && typeof error === 'object' && 'errorFields' in error) return
-      if (axios.isAxiosError(error)) {
-        message.error(error.response?.data?.detail || error.message)
-      } else {
-        message.error('添加失败')
-      }
+      message.error('添加失败')
     }
   }
 
@@ -61,16 +45,16 @@ export default function Account() {
       title: '确认删除',
       content: '确定要删除这个账号吗？',
       onOk: async () => {
-        await api.delete(`/accounts/${id}`)
+        await deleteAccount.mutateAsync(id)
         message.success('删除成功')
-        fetchAccounts()
+        refetch()
       },
     })
   }
 
   const handleLogin = async (id: number) => {
     try {
-      await api.post('/accounts/login', { account_id: accounts.find(a => a.id === id)?.account_id })
+      await loginAccount.mutateAsync(id)
       message.info('请在新窗口中完成登录')
     } catch (error) {
       message.error('登录失败')
@@ -150,7 +134,7 @@ export default function Account() {
         columns={columns}
         dataSource={accounts}
         rowKey="id"
-        loading={loading}
+        loading={isLoading}
         pagination={{ pageSize: 10 }}
       />
 

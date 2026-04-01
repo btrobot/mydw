@@ -12,28 +12,35 @@
     "build": "tsc && vite build",
     "build:electron": "npm run build && electron-builder",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "api:generate": "openapi-ts -f openapi.config.ts",
+    "api:generate:watch": "openapi-ts -f openapi.config.ts -w",
+    "api:dev": "npm run api:generate && vite"
   },
   "dependencies": {
+    "@ant-design/icons": "^5.2.6",
+    "@hey-api/client-fetch": "^0.13.1",
+    "@tanstack/react-query": "^5.17.0",
+    "antd": "^5.12.0",
+    "axios": "^1.6.2",
+    "dayjs": "^1.11.10",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.21.0",
-    "antd": "^5.12.0",
-    "@ant-design/icons": "^5.2.6",
-    "zustand": "^4.4.7",
-    "axios": "^1.6.2",
-    "dayjs": "^1.11.10"
+    "zustand": "^4.4.7"
   },
   "devDependencies": {
+    "@hey-api/openapi-ts": "^0.0.0-next-20260217010724",
     "@types/node": "^20.10.0",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.2.1",
-    "typescript": "^5.3.3",
-    "vite": "^5.0.10",
+    "concurrently": "^8.2.2",
     "electron": "^28.1.0",
     "electron-builder": "^24.9.1",
-    "concurrently": "^8.2.2",
+    "prettier": "^3.8.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.10",
     "wait-on": "^7.2.0"
   },
   "build": {
@@ -50,7 +57,9 @@
       {
         "from": "../backend",
         "to": "backend",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "asar": true,
@@ -61,7 +70,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "public/icon.ico"
