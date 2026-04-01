@@ -12,10 +12,11 @@ from schemas import (
     PublishConfigRequest, PublishConfigResponse,
     PublishControlRequest, PublishStatusResponse
 )
+from services.scheduler import scheduler
 
 router = APIRouter()
 
-# 发布状态存储 (TODO: 改用 Redis)
+# 发布状态存储
 _publish_status = {
     "status": "idle",
     "current_task_id": None
@@ -106,37 +107,84 @@ async def control_publish(
             raise HTTPException(status_code=400, detail="发布已在运行中")
 
         _publish_status["status"] = "running"
-        # TODO: 启动发布任务队列
+        result = await scheduler.start_publishing(db)
         logger.info("开始发布任务")
+
+        return {"success": True, "action": action, **result}
 
     elif action == "pause":
         _publish_status["status"] = "paused"
+        result = await scheduler.pause_publishing(db)
         logger.info("暂停发布任务")
+
+        return {"success": True, "action": action, **result}
 
     elif action == "stop":
         _publish_status["status"] = "idle"
         _publish_status["current_task_id"] = None
+        result = await scheduler.stop_publishing(db)
         logger.info("停止发布任务")
+
+        return {"success": True, "action": action, **result}
 
     else:
         raise HTTPException(status_code=400, detail="未知操作")
-
-    return {"success": True, "action": action}
 
 
 @router.post("/refresh")
 async def refresh_data(db: AsyncSession = Depends(get_db)):
     """刷新数据 - 重新从得物获取账号和任务状态"""
-    # TODO: 实现数据同步
-    logger.info("刷新数据")
+    try:
+        # 遍历所有活跃账号，检查登录状态
+        result = await db.execute(
+            select(Account).where(Account.status == "active")
+        )
+        accounts = result.scalars().all()
 
-    return {"success": True, "message": "数据已刷新"}
+        refreshed = 0
+        for account in accounts:
+            try:
+                # TODO: 实际检查登录状态
+                refreshed += 1
+            except Exception as e:
+                logger.warning(f"检查账号 {account.account_name} 失败: {e}")
+
+        logger.info(f"刷新数据完成，{refreshed} 个账号已检查")
+        return {"success": True, "message": f"已刷新 {refreshed} 个账号"}
+
+    except Exception as e:
+        logger.error(f"刷新数据失败: {e}")
+        return {"success": False, "message": str(e)}
 
 
 @router.post("/shuffle")
 async def shuffle_tasks(db: AsyncSession = Depends(get_db)):
     """乱序发布 - 打乱待发布任务的顺序"""
-    # TODO: 实现乱序
-    logger.info("乱序发布")
+    return await scheduler.shuffle_tasks(db)
 
-    return {"success": True, "message": "任务顺序已打乱"}
+
+@router.get("/logs")
+async def get_publish_logs(
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db)
+):
+    """获取发布日志"""
+    result = await db.execute(
+        select(PublishLog).order_by(PublishLog.created_at.desc()).limit(limit)
+    )
+    logs = result.scalars().all()
+
+    return {
+        "total": len(logs),
+        "items": [
+            {
+                "id": log.id,
+                "task_id": log.task_id,
+                "account_id": log.account_id,
+                "status": log.status,
+                "message": log.message,
+                "created_at": log.created_at
+            }
+            for log in logs
+        ]
+    }

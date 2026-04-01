@@ -1,6 +1,12 @@
 """
-得物掘金工具 - 核心模块
+得物掘金工具 - 服务模块
 """
-from models import Account, Task, Material, Product, PublishLog
+from services.publish_service import PublishService, get_publish_service
+from services.scheduler import TaskScheduler, scheduler
 
-__all__ = ["Account", "Task", "Material", "Product", "PublishLog"]
+__all__ = [
+    "PublishService",
+    "get_publish_service",
+    "TaskScheduler",
+    "scheduler",
+]
