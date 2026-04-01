@@ -1,40 +1,72 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "name": "dewugojin-tool",
-  "version": "1.0.0",
-  "description": "得物掘金工具 - 自动化视频发布系统",
+  "name": "dewugojin",
+  "version": "2.0.0",
+  "description": "得物掘金工具 - 完整多Agent协作框架",
+
   "agents": {
     "directory": ".claude/agents",
     "enabled": [
-      "frontend-expert",
-      "backend-expert",
-      "browser-automation",
-      "video-processing",
-      "database-expert"
+      "project-manager",
+      "tech-lead",
+      "frontend-lead",
+      "backend-lead",
+      "qa-lead",
+      "devops-engineer",
+      "ui-developer",
+      "api-developer",
+      "automation-developer",
+      "test-engineer",
+      "security-expert"
     ]
   },
+
   "skills": {
     "directory": ".claude/skills",
     "enabled": [
+      "sprint-plan",
+      "task-breakdown",
+      "architecture-review",
       "code-review",
-      "browser-automation",
-      "video-processing"
+      "security-scan"
     ]
   },
+
   "rules": {
     "enabled": true,
     "paths": [
-      ".claude/rules/frontend-style.md",
-      ".claude/rules/backend-style.md",
-      ".claude/rules/security.md",
-      ".claude/rules/typescript-guards.md"
+      ".claude/rules/coordination-rules.md",
+      ".claude/rules/typescript-style.md",
+      ".claude/rules/python-style.md",
+      ".claude/rules/security-rules.md",
+      ".claude/rules/commit-rules.md"
     ]
   },
+
   "hooks": {
-    "SessionStart": [
-      {
-        "command": "bash .claude/hooks/session-start.sh"
-      }
-    ]
+    "SessionStart": [{
+      "matcher": "",
+      "hooks": [{
+        "type": "command",
+        "command": "bash .claude/hooks/session-start.sh",
+        "timeout": 15
+      }]
+    }],
+    "PreToolUse": [{
+      "matcher": "Write|Edit",
+      "hooks": [{
+        "type": "command",
+        "command": "bash .claude/hooks/pre-commit.sh",
+        "timeout": 5
+      }]
+    }],
+    "Stop": [{
+      "matcher": "",
+      "hooks": [{
+        "type": "command",
+        "command": "bash .claude/hooks/session-end.sh",
+        "timeout": 10
+      }]
+    }]
   }
 }

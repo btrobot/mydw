@@ -1,118 +1,235 @@
 ---
 name: code-review
-description: "Review code quality, security, and best practices"
-argument-hint: "[file paths or directories to review]"
+description: "代码审查 - 审查代码质量和规范"
+argument-hint: "[文件路径或 PR]"
 user-invocable: true
-allowed-tools: Read, Glob, Grep, Bash
+allowed-tools: Read, Write, Glob, Grep, Bash
 ---
 
-When this skill is invoked:
+# Code Review Skill
 
-1. **Parse arguments** — Identify files/directories to review
-2. **Check prerequisites** — Verify files exist
-3. **Read context** — Load project rules and patterns
-4. **Begin workflow** — Start with Phase 1: Gather Context
+代码审查工作流，审查代码质量和规范。
 
----
-
-### Phase 1: Gather Context
-
-**Goal**: Understand the code to review
-
-**Steps**:
-1. Identify the file types (Python/TypeScript/JavaScript)
-2. Load relevant project rules from `.claude/rules/`
-3. Check for existing tests
-4. Understand the purpose of the code
-
----
-
-### Phase 2: Review Code
-
-**Goal**: Perform comprehensive code review
-
-**Steps**:
-1. **Correctness**: Does the code do what it claims?
-2. **Security**: Are there potential vulnerabilities?
-3. **Performance**: Are there obvious performance issues?
-4. **Style**: Does it follow project conventions?
-5. **Tests**: Is there adequate test coverage?
-
----
-
-### Phase 3: Generate Report
-
-**Goal**: Provide actionable feedback
-
-**Steps**:
-1. Document findings with severity (MUST FIX/SHOULD/NIT)
-2. Provide specific examples and suggestions
-3. Suggest references to relevant rules
-
----
-
-### Quality Checks
-
-Review against these standards:
-
-- [ ] Code is correct and does what it claims
-- [ ] No security vulnerabilities (injection, XSS, etc.)
-- [ ] No obvious performance issues
-- [ ] Follows project style conventions
-- [ ] Error handling is appropriate
-- [ ] Tests are present and adequate
-
----
-
-### Output Format
+## 触发方式
 
 ```
-## Code Review Report
+/code-review
+/code-review backend/api/account.py
+/code-review frontend/src/pages/Account.tsx
+```
 
-### Files Reviewed
-- `path/to/file1.ts`
-- `path/to/file2.py`
+## 审查清单
 
-### Issues Found
+### 1. 功能正确性
 
-#### MUST FIX (Blocking)
-1. **[File:Line]** Description
-   - Impact: [What could go wrong]
-   - Suggestion: [How to fix]
+| 检查项 | 说明 |
+|--------|------|
+| 逻辑正确 | 代码逻辑是否正确 |
+| 边界情况 | 是否处理边界情况 |
+| 错误处理 | 错误是否正确处理 |
 
-#### SHOULD FIX (Important)
-1. **[File:Line]** Description
-   - Suggestion: [How to improve]
+### 2. 代码质量
 
-#### Nitpicks
-1. **[File:Line]** Minor issue
+| 检查项 | 说明 |
+|--------|------|
+| 命名规范 | 变量/函数命名清晰 |
+| 函数长度 | 函数是否过长 (< 50 行) |
+| 代码重复 | 是否有重复代码 |
+| 注释质量 | 关键逻辑有注释 |
 
-### Summary
-- Critical Issues: X
-- Important Issues: X
-- Nitpicks: X
+### 3. 技术规范
 
-### Recommendations
-1. [Overall recommendation]
+#### Frontend (TypeScript)
+
+| 检查项 | 标准 |
+|--------|------|
+| 类型定义 | 禁止 `any` |
+| 组件规范 | 函数式组件 + Hooks |
+| 错误处理 | Promise catch / try-catch |
+
+#### Backend (Python)
+
+| 检查项 | 标准 |
+|--------|------|
+| 类型注解 | 公共函数必须有注解 |
+| Pydantic | 使用 Schema 验证 |
+| 日志 | 使用 loguru，不使用 print |
+
+### 4. 安全
+
+| 检查项 | 标准 |
+|--------|------|
+| 敏感数据 | 不明文存储/日志 |
+| 输入验证 | 使用 Pydantic 验证 |
+| SQL 注入 | 使用 ORM 参数化 |
+
+## 执行步骤
+
+### Step 1: 读取代码
+
+读取需要审查的文件。
+
+### Step 2: 静态检查
+
+```bash
+# TypeScript
+cd frontend
+npm run typecheck
+
+# Python
+cd backend
+mypy .
+
+# 通用
+grep -rn "any" --include="*.ts" frontend/src/
+grep -rn "print(" backend/
+```
+
+### Step 3: 生成审查报告
+
+```markdown
+## 代码审查报告
+
+**文件**: [路径]
+**审查者**: [Agent]
+**日期**: YYYY-MM-DD
+
+---
+
+### 审查清单
+
+| 检查项 | 状态 | 说明 |
+|--------|------|------|
+| 逻辑正确 | ✅ | - |
+| 边界情况 | ⚠️ | 缺少空数组检查 |
+| 错误处理 | ✅ | - |
+| 命名规范 | ✅ | - |
+| 类型定义 | ❌ | 第 42 行使用 any |
+| ... | | |
+
+---
+
+### 问题
+
+#### 🔴 高: [问题标题]
+
+**位置**: [文件:行号]
+
+**问题**:
+```[代码]
+[有问题的代码]
+```
+
+**建议**:
+```[代码]
+[修复后的代码]
 ```
 
 ---
 
-### Next Steps
+### 总结
 
-1. Address MUST FIX issues first
-2. Review SHOULD FIX issues when convenient
-3. Consider nitpicks for future improvements
-4. Re-review after fixes if needed
+| 等级 | 数量 |
+|------|------|
+| 🔴 高 | 1 |
+| 🟡 中 | 2 |
+| 🟢 低 | 3 |
+
+**结论**: ❌ 需要修改 / ⚠️ 需要审查 / ✅ 可以合并
+```
+
+## 示例：API 审查
+
+```markdown
+## 代码审查报告
+
+**文件**: backend/api/account.py
+**审查者**: Tech Lead
+**日期**: 2024-01-15
 
 ---
 
-### Related Skills
+### 审查清单
 
-- `/frontend-expert` — Frontend-specific reviews
-- `/backend-expert` — Backend-specific reviews
-- `/browser-automation` — Browser automation code reviews
+| 检查项 | 状态 |
+|--------|------|
+| 逻辑正确 | ✅ |
+| Pydantic Schema | ✅ |
+| 错误处理 | ⚠️ |
+| 日志记录 | ✅ |
+| 权限检查 | ❌ |
 
-### Involves
+---
 
-- User review and approval of recommendations
+### 问题
+
+#### 🔴 高: 缺少权限检查
+
+**位置**: backend/api/account.py:56
+
+**问题**:
+```python
+@router.delete("/{account_id}")
+async def delete_account(account_id: int, db: AsyncSession):
+    # 任何人都可以删除任何账号！
+    await service.delete(db, account_id)
+```
+
+**风险**: 用户可以删除他人账号
+
+**建议**:
+```python
+@router.delete("/{account_id}")
+async def delete_account(
+    account_id: int,
+    db: AsyncSession,
+    current_user: User = Depends(get_current_user),
+):
+    # 检查权限
+    if current_user.id != account_id and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="无权操作")
+
+    await service.delete(db, account_id)
+```
+
+---
+
+#### 🟡 中: 错误日志缺少上下文
+
+**位置**: backend/api/account.py:34
+
+**问题**:
+```python
+except Exception as e:
+    logger.error(f"删除失败")  # 缺少 account_id
+```
+
+**建议**:
+```python
+except Exception as e:
+    logger.error(f"删除账号失败: account_id={account_id}, error={e}")
+```
+
+---
+
+### 总结
+
+- 🔴 高: 1 (必须修复)
+- 🟡 中: 1 (建议修复)
+- 🟢 低: 0
+
+**结论**: ❌ 需要修改后重新审查
+```
+
+## 输出
+
+审查完成后更新状态：
+
+```markdown
+## 决策日志
+
+### [日期] 代码审查 - account.py
+- **状态**: 需要修改
+- **问题**: 缺少权限检查
+- **行动**: Backend Lead 修复后重新提交
+```
