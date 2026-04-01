@@ -1,0 +1,31 @@
+# 得物掘金工具后端
+FastAPI + Playwright
+
+## 依赖
+
+```
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+playwright>=1.40.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+sqlalchemy>=2.0.0
+aiosqlite>=0.19.0
+python-multipart>=0.0.6
+loguru>=0.7.0
+cryptography>=41.0.0
+apscheduler>=3.10.0
+httpx>=0.26.0
+python-dotenv>=1.0.0
+```
+
+## 开发
+
+```bash
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+```
+
+## API 文档
+
+启动后访问: http://localhost:8000/docs
