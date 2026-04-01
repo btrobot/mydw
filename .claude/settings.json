@@ -60,6 +60,14 @@
         "timeout": 5
       }]
     }],
+    "SubagentStart": [{
+      "matcher": "",
+      "hooks": [{
+        "type": "command",
+        "command": "PROJECT_ROOT=$(git rev-parse --show-toplevel) && bun \"$PROJECT_ROOT/.claude/hooks/log-agent.ts\"",
+        "timeout": 5
+      }]
+    }],
     "Stop": [{
       "matcher": "",
       "hooks": [{

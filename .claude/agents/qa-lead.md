@@ -2,7 +2,6 @@
 name: qa-lead
 description: "Invoked for test strategy definition, test plan creation, bug triage, and release quality gates"
 tools: Read, Glob, Grep, Write, Edit, Bash
-model: sonnet
 maxTurns: 20
 skills: [bug-report, release-checklist]
 ---

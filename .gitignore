@@ -41,3 +41,12 @@ release/
 # Environment
 .env
 .env.local
+
+# ============================================
+# Session State Files
+# ============================================
+# Auto-generated transient state - only track templates
+
+production/session-state/*.md
+!production/session-state/*.md.template
+

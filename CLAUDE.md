@@ -201,11 +201,18 @@ dewugojin/
 │   ├── services/                # 业务服务
 │   └── utils/                   # 工具函数
 ├── production/                   # 生产管理
-│   └── session-state/           # 会话状态
+│   ├── session-state/          # 会话状态
+│   │   └── active.md.template  # 状态模板
+│   └── session-logs/           # 会话归档
+│       ├── session-log.md       # 会话历史
+│       └── agent-audit.log      # Agent 调用审计
 └── .claude/                     # Agent 框架
     ├── agents/                  # Agent 定义
     ├── skills/                  # Skills 工作流
     ├── hooks/                   # 生命周期钩子
+    │   ├── session-start.ts    # 会话开始
+    │   ├── session-end.ts      # 会话结束
+    │   └── log-agent.ts        # Agent 审计
     └── rules/                   # 代码规范
 ```
 
@@ -227,9 +234,58 @@ dewugojin/
 
 ## 状态管理
 
-当前工作状态保存在 `production/session-state/active.md`。
+### 核心原则
 
-每次任务开始/完成、决策做出时更新此文件。
+**文件即内存，对话即临时。** 对话是临时的，会被压缩或丢失；文件是持久化的，跨会话和崩溃都能保留。
+
+### 会话状态文件
+
+`production/session-state/active.md` 是会话的"活检查点"，包含：
+
+| 章节 | 内容 |
+|------|------|
+| **STATUS** | 当前 Epic/Feature/Task（会被 Hook 自动解析） |
+| **Active Task** | 当前组件、阶段、状态 |
+| **Progress** | 任务进度清单 |
+| **Key Decisions** | 重要决策记录 |
+| **Files Being Worked On** | 正在修改的文件 |
+| **Open Questions** | 待解决的问题和选项 |
+| **Blocker Notes** | 当前阻塞 |
+| **Agent Invocations** | Agent 调用记录 |
+| **Session Log** | 会话操作历史 |
+
+### 更新时机
+
+在以下情况后更新 `active.md`：
+
+1. 设计文档章节批准并写入文件
+2. 架构决策做出
+3. 实现里程碑达到
+4. 测试结果获取
+5. 任务开始/完成/阻塞
+
+### 自动机制
+
+| Hook | 功能 |
+|------|------|
+| `session-start.ts` | 检测并恢复上次的会话状态 |
+| `session-end.ts` | 自动归档状态到 `session-logs/session-log.md` |
+| `log-agent.ts` | 审计所有 Agent 调用 |
+
+### 主动压缩
+
+- **~60-70% 上下文使用**：主动压缩，不要等到极限
+- **自然压缩点**：章节完成后、提交后、任务完成后
+- **压缩后恢复**：读取 `active.md` 恢复上下文
+
+### 子 Agent 使用
+
+| 场景 | 方式 |
+|------|------|
+| 跨多个文件调查、探索不熟悉的代码、消耗 >5k tokens 的研究 | 使用 Agent 工具 |
+| 精确知道要检查哪 1-2 个文件 | 直接使用 Read/Grep 工具 |
+
+子 Agent 不继承对话历史，需在 prompt 中提供完整上下文。
 
 ---
 

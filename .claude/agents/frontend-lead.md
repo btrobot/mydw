@@ -2,7 +2,6 @@
 name: frontend-lead
 description: "Invoked for React component design, state management, API integration, and frontend code implementation"
 tools: Read, Glob, Grep, Write, Edit, Bash
-model: sonnet
 maxTurns: 25
 skills: [code-review]
 ---

@@ -2,7 +2,6 @@
 name: automation-developer
 description: "Invoked for Playwright browser automation, FFmpeg video processing, and script development"
 tools: Read, Glob, Grep, Write, Edit, Bash
-model: sonnet
 maxTurns: 20
 ---
 

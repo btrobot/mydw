@@ -2,7 +2,6 @@
 name: backend-lead
 description: "Invoked for FastAPI endpoint design, service layer implementation, database models, and security implementation"
 tools: Read, Glob, Grep, Write, Edit, Bash
-model: sonnet
 maxTurns: 25
 skills: [code-review]
 ---

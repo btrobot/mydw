@@ -2,7 +2,6 @@
 name: tech-lead
 description: "Invoked for architecture design, API contract definition, technical decisions, and cross-domain coordination"
 tools: Read, Glob, Grep, Write, Edit, Bash, WebSearch
-model: opus
 maxTurns: 40
 skills: [architecture-review, code-review]
 ---

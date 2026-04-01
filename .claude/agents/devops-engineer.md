@@ -2,7 +2,6 @@
 name: devops-engineer
 description: "Invoked for CI/CD configuration, build systems, deployment automation, and environment setup"
 tools: Read, Glob, Grep, Write, Edit, Bash
-model: sonnet
 maxTurns: 20
 ---
 
