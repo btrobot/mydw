@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
 from api import account, task, material, publish, system
-from core.database import init_db
+from models import init_db
 from core.config import settings
 
 # 配置日志
