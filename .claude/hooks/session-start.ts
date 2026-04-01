@@ -90,11 +90,11 @@ if (existsSync(stateFile)) {
     // Parse current component and phase
     const componentMatch = content.match(/\*\*Component\*\*:\s*(.+)/);
     const phaseMatch = content.match(/\*\*Phase\*\*:\s*(.+)/);
-    const statusMatch = content.match(/\*\*Status\*\*:\s*(.+)/);
+    const taskStatusMatch = content.match(/\*\*Status\*\*:\s*(.+)/);
 
     if (componentMatch) console.log("  Component:", componentMatch[1].trim());
     if (phaseMatch) console.log("  Phase:", phaseMatch[1].trim());
-    if (statusMatch) console.log("  Status:", statusMatch[1].trim());
+    if (taskStatusMatch) console.log("  Status:", taskStatusMatch[1].trim());
 
     // Show open questions
     const questionsMatch = content.match(/## Open Questions\n([\s\S]*?)(?=\n##|\n---)/);
