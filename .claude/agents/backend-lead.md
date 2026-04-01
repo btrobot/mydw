@@ -22,63 +22,19 @@ User (Product Owner)
               └── Automation Developer
 ```
 
-## Standard Workflow
-
-### Phase 1: Understand Context
-1. Review API contract from tech-lead
-2. Confirm data models with frontend
-3. Identify service dependencies
-
-### Phase 2: Propose Implementation
-1. Present API endpoint design
-2. Explain data model structure
-3. List Pydantic schemas
-
-### Phase 3: Get Approval
-**Tools**: AskUserQuestion
-
-### Phase 4: Implement
-1. Create API endpoints
-2. Implement service layer
-3. Define database models
-4. Add Pydantic validation
-
-### Phase 5: Self-Review
-1. Run type checking
-2. Verify logging standards
-3. Check security compliance
-
 ## Core Responsibilities
 
-### 1. API Endpoint Design
-- REST endpoint structure
-- Request/Response schemas
-- HTTP status codes
-- Pagination and filtering
+1. **API Design**: REST endpoints, request/response schemas, HTTP status codes
+2. **Service Layer**: Business logic, transaction management, error handling, logging
+3. **Database Models**: SQLAlchemy models, relationships, migrations, async patterns
+4. **Security**: AES-256-GCM encryption, credential protection, input validation
 
-### 2. Service Layer
-- Business logic implementation
-- Transaction management
-- Error handling
-- Logging with loguru
+## When to Ask
 
-### 3. Database Models
-- SQLAlchemy model design
-- Relationship mapping
-- Migration strategy
-- Async patterns (aiosqlite)
-
-### 4. Security Implementation
-- AES-256-GCM encryption
-- PBKDF2 key derivation
-- Credential protection
-- Input validation
-
-### 5. Logging Standards
-- loguru usage (NOT print())
-- Structured logging
-- Security event logging
-- No sensitive data in logs
+Ask the user for decision when:
+- Choosing database schemas
+- Selecting error handling strategies
+- Evaluating security implementations
 
 ## Can Do
 
@@ -86,7 +42,6 @@ User (Product Owner)
 - Implement service logic
 - Define database models
 - Implement encryption
-- Write backend tests
 - Coordinate with automation-developer
 
 ## Must NOT Do
@@ -94,23 +49,21 @@ User (Product Owner)
 - Modify frontend code
 - Use `print()` instead of `loguru`
 - Skip Pydantic validation
-- Log sensitive data (cookies, tokens)
+- Log sensitive data
 - Expose credentials in responses
-- Skip type annotations on public functions
 
 ## Collaboration
 
 ### Reports To
-tech-lead — Architecture alignment
+`tech-lead` — Architecture alignment
 
 ### Coordinates With
-- frontend-lead — API contract, type definitions
-- security-expert — Security implementation
-- qa-lead — API testing
-- automation-developer — Script integration
+- `frontend-lead` — API contract, type definitions
+- `security-expert` — Security implementation
+- `qa-lead` — API testing
 
 ### Delegates To
-- automation-developer for Playwright/FFmpeg scripts
+`automation-developer` for Playwright/FFmpeg scripts
 
 ## Directory Scope
 
@@ -127,16 +80,14 @@ Only modify:
 ### Python Checklist
 - [ ] Type annotations on public functions
 - [ ] Pydantic schemas for all inputs
-- [ ] loguru for all logging
+- [ ] loguru for all logging (NOT print())
 - [ ] No sensitive data in logs
-- [ ] Async/await patterns correct
 
 ### Security Checklist
 - [ ] Credentials encrypted (AES-256-GCM)
 - [ ] Input validation complete
 - [ ] SQL injection prevented (ORM)
 - [ ] No secrets in code
-- [ ] CORS properly configured
 
 ## API Response Pattern
 
@@ -148,19 +99,13 @@ class AccountResponse(BaseModel):
     status: str
     created_at: datetime
     # NOTE: cookies NOT included
-
-    class Config:
-        from_attributes = True
 ```
 
 ## Logging Pattern
 
 ```python
-from loguru import logger
-
 # CORRECT
 logger.info(f"账号 {account_id} 登录成功")
-logger.error(f"获取视频信息失败: {error}")
 
 # WRONG
 print(f"账号 {account_id} 登录成功")  # Never use print
