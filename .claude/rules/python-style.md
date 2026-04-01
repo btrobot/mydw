@@ -1,3 +1,8 @@
+---
+paths:
+  - "backend/**/*.py"
+---
+
 # Python Style - Python 代码风格
 
 适用于 `backend/` 目录。
@@ -10,6 +15,8 @@
 4. **单一职责**: 每个函数/类职责单一
 
 ## 导入顺序
+
+**Correct**:
 
 ```python
 # 1. 标准库
@@ -27,9 +34,20 @@ from schemas.account import AccountResponse
 from utils.crypto import encrypt_data
 ```
 
+**Incorrect**:
+
+```python
+# ❌ 错误：乱序导入
+from fastapi import APIRouter
+import os
+from models import Account
+```
+
 ## 类型注解
 
 ### 函数注解
+
+**Correct**:
 
 ```python
 # ✅ 正确：完整的类型注解
@@ -38,13 +56,19 @@ async def get_account(account_id: int) -> Optional[Account]:
 
 def validate_path(path: str) -> bool:
     ...
+```
 
+**Incorrect**:
+
+```python
 # ❌ 错误：缺少注解
 def get_account(account_id):
     ...
 ```
 
 ### 类型别名
+
+**Correct**:
 
 ```python
 # ✅ 正确：类型别名
@@ -53,6 +77,8 @@ AccountList = List[AccountDict]
 ```
 
 ## 异步编程
+
+**Correct**:
 
 ```python
 # ✅ 正确：异步函数
@@ -65,7 +91,11 @@ async def fetch_data(url: str) -> dict:
 async def get_db():
     async with async_session() as session:
         yield session
+```
 
+**Incorrect**:
+
+```python
 # ❌ 错误：混用同步异步
 async def wrong():
     result = requests.get("url")  # 同步！
@@ -74,6 +104,8 @@ async def wrong():
 
 ## 日志
 
+**Correct**:
+
 ```python
 # ✅ 正确：Loguru
 from loguru import logger
@@ -81,12 +113,18 @@ from loguru import logger
 logger.info("用户创建成功: user_id={}", user_id)
 logger.warning("登录失败: user={}", username)  # 不记录密码
 logger.error("处理失败: {}", error, exc_info=True)
+```
 
+**Incorrect**:
+
+```python
 # ❌ 错误：print
 print("用户创建成功")  # 无法追踪
 ```
 
 ## 异常处理
+
+**Correct**:
 
 ```python
 # ✅ 正确：具体异常
@@ -100,7 +138,19 @@ except Exception as e:
     raise HTTPException(status_code=500, detail="服务器错误")
 ```
 
+**Incorrect**:
+
+```python
+# ❌ 错误：捕获所有异常
+try:
+    result = await service.get(id)
+except Exception:
+    pass
+```
+
 ## 数据加密
+
+**Correct**:
 
 ```python
 # ✅ 正确：加密存储敏感数据
@@ -112,7 +162,11 @@ class AccountService:
         encrypted = encrypt_data(cookies)
         account = Account(cookies=encrypted)
         ...
+```
 
+**Incorrect**:
+
+```python
 # ❌ 错误：明文存储
 class AccountService:
     async def create(self, db: AsyncSession, cookies: str) -> Account:

@@ -1,3 +1,8 @@
+---
+paths:
+  - "**/*"
+---
+
 # Commit Rules - Git 提交规范
 
 ## 提交格式

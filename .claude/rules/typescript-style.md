@@ -1,3 +1,9 @@
+---
+paths:
+  - "frontend/**/*.ts"
+  - "frontend/**/*.tsx"
+---
+
 # TypeScript Style - TypeScript 代码风格
 
 适用于 `frontend/` 目录。
@@ -13,6 +19,8 @@
 
 ### 接口 vs 类型别名
 
+**Correct**:
+
 ```typescript
 // ✅ 接口：描述对象结构
 interface User {
@@ -23,20 +31,21 @@ interface User {
 
 // ✅ 类型别名：联合类型、映射类型
 type Status = 'pending' | 'active' | 'inactive'
+```
 
+**Incorrect**:
+
+```typescript
 // ❌ 类型别名描述对象（除非需要泛型）
 type User = { id: number; name: string }  // 用接口代替
 ```
 
 ### 禁止 any
 
-```typescript
-// ❌ 错误
-function processData(data: any): any {
-  return data.value
-}
+**Correct**:
 
-// ✅ 正确
+```typescript
+// ✅ 正确：使用具体类型
 interface Data {
   value: string
 }
@@ -54,9 +63,20 @@ function processData(data: unknown): string {
 }
 ```
 
+**Incorrect**:
+
+```typescript
+// ❌ 错误：使用 any
+function processData(data: any): any {
+  return data.value
+}
+```
+
 ## 函数
 
 ### 函数签名
+
+**Correct**:
 
 ```typescript
 // ✅ 正确：完整类型
@@ -66,8 +86,12 @@ type Handler = (event: Event) => void
 function processAccount({ id, name, status = 'active' }: Account): void {
   // ...
 }
+```
 
-// ❌ 错误：参数过多
+**Incorrect**:
+
+```typescript
+// ❌ 错误：参数过多或缺少类型
 function createUser(id, name, email, phone, address, ...): void
 ```
 
@@ -75,8 +99,10 @@ function createUser(id, name, email, phone, address, ...): void
 
 ### 组件定义
 
+**Correct**:
+
 ```typescript
-// ✅ 正确：Props 接口
+// ✅ 正确：Props 接口 + 函数组件
 interface Props {
   title: string
   count?: number
@@ -93,7 +119,11 @@ export function Component({ title, count = 0, onClick, data }: Props) {
     </div>
   )
 }
+```
 
+**Incorrect**:
+
+```typescript
 // ❌ 错误：class 组件
 class MyComponent extends React.Component {
   // ...
@@ -101,6 +131,8 @@ class MyComponent extends React.Component {
 ```
 
 ### Hooks
+
+**Correct**:
 
 ```typescript
 // ✅ 正确：自定义 Hook
@@ -126,7 +158,18 @@ function useAccounts() {
 }
 ```
 
+**Incorrect**:
+
+```typescript
+// ❌ 错误：class 组件混用状态
+class AccountManager extends React.Component {
+  // 不要使用 class 组件
+}
+```
+
 ## Import 顺序
+
+**Correct**:
 
 ```typescript
 // 1. React / 框架
@@ -141,6 +184,16 @@ import { api } from '../services/api'
 
 // 4. 工具函数
 import { formatDate } from '../utils/format'
+```
+
+**Incorrect**:
+
+```typescript
+// ❌ 错误：乱序导入
+import { formatDate } from '../utils/format'
+import { useState } from 'react'
+import type { Account } from '../types'
+import { api } from '../services/api'
 ```
 
 ## 禁止的模式

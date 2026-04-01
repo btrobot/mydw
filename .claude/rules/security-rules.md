@@ -1,3 +1,9 @@
+---
+paths:
+  - "backend/**/*.py"
+  - "frontend/**/*.ts"
+---
+
 # Security Rules - 安全规范
 
 适用于所有代码。
