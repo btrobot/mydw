@@ -1,4 +1,4 @@
-import { Card, Row, Col, Statistic, Table, Tag, Space } from 'antd'
+import { Card, Row, Col, Statistic, Table, Tag, Space, Typography } from 'antd'
 import {
   UserOutlined,
   VideoCameraOutlined,
@@ -18,7 +18,16 @@ interface SystemStats {
   total_materials: number
 }
 
+interface LogItem {
+  id: number
+  created_at: string
+  level: string
+  module: string
+  message: string
+}
+
 export default function Dashboard() {
+  const { Title } = Typography
   // 使用 React Query hooks
   const { data: statsData, isLoading: statsLoading, refetch: refetchStats } = useSystemStats()
   const { data: logsData, isLoading: logsLoading, refetch: refetchLogs } = useSystemLogs()
@@ -34,7 +43,7 @@ export default function Dashboard() {
     total_products: 0,
     total_materials: 0,
   }
-  const logs = (logsData as any)?.items || []
+  const logs = (logsData as { items: LogItem[] })?.items || []
 
   // 统一刷新函数
   const refreshData = () => {
@@ -74,64 +83,72 @@ export default function Dashboard() {
   ]
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
-      <Row gutter={16}>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="账号总数"
-              value={stats.total_accounts}
-              prefix={<UserOutlined />}
-              suffix={`/ ${stats.active_accounts} 活跃`}
-              loading={statsLoading}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="待发布任务"
-              value={stats.pending_tasks}
-              prefix={<ClockCircleOutlined />}
-              suffix={`/ ${stats.total_tasks} 总计`}
-              loading={statsLoading}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="发布成功"
-              value={stats.success_tasks}
-              prefix={<CheckCircleOutlined />}
-              valueStyle={{ color: '#3f8600' }}
-              loading={statsLoading}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="发布失败"
-              value={stats.failed_tasks}
-              prefix={<VideoCameraOutlined />}
-              valueStyle={{ color: '#cf1322' }}
-              loading={statsLoading}
-            />
-          </Card>
-        </Col>
-      </Row>
+    <>
+      <Title level={1} style={{ marginBottom: 24 }}>数据看板</Title>
+      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} md={6}>
+            <Card>
+              <Statistic
+                title="账号总数"
+                value={stats.total_accounts}
+                prefix={<UserOutlined />}
+                suffix={`/ ${stats.active_accounts} 活跃`}
+                loading={statsLoading}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card>
+              <Statistic
+                title="待发布任务"
+                value={stats.pending_tasks}
+                prefix={<ClockCircleOutlined />}
+                suffix={`/ ${stats.total_tasks} 总计`}
+                loading={statsLoading}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card>
+              <Statistic
+                title="发布成功"
+                value={stats.success_tasks}
+                prefix={<CheckCircleOutlined />}
+                valueStyle={{ color: '#3f8600' }}
+                loading={statsLoading}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card>
+              <Statistic
+                title="发布失败"
+                value={stats.failed_tasks}
+                prefix={<VideoCameraOutlined />}
+                valueStyle={{ color: '#cf1322' }}
+                loading={statsLoading}
+              />
+            </Card>
+          </Col>
+        </Row>
 
-      <Card title="运行日志" extra={<a onClick={refreshData}>刷新</a>}>
-        <Table
-          columns={logColumns}
-          dataSource={logs}
-          rowKey="id"
-          pagination={false}
-          loading={logsLoading}
-          size="small"
-        />
-      </Card>
-    </Space>
+        <Card title="运行日志" extra={<a onClick={refreshData}>刷新</a>}>
+          <Table
+            columns={logColumns}
+            dataSource={logs}
+            rowKey="id"
+            pagination={false}
+            loading={logsLoading}
+            size="small"
+            locale={{
+              emptyText: logs.length === 0 && !logsLoading
+                ? '暂无日志记录'
+                : undefined
+            }}
+          />
+        </Card>
+      </Space>
+    </>
   )
 }
