@@ -4,11 +4,13 @@
 import os
 from pathlib import Path
 from typing import List
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """应用配置"""
+
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
     # 应用基本信息
     APP_NAME: str = "得物掘金工具"
@@ -48,10 +50,6 @@ class Settings(BaseSettings):
     # 日志配置
     LOG_LEVEL: str = "INFO"
     LOG_DIR: str = "logs"
-
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
 
 
 # 创建配置实例

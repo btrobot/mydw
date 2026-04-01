@@ -51,6 +51,17 @@ class AIClipService:
         self.ffmpeg_path = "ffmpeg"  # 使用系统 FFmpeg
         self.ffprobe_path = "ffprobe"
 
+    @staticmethod
+    def _parse_fps(fps_str: str) -> float:
+        """解析帧率字符串"""
+        try:
+            if '/' in fps_str:
+                num, denom = fps_str.split('/')
+                return float(num) / float(denom)
+            return float(fps_str)
+        except (ValueError, ZeroDivisionError):
+            return 0.0
+
     async def get_video_info(self, video_path: str) -> Optional[VideoInfo]:
         """获取视频信息"""
         try:
@@ -95,7 +106,7 @@ class AIClipService:
                 duration=duration,
                 width=int(video_stream.get("width", 0)),
                 height=int(video_stream.get("height", 0)),
-                fps=eval(video_stream.get("r_frame_rate", "0/1")),
+                fps=self._parse_fps(video_stream.get("r_frame_rate", "0/1")),
                 size=size,
                 format=video_stream.get("codec_name", "unknown")
             )

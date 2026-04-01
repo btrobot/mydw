@@ -3,9 +3,13 @@ paths:
   - "**/*"
 ---
 
-# Commit Rules - Git 提交规范
+# Commit Rules
 
-## 提交格式
+Git 提交规范，适用于所有提交。
+
+## Commit Format
+
+Commits MUST follow this format:
 
 ```
 <type>(<scope>): <subject>
@@ -15,42 +19,101 @@ paths:
 [optional footer]
 ```
 
-### Type 类型
+## Commit Types
 
-| Type | 说明 |
-|------|------|
-| feat | 新功能 |
-| fix | Bug 修复 |
-| docs | 文档更新 |
-| style | 代码格式 |
-| refactor | 重构 |
-| test | 测试相关 |
-| chore | 构建/工具相关 |
+- `feat` — 新功能
+- `fix` — Bug 修复
+- `docs` — 文档更新
+- `style` — 代码格式
+- `refactor` — 重构
+- `test` — 测试相关
+- `chore` — 构建/工具相关
 
-### 示例
+## Rules
 
+### Message Format
+
+- commit messages MUST use lowercase type prefixes
+- commit messages MUST include a scope in parentheses when applicable
+- commit messages SHOULD be concise (under 72 characters)
+- commit messages MUST describe what changed, not why
+
+### Scope Usage
+
+- scope MUST match the affected module or directory
+- common scopes: `frontend`, `backend`, `api`, `clip`, `auth`
+- scope SHOULD NOT be omitted for feature work
+
+### Body Format
+
+- body MUST separate subject from body with a blank line
+- body lines MUST NOT exceed 72 characters
+- body SHOULD explain the motivation and contrast with previous behavior
+
+### When to Commit
+
+- commits MUST represent a complete, working change
+- commits SHOULD be atomic (one logical change per commit)
+- commits MUST NOT include generated files or build artifacts
+
+## Examples
+
+**Correct**:
+
+```bash
+feat(account): add login status check endpoint
+
+Implement /api/accounts/{id}/status to check if session is still valid.
+Return last login time and current status.
+
+Closes #123
 ```
-# 功能
-feat(frontend): 添加账号管理页面
-feat(backend): 新增定时任务 API
-feat(clip): 添加高光检测功能
 
-# 修复
-fix(frontend): 修复账号列表加载状态
-fix(backend): 修复 Cookie 加密异常
+```bash
+fix(clip): prevent FFmpeg timeout on large files
 
-# 文档
-docs: 更新 README.md
+Add 5 minute timeout to subprocess calls.
+Increase buffer size for audio processing.
 ```
 
-## 提交时机
+```bash
+docs: update API documentation for v2 endpoints
+```
 
-### 应该提交
-- ✅ 完成一个功能
-- ✅ 修复一个 bug
-- ✅ 更新文档
+**Incorrect**:
 
-### 不应该提交
-- ❌ 未完成的代码
-- ❌ 调试代码
-- ❌ 构建产物
+```bash
+# VIOLATION: no scope
+git commit -m "fix: bug"
+
+# VIOLATION: vague message
+git commit -m "update stuff"
+
+# VIOLATION: multiple changes
+git commit -m "feat: add login and fix styling and update docs"
+
+# VIOLATION: committing build artifacts
+git commit -m "feat: add new page" --include dist/*
+```
+
+## Prohibited Patterns
+
+- MUST NOT commit with empty or default messages
+- MUST NOT commit directly to main/master branches
+- MUST NOT include sensitive data in commit messages
+- MUST NOT commit untracked files without reviewing them
+
+## Rationale
+
+These rules ensure:
+- Clear, searchable commit history
+- Easy rollback to specific changes
+- Meaningful release notes
+- Traceability between commits and issues
+
+## Related Rules
+
+- `coordination-rules.md` — Collaboration guidelines
+- `code-review-rules.md` — Review process before commits
+- `python-coding-rules.md` — Code standards
+- `typescript-coding-rules.md` — Code standards

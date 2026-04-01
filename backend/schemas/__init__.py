@@ -1,7 +1,7 @@
 """
 得物掘金工具 - Pydantic Schemas
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
@@ -58,14 +58,13 @@ class AccountUpdate(BaseModel):
 
 class AccountResponse(AccountBase):
     """账号响应"""
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     status: AccountStatus
     last_login: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class AccountLoginRequest(BaseModel):
@@ -116,6 +115,8 @@ class TaskUpdate(BaseModel):
 
 class TaskResponse(TaskBase):
     """任务响应"""
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     account_id: int
     product_id: Optional[int] = None
@@ -125,9 +126,6 @@ class TaskResponse(TaskBase):
     priority: int
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class TaskListResponse(BaseModel):
@@ -168,15 +166,14 @@ class MaterialUpdate(BaseModel):
 
 class MaterialResponse(MaterialBase):
     """素材响应"""
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     path: Optional[str] = None
     content: Optional[str] = None
     size: Optional[int] = None
     duration: Optional[int] = None
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class MaterialListResponse(BaseModel):
@@ -205,12 +202,11 @@ class ProductUpdate(BaseModel):
 
 class ProductResponse(ProductBase):
     """商品响应"""
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     description: Optional[str] = None
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class ProductListResponse(BaseModel):
@@ -233,6 +229,8 @@ class PublishConfigRequest(BaseModel):
 
 class PublishConfigResponse(BaseModel):
     """发布配置响应"""
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     interval_minutes: int
@@ -241,9 +239,6 @@ class PublishConfigResponse(BaseModel):
     max_per_account_per_day: int
     shuffle: bool
     auto_start: bool
-
-    class Config:
-        from_attributes = True
 
 
 class PublishControlRequest(BaseModel):
@@ -276,15 +271,14 @@ class SystemStats(BaseModel):
 
 class SystemLogResponse(BaseModel):
     """系统日志响应"""
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     level: str
     module: Optional[str] = None
     message: str
     details: Optional[str] = None
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class SystemLogListResponse(BaseModel):

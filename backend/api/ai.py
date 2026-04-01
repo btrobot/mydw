@@ -83,7 +83,7 @@ class ClipResultResponse(BaseModel):
 # ============ API 端点 ============
 
 @router.get("/video-info", response_model=VideoInfoResponse)
-async def get_video_info(video_path: str):
+async def get_video_info(video_path: str) -> VideoInfoResponse:
     """获取视频信息"""
     info = await ai_clip_service.get_video_info(video_path)
     if not info:
@@ -100,7 +100,7 @@ async def get_video_info(video_path: str):
 
 
 @router.get("/detect-highlights", response_model=DetectHighlightsResponse)
-async def detect_highlights(video_path: str):
+async def detect_highlights(video_path: str) -> DetectHighlightsResponse:
     """检测视频高光片段"""
     segments = await ai_clip_service.detect_highlights(video_path)
     return DetectHighlightsResponse(
@@ -110,7 +110,7 @@ async def detect_highlights(video_path: str):
 
 
 @router.post("/smart-clip", response_model=ClipResultResponse)
-async def smart_clip(request: SmartClipRequest):
+async def smart_clip(request: SmartClipRequest) -> ClipResultResponse:
     """智能剪辑视频"""
     segments = [ClipSegment(**s.model_dump()) for s in request.segments]
     result = await ai_clip_service.smart_clip(
@@ -128,7 +128,7 @@ async def smart_clip(request: SmartClipRequest):
 
 
 @router.post("/add-audio", response_model=ClipResultResponse)
-async def add_audio(request: AddAudioRequest):
+async def add_audio(request: AddAudioRequest) -> ClipResultResponse:
     """添加背景音乐"""
     result = await ai_clip_service.add_audio(
         request.video_path,
@@ -145,7 +145,7 @@ async def add_audio(request: AddAudioRequest):
 
 
 @router.post("/add-cover", response_model=ClipResultResponse)
-async def add_cover(request: AddCoverRequest):
+async def add_cover(request: AddCoverRequest) -> ClipResultResponse:
     """添加视频封面"""
     result = await ai_clip_service.add_cover(
         request.video_path,
@@ -161,7 +161,7 @@ async def add_cover(request: AddCoverRequest):
 
 
 @router.post("/trim", response_model=ClipResultResponse)
-async def trim_video(request: TrimVideoRequest):
+async def trim_video(request: TrimVideoRequest) -> ClipResultResponse:
     """截取视频片段"""
     result = await ai_clip_service.trim_video(
         request.video_path,
@@ -178,7 +178,7 @@ async def trim_video(request: TrimVideoRequest):
 
 
 @router.post("/full-pipeline", response_model=ClipResultResponse)
-async def full_pipeline(request: FullPipelineRequest):
+async def full_pipeline(request: FullPipelineRequest) -> ClipResultResponse:
     """
     完整 AI 剪辑流程
     1. 检测高光
