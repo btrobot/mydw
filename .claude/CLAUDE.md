@@ -14,6 +14,26 @@
 
 ---
 
+## 平台要求
+
+### Windows (当前开发环境)
+
+本项目使用 **PowerShell** 作为默认 Shell。
+
+- Hooks 使用 `.ps1` 脚本
+- 脚本头部声明: `#Requires -Version 5.1`
+- 颜色使用 ANSI escape codes (` `e[0;32m`)
+- 路径使用反斜杠或 `Join-Path`
+
+### Unix/macOS (可选)
+
+如需在 Unix/macOS 上运行：
+
+- 使用 `.sh` 脚本版本
+- Hooks 需要执行权限: `chmod +x hooks/*.sh`
+
+---
+
 ## 组织架构
 
 ```
