@@ -1,13 +1,5 @@
 #Requires -Version 5.1
-<#
-.SYNOPSIS
-    Session end hook for dewugojin project
-.DESCRIPTION
-    Checks for unsaved changes and updates session state
-#>
-
-[CmdletBinding()]
-param()
+# Session end hook for dewugojin project
 
 $ErrorActionPreference = 'Continue'
 
@@ -19,13 +11,20 @@ $ProjectRoot = Join-Path $ScriptDir "..\.."
 $SessionState = Join-Path $ProjectRoot "production\session-state\active.md"
 
 # Colors
-$ColorReset = "`e[0m"
-$ColorGreen = "`e[0;32m"
-$ColorYellow = "`e[1;33m"
+$OriginalForeground = $host.UI.RawUI.ForegroundColor
 
-function Write-Success {
+function Write-OK {
     param([string]$Message)
-    Write-Host "${ColorGreen}[OK]${ColorReset} $Message"
+    $host.UI.RawUI.ForegroundColor = 'Green'
+    Write-Host "[OK] $Message"
+    $host.UI.RawUI.ForegroundColor = $OriginalForeground
+}
+
+function Write-Warn {
+    param([string]$Message)
+    $host.UI.RawUI.ForegroundColor = 'Yellow'
+    Write-Host "[WARN] $Message"
+    $host.UI.RawUI.ForegroundColor = $OriginalForeground
 }
 
 # Check for unsaved changes
@@ -43,7 +42,7 @@ function Test-UnsavedChanges {
             $null = git diff --quiet 2>$null
             if ($LASTEXITCODE -ne 0) {
                 Write-Host ""
-                Write-Host "${ColorYellow}[WARN] 有未提交的更改:${ColorReset}"
+                Write-Warn "Uncommitted changes detected:"
                 git status --short
                 Write-Host ""
             }
@@ -59,14 +58,9 @@ function Update-SessionState {
         $content = Get-Content $SessionState -Raw
 
         # Check if session history section exists
-        if ($content -match '## 会话历史') {
-            # Append to history
-            $newEntry = @"
-
-### $timestamp
-- 会话结束
-"@
-            $content = $content -replace '(## 会话历史)', ("`n$newEntry`n`n`$1")
+        if ($content -match '## Session History|## History') {
+            $newEntry = "`n`n### $timestamp`n- Session ended`n"
+            $content = $content -replace '(## Session History|## History)', ("`n$newEntry`n`$1")
             Set-Content -Path $SessionState -Value $content -NoNewline
         }
     }
@@ -76,13 +70,13 @@ function Update-SessionState {
 function Show-NextSteps {
     Write-Host ""
     Write-Host "========================================"
-    Write-Host "  会话结束建议"
+    Write-Host "  Next Steps"
     Write-Host "========================================"
     Write-Host ""
-    Write-Host "  1. 确认所有更改已提交"
-    Write-Host "  2. 运行 /code-review 审查代码"
-    Write-Host "  3. 运行 /security-scan 检查安全"
-    Write-Host "  4. 更新 session-state 记录"
+    Write-Host "  1. Ensure all changes are committed"
+    Write-Host "  2. Run /code-review to review code"
+    Write-Host "  3. Run /security-scan for security checks"
+    Write-Host "  4. Update session-state record"
     Write-Host ""
 }
 
@@ -90,14 +84,14 @@ function Show-NextSteps {
 function Main {
     Write-Host ""
     Write-Host "========================================"
-    Write-Host "  得物掘金工具 - 会话结束"
+    Write-Host "  DewuGoJin - Session Ending"
     Write-Host "========================================"
 
     Test-UnsavedChanges
     Update-SessionState
     Show-NextSteps
 
-    Write-Success "会话清理完成"
+    Write-OK "Session cleanup complete"
     exit 0
 }
 

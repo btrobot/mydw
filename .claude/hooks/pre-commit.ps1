@@ -1,13 +1,5 @@
 #Requires -Version 5.1
-<#
-.SYNOPSIS
-    Pre-commit validation hook for dewugojin project
-.DESCRIPTION
-    Validates staged files for sensitive data, code style issues
-#>
-
-[CmdletBinding()]
-param()
+# Pre-commit validation hook for dewugojin project
 
 $ErrorActionPreference = 'Continue'
 
@@ -15,13 +7,11 @@ $ErrorActionPreference = 'Continue'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Join-Path $ScriptDir "..\.."
 
-# Colors
-$ColorReset = "`e[0m"
-$ColorGreen = "`e[0;32m"
-$ColorYellow = "`e[1;33m"
-$ColorRed = "`e[0;31m"
+# Variables
+$WarningCount = 0
 
-$Warnings = 0
+# Colors
+$OriginalForeground = $host.UI.RawUI.ForegroundColor
 
 function Write-Info {
     param([string]$Message)
@@ -30,15 +20,16 @@ function Write-Info {
 
 function Write-Warn {
     param([string]$Message)
-    Write-Host "${ColorYellow}[WARN]${ColorReset} $Message"
-    script:WARNINGS++
+    $host.UI.RawUI.ForegroundColor = 'Yellow'
+    Write-Host "[WARN] $Message"
+    $host.UI.RawUI.ForegroundColor = $OriginalForeground
+    $script:WarningCount++
 }
 
 # Check for sensitive data patterns
 function Test-SensitiveData {
     param([string]$FilePath)
 
-    # Sensitive data patterns
     $Patterns = @(
         '(?i)password\s*=\s*["''][^"'']+["'']',
         '(?i)api_key\s*=\s*["''][^"'']+["'']',
@@ -52,8 +43,8 @@ function Test-SensitiveData {
 
     foreach ($pattern in $Patterns) {
         if ($content -match $pattern) {
-            Write-Warn "可能包含敏感数据: $FilePath"
-            Write-Warn "  匹配模式: $pattern"
+            Write-Warn "May contain sensitive data: $FilePath"
+            Write-Warn "  Pattern: $pattern"
             return $true
         }
     }
@@ -69,14 +60,15 @@ function Test-TypeScript {
     $content = Get-Content $FilePath -Raw -ErrorAction SilentlyContinue
     if (-not $content) { return }
 
-    # Find : any patterns (but not allow comments about any)
     if ($content -match ':\s*any\b') {
-        Write-Warn "TypeScript 使用 any 类型: $FilePath"
+        Write-Warn "TypeScript uses 'any' type: $FilePath"
         $lines = Get-Content $FilePath
+        $foundCount = 0
         for ($i = 0; $i -lt $lines.Count; $i++) {
             if ($lines[$i] -match ':\s*any\b') {
                 Write-Warn "  Line $($i + 1): $($lines[$i].Trim())"
-                if ($i -ge 2) { break }  # Show max 3 lines
+                $foundCount++
+                if ($foundCount -ge 3) { break }
             }
         }
     }
@@ -92,14 +84,14 @@ function Test-Python {
     if (-not $content) { return }
 
     if ($content -match '^\s*print\s*\(') {
-        Write-Warn "Python 使用 print: $FilePath"
-        Write-Warn "  请使用 loguru.logger"
+        Write-Warn "Python uses print: $FilePath"
+        Write-Warn "  Please use loguru.logger instead"
     }
 }
 
 # Main
 function Main {
-    Write-Info "执行提交前检查..."
+    Write-Info "Running pre-commit checks..."
 
     # Check if in git repository
     $IsGitRepo = $false
@@ -112,7 +104,7 @@ function Main {
     finally { Pop-Location }
 
     if (-not $IsGitRepo) {
-        Write-Info "非 Git 仓库，跳过检查"
+        Write-Info "Not a git repository, skipping checks"
         exit 0
     }
 
@@ -126,11 +118,11 @@ function Main {
     finally { Pop-Location }
 
     if ($Files.Count -eq 0) {
-        Write-Info "无暂存文件"
+        Write-Info "No staged files"
         exit 0
     }
 
-    Write-Info "检查以下文件:"
+    Write-Info "Checking files:"
     foreach ($file in $Files) {
         Write-Host "  - $file"
     }
@@ -148,12 +140,14 @@ function Main {
 
     Write-Host ""
 
-    if (WARNINGS -gt 0) {
-        Write-Host "${ColorYellow}[WARN] 发现 $Warnings 个警告${ColorReset}"
-        Write-Host "${ColorYellow}[WARN] 请检查并确认是否继续提交${ColorReset}"
+    if ($WarningCount -gt 0) {
+        $host.UI.RawUI.ForegroundColor = 'Yellow'
+        Write-Host "[WARN] Found $WarningCount warning(s)"
+        $host.UI.RawUI.ForegroundColor = $OriginalForeground
+        Write-Host "[WARN] Please review and confirm before committing"
     }
     else {
-        Write-Info "检查通过"
+        Write-Info "All checks passed"
     }
 
     exit 0

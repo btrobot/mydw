@@ -1,180 +1,142 @@
 #Requires -Version 5.1
-<#
-.SYNOPSIS
-    Session start hook for dewugojin project
-.DESCRIPTION
-    Loads session state, checks prerequisites, and shows available commands
-#>
-
-[CmdletBinding()]
-param()
+# Session start hook for dewugojin project
 
 $ErrorActionPreference = 'Stop'
-$ProgressPreference = 'SilentlyContinue'
 
-# Get project root (script is in .claude/hooks/)
+# Get project root
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Join-Path $ScriptDir "..\.."
-
-# Paths
 $SessionState = Join-Path $ProjectRoot "production\session-state\active.md"
 
-# Colors (ANSI escape codes for compatibility)
-$ColorReset = "`e[0m"
-$ColorGreen = "`e[0;32m"
-$ColorYellow = "`e[1;33m"
-$ColorBlue = "`e[0;34m"
-$ColorRed = "`e[0;31m"
+# Colors using Write-Host with foreground color
+$OriginalForeground = $host.UI.RawUI.ForegroundColor
 
 function Write-Info {
-    param([string]$Message)
-    Write-Host "${ColorBlue}[INFO]${ColorReset} $Message"
+    $host.UI.RawUI.ForegroundColor = 'Cyan'
+    Write-Host "[INFO] $($args -join ' ')"
+    $host.UI.RawUI.ForegroundColor = $OriginalForeground
+}
+
+function Write-OK {
+    $host.UI.RawUI.ForegroundColor = 'Green'
+    Write-Host "[OK] $($args -join ' ')"
+    $host.UI.RawUI.ForegroundColor = $OriginalForeground
 }
 
 function Write-Warn {
-    param([string]$Message)
-    Write-Host "${ColorYellow}[WARN]${ColorReset} $Message" -Stderr
+    $host.UI.RawUI.ForegroundColor = 'Yellow'
+    Write-Host "[WARN] $($args -join ' ')"
+    $host.UI.RawUI.ForegroundColor = $OriginalForeground
 }
 
-function Write-Success {
-    param([string]$Message)
-    Write-Host "${ColorGreen}[OK]${ColorReset} $Message"
+function Write-Header {
+    $host.UI.RawUI.ForegroundColor = 'Green'
+    Write-Host "========================================"
+    Write-Host "  $($args -join ' ')"
+    Write-Host "========================================"
+    $host.UI.RawUI.ForegroundColor = $OriginalForeground
 }
 
-function Test-Command {
-    param([string]$Command)
-    $null -ne (Get-Command $Command -ErrorAction SilentlyContinue)
-}
-
-function Get-CommandVersion {
-    param([string]$Command)
-    try {
-        $output = & $Command --version 2>$null
-        if ($output) { return $output.Trim() }
-        $output = & $Command -Version 2>$null
-        if ($output) { return $output.Trim() }
-        return "unknown"
-    }
-    catch { return "unknown" }
-}
-
-# Check project structure
-function Test-ProjectStructure {
-    Write-Info "检查项目状态..."
-
-    $FrontendExists = Test-Path (Join-Path $ProjectRoot "frontend")
-    $BackendExists = Test-Path (Join-Path $ProjectRoot "backend")
-
-    if ($FrontendExists -and $BackendExists) {
-        Write-Success "项目结构完整"
-    }
-    else {
-        Write-Warn "项目结构不完整 (frontend: $FrontendExists, backend: $BackendExists)"
+function Write-Status {
+    param($Label, $Value)
+    if ($Value -and $Value.Trim().Length -gt 0) {
+        Write-Host "  $Label " -NoNewline
+        $host.UI.RawUI.ForegroundColor = 'Yellow'
+        Write-Host $Value.Trim()
+        $host.UI.RawUI.ForegroundColor = $OriginalForeground
     }
 }
 
-# Check prerequisites
-function Test-Prerequisites {
-    Write-Info "检查开发环境..."
+Write-Host ""
+Write-Header "DewuGoJin - Session Started"
 
-    # Node.js
-    if (Test-Command "node") {
-        $version = Get-CommandVersion "node"
-        Write-Success "Node.js: $version"
-    }
-    else {
-        Write-Warn "Node.js 未安装"
-    }
+Write-Info "Checking project structure..."
 
-    # Python
-    if (Test-Command "python") {
-        $version = Get-CommandVersion "python"
-        Write-Success "Python: $version"
-    }
-    elseif (Test-Command "python3") {
-        $version = Get-CommandVersion "python3"
-        Write-Success "Python: $version"
-    }
-    else {
-        Write-Warn "Python 未安装"
-    }
+# Check frontend
+$FrontendPath = Join-Path $ProjectRoot "frontend"
+if (Test-Path $FrontendPath) {
+    Write-OK "Frontend: Found"
+} else {
+    Write-Warn "Frontend: Not found"
+}
 
-    # FFmpeg
-    if (Test-Command "ffmpeg") {
-        Write-Success "FFmpeg: 可用"
-    }
-    else {
-        Write-Warn "FFmpeg 未安装 - AI剪辑功能不可用"
-    }
+# Check backend
+$BackendPath = Join-Path $ProjectRoot "backend"
+if (Test-Path $BackendPath) {
+    Write-OK "Backend: Found"
+} else {
+    Write-Warn "Backend: Not found"
+}
+
+Write-Host ""
+Write-Info "Checking prerequisites..."
+
+# Node.js
+if ($null -ne (Get-Command node -ErrorAction SilentlyContinue)) {
+    $version = & node --version 2>$null
+    Write-OK "Node.js: $version"
+} else {
+    Write-Warn "Node.js: Not installed"
+}
+
+# Python
+if ($null -ne (Get-Command python -ErrorAction SilentlyContinue)) {
+    $version = & python --version 2>$null
+    Write-OK "Python: $version"
+} elseif ($null -ne (Get-Command python3 -ErrorAction SilentlyContinue)) {
+    $version = & python3 --version 2>$null
+    Write-OK "Python: $version"
+} else {
+    Write-Warn "Python: Not installed"
+}
+
+# FFmpeg
+if ($null -ne (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+    Write-OK "FFmpeg: Available"
+} else {
+    Write-Warn "FFmpeg: Not installed (AI editing unavailable)"
 }
 
 # Load session state
-function Import-SessionState {
-    if (Test-Path $SessionState) {
-        Write-Info "加载会话状态..."
+Write-Host ""
+if (Test-Path $SessionState) {
+    Write-Info "Loading session state..."
 
-        # Parse status block
-        $content = Get-Content $SessionState -Raw
+    $content = Get-Content $SessionState -Raw
 
-        # Extract Epic, Feature, Task
-        $Epic = if ($content -match '(?s)Epic:\s*\n(.+?)(\n|$)') { $Matches[1].Trim() }
-        $Feature = if ($content -match '(?s)Feature:\s*\n(.+?)(\n|$)') { $Matches[1].Trim() }
-        $Task = if ($content -match '(?s)Task:\s*\n(.+?)(\n|$)') { $Matches[1].Trim() }
+    # Parse the status block between <!-- STATUS --> and <!-- /STATUS -->
+    if ($content -match '(?s)<!-- STATUS -->.*?<!-- /STATUS -->') {
+        $statusBlock = $Matches[0]
 
-        if ($Task) {
+        # Extract values - value is on same line as label (e.g., "Epic: value")
+        # Must have a literal space after colon, then value until end of line
+        # Handle both CRLF (Windows) and LF (Unix) line endings
+        $Epic = if ($statusBlock -match '(?s)Epic: (.+?)\r?\n') { $Matches[1].Trim() } else { $null }
+        $Feature = if ($statusBlock -match '(?s)Feature: (.+?)\r?\n') { $Matches[1].Trim() } else { $null }
+        $Task = if ($statusBlock -match '(?s)Task: (.+?)\r?\n') { $Matches[1].Trim() } else { $null }
+
+        # Only show status if we have actual content
+        if ($Task -and $Task.Length -gt 0) {
             Write-Host ""
-            Write-Host "${ColorGreen}========================================${ColorReset}"
-            Write-Host "  当前工作状态"
-            Write-Host "${ColorGreen}========================================${ColorReset}"
-            if ($Epic) { Write-Host "  Epic: ${ColorYellow}$Epic${ColorReset}" }
-            if ($Feature) { Write-Host "  Feature: ${ColorYellow}$Feature${ColorReset}" }
-            if ($Task) { Write-Host "  Task: ${ColorYellow}$Task${ColorReset}" }
-            Write-Host "${ColorGreen}========================================${ColorReset}"
-            Write-Host ""
+            Write-Header "Current Status"
+            if ($Epic) { Write-Status "Epic:" $Epic }
+            if ($Feature) { Write-Status "Feature:" $Feature }
+            if ($Task) { Write-Status "Task:" $Task }
         }
     }
-    else {
-        Write-Info "无会话状态文件"
-    }
+} else {
+    Write-Info "No session state file"
 }
 
 # Show available commands
-function Show-AvailableCommands {
-    Write-Host ""
-    Write-Host "${ColorBlue}========================================${ColorReset}"
-    Write-Host "  可用 Skill 命令"
-    Write-Host "${ColorBlue}========================================${ColorReset}"
-    Write-Host "  ${ColorGreen}/sprint-plan${ColorReset}      - Sprint 规划"
-    Write-Host "  ${ColorGreen}/task-breakdown${ColorReset}  - 任务分解"
-    Write-Host "  ${ColorGreen}/architecture-review${ColorReset} - 架构审查"
-    Write-Host "  ${ColorGreen}/code-review${ColorReset}     - 代码审查"
-    Write-Host "  ${ColorGreen}/security-scan${ColorReset}   - 安全扫描"
-    Write-Host ""
-    Write-Host "${ColorBlue}========================================${ColorReset}"
-    Write-Host "  可用 Agents"
-    Write-Host "${ColorBlue}========================================${ColorReset}"
-    Write-Host "  领导层: project-manager, tech-lead"
-    Write-Host "  执行层: frontend-lead, backend-lead, qa-lead, devops-engineer"
-    Write-Host "  专家层: ui-developer, api-developer, automation-developer, test-engineer, security-expert"
-    Write-Host "${ColorBlue}========================================${ColorReset}"
-    Write-Host ""
-}
+Write-Host ""
+Write-Header "Available Skills"
+Write-Host "  /sprint-plan        - Sprint planning"
+Write-Host "  /task-breakdown    - Task breakdown"
+Write-Host "  /architecture-review - Architecture review"
+Write-Host "  /code-review       - Code review"
+Write-Host "  /security-scan     - Security scan"
+Write-Host ""
 
-# Main
-function Main {
-    Write-Host ""
-    Write-Host "${ColorGreen}========================================${ColorReset}"
-    Write-Host "  得物掘金工具 - 开发会话开始"
-    Write-Host "${ColorGreen}========================================${ColorReset}"
-    Write-Host ""
-
-    Test-ProjectStructure
-    Test-Prerequisites
-    Import-SessionState
-    Show-AvailableCommands
-
-    Write-Success "会话初始化完成"
-    exit 0
-}
-
-Main
+Write-OK "Session initialized"
+exit 0
