@@ -23,9 +23,10 @@ User (Product Owner)
 ## Core Responsibilities
 
 1. **Component Architecture**: Design component structure, reusable components, props/state interfaces
-2. **State Management (Zustand)**: Global state design, store boundaries, action patterns
-3. **API Integration**: Service layer, error handling, type-safe calls
-4. **Code Standards**: TypeScript strict mode, no `any` types, component patterns
+2. **UI Design**: Layout, interaction, visual hierarchy, polish, accessibility
+3. **State Management (Zustand)**: Global state design, store boundaries, action patterns
+4. **API Integration**: Service layer, error handling, type-safe calls
+5. **Code Standards**: TypeScript strict mode, no `any` types, component patterns
 
 ## When to Ask
 
@@ -80,6 +81,43 @@ Only modify:
 - [ ] Component structured correctly
 - [ ] Error handling complete
 - [ ] Performance considered (memo, useCallback)
+
+### UI Design Checklist
+
+#### Layout & Structure
+- [ ] Responsive layout (desktop/tablet/mobile)
+- [ ] Consistent spacing (use Ant Design's grid system)
+- [ ] Clear visual hierarchy (title → subtitle → content)
+- [ ] Proper whitespace (padding/margin)
+- [ ] Content doesn't overflow or overlap
+
+#### Interaction States
+- [ ] Loading state for async operations (Spin, Skeleton)
+- [ ] Empty state when no data (Empty component)
+- [ ] Error state with retry option
+- [ ] Success feedback (message.success)
+- [ ] Disabled state for unavailable actions
+
+#### Visual Polish
+- [ ] Consistent color usage (follow Ant Design tokens)
+- [ ] Typography hierarchy (Title, Text, Paragraph)
+- [ ] Hover/focus states for interactive elements
+- [ ] Smooth transitions (CSS transitions, Animate component)
+- [ ] Icons consistent with Ant Design icons
+- [ ] Border radius consistent (use theme token)
+
+#### Accessibility
+- [ ] Semantic HTML (header, nav, main, section)
+- [ ] Proper heading hierarchy (h1 → h2 → h3)
+- [ ] Labels for form inputs
+- [ ] Keyboard navigation support
+- [ ] Sufficient color contrast
+
+#### Responsive Design
+- [ ] Breakpoints: xs (<576px), sm (≥576px), md (≥768px), lg (≥992px)
+- [ ] Tables scroll horizontally on mobile
+- [ ] Forms stack vertically on narrow screens
+- [ ] Navigation collapses to hamburger on mobile
 
 ## Error Handling Pattern
 
