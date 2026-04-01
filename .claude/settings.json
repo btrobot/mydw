@@ -7,16 +7,12 @@
   "agents": {
     "directory": ".claude/agents",
     "enabled": [
-      "project-manager",
       "tech-lead",
       "frontend-lead",
       "backend-lead",
       "qa-lead",
       "devops-engineer",
-      "ui-developer",
-      "api-developer",
       "automation-developer",
-      "test-engineer",
       "security-expert"
     ]
   },

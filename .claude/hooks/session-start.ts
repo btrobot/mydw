@@ -1,8 +1,8 @@
 // Session start hook for dewugojin
 // Enhanced with session state recovery from Claude-Code-Game-Studios
-import { existsSync } from "fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
-import { findProjectRoot, info, ok, warn, header, readFile, git } from "./utils.ts";
+import { findProjectRoot, info, ok, warn, header, git } from "./utils.ts";
 
 // Find project root
 const scriptPath = join(import.meta.dir!, "session-start.ts");
@@ -66,12 +66,16 @@ if (ffmpegVersion) {
 // ============================================
 
 console.log();
-const stateFile = join(projectRoot, "production", "session-state", "active.md");
+const stateDir = join(projectRoot, "production", "session-state");
+const stateFile = join(stateDir, "active.md");
+const templateFile = join(stateDir, "active.md.template");
+
 if (existsSync(stateFile)) {
+  // Load existing session state
   header("ACTIVE SESSION STATE DETECTED", "yellow");
   console.log("Found unfinished work from previous session.\n");
 
-  const content = readFile(stateFile);
+  const content = readFileSync(stateFile, "utf-8");
   if (content) {
     // Parse status block
     const statusMatch = content.match(/<!-- STATUS -->([\s\S]*?)<!-- \/STATUS -->/);
@@ -123,7 +127,37 @@ if (existsSync(stateFile)) {
     console.log("\n  To resume: Review active.md for full context");
   }
 } else {
+  // No existing session state - create from template
   info("No active session state found");
+  console.log();
+
+  // Ensure directory exists
+  if (!existsSync(stateDir)) {
+    mkdirSync(stateDir, { recursive: true });
+  }
+
+  // Check for template
+  if (existsSync(templateFile)) {
+    const template = readFileSync(templateFile, "utf-8");
+    const timestamp = new Date().toISOString().replace("T", " ").substring(0, 19);
+
+    // Replace placeholder with actual timestamp
+    const newState = template
+      .replace(/\{timestamp\}/g, timestamp)
+      .replace(/\{component-name\}/g, "TBD")
+      .replace(/\{current-phase\}/g, "Planning")
+      .replace(/\{in-progress\|completed\|blocked\}/g, "in-progress");
+
+    writeFileSync(stateFile, newState, "utf-8");
+    ok("Created new session state from template");
+    console.log();
+    console.log("  Session Started:", timestamp);
+    console.log("  File: production/session-state/active.md");
+    console.log();
+    console.log("  Next: Update STATUS block and Active Task section");
+  } else {
+    warn("Template not found: production/session-state/active.md.template");
+  }
 }
 
 // ============================================
