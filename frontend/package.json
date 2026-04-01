@@ -2,13 +2,17 @@
   "name": "dewugojin-tool",
   "version": "0.1.0",
   "description": "得物掘金工具 - 自动化发布系统",
-  "main": "dist-electron/main.js",
+  "main": "electron/main.js",
+  "author": "得物掘金",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && electron-builder",
+    "dev:electron": "concurrently -k \"vite\" \"npm run electron:dev\"",
+    "electron:dev": "wait-on http://localhost:5173 && electron .",
+    "build": "tsc && vite build",
+    "build:electron": "npm run build && electron-builder",
     "preview": "vite preview",
-    "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:build": "vite build && electron-builder"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -21,6 +25,7 @@
     "dayjs": "^1.11.10"
   },
   "devDependencies": {
+    "@types/node": "^20.10.0",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.2.1",
@@ -39,15 +44,35 @@
     },
     "files": [
       "dist/**/*",
-      "dist-electron/**/*"
+      "electron/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend",
+        "to": "backend",
+        "filter": ["**/*"]
+      }
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "backend/**"
     ],
     "win": {
-      "target": "nsis",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
       "icon": "public/icon.ico"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "得物掘金工具"
     }
   }
 }
