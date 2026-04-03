@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Table, Button, Space, Modal, Form, Input, message } from 'antd'
-import { PlusOutlined, DeleteOutlined, LoginOutlined } from '@ant-design/icons'
+import { PlusOutlined, DeleteOutlined, LinkOutlined } from '@ant-design/icons'
 import { useAccounts, useCreateAccount, useDeleteAccount } from '../hooks'
-import LoginModal from '../components/LoginModal'
+import ConnectionModal from '../components/ConnectionModal'
 import StatusBadge from '../components/StatusBadge'
 
 interface Account {
@@ -16,7 +16,7 @@ interface Account {
 
 export default function Account() {
   const [modalVisible, setModalVisible] = useState(false)
-  const [loginModalVisible, setLoginModalVisible] = useState(false)
+  const [connectionModalVisible, setConnectionModalVisible] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
   const [form] = Form.useForm()
 
@@ -30,15 +30,15 @@ export default function Account() {
     setModalVisible(true)
   }
 
-  // 打开登录弹窗
-  const handleLoginClick = (record: Account) => {
+  // 打开连接弹窗
+  const handleConnectClick = (record: Account) => {
     setSelectedAccount(record)
-    setLoginModalVisible(true)
+    setConnectionModalVisible(true)
   }
 
-  // 登录成功后刷新
-  const handleLoginSuccess = () => {
-    setLoginModalVisible(false)
+  // 连接成功后刷新
+  const handleConnectionSuccess = () => {
+    setConnectionModalVisible(false)
     setSelectedAccount(null)
     refetch()
   }
@@ -86,7 +86,7 @@ export default function Account() {
       render: (status: string) => <StatusBadge status={status} />,
     },
     {
-      title: '最后登录',
+      title: '最后连接',
       dataIndex: 'last_login',
       key: 'last_login',
       render: (text: string | null) => text ? new Date(text).toLocaleString('zh-CN') : '-',
@@ -106,10 +106,10 @@ export default function Account() {
           <Button
             type="link"
             size="small"
-            icon={<LoginOutlined />}
-            onClick={() => handleLoginClick(record)}
+            icon={<LinkOutlined />}
+            onClick={() => handleConnectClick(record)}
           >
-            登录
+            连接
           </Button>
           <Button
             type="link"
@@ -166,12 +166,12 @@ export default function Account() {
       </Modal>
 
       {selectedAccount && (
-        <LoginModal
+        <ConnectionModal
           accountId={selectedAccount.id}
           accountName={selectedAccount.account_name}
-          open={loginModalVisible}
-          onSuccess={handleLoginSuccess}
-          onCancel={() => { setLoginModalVisible(false); setSelectedAccount(null) }}
+          open={connectionModalVisible}
+          onSuccess={handleConnectionSuccess}
+          onCancel={() => { setConnectionModalVisible(false); setSelectedAccount(null) }}
         />
       )}
     </>

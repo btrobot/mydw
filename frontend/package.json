@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "^0.0.0-next-20260217010724",
-    "@playwright/test": "^1.40.0",
+    "@playwright/test": "^1.59.1",
     "@types/node": "^20.10.0",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",

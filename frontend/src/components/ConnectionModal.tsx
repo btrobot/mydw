@@ -1,14 +1,14 @@
 /**
- * LoginModal - 账号登录弹窗组件
+ * ConnectionModal - 得物账号连接弹窗组件
  *
- * 提供手机验证码登录功能，支持 SSE 实时状态推送
+ * 提供手机验证码连接功能，支持 SSE 实时状态推送
  */
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Modal, Form, Input, Button, Space, message, Progress } from 'antd'
+import { Modal, Form, Input, Button, Space, message, Progress, Alert } from 'antd'
 import axios from 'axios'
 import { useQueryClient } from '@tanstack/react-query'
 
-interface LoginModalProps {
+interface ConnectionModalProps {
   accountId: number
   accountName: string
   open: boolean
@@ -16,55 +16,55 @@ interface LoginModalProps {
   onCancel: () => void
 }
 
-interface LoginRequest {
+interface ConnectRequest {
   phone: string
   code: string
 }
 
-interface LoginResponse {
+interface ConnectResponse {
   success: boolean
   message: string
   status: string
   storage_state?: string
 }
 
-// SSE 状态枚举 (与后端 LoginStatus 一致)
-type LoginStatus = 'idle' | 'waiting_phone' | 'code_sent' | 'waiting_verify' | 'verifying' | 'success' | 'error'
+// SSE 状态枚举 (与后端 ConnectionStatus 一致)
+type ConnectionStatus = 'idle' | 'waiting_phone' | 'code_sent' | 'waiting_verify' | 'verifying' | 'connected' | 'error'
 
 // SSE 状态事件数据
 interface StatusUpdateEvent {
-  status: LoginStatus
+  status: ConnectionStatus
   message: string
   progress?: number
 }
 
 // SSE 完成事件数据
 interface DoneEvent {
-  final_status: 'success' | 'error'
+  final_status: 'connected' | 'error'
   message?: string
 }
 
 // 状态消息映射
-const STATUS_MESSAGES: Record<LoginStatus, string> = {
+const STATUS_MESSAGES: Record<ConnectionStatus, string> = {
   idle: '',
   waiting_phone: '等待输入手机号...',
   waiting_verify: '等待输入验证码...',
   code_sent: '验证码已发送，请输入',
   verifying: '正在验证...',
-  success: '登录成功！',
-  error: '登录失败',
+  connected: '连接成功！',
+  error: '连接失败',
 }
 
 const COUNTDOWN_SECONDS = 60
 
-export default function LoginModal({
+export default function ConnectionModal({
   accountId,
   accountName,
   open,
   onSuccess,
   onCancel,
-}: LoginModalProps) {
-  const [form] = Form.useForm<LoginRequest>()
+}: ConnectionModalProps) {
+  const [form] = Form.useForm<ConnectRequest>()
   const [countdown, setCountdown] = useState(0)
   const [loading, setLoading] = useState(false)
   const [sendLoading, setSendLoading] = useState(false)
@@ -72,6 +72,7 @@ export default function LoginModal({
   // SSE 状态
   const [statusMessage, setStatusMessage] = useState('')
   const [progress, setProgress] = useState(0)
+  const [connectionError, setConnectionError] = useState(false)
   const eventSourceRef = useRef<EventSource | null>(null)
   const queryClient = useQueryClient()
 
@@ -91,7 +92,7 @@ export default function LoginModal({
     setProgress(0)
 
     // 创建 SSE 连接
-    const eventSource = new EventSource(`/api/accounts/login/${accountId}/stream`)
+    const eventSource = new EventSource(`/api/accounts/connect/${accountId}/stream`)
     eventSourceRef.current = eventSource
 
     // 监听状态更新事件
@@ -110,12 +111,12 @@ export default function LoginModal({
     eventSource.addEventListener('done', (e: MessageEvent) => {
       try {
         const data: DoneEvent = JSON.parse(e.data)
-        if (data.final_status === 'success') {
-          message.success('登录成功')
+        if (data.final_status === 'connected') {
+          message.success('连接成功')
           queryClient.invalidateQueries({ queryKey: ['accounts'] })
           onSuccess()
         } else {
-          message.error(data.message || '登录失败')
+          message.error(data.message || '连接失败')
         }
         eventSource.close()
         eventSourceRef.current = null
@@ -125,10 +126,18 @@ export default function LoginModal({
     })
 
     // 错误处理
-    eventSource.onerror = () => {
-      console.error('SSE connection error')
-      eventSource.close()
-      eventSourceRef.current = null
+    eventSource.onerror = (e: Event) => {
+      console.error('SSE connection error:', e)
+      setStatusMessage('连接状态服务器失败，请检查网络')
+      setConnectionError(true)
+      // 30秒后自动重连
+      setTimeout(() => {
+        if (eventSourceRef.current === eventSource) {
+          eventSource.close()
+          eventSourceRef.current = null
+          setConnectionError(false)
+        }
+      }, 30000)
     }
 
     // 清理函数
@@ -164,6 +173,7 @@ export default function LoginModal({
       setSendLoading(false)
       setStatusMessage('')
       setProgress(0)
+      setConnectionError(false)
     }
   }, [open, form])
 
@@ -181,8 +191,8 @@ export default function LoginModal({
     try {
       // 发送验证码请求
       // 注意：这里使用单独的发送验证码接口，如果没有则需要后端支持
-      // 当前实现：调用登录接口但只传手机号，由后端处理发送验证码逻辑
-      await axios.post(`/api/accounts/login/${accountId}`, {
+      // 当前实现：调用连接接口但只传手机号，由后端处理发送验证码逻辑
+      await axios.post(`/api/accounts/connect/${accountId}`, {
         phone,
         code: '', // 空验证码表示只发送
       })
@@ -202,12 +212,12 @@ export default function LoginModal({
     }
   }, [accountId, form])
 
-  // 登录提交
-  const handleLogin = async (values: LoginRequest) => {
+  // 连接提交
+  const handleConnect = async (values: ConnectRequest) => {
     setLoading(true)
     try {
-      const response = await axios.post<LoginResponse>(
-        `/api/accounts/login/${accountId}`,
+      const response = await axios.post<ConnectResponse>(
+        `/api/accounts/connect/${accountId}`,
         {
           phone: values.phone,
           code: values.code,
@@ -217,20 +227,20 @@ export default function LoginModal({
       const data = response.data
 
       if (data.success) {
-        message.success(data.message || '登录成功')
+        message.success(data.message || '连接成功')
         // 刷新账号列表
         queryClient.invalidateQueries({ queryKey: ['accounts'] })
         onSuccess()
       } else {
-        message.error(data.message || '登录失败')
+        message.error(data.message || '连接失败')
       }
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
-        message.error(error.response?.data?.detail || '登录失败')
+        message.error(error.response?.data?.detail || '连接失败')
       } else if (error instanceof Error) {
         message.error(error.message)
       } else {
-        message.error('登录失败')
+        message.error('连接失败')
       }
     } finally {
       setLoading(false)
@@ -250,7 +260,7 @@ export default function LoginModal({
 
   return (
     <Modal
-      title={`登录账号: ${accountName}`}
+      title={`建立连接: ${accountName}`}
       open={open}
       onCancel={onCancel}
       footer={null}
@@ -259,7 +269,14 @@ export default function LoginModal({
       closable={!loading}
     >
       {/* SSE 状态显示 */}
-      {statusMessage && (
+      {connectionError ? (
+        <Alert
+          type="error"
+          message="连接已断开，正在尝试重连..."
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+      ) : statusMessage ? (
         <div
           style={{
             marginBottom: 16,
@@ -272,12 +289,12 @@ export default function LoginModal({
           <div style={{ marginBottom: progress > 0 ? 8 : 0 }}>{statusMessage}</div>
           {progress > 0 && <Progress percent={progress} size="small" status="active" />}
         </div>
-      )}
+      ) : null}
 
       <Form
         form={form}
         layout="vertical"
-        onFinish={handleLogin}
+        onFinish={handleConnect}
         autoComplete="off"
       >
         <Form.Item
@@ -329,7 +346,7 @@ export default function LoginModal({
               htmlType="submit"
               loading={loading}
             >
-              登录
+              连接
             </Button>
           </Space>
         </Form.Item>

@@ -78,6 +78,25 @@ Escalate when:
 Only modify:
 - `tests/`
 - `docs/test-plan/`
+- `frontend/e2e/` — E2E tests
+
+## E2E Testing
+
+**IMPORTANT**: All E2E tests MUST be verified before submission.
+
+See: `rules/e2e-testing-rules.md`
+
+### Required Verification Steps
+
+1. **Selector Validation**: Verify selectors work in browser DevTools
+2. **Test Execution**: Run tests locally before committing
+3. **CI Requirement**: Tests must pass in CI pipeline
+
+### Common Pitfalls
+
+- Ant Design `type="link"` renders as `<a>`, not `<button>`
+- Button text may have spaces: "取 消" not "取消"
+- Always re-query elements after DOM changes
 
 ## Quality Gates
 

@@ -16,11 +16,11 @@ class AccountStatus(str, Enum):
     LOGGING_IN = "logging_in"
 
 
-class LoginStatus(str, Enum):
+class ConnectionStatus(str, Enum):
     """
-    登录流程状态枚举
+    连接流程状态枚举 (原 LoginStatus)
 
-    用于 SSE 实时推送和登录流程状态管理。
+    用于 SSE 实时推送和连接流程状态管理。
     状态流转: idle -> waiting_phone -> code_sent -> waiting_verify -> verifying -> success/error
     """
     IDLE = "idle"
@@ -28,8 +28,12 @@ class LoginStatus(str, Enum):
     CODE_SENT = "code_sent"  # 验证码已发送
     WAITING_VERIFY = "waiting_verify"  # 等待验证（已发送验证码）
     VERIFYING = "verifying"  # 正在验证
-    SUCCESS = "success"  # 登录成功
-    ERROR = "error"  # 登录失败
+    SUCCESS = "success"  # 连接成功
+    ERROR = "error"  # 连接失败
+
+
+# 向后兼容别名
+LoginStatus = ConnectionStatus
 
 
 class TaskStatus(str, Enum):
@@ -94,39 +98,56 @@ class AccountTestRequest(BaseModel):
     account_id: int
 
 
-class LoginRequest(BaseModel):
-    """手机验证码登录请求"""
+class ConnectionRequest(BaseModel):
+    """得物账号连接请求 (手机验证码方式)"""
     phone: str = Field(..., min_length=11, max_length=11, description="手机号")
     code: str = Field(..., min_length=4, max_length=6, description="验证码")
 
 
-class LoginResponse(BaseModel):
-    """登录响应"""
+# 向后兼容别名
+LoginRequest = ConnectionRequest
+
+
+class ConnectionResponse(BaseModel):
+    """连接响应"""
     success: bool
     message: str
     status: str = "inactive"
     storage_state: Optional[str] = None
 
 
-class LoginStatusResponse(BaseModel):
-    """登录状态响应"""
-    is_logged_in: bool
-    status: LoginStatus
+# 向后兼容别名
+LoginResponse = ConnectionResponse
+
+
+class ConnectionStatusResponse(BaseModel):
+    """连接状态响应"""
+    is_connected: bool
+    status: ConnectionStatus
     last_login: Optional[datetime] = None
     message: str = ""
 
 
-class LoginStreamEvent(BaseModel):
-    """SSE 登录状态事件"""
+# 向后兼容别名
+LoginStatusResponse = ConnectionStatusResponse
+
+
+class ConnectionStreamEvent(BaseModel):
+    """SSE 连接状态事件"""
     event: str = "status_update"
-    data: "LoginStreamData"
+    data: "ConnectionStreamData"
 
 
-class LoginStreamData(BaseModel):
-    """SSE 登录状态数据"""
-    status: LoginStatus
+class ConnectionStreamData(BaseModel):
+    """SSE 连接状态数据"""
+    status: ConnectionStatus
     message: str
     progress: Optional[int] = None  # 0-100 进度百分比
+
+
+# 向后兼容别名
+LoginStreamEvent = ConnectionStreamEvent
+LoginStreamData = ConnectionStreamData
 
 
 class AccountStats(BaseModel):

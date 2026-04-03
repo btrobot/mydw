@@ -1,4 +1,4 @@
-import { Card, Row, Col, Statistic, Table, Tag, Space, Typography } from 'antd'
+import { Card, Row, Col, Statistic, Table, Tag, Space } from 'antd'
 import {
   UserOutlined,
   VideoCameraOutlined,
@@ -27,7 +27,6 @@ interface LogItem {
 }
 
 export default function Dashboard() {
-  const { Title } = Typography
   // 使用 React Query hooks
   const { data: statsData, isLoading: statsLoading, refetch: refetchStats } = useSystemStats()
   const { data: logsData, isLoading: logsLoading, refetch: refetchLogs } = useSystemLogs()
@@ -84,7 +83,7 @@ export default function Dashboard() {
 
   return (
     <>
-      <Title level={1} style={{ marginBottom: 24 }}>数据看板</Title>
+      {/* <Title level={1} style={{ marginBottom: 24 }}>数据看板</Title> */}
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         <Row gutter={[16, 16]}>
           <Col xs={24} sm={12} md={6}>

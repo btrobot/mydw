@@ -1,0 +1,286 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1775186689552,
+  "projectRoot": "E:\\ais\\aa\\dewugojin",
+  "techStack": {
+    "languages": [],
+    "frameworks": [],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "backend": {
+      "path": "backend",
+      "purpose": null,
+      "fileCount": 24,
+      "lastAccessed": 1775186689469,
+      "keyFiles": [
+        "CLAUDE.md",
+        "explore_dewu_login.py",
+        "explore_error.png",
+        "explore_login_page.png",
+        "login_page_raw.png"
+      ]
+    },
+    "design": {
+      "path": "design",
+      "purpose": null,
+      "fileCount": 7,
+      "lastAccessed": 1775186689470,
+      "keyFiles": [
+        "backend-stack.md",
+        "Claude Code Hooks.md",
+        "frontend-stack.md",
+        "login-arch.md",
+        "sprint-intro.md"
+      ]
+    },
+    "dev-docs": {
+      "path": "dev-docs",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1775186689471,
+      "keyFiles": [
+        "dewu-login-automation.md",
+        "login-dewu.md"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 2,
+      "lastAccessed": 1775186689472,
+      "keyFiles": [
+        "architecture.md",
+        "task-breakdown-cli-tool.md"
+      ]
+    },
+    "frontend": {
+      "path": "frontend",
+      "purpose": null,
+      "fileCount": 7,
+      "lastAccessed": 1775186689504,
+      "keyFiles": [
+        "index.html",
+        "openapi.config.ts",
+        "package-lock.json",
+        "package.json",
+        "tsconfig.json"
+      ]
+    },
+    "production": {
+      "path": "production",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1775186689507,
+      "keyFiles": []
+    },
+    "backend\\api": {
+      "path": "backend\\api",
+      "purpose": "API routes",
+      "fileCount": 7,
+      "lastAccessed": 1775186689508,
+      "keyFiles": [
+        "account.py",
+        "ai.py",
+        "material.py"
+      ]
+    },
+    "backend\\data": {
+      "path": "backend\\data",
+      "purpose": "Data files",
+      "fileCount": 1,
+      "lastAccessed": 1775186689508,
+      "keyFiles": [
+        "dewugojin.db"
+      ]
+    },
+    "frontend\\dist": {
+      "path": "frontend\\dist",
+      "purpose": "Distribution/build output",
+      "fileCount": 1,
+      "lastAccessed": 1775186689510,
+      "keyFiles": [
+        "index.html"
+      ]
+    },
+    "frontend\\node_modules": {
+      "path": "frontend\\node_modules",
+      "purpose": "Dependencies",
+      "fileCount": 1,
+      "lastAccessed": 1775186689511,
+      "keyFiles": []
+    },
+    "frontend\\scripts": {
+      "path": "frontend\\scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 1,
+      "lastAccessed": 1775186689511,
+      "keyFiles": [
+        "build.bat"
+      ]
+    },
+    "frontend\\src": {
+      "path": "frontend\\src",
+      "purpose": "Source code",
+      "fileCount": 4,
+      "lastAccessed": 1775186689511,
+      "keyFiles": [
+        "App.tsx",
+        "index.css",
+        "main.tsx"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "",
+      "accessCount": 1,
+      "lastAccessed": 1775186986972,
+      "type": "directory"
+    },
+    {
+      "path": "README.md",
+      "accessCount": 1,
+      "lastAccessed": 1775186999872,
+      "type": "file"
+    },
+    {
+      "path": "CLAUDE.md",
+      "accessCount": 1,
+      "lastAccessed": 1775186999889,
+      "type": "file"
+    },
+    {
+      "path": "backend\\requirements.txt",
+      "accessCount": 1,
+      "lastAccessed": 1775187016544,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\package.json",
+      "accessCount": 1,
+      "lastAccessed": 1775187016625,
+      "type": "file"
+    },
+    {
+      "path": "backend\\main.py",
+      "accessCount": 1,
+      "lastAccessed": 1775187016678,
+      "type": "file"
+    },
+    {
+      "path": "backend\\core\\config.py",
+      "accessCount": 1,
+      "lastAccessed": 1775187038682,
+      "type": "file"
+    },
+    {
+      "path": "backend\\.env",
+      "accessCount": 1,
+      "lastAccessed": 1775187038732,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\src\\services\\api.ts",
+      "accessCount": 1,
+      "lastAccessed": 1775187038743,
+      "type": "file"
+    },
+    {
+      "path": "backend\\api\\account.py",
+      "accessCount": 1,
+      "lastAccessed": 1775187038780,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\src\\App.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1775187038807,
+      "type": "file"
+    },
+    {
+      "path": "backend\\utils\\crypto.py",
+      "accessCount": 1,
+      "lastAccessed": 1775187038869,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\src\\pages\\Account.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1775187063127,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\src\\pages\\Dashboard.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1775187063975,
+      "type": "file"
+    },
+    {
+      "path": "backend\\models\\__init__.py",
+      "accessCount": 1,
+      "lastAccessed": 1775187064041,
+      "type": "file"
+    },
+    {
+      "path": "backend\\services\\publish_service.py",
+      "accessCount": 1,
+      "lastAccessed": 1775187064099,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\electron\\main.ts",
+      "accessCount": 1,
+      "lastAccessed": 1775187080463,
+      "type": "file"
+    },
+    {
+      "path": "backend\\core\\browser.py",
+      "accessCount": 1,
+      "lastAccessed": 1775187080487,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\src\\hooks\\index.ts",
+      "accessCount": 1,
+      "lastAccessed": 1775187080544,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\electron\\preload.ts",
+      "accessCount": 1,
+      "lastAccessed": 1775187080597,
+      "type": "file"
+    },
+    {
+      "path": "backend\\core\\dewu_client.py",
+      "accessCount": 1,
+      "lastAccessed": 1775187080636,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

@@ -2,7 +2,7 @@
 得物掘金工具 - 得物平台客户端
 """
 import asyncio
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional, Tuple, Dict, Any, List
 from playwright.async_api import Page, TimeoutError as PlaywrightTimeout
 from loguru import logger
 
@@ -102,161 +102,6 @@ class DewuClient:
 
         except Exception as e:
             logger.error(f"账号 {self.account_id} 登录失败: {e}")
-            return False, str(e)
-
-    async def login_with_sms(self, phone: str) -> Tuple[bool, str]:
-        """
-        通过手机验证码登录 - 第一步：发送验证码
-        - 打开登录页面
-        - 输入手机号
-        - 点击获取验证码
-        - 返回状态（由调用方处理验证码输入和提交）
-        """
-        try:
-            # 创建新页面或使用现有页面
-            if not self.page:
-                self.page = await browser_manager.new_page(self.account_id)
-                if not self.page:
-                    return False, "创建浏览器页面失败"
-
-            logger.info(f"账号 {self.account_id} 开始手机登录: phone={phone[:3]}***")
-
-            # 访问登录页面
-            await self.page.goto(self.LOGIN_URL, wait_until="domcontentloaded", timeout=60000)
-            await self.page.wait_for_timeout(2000)  # 等待页面完全加载
-
-            # 查找手机号输入框
-            phone_input = None
-            for selector in LOGIN_SELECTORS["phone_input"]:
-                try:
-                    phone_input = await self.page.wait_for_selector(selector, timeout=3000)
-                    if phone_input:
-                        logger.debug(f"找到手机号输入框: {selector}")
-                        break
-                except PlaywrightTimeout:
-                    continue
-
-            if not phone_input:
-                # 保存截图用于调试
-                await self.page.screenshot(path=f"logs/login_debug_{self.account_id}.png")
-                return False, f"未找到手机号输入框，请检查页面元素"
-
-            # 先勾选同意协议复选框
-            for selector in LOGIN_SELECTORS["agree_checkbox"]:
-                try:
-                    checkbox = await self.page.wait_for_selector(selector, timeout=2000)
-                    if checkbox:
-                        # 检查是否已勾选
-                        is_checked = await checkbox.is_checked()
-                        if not is_checked:
-                            await checkbox.check()
-                            logger.debug(f"已勾选协议复选框: {selector}")
-                        break
-                except PlaywrightTimeout:
-                    continue
-
-            await self.page.wait_for_timeout(300)
-
-            # 输入手机号
-            await phone_input.fill(phone)
-            await self.page.wait_for_timeout(500)
-
-            # 查找验证码按钮
-            code_button = None
-            for selector in LOGIN_SELECTORS["code_button"]:
-                try:
-                    code_button = await self.page.wait_for_selector(selector, timeout=3000)
-                    if code_button:
-                        logger.debug(f"找到验证码按钮: {selector}")
-                        break
-                except PlaywrightTimeout:
-                    continue
-
-            if not code_button:
-                await self.page.screenshot(path=f"logs/login_debug_{self.account_id}.png")
-                return False, "未找到验证码按钮，请检查页面元素"
-
-            # 点击获取验证码
-            await code_button.click()
-            logger.info(f"账号 {self.account_id} 验证码已发送")
-            await self.page.wait_for_timeout(1000)
-
-            return True, "验证码已发送，请在5分钟内输入"
-
-        except PlaywrightTimeout as e:
-            logger.error(f"账号 {self.account_id} 等待元素超时: {e}")
-            await self.page.screenshot(path=f"logs/login_timeout_{self.account_id}.png")
-            return False, f"等待页面元素超时: {e}"
-        except Exception as e:
-            logger.error(f"账号 {self.account_id} 发送验证码失败: {e}")
-            return False, str(e)
-
-    async def submit_verification_code(self, code: str) -> Tuple[bool, str]:
-        """
-        提交验证码完成登录
-        - 输入6位验证码
-        - 点击登录按钮
-        - 检测登录结果
-        """
-        try:
-            if not self.page:
-                return False, "页面未初始化，请先调用 login_with_sms"
-
-            logger.info(f"账号 {self.account_id} 提交验证码: {code[:2]}**")
-
-            # 查找验证码输入框
-            code_input = None
-            for selector in LOGIN_SELECTORS["code_input"]:
-                try:
-                    code_input = await self.page.wait_for_selector(selector, timeout=3000)
-                    if code_input:
-                        logger.debug(f"找到验证码输入框: {selector}")
-                        break
-                except PlaywrightTimeout:
-                    continue
-
-            if not code_input:
-                await self.page.screenshot(path=f"logs/code_input_debug_{self.account_id}.png")
-                return False, "未找到验证码输入框"
-
-            # 输入验证码
-            await code_input.fill(code)
-            await self.page.wait_for_timeout(500)
-
-            # 查找登录按钮
-            login_button = None
-            for selector in LOGIN_SELECTORS["login_button"]:
-                try:
-                    login_button = await self.page.wait_for_selector(selector, timeout=3000)
-                    if login_button:
-                        logger.debug(f"找到登录按钮: {selector}")
-                        break
-                except PlaywrightTimeout:
-                    continue
-
-            if not login_button:
-                await self.page.screenshot(path=f"logs/login_btn_debug_{self.account_id}.png")
-                return False, "未找到登录按钮"
-
-            # 点击登录
-            await login_button.click()
-            await self.page.wait_for_timeout(2000)  # 等待登录响应
-
-            # 检测登录结果
-            success, message = await self._check_login_result()
-            if success:
-                self.logged_in = True
-                logger.info(f"账号 {self.account_id} 登录成功")
-            else:
-                logger.warning(f"账号 {self.account_id} 登录失败: {message}")
-
-            return success, message
-
-        except PlaywrightTimeout as e:
-            logger.error(f"账号 {self.account_id} 等待元素超时: {e}")
-            return False, f"等待页面元素超时: {e}"
-        except Exception as e:
-            logger.error(f"账号 {self.account_id} 提交验证码失败: {e}")
             return False, str(e)
 
     async def _check_login_result(self) -> Tuple[bool, str]:
@@ -647,16 +492,16 @@ class DewuClient:
             logger.info("账号 {} 开始手机登录", self.account_id)
 
             # 访问登录页面
-            await self.page.goto(self.LOGIN_URL, wait_until="domcontentloaded", timeout=60000)
+            await self.page.goto(self.LOGIN_URL, wait_until="networkidle", timeout=60000)
             await self.page.wait_for_timeout(2000)  # 等待页面完全加载
 
             # 保存调试截图
             await self._save_debug_screenshot("login_start")
 
-            # ========== 第一步：勾选协议复选框 ==========
+            # ========== 第一步：勾选协议复选框（移到手机号输入之前，与 test_patch_login_debug.py 一致）==========
             checkbox_selected = await self._select_agree_checkbox()
             if not checkbox_selected:
-                logger.warning("账号 {} 未勾选协议或未找到复选框", self.account_id)
+                logger.warning("账号 {} 未勾选协议或未找到复选框，可能协议已默认勾选", self.account_id)
 
             # ========== 第二步：输入手机号 ==========
             phone_input = await self._find_element(self.page, LOGIN_SELECTORS["phone_input"])
@@ -668,15 +513,26 @@ class DewuClient:
             await self.page.wait_for_timeout(500)
             logger.debug("账号 {} 手机号已输入: {}***", self.account_id, phone[:3])
 
-            # ========== 第三步：点击发送验证码 ==========
-            code_button = await self._find_element(self.page, LOGIN_SELECTORS["code_button"])
+            # ========== 第三步：点击发送验证码（使用文本遍历查找，与 test_patch_login_debug.py 一致）==========
+            # 使用文本遍历查找验证码按钮
+            code_button = await self._find_button_by_text(
+                self.page,
+                ['验证码', '发送', '获取']
+            )
+            if not code_button:
+                # 备用：尝试选择器
+                code_button = await self._find_element(self.page, LOGIN_SELECTORS["code_button"])
+
             if not code_button:
                 await self._save_debug_screenshot("code_button_not_found")
                 return False, "未找到验证码按钮"
 
             await code_button.click()
             logger.info("账号 {} 验证码已发送", self.account_id)
-            await self.page.wait_for_timeout(1000)
+            await self.page.wait_for_timeout(2000)  # 等待验证码发送完成
+
+            # 保存发送验证码后的截图
+            await self._save_debug_screenshot("after_code_sent")
 
             # ========== 第四步：输入验证码 ==========
             code_input = await self._find_element(self.page, LOGIN_SELECTORS["code_input"])
@@ -689,7 +545,12 @@ class DewuClient:
             logger.debug("账号 {} 验证码已输入: {}**", self.account_id, code[:2])
 
             # ========== 第五步：点击登录按钮 ==========
-            login_button = await self._find_element(self.page, LOGIN_SELECTORS["login_button"])
+            # 尝试多个可能的登录按钮选择器
+            login_button = await self._find_element_with_fallback(
+                self.page,
+                LOGIN_SELECTORS["login_button"],
+                ['button:has-text("登录")', 'button[type="submit"]']
+            )
             if not login_button:
                 await self._save_debug_screenshot("login_button_not_found")
                 return False, "未找到登录按钮"
@@ -697,6 +558,9 @@ class DewuClient:
             await login_button.click()
             logger.info("账号 {} 点击登录按钮", self.account_id)
             await self.page.wait_for_timeout(3000)  # 等待登录响应
+
+            # 保存登录后的截图
+            await self._save_debug_screenshot("after_login_click")
 
             # ========== 第六步：检测登录结果 ==========
             success, message = await self._check_login_result()
@@ -733,6 +597,28 @@ class DewuClient:
                 continue
         return False
 
+    async def _find_button_by_text(self, page: Page, patterns: List[str]) -> Optional[Any]:
+        """
+        根据文本内容查找按钮（与 test_patch_login_debug.py 一致的逻辑）
+
+        Args:
+            page: Playwright 页面对象
+            patterns: 要匹配的文本模式列表
+
+        Returns:
+            找到的按钮元素，未找到返回 None
+        """
+        buttons = await page.query_selector_all('button')
+        for btn in buttons:
+            text = await btn.text_content()
+            if text:
+                text_lower = text.lower()
+                for pattern in patterns:
+                    if pattern.lower() in text_lower:
+                        logger.debug("找到按钮: pattern={}, text={}", pattern, text.strip())
+                        return btn
+        return None
+
     async def _find_element(self, page: Page, selectors: list) -> Optional[Any]:
         """查找页面元素"""
         for selector in selectors:
@@ -743,6 +629,35 @@ class DewuClient:
                     return element
             except PlaywrightTimeout:
                 continue
+        return None
+
+    async def _find_element_with_fallback(
+        self, page: Page, primary_selectors: list, fallback_selectors: list
+    ) -> Optional[Any]:
+        """
+        查找页面元素，优先使用主选择器，失败后使用备用选择器
+
+        Args:
+            page: Playwright 页面对象
+            primary_selectors: 主选择器列表
+            fallback_selectors: 备用选择器列表
+
+        Returns:
+            找到的元素，未找到返回 None
+        """
+        # 首先尝试主选择器
+        element = await self._find_element(page, primary_selectors)
+        if element:
+            return element
+
+        # 主选择器失败，尝试备用选择器
+        logger.debug("主选择器未找到，尝试备用选择器")
+        element = await self._find_element(page, fallback_selectors)
+        if element:
+            return element
+
+        # 所有选择器都失败
+        logger.warning("所有选择器都未找到元素: primary={}, fallback={}", primary_selectors, fallback_selectors)
         return None
 
     async def _save_debug_screenshot(self, prefix: str) -> None:

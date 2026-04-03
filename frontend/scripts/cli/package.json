@@ -1,0 +1,24 @@
+{
+  "name": "dewugojin-cli",
+  "version": "0.1.0",
+  "description": "得物掘金工具 API 测试 CLI",
+  "type": "module",
+  "main": "src/index.ts",
+  "bin": {
+    "dewu-cli": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -17,8 +17,8 @@ from models import get_db
 from schemas import (
     AccountCreate, AccountUpdate, AccountResponse, AccountStats,
     AccountLoginRequest, AccountTestRequest,
-    LoginRequest, LoginResponse, LoginStatusResponse,
-    LoginStatus, AccountStatus
+    ConnectionRequest, ConnectionResponse, ConnectionStatusResponse,
+    ConnectionStatus, AccountStatus
 )
 from core.browser import browser_manager
 from core.dewu_client import get_dewu_client
@@ -27,17 +27,17 @@ from utils.crypto import encrypt_data, decrypt_data
 router = APIRouter()
 
 
-# ============ 登录状态管理器 (事件驱动) ============
+# ============ 连接状态管理器 (事件驱动) ============
 
-class LoginStatusManager:
+class ConnectionStatusManager:
     """
-    登录状态管理器 - 事件驱动版本
+    得物账号连接状态管理器 - 事件驱动版本
 
     使用 asyncio.Queue 实现事件驱动的订阅模式，
     SSE 端点通过订阅状态变化实现实时推送。
 
     状态结构: {
-        "status": LoginStatus,
+        "status": ConnectionStatus,
         "message": str,
         "progress": int,
         "updated_at": datetime,
@@ -56,16 +56,16 @@ class LoginStatusManager:
     async def set_status(
         self,
         account_id: int,
-        status: LoginStatus,
+        status: ConnectionStatus,
         message: str,
         progress: int = 0
     ) -> None:
         """
-        设置登录状态并通知所有订阅者
+        设置连接状态并通知所有订阅者
 
         Args:
             account_id: 账号ID
-            status: 登录状态枚举
+            status: 连接状态枚举
             message: 状态消息
             progress: 进度百分比 (0-100)
         """
@@ -84,7 +84,7 @@ class LoginStatusManager:
         }
 
         logger.debug(
-            "登录状态更新: account_id={}, status={}, message={}, progress={}",
+            "连接状态更新: account_id={}, status={}, message={}, progress={}",
             account_id, status.value, message, progress
         )
 
@@ -94,16 +94,16 @@ class LoginStatusManager:
     def set_status_sync(
         self,
         account_id: int,
-        status: LoginStatus,
+        status: ConnectionStatus,
         message: str,
         progress: int = 0
     ) -> None:
         """
-        同步设置登录状态（用于同步上下文）
+        同步设置连接状态（用于同步上下文）
 
         Args:
             account_id: 账号ID
-            status: 登录状态枚举
+            status: 连接状态枚举
             message: 状态消息
             progress: 进度百分比 (0-100)
         """
@@ -122,7 +122,7 @@ class LoginStatusManager:
         }
 
         logger.debug(
-            "登录状态更新(SYNC): account_id={}, status={}, message={}",
+            "连接状态更新(SYNC): account_id={}, status={}, message={}",
             account_id, status.value, message
         )
 
@@ -130,14 +130,14 @@ class LoginStatusManager:
         event.set()
 
     def get_status(self, account_id: int) -> Optional[Dict[str, Any]]:
-        """获取登录状态"""
+        """获取连接状态"""
         return self._status.get(account_id)
 
     def clear_status(self, account_id: int) -> None:
-        """清除登录状态"""
+        """清除连接状态"""
         if account_id in self._status:
             del self._status[account_id]
-            logger.debug("登录状态已清除: account_id={}", account_id)
+            logger.debug("连接状态已清除: account_id={}", account_id)
 
     async def subscribe(self, account_id: int) -> AsyncGenerator[Dict[str, Any], None]:
         """
@@ -213,8 +213,8 @@ class LoginStatusManager:
                     logger.warning("通知订阅者失败: account_id={}, error={}", account_id, e)
 
 
-# 全局登录状态管理器实例
-login_status_manager = LoginStatusManager()
+# 全局连接状态管理器实例
+connection_status_manager = ConnectionStatusManager()
 
 
 @router.post("/", response_model=AccountResponse, status_code=201)
@@ -371,17 +371,17 @@ async def delete_account(
     return None
 
 
-@router.post("/login/{account_id}", response_model=LoginResponse)
-async def login_account(
+@router.post("/connect/{account_id}", response_model=ConnectionResponse)
+async def connect_account(
     account_id: int,
-    request: LoginRequest,
+    request: ConnectionRequest,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
     """
-    登录账号 - 手机验证码方式
+    连接得物账号 - 手机验证码方式
 
-    执行完整的登录流程：
+    执行完整的连接流程：
     1. 打开登录页
     2. 勾选协议
     3. 输入手机号
@@ -391,7 +391,7 @@ async def login_account(
     7. 检测登录结果
     8. 保存 storage state
 
-    同时通过 login_status_manager 推送 SSE 状态。
+    同时通过 connection_status_manager 推送 SSE 状态。
     """
     result = await db.execute(select(Account).where(Account.id == account_id))
     account = result.scalar_one_or_none()
@@ -399,17 +399,17 @@ async def login_account(
     if not account:
         raise HTTPException(status_code=404, detail="账号不存在")
 
-    logger.info("账号 {} ({}) 开始登录流程", account.account_name, account_id)
+    logger.info("账号 {} ({}) 开始连接流程", account.account_name, account_id)
 
-    # 更新账号状态为登录中
+    # 更新账号状态为连接中
     account.status = AccountStatus.LOGGING_IN.value
     await db.commit()
 
     try:
         # 状态1: 等待输入手机号 -> 正在发送验证码
-        await login_status_manager.set_status(
+        await connection_status_manager.set_status(
             account_id,
-            LoginStatus.WAITING_PHONE,
+            ConnectionStatus.WAITING_PHONE,
             "等待输入手机号",
             10
         )
@@ -420,22 +420,22 @@ async def login_account(
         # 如果只有手机号（发送验证码请求）
         if not request.code or request.code == "":
             # 状态2: 验证码已发送
-            await login_status_manager.set_status(
+            await connection_status_manager.set_status(
                 account_id,
-                LoginStatus.CODE_SENT,
+                ConnectionStatus.CODE_SENT,
                 "验证码已发送，请在5分钟内输入",
                 40
             )
-            return LoginResponse(
+            return ConnectionResponse(
                 success=True,
                 message="验证码已发送",
                 status="logging_in"
             )
 
         # 状态3: 等待验证
-        await login_status_manager.set_status(
+        await connection_status_manager.set_status(
             account_id,
-            LoginStatus.WAITING_VERIFY,
+            ConnectionStatus.WAITING_VERIFY,
             "正在验证验证码",
             50
         )
@@ -445,14 +445,14 @@ async def login_account(
 
         if success:
             # 状态4: 正在保存会话
-            await login_status_manager.set_status(
+            await connection_status_manager.set_status(
                 account_id,
-                LoginStatus.VERIFYING,
-                "正在保存登录状态",
+                ConnectionStatus.VERIFYING,
+                "正在保存连接状态",
                 80
             )
 
-            # 登录成功，保存状态
+            # 连接成功，保存状态
             account.status = AccountStatus.ACTIVE.value
             account.last_login = datetime.utcnow()
 
@@ -469,32 +469,32 @@ async def login_account(
             log = SystemLog(
                 level="INFO",
                 module="account",
-                message=f"账号登录成功: {account.account_name}"
+                message=f"账号连接成功: {account.account_name}"
             )
             db.add(log)
             await db.commit()
 
-            # 状态5: 登录成功
-            await login_status_manager.set_status(
+            # 状态5: 连接成功
+            await connection_status_manager.set_status(
                 account_id,
-                LoginStatus.SUCCESS,
-                "登录成功",
+                ConnectionStatus.SUCCESS,
+                "连接成功",
                 100
             )
 
-            logger.info("账号 {} 登录成功", account.account_name)
+            logger.info("账号 {} 连接成功", account.account_name)
 
-            return LoginResponse(
+            return ConnectionResponse(
                 success=True,
-                message="登录成功",
+                message="连接成功",
                 status="active",
                 storage_state=storage_state
             )
         else:
-            # 登录失败
-            await login_status_manager.set_status(
+            # 连接失败
+            await connection_status_manager.set_status(
                 account_id,
-                LoginStatus.ERROR,
+                ConnectionStatus.ERROR,
                 message,
                 0
             )
@@ -503,22 +503,22 @@ async def login_account(
             account.status = AccountStatus.INACTIVE.value
             await db.commit()
 
-            logger.warning("账号 {} 登录失败: {}", account.account_name, message)
+            logger.warning("账号 {} 连接失败: {}", account.account_name, message)
 
-            return LoginResponse(
+            return ConnectionResponse(
                 success=False,
                 message=message,
                 status="inactive"
             )
 
     except Exception as e:
-        logger.error("账号 {} 登录异常: {}", account.account_name, e, exc_info=True)
+        logger.error("账号 {} 连接异常: {}", account.account_name, e, exc_info=True)
 
         # 更新状态为错误
-        await login_status_manager.set_status(
+        await connection_status_manager.set_status(
             account_id,
-            LoginStatus.ERROR,
-            f"登录异常: {str(e)}",
+            ConnectionStatus.ERROR,
+            f"连接异常: {str(e)}",
             0
         )
 
@@ -526,38 +526,51 @@ async def login_account(
         account.status = AccountStatus.ERROR.value
         await db.commit()
 
-        return LoginResponse(
+        return ConnectionResponse(
             success=False,
-            message=f"登录异常: {str(e)}",
+            message=f"连接异常: {str(e)}",
             status="error"
         )
 
 
-@router.get("/login/{account_id}/stream")
-async def login_status_stream(
+# ============ 已弃用端点 (向后兼容) ============
+
+@router.post("/login/{account_id}", response_model=ConnectionResponse, deprecated=True)
+async def login_account_deprecated(
+    account_id: int,
+    request: ConnectionRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db)
+):
+    """已弃用: 请使用 POST /connect/{account_id}"""
+    return await connect_account(account_id, request, background_tasks, db)
+
+
+@router.get("/connect/{account_id}/stream")
+async def connection_status_stream(
     account_id: int,
     db: AsyncSession = Depends(get_db)
 ):
     """
-    SSE 流式推送登录状态 (事件驱动模式)
+    SSE 流式推送连接状态 (事件驱动模式)
 
-    端点: GET /api/accounts/login/{account_id}/stream
+    端点: GET /api/accounts/connect/{account_id}/stream
 
-    前端需先调用 POST /api/accounts/login/{account_id} 触发登录流程，
+    前端需先调用 POST /api/accounts/connect/{account_id} 触发连接流程，
     此端点订阅状态变化并实时推送。
 
     事件格式:
     - event: status_update
     - data: {"status": "waiting_verify", "message": "验证码已发送", "progress": 50, "timestamp": "..."}
 
-    状态值 (LoginStatus):
+    状态值 (ConnectionStatus):
     - idle: 初始状态
     - waiting_phone: 等待输入手机号
     - code_sent: 验证码已发送
     - waiting_verify: 等待验证
     - verifying: 验证中
-    - success: 登录成功
-    - error: 登录失败
+    - success: 连接成功
+    - error: 连接失败
 
     超时: 30秒无状态变化发送心跳，保持连接
     """
@@ -574,17 +587,17 @@ async def login_status_stream(
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive"}
         )
 
-    logger.info("SSE 订阅登录状态: account_id={}, account_name={}", account_id, account.account_name)
+    logger.info("SSE 订阅连接状态: account_id={}, account_name={}", account_id, account.account_name)
 
     async def event_generator() -> AsyncGenerator[str, None]:
         """
         SSE 事件生成器
 
-        通过订阅 login_status_manager 的状态变化实现实时推送。
+        通过订阅 connection_status_manager 的状态变化实现实时推送。
         """
         try:
             # 持续订阅状态变化
-            async for status_data in login_status_manager.subscribe(account_id):
+            async for status_data in connection_status_manager.subscribe(account_id):
                 # 检查是否是心跳
                 if status_data.get("type") == "heartbeat":
                     yield f": heartbeat\n\n"
@@ -596,9 +609,9 @@ async def login_status_stream(
 
                 # 如果是终态 (success/error)，发送完成事件并退出
                 status = status_data.get("status")
-                if status in [LoginStatus.SUCCESS, LoginStatus.ERROR]:
+                if status in [ConnectionStatus.SUCCESS, ConnectionStatus.ERROR]:
                     yield f"event: done\n"
-                    yield f"data: {json.dumps({'message': '登录流程结束', 'final_status': status})}\n\n"
+                    yield f"data: {json.dumps({'message': '连接流程结束', 'final_status': status})}\n\n"
                     break
 
         except asyncio.CancelledError:
@@ -608,7 +621,7 @@ async def login_status_stream(
             yield f"event: error\ndata: {json.dumps({'message': str(e)})}\n\n"
         finally:
             # 清理状态
-            login_status_manager.clear_status(account_id)
+            connection_status_manager.clear_status(account_id)
             logger.debug("SSE 连接清理完成: account_id={}", account_id)
 
     return StreamingResponse(
@@ -622,18 +635,28 @@ async def login_status_stream(
     )
 
 
-@router.get("/login/{account_id}/status", response_model=LoginStatusResponse)
-async def get_login_status(
+# 已弃用端点 (向后兼容)
+@router.get("/login/{account_id}/stream", deprecated=True)
+async def login_status_stream_deprecated(
+    account_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """已弃用: 请使用 GET /connect/{account_id}/stream"""
+    return await connection_status_stream(account_id, db)
+
+
+@router.get("/connect/{account_id}/status", response_model=ConnectionStatusResponse)
+async def get_connection_status(
     account_id: int,
     db: AsyncSession = Depends(get_db)
 ):
     """
-    获取账号登录状态
+    获取得物账号连接状态
 
-    检查账号是否已登录：
+    检查账号是否已连接：
     1. 如果有活跃的浏览器上下文，检查页面 URL
     2. 如果没有上下文但有 storage state，尝试验证
-    3. 返回详细的登录状态信息
+    3. 返回详细的连接状态信息
     """
     result = await db.execute(select(Account).where(Account.id == account_id))
     account = result.scalar_one_or_none()
@@ -651,57 +674,67 @@ async def get_login_status(
 
             # URL 检查：是否在登录页
             if "login" not in current_url.lower():
-                return LoginStatusResponse(
-                    is_logged_in=True,
-                    status=LoginStatus.SUCCESS,
+                return ConnectionStatusResponse(
+                    is_connected=True,
+                    status=ConnectionStatus.SUCCESS,
                     last_login=account.last_login,
-                    message="账号已登录"
+                    message="账号已连接"
                 )
             else:
-                return LoginStatusResponse(
-                    is_logged_in=False,
-                    status=LoginStatus.ERROR,
+                return ConnectionStatusResponse(
+                    is_connected=False,
+                    status=ConnectionStatus.ERROR,
                     last_login=account.last_login,
-                    message="Session 已过期，需要重新登录"
+                    message="Session 已过期，需要重新连接"
                 )
 
         # 检查是否有存储的 session
         if account.storage_state:
-            return LoginStatusResponse(
-                is_logged_in=False,
-                status=LoginStatus.IDLE,
+            return ConnectionStatusResponse(
+                is_connected=False,
+                status=ConnectionStatus.IDLE,
                 last_login=account.last_login,
                 message="有保存的 Session，但浏览器未初始化"
             )
 
         # 无 session
-        return LoginStatusResponse(
-            is_logged_in=False,
-            status=LoginStatus.IDLE,
+        return ConnectionStatusResponse(
+            is_connected=False,
+            status=ConnectionStatus.IDLE,
             last_login=account.last_login,
-            message="账号未登录"
+            message="账号未连接"
         )
 
     except Exception as e:
-        logger.error("检查账号 {} 登录状态失败: {}", account.account_name, e, exc_info=True)
-        return LoginStatusResponse(
-            is_logged_in=False,
-            status=LoginStatus.ERROR,
+        logger.error("检查账号 {} 连接状态失败: {}", account.account_name, e, exc_info=True)
+        return ConnectionStatusResponse(
+            is_connected=False,
+            status=ConnectionStatus.ERROR,
             last_login=account.last_login,
             message=f"检查失败: {str(e)}"
         )
 
 
-@router.post("/login/{account_id}/export")
+# 已弃用端点 (向后兼容)
+@router.get("/login/{account_id}/status", response_model=ConnectionStatusResponse, deprecated=True)
+async def get_login_status_deprecated(
+    account_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """已弃用: 请使用 GET /connect/{account_id}/status"""
+    return await get_connection_status(account_id, db)
+
+
+@router.post("/connect/{account_id}/export")
 async def export_session(
     account_id: int,
     db: AsyncSession = Depends(get_db)
 ):
     """
-    导出账号的登录会话
+    导出账号的连接会话
 
     将加密后的 storage state 返回给客户端。
-    用于备份或迁移账号登录状态。
+    用于备份或迁移账号连接状态。
     """
     result = await db.execute(select(Account).where(Account.id == account_id))
     account = result.scalar_one_or_none()
@@ -713,27 +746,37 @@ async def export_session(
     if not account.storage_state:
         return {
             "success": False,
-            "message": "账号没有保存的登录会话"
+            "message": "账号没有保存的连接会话"
         }
 
     return {
         "success": True,
-        "message": "登录会话导出成功",
+        "message": "连接会话导出成功",
         "storage_state": account.storage_state
     }
 
 
-@router.post("/login/{account_id}/import")
+# 已弃用端点 (向后兼容)
+@router.post("/login/{account_id}/export", deprecated=True)
+async def export_session_deprecated(
+    account_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """已弃用: 请使用 POST /connect/{account_id}/export"""
+    return await export_session(account_id, db)
+
+
+@router.post("/connect/{account_id}/import")
 async def import_session(
     account_id: int,
     request: dict,
     db: AsyncSession = Depends(get_db)
 ):
     """
-    导入账号的登录会话
+    导入账号的连接会话
 
     接收加密后的 storage state 并保存到数据库。
-    用于恢复或迁移账号登录状态。
+    用于恢复或迁移账号连接状态。
     """
     result = await db.execute(select(Account).where(Account.id == account_id))
     account = result.scalar_one_or_none()
@@ -749,23 +792,34 @@ async def import_session(
     account.storage_state = storage_state
     await db.commit()
 
-    logger.info("账号 {} 登录会话已导入", account.account_name)
+    logger.info("账号 {} 连接会话已导入", account.account_name)
 
     return {
         "success": True,
-        "message": "登录会话导入成功"
+        "message": "连接会话导入成功"
     }
 
 
-@router.get("/login/{account_id}/screenshot")
-async def get_login_screenshot(
+# 已弃用端点 (向后兼容)
+@router.post("/login/{account_id}/import", deprecated=True)
+async def import_session_deprecated(
+    account_id: int,
+    request: dict,
+    db: AsyncSession = Depends(get_db)
+):
+    """已弃用: 请使用 POST /connect/{account_id}/import"""
+    return await import_session(account_id, request, db)
+
+
+@router.get("/connect/{account_id}/screenshot")
+async def get_connection_screenshot(
     account_id: int,
     db: AsyncSession = Depends(get_db)
 ):
     """
-    获取登录页面截图（调试用）
+    获取得物登录页面截图（调试用）
 
-    打开登录页面并截图，用于调试登录问题。
+    打开登录页面并截图，用于调试连接问题。
     """
     result = await db.execute(select(Account).where(Account.id == account_id))
     account = result.scalar_one_or_none()
@@ -812,6 +866,16 @@ async def get_login_screenshot(
         }
 
 
+# 已弃用端点 (向后兼容)
+@router.get("/login/{account_id}/screenshot", deprecated=True)
+async def get_login_screenshot_deprecated(
+    account_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """已弃用: 请使用 GET /connect/{account_id}/screenshot"""
+    return await get_connection_screenshot(account_id, db)
+
+
 @router.post("/test/{account_id}")
 async def test_account(
     account_id: int,
@@ -847,7 +911,7 @@ async def test_account(
             return {
                 "success": False,
                 "status": "inactive",
-                "message": "登录已过期，请重新登录"
+                "message": "登录已过期，请重新连接"
             }
 
         return {
@@ -866,12 +930,12 @@ async def test_account(
         }
 
 
-@router.post("/logout/{account_id}")
-async def logout_account(
+@router.post("/disconnect/{account_id}")
+async def disconnect_account(
     account_id: int,
     db: AsyncSession = Depends(get_db)
 ):
-    """登出账号"""
+    """断开账号连接"""
     result = await db.execute(select(Account).where(Account.id == account_id))
     account = result.scalar_one_or_none()
 
@@ -888,5 +952,15 @@ async def logout_account(
 
     await db.commit()
 
-    logger.info(f"账号登出: {account.account_name}")
-    return {"success": True, "message": "已登出"}
+    logger.info(f"账号连接已断开: {account.account_name}")
+    return {"success": True, "message": "已断开连接"}
+
+
+# 已弃用端点 (向后兼容)
+@router.post("/logout/{account_id}", deprecated=True)
+async def logout_account_deprecated(
+    account_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """已弃用: 请使用 POST /disconnect/{account_id}"""
+    return await disconnect_account(account_id, db)
