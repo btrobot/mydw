@@ -420,6 +420,17 @@ async def delete_account(
     # 关闭浏览器上下文
     await browser_manager.close_context(account_id)
 
+    # 关闭预览浏览器（如果该账号有打开的预览）
+    if preview_manager.is_open and preview_manager.current_account_id == account_id:
+        try:
+            await preview_manager.close(save_session=False)
+        except Exception:
+            preview_manager._current_account_id = None
+            preview_manager._context = None
+            preview_manager._page = None
+            preview_manager.browser = None
+            preview_manager.playwright = None
+
     await db.delete(account)
     await db.commit()
 
@@ -499,8 +510,13 @@ async def health_check(
 @router.get("/preview/status", response_model=PreviewStatusResponse)
 async def preview_status() -> PreviewStatusResponse:
     """获取当前预览浏览器状态（供前端轮询）"""
+    is_open = preview_manager.is_open
+    # 活性检查：如果 is_open 但浏览器实际已断开，重置状态
+    if is_open and (preview_manager.browser is None or not preview_manager.browser.is_connected()):
+        preview_manager._current_account_id = None
+        is_open = False
     return PreviewStatusResponse(
-        is_open=preview_manager.is_open,
+        is_open=is_open,
         account_id=preview_manager.current_account_id,
     )
 

@@ -125,12 +125,12 @@ export default function ConnectionModal({
     })
 
     // 监听完成事件
-    eventSource.addEventListener('done', (e: MessageEvent) => {
+    eventSource.addEventListener('done', async (e: MessageEvent) => {
       try {
         const data: DoneEvent = JSON.parse(e.data)
         if (data.final_status === 'success') {
           message.success('连接成功')
-          queryClient.invalidateQueries({ queryKey: ['accounts'] })
+          await queryClient.invalidateQueries({ queryKey: ['accounts'] })
           onSuccess()
         } else {
           message.error(data.message || '连接失败')

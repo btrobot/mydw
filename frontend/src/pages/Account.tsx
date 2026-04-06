@@ -371,16 +371,24 @@ export default function Account() {
           },
         ]
 
+        const connectLabel =
+          record.status === 'logging_in' ? '连接中' :
+          record.status === 'active' || record.status === 'session_expired' ? '重新连接' :
+          record.status === 'disabled' ? null : '连接'
+
         return (
           <Space>
-            <Button
-              type="link"
-              size="small"
-              icon={<LinkOutlined />}
-              onClick={() => handleConnectClick(record)}
-            >
-              连接
-            </Button>
+            {connectLabel !== null && (
+              <Button
+                type="link"
+                size="small"
+                icon={<LinkOutlined />}
+                disabled={record.status === 'logging_in'}
+                onClick={() => handleConnectClick(record)}
+              >
+                {connectLabel}
+              </Button>
+            )}
             {canPreview && (
               isThisPreviewOpen ? (
                 <Dropdown menu={{ items: closeMenuItems }} trigger={['click']}>

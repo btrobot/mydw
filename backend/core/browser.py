@@ -186,8 +186,10 @@ class PreviewBrowserManager:
 
             self._current_account_id = account_id
 
-            # 监听浏览器断开（用户手动关闭窗口）
-            self.browser.on("disconnected", lambda _: self._on_browser_closed())
+            # 监听页面关闭（用户关闭窗口时比 browser.disconnected 更可靠）
+            self._page.on("close", lambda _: self._schedule_cleanup())
+            # 备用：监听浏览器进程退出
+            self.browser.on("disconnected", lambda _: self._schedule_cleanup())
 
             logger.info("账号 {} 预览浏览器已打开", account_id)
             return True
@@ -234,14 +236,43 @@ class PreviewBrowserManager:
         self._current_account_id = None
         return saved_state
 
+    def _schedule_cleanup(self) -> None:
+        """调度异步清理（同步回调中调用）"""
+        self._current_account_id = None  # 立即标记为关闭，is_open 返回 False
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(self._async_cleanup())
+        except Exception:
+            pass
+        logger.info("预览浏览器已被用户关闭，清理已调度")
+
+    async def _async_cleanup(self) -> None:
+        """异步清理浏览器资源"""
+        async with self._lock:
+            if self._context:
+                try:
+                    await self._context.close()
+                except Exception:
+                    pass
+                self._context = None
+                self._page = None
+            if self.browser:
+                try:
+                    await self.browser.close()
+                except Exception:
+                    pass
+                self.browser = None
+            if self.playwright:
+                try:
+                    await self.playwright.stop()
+                except Exception:
+                    pass
+                self.playwright = None
+
     def _on_browser_closed(self) -> None:
-        """浏览器被用户手动关闭时的回调"""
-        self._current_account_id = None
-        self._context = None
-        self._page = None
-        self.browser = None
-        self.playwright = None
-        logger.info("预览浏览器已被用户关闭")
+        """向后兼容，委托给 _schedule_cleanup"""
+        self._schedule_cleanup()
 
     @property
     def is_open(self) -> bool:
