@@ -33,3 +33,4 @@ python-dotenv>=1.0.0
 
 # 开发依赖
 python-dotenv>=1.0.0
+watchfiles>=1.0.0

@@ -83,10 +83,13 @@ async def health():
 
 if __name__ == "__main__":
     import uvicorn
+    # 不使用 reload=True，因为 uvicorn reload 在 Windows 上强制使用 SelectorEventLoop，
+    # 导致 Patchright/Playwright 无法创建子进程 (NotImplementedError)。
+    # 开发时使用 watchfiles 外部热重载:
+    #   watchfiles "venv/Scripts/python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000" ./
     uvicorn.run(
         "main:app",
         host="127.0.0.1",
         port=8000,
-        reload=True,
-        log_level="info"
+        log_level="info",
     )
