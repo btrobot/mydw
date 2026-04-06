@@ -65,6 +65,14 @@ class Settings(BaseSettings):
 # 创建配置实例
 settings = Settings()
 
+# 安全检查：默认加密密钥警告
+if settings.COOKIE_ENCRYPT_KEY == "your-secret-key-change-in-production":
+    import warnings
+    warnings.warn(
+        "COOKIE_ENCRYPT_KEY 使用默认值，请在 .env 中配置安全密钥",
+        stacklevel=1,
+    )
+
 # 确保必要目录存在
 def ensure_dirs():
     """确保必要目录存在"""

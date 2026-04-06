@@ -27,7 +27,7 @@ class BrowserManager:
             self.browser = await self.playwright.chromium.launch(
                 headless=settings.PLAYWRIGHT_HEADLESS,
             )
-            logger.info(f"Patchright 浏览器已启动 (headless={settings.PLAYWRIGHT_HEADLESS})")
+            logger.info("Patchright 浏览器已启动 (headless={})", settings.PLAYWRIGHT_HEADLESS)
 
     async def close(self):
         """关闭浏览器"""
@@ -98,10 +98,10 @@ class BrowserManager:
             state = await context.storage_state()
             state_json = json.dumps(state)
             encrypted = encrypt_data(state_json)
-            logger.info(f"账号 {account_id} 存储状态已保存")
+            logger.info("账号 {} 存储状态已保存", account_id)
             return encrypted
         except Exception as e:
-            logger.error(f"保存存储状态失败: {e}")
+            logger.error("保存存储状态失败: {}", e)
             return None
 
     async def new_page(self, account_id: int):
@@ -118,7 +118,7 @@ class BrowserManager:
             if account_id in self.contexts:
                 await self.contexts[account_id].close()
                 del self.contexts[account_id]
-                logger.info(f"账号 {account_id} 上下文已关闭")
+                logger.info("账号 {} 上下文已关闭", account_id)
 
     async def screenshot(self, account_id: int, path: str):
         """截图"""

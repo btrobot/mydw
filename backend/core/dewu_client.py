@@ -77,7 +77,7 @@ class DewuClient:
             if not self.page:
                 return False, "创建浏览器页面失败"
 
-            logger.info(f"账号 {self.account_id} 开始登录得物")
+            logger.info("账号 {} 开始登录得物", self.account_id)
 
             # 访问登录页面
             await self.page.goto(self.LOGIN_URL, wait_until="networkidle", timeout=60000)
@@ -93,7 +93,7 @@ class DewuClient:
                     timeout=300000  # 5分钟等待用户扫码
                 )
                 self.logged_in = True
-                logger.info(f"账号 {self.account_id} 登录成功")
+                logger.info("账号 {} 登录成功", self.account_id)
                 return True, "登录成功"
 
             except Exception:
@@ -101,7 +101,7 @@ class DewuClient:
                 return False, "登录超时或失败"
 
         except Exception as e:
-            logger.error(f"账号 {self.account_id} 登录失败: {e}")
+            logger.error("账号 {} 登录失败: {}", self.account_id, e)
             return False, str(e)
 
     async def _check_login_result(self) -> Tuple[bool, str]:
@@ -111,7 +111,7 @@ class DewuClient:
             await self.page.wait_for_timeout(2000)
 
             current_url = self.page.url
-            logger.debug(f"当前URL: {current_url}")
+            logger.debug("当前URL: {}", current_url)
 
             # 如果URL不包含login，认为登录成功
             if "login" not in current_url.lower():
@@ -146,7 +146,7 @@ class DewuClient:
             return False, "登录状态未知，请检查页面"
 
         except Exception as e:
-            logger.error(f"检查登录结果失败: {e}")
+            logger.error("检查登录结果失败: {}", e)
             return False, str(e)
 
     async def is_logged_in(self) -> bool:
@@ -181,7 +181,7 @@ class DewuClient:
             return "login" not in current_url.lower()
 
         except Exception as e:
-            logger.error(f"检测登录状态失败: {e}")
+            logger.error("检测登录状态失败: {}", e)
             return False
 
     async def wait_for_login(self, timeout: int = 300000) -> Tuple[bool, str]:
@@ -196,7 +196,7 @@ class DewuClient:
                 if not self.page:
                     return False, "创建浏览器页面失败"
 
-            logger.info(f"账号 {self.account_id} 等待登录 (超时: {timeout}ms)")
+            logger.info("账号 {} 等待登录 (超时: {}ms)", self.account_id, timeout)
 
             # 确保在登录页面
             if "login" not in self.page.url.lower():
@@ -213,7 +213,7 @@ class DewuClient:
                     )
                     if element:
                         self.logged_in = True
-                        logger.info(f"账号 {self.account_id} 登录成功（检测到用户信息）")
+                        logger.info("账号 {} 登录成功（检测到用户信息）", self.account_id)
                         return True, "登录成功"
                 except PlaywrightTimeout:
                     continue
@@ -234,7 +234,7 @@ class DewuClient:
             return False, "登录超时"
 
         except Exception as e:
-            logger.error(f"账号 {self.account_id} 等待登录失败: {e}")
+            logger.error("账号 {} 等待登录失败: {}", self.account_id, e)
             return False, str(e)
 
     async def explore_login_page(self) -> Dict[str, Any]:
@@ -287,11 +287,11 @@ class DewuClient:
             await self.page.screenshot(path=f"logs/login_explore_{self.account_id}.png")
             result["screenshot"] = f"logs/login_explore_{self.account_id}.png"
 
-            logger.info(f"账号 {self.account_id} 登录页面探索完成")
+            logger.info("账号 {} 登录页面探索完成", self.account_id)
             return result
 
         except Exception as e:
-            logger.error(f"探索登录页面失败: {e}")
+            logger.error("探索登录页面失败: {}", e)
             return {"error": str(e)}
 
     async def check_login_status(self) -> Tuple[bool, str]:
@@ -322,7 +322,7 @@ class DewuClient:
             return (True, "已登录") if self.logged_in else (False, "未登录")
 
         except Exception as e:
-            logger.error(f"检查登录状态失败: {e}")
+            logger.error("检查登录状态失败: {}", e)
             return False, str(e)
 
     async def get_user_info(self) -> Optional[dict]:
@@ -349,7 +349,7 @@ class DewuClient:
             return info
 
         except Exception as e:
-            logger.error(f"获取用户信息失败: {e}")
+            logger.error("获取用户信息失败: {}", e)
             return None
 
     async def scrape_profile(self) -> Optional[Dict[str, str]]:
@@ -567,7 +567,7 @@ class DewuClient:
             file_input = await self.page.wait_for_selector('input[type="file"]', timeout=10000)
             await file_input.set_input_files(video_path)
 
-            logger.info(f"账号 {self.account_id} 视频上传中: {video_path}")
+            logger.info("账号 {} 视频上传中: {}", self.account_id, video_path)
 
             # 等待上传完成（进度条消失）
             await self.page.wait_for_selector(
@@ -619,11 +619,11 @@ class DewuClient:
                 timeout=30000
             )
 
-            logger.info(f"账号 {self.account_id} 视频发布成功")
+            logger.info("账号 {} 视频发布成功", self.account_id)
             return True, "发布成功"
 
         except Exception as e:
-            logger.error(f"账号 {self.account_id} 视频发布失败: {e}")
+            logger.error("账号 {} 视频发布失败: {}", self.account_id, e)
             return False, str(e)
 
     async def get_dashboard_stats(self) -> Optional[dict]:
@@ -652,7 +652,7 @@ class DewuClient:
             return stats
 
         except Exception as e:
-            logger.error(f"获取统计数据失败: {e}")
+            logger.error("获取统计数据失败: {}", e)
             return None
 
     async def screenshot_login(self, path: str = "logs/login.png"):

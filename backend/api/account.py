@@ -260,7 +260,7 @@ async def create_account(
     db.add(log)
     await db.commit()
 
-    logger.info(f"创建账号: {account.account_name} ({account.account_id})")
+    logger.info("创建账号: {} ({})", account.account_name, account.account_id)
     response = AccountResponse.model_validate(account)
     if account.phone_encrypted:
         response.phone_masked = mask_phone(decrypt_data(account.phone_encrypted))
@@ -371,11 +371,45 @@ class BatchCheckState:
 batch_check_state = BatchCheckState()
 
 
+class _SessionCheckResult:
+    """健康检查内部结果"""
+    __slots__ = ("is_valid", "error_message")
+
+    def __init__(self, is_valid: bool, error_message: Optional[str] = None):
+        self.is_valid = is_valid
+        self.error_message = error_message
+
+
+async def _check_session_validity(
+    account: Account,
+    timeout_ms: int = 15000,
+) -> _SessionCheckResult:
+    """
+    共享的 session 有效性检查逻辑。
+
+    创建临时浏览器上下文 -> 导航到 creator.dewu.com -> 通过 URL 判断。
+    调用方负责数据库状态更新。
+    """
+    temp_ctx_id = -account.id
+    try:
+        context = await browser_manager.create_context(temp_ctx_id, account.storage_state)
+        page = await context.new_page()
+        try:
+            await page.goto("https://creator.dewu.com", timeout=timeout_ms)
+            is_valid = "/login" not in page.url
+        finally:
+            await browser_manager.close_context(temp_ctx_id)
+        return _SessionCheckResult(is_valid=is_valid)
+    except Exception as e:
+        logger.error("账号 {} 健康检查失败: error_type={}", account.id, type(e).__name__)
+        return _SessionCheckResult(is_valid=False, error_message=f"检查失败: {type(e).__name__}")
+
+
 async def _do_single_health_check(
     db: AsyncSession,
     account: Account,
 ) -> BatchHealthCheckResultItem:
-    """执行单个账号的健康检查（复用现有逻辑）"""
+    """执行单个账号的健康检查（供批量检查调用）"""
     previous_status = account.status
     checked_at = datetime.utcnow()
 
@@ -390,31 +424,25 @@ async def _do_single_health_check(
             checked_at=checked_at,
         )
 
-    temp_ctx_id = -account.id
-    try:
-        context = await browser_manager.create_context(temp_ctx_id, account.storage_state)
-        page = await context.new_page()
-        try:
-            await page.goto("https://creator.dewu.com", timeout=settings.BATCH_HEALTH_CHECK_TIMEOUT * 1000)
-            is_valid = "/login" not in page.url
-        finally:
-            await browser_manager.close_context(temp_ctx_id)
-    except Exception as e:
-        logger.error("批量检查 - 账号 {} 失败: error_type={}", account.id, type(e).__name__)
+    result = await _check_session_validity(
+        account, timeout_ms=settings.BATCH_HEALTH_CHECK_TIMEOUT * 1000
+    )
+
+    if result.error_message:
         return BatchHealthCheckResultItem(
             account_id=account.id,
             account_name=account.account_name,
             previous_status=previous_status,
             current_status=previous_status,
             is_valid=False,
-            message=f"检查失败: {type(e).__name__}",
+            message=result.error_message,
             checked_at=checked_at,
         )
 
     now = datetime.utcnow()
     session_ttl = timedelta(hours=settings.SESSION_TTL_HOURS)
 
-    if is_valid:
+    if result.is_valid:
         account.last_health_check = now
         account.session_expires_at = now + session_ttl
         current_status = account.status
@@ -431,7 +459,7 @@ async def _do_single_health_check(
         account_name=account.account_name,
         previous_status=previous_status,
         current_status=current_status,
-        is_valid=is_valid,
+        is_valid=result.is_valid,
         message=msg,
         checked_at=now,
     )
@@ -494,6 +522,9 @@ async def batch_health_check(
                 consecutive_errors += 1
                 if consecutive_errors >= 3:
                     logger.warning("批量检查熔断：连续 {} 次错误，停止检测", consecutive_errors)
+                    batch_check_state.add_log(
+                        f"[!] 连续 {consecutive_errors} 次错误，自动停止检测"
+                    )
                     skipped = len(accounts) - len(results)
                     break
             else:
@@ -602,7 +633,7 @@ async def update_account(
     await db.commit()
     await db.refresh(account)
 
-    logger.info(f"更新账号: {account.account_name}")
+    logger.info("更新账号: {}", account.account_name)
     return account
 
 
@@ -625,7 +656,8 @@ async def delete_account(
     if preview_manager.is_open and preview_manager.current_account_id == account_id:
         try:
             await preview_manager.close(save_session=False)
-        except Exception:
+        except Exception as e:
+            logger.warning("关闭预览浏览器失败，强制清理: error_type={}", type(e).__name__)
             preview_manager._current_account_id = None
             preview_manager._context = None
             preview_manager._page = None
@@ -635,7 +667,7 @@ async def delete_account(
     await db.delete(account)
     await db.commit()
 
-    logger.info(f"删除账号: {account.account_name}")
+    logger.info("删除账号: {}", account.account_name)
     return None
 
 
@@ -663,27 +695,19 @@ async def health_check(
             message="账号未登录",
         )
 
-    temp_ctx_id = -account_id  # 临时上下文 ID，不影响正常连接
-    try:
-        context = await browser_manager.create_context(temp_ctx_id, account.storage_state)
-        page = await context.new_page()
-        try:
-            await page.goto("https://creator.dewu.com", timeout=15000)
-            is_valid = "/login" not in page.url
-        finally:
-            await browser_manager.close_context(temp_ctx_id)
-    except Exception as e:
-        logger.error("账号 {} 健康检查失败: error_type={}", account_id, type(e).__name__, exc_info=True)
+    check = await _check_session_validity(account, timeout_ms=15000)
+
+    if check.error_message:
         return HealthCheckResponse(
             success=False,
             is_valid=False,
-            message=f"检查失败: {type(e).__name__}",
+            message=check.error_message,
         )
 
     now = datetime.utcnow()
     session_ttl = timedelta(hours=settings.SESSION_TTL_HOURS)
 
-    if is_valid:
+    if check.is_valid:
         account.last_health_check = now
         account.session_expires_at = now + session_ttl
         expires_at = account.session_expires_at
@@ -697,12 +721,12 @@ async def health_check(
 
     logger.info(
         "账号 {} 健康检查完成: is_valid={}, account_id={}",
-        account.account_name, is_valid, account_id
+        account.account_name, check.is_valid, account_id
     )
 
     return HealthCheckResponse(
         success=True,
-        is_valid=is_valid,
+        is_valid=check.is_valid,
         message=message,
         expires_at=expires_at,
     )
@@ -1581,7 +1605,7 @@ async def test_account(
         }
 
     except Exception as e:
-        logger.error(f"测试账号失败: {e}")
+        logger.error("测试账号失败: {}", e)
         return {
             "success": False,
             "status": "error",
@@ -1617,7 +1641,7 @@ async def disconnect_account(
 
     await db.commit()
 
-    logger.info(f"账号连接已断开: {account.account_name}")
+    logger.info("账号连接已断开: {}", account.account_name)
     return {"success": True, "message": "已断开连接"}
 
 
