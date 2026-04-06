@@ -23,8 +23,9 @@ from schemas import (
     SendCodeRequest, SendCodeResponse,
     VerifyCodeRequest, VerifyCodeResponse,
     HealthCheckResponse,
+    PreviewCloseRequest, PreviewStatusResponse,
 )
-from core.browser import browser_manager
+from core.browser import browser_manager, preview_manager
 from core.config import settings
 from core.dewu_client import get_dewu_client, get_or_create_client, release_client, _active_clients
 from utils.crypto import encrypt_data, decrypt_data, mask_phone
@@ -493,6 +494,84 @@ async def health_check(
         message=message,
         expires_at=expires_at,
     )
+
+
+@router.get("/preview/status", response_model=PreviewStatusResponse)
+async def preview_status() -> PreviewStatusResponse:
+    """获取当前预览浏览器状态（供前端轮询）"""
+    return PreviewStatusResponse(
+        is_open=preview_manager.is_open,
+        account_id=preview_manager.current_account_id,
+    )
+
+
+@router.post("/{account_id}/preview")
+async def preview_account(
+    account_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    打开账号的 headed 预览浏览器
+
+    加载已登录的得物 session，让用户在可见窗口中查看创作者平台。
+    一次只允许一个预览窗口；打开新预览会先关闭已有的。
+    """
+    result = await db.execute(select(Account).where(Account.id == account_id))
+    account = result.scalar_one_or_none()
+
+    if not account:
+        raise HTTPException(status_code=404, detail="账号不存在")
+
+    if not account.storage_state:
+        raise HTTPException(status_code=400, detail="账号尚未登录，无法打开预览")
+
+    try:
+        await preview_manager.open(account_id, account.storage_state)
+    except Exception as e:
+        logger.error("账号 {} 打开预览浏览器失败: error_type={}", account_id, type(e).__name__, exc_info=True)
+        raise HTTPException(status_code=500, detail="打开预览浏览器失败")
+
+    logger.info("账号 {} 预览浏览器已打开", account_id)
+    return {"success": True, "message": "预览浏览器已打开"}
+
+
+@router.post("/{account_id}/preview/close")
+async def close_preview(
+    account_id: int,
+    request: PreviewCloseRequest,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    关闭预览浏览器
+
+    可选择保存更新后的 session：若 save_session=True，
+    将把最新的 storage_state 加密后写入数据库。
+    """
+    if not preview_manager.is_open:
+        raise HTTPException(status_code=400, detail="当前没有打开的预览浏览器")
+
+    if preview_manager.current_account_id != account_id:
+        raise HTTPException(
+            status_code=400,
+            detail=f"当前预览的账号不是 {account_id}",
+        )
+
+    try:
+        saved_state = await preview_manager.close(save_session=request.save_session)
+    except Exception as e:
+        logger.error("账号 {} 关闭预览浏览器失败: error_type={}", account_id, type(e).__name__, exc_info=True)
+        raise HTTPException(status_code=500, detail="关闭预览浏览器失败")
+
+    if request.save_session and saved_state:
+        result = await db.execute(select(Account).where(Account.id == account_id))
+        account = result.scalar_one_or_none()
+        if account:
+            account.storage_state = saved_state
+            await db.commit()
+            logger.info("账号 {} 预览 session 已保存到数据库", account_id)
+
+    logger.info("账号 {} 预览浏览器已关闭 (save_session={})", account_id, request.save_session)
+    return {"success": True, "message": "预览已关闭"}
 
 
 @router.post("/connect/{account_id}", response_model=ConnectionResponse, deprecated=True)

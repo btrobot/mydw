@@ -438,6 +438,19 @@ class BackupRequest(BaseModel):
     include_logs: bool = False
 
 
+# ============ 预览 Schema ============
+
+class PreviewCloseRequest(BaseModel):
+    """关闭预览浏览器请求"""
+    save_session: bool = False
+
+
+class PreviewStatusResponse(BaseModel):
+    """预览状态响应"""
+    is_open: bool
+    account_id: Optional[int] = None
+
+
 # ============ 通用响应 ============
 
 class ApiResponse(BaseModel):

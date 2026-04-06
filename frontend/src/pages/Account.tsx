@@ -8,18 +8,31 @@ import {
   Input,
   Select,
   Tag,
+  Dropdown,
   message,
   Row,
   Col,
   Typography,
+  Tooltip,
 } from 'antd'
+import type { MenuProps } from 'antd'
 import {
   PlusOutlined,
   DeleteOutlined,
   LinkOutlined,
   SearchOutlined,
+  EyeOutlined,
+  EyeInvisibleOutlined,
 } from '@ant-design/icons'
-import { useAccounts, useCreateAccount, useDeleteAccount, useUpdateAccount } from '../hooks'
+import {
+  useAccounts,
+  useCreateAccount,
+  useDeleteAccount,
+  useUpdateAccount,
+  usePreviewAccount,
+  useClosePreview,
+  usePreviewStatus,
+} from '../hooks'
 import type { AccountResponseExtended, AccountQueryParams } from '../hooks/useAccount'
 import ConnectionModal from '../components/ConnectionModal'
 import StatusBadge from '../components/StatusBadge'
@@ -162,6 +175,11 @@ export default function Account() {
   const deleteAccount = useDeleteAccount()
   const updateAccount = useUpdateAccount()
 
+  // Preview hooks
+  const previewAccount = usePreviewAccount()
+  const closePreview = useClosePreview()
+  const { data: previewStatus } = usePreviewStatus()
+
   // Derive unique tag options from all loaded accounts
   const tagOptions = useMemo<string[]>(() => {
     const set = new Set<string>()
@@ -223,6 +241,33 @@ export default function Account() {
       message.error('备注保存失败')
     })
   }, [updateAccount])
+
+  // ---- Preview handlers ----
+  const handlePreview = useCallback(async (id: number) => {
+    try {
+      await previewAccount.mutateAsync(id)
+      message.success('预览浏览器已打开')
+    } catch (error: unknown) {
+      if (error !== null && typeof error === 'object' && 'message' in error) {
+        message.error((error as Error).message || '打开预览失败')
+      } else {
+        message.error('打开预览失败')
+      }
+    }
+  }, [previewAccount])
+
+  const handleClosePreview = useCallback((id: number, saveSession: boolean) => {
+    closePreview.mutateAsync({ accountId: id, saveSession }).then(() => {
+      message.success(saveSession ? 'Session 已保存，预览已关闭' : '预览已关闭')
+      refetch()
+    }).catch((error: unknown) => {
+      if (error !== null && typeof error === 'object' && 'message' in error) {
+        message.error((error as Error).message || '关闭预览失败')
+      } else {
+        message.error('关闭预览失败')
+      }
+    })
+  }, [closePreview, refetch])
 
   // Search / filter
   const handleSearch = useCallback((value: string) => {
@@ -306,31 +351,89 @@ export default function Account() {
     {
       title: '操作',
       key: 'action',
-      width: 120,
+      width: 200,
       fixed: 'right' as const,
-      render: (_: unknown, record: AccountResponseExtended) => (
-        <Space>
-          <Button
-            type="link"
-            size="small"
-            icon={<LinkOutlined />}
-            onClick={() => handleConnectClick(record)}
-          >
-            连接
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record.id)}
-          >
-            删除
-          </Button>
-        </Space>
-      ),
+      render: (_: unknown, record: AccountResponseExtended) => {
+        const canPreview = record.status === 'active' || record.status === 'session_expired'
+        const isThisPreviewOpen = previewStatus?.is_open && previewStatus.account_id === record.id
+        const isOtherPreviewOpen = previewStatus?.is_open && previewStatus.account_id !== record.id
+
+        const closeMenuItems: MenuProps['items'] = [
+          {
+            key: 'save-close',
+            label: '保存并关闭',
+            onClick: () => handleClosePreview(record.id, true),
+          },
+          {
+            key: 'close-only',
+            label: '直接关闭',
+            onClick: () => handleClosePreview(record.id, false),
+          },
+        ]
+
+        return (
+          <Space>
+            <Button
+              type="link"
+              size="small"
+              icon={<LinkOutlined />}
+              onClick={() => handleConnectClick(record)}
+            >
+              连接
+            </Button>
+            {canPreview && (
+              isThisPreviewOpen ? (
+                <Dropdown menu={{ items: closeMenuItems }} trigger={['click']}>
+                  <Button
+                    type="link"
+                    size="small"
+                    icon={<EyeInvisibleOutlined />}
+                    loading={closePreview.isPending}
+                  >
+                    关闭预览
+                  </Button>
+                </Dropdown>
+              ) : (
+                <Tooltip
+                  title={isOtherPreviewOpen ? '请先关闭当前预览' : undefined}
+                >
+                  <Button
+                    type="link"
+                    size="small"
+                    icon={<EyeOutlined />}
+                    disabled={isOtherPreviewOpen}
+                    loading={previewAccount.isPending && previewAccount.variables === record.id}
+                    onClick={() => handlePreview(record.id)}
+                  >
+                    预览
+                  </Button>
+                </Tooltip>
+              )
+            )}
+            <Button
+              type="link"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record.id)}
+            >
+              删除
+            </Button>
+          </Space>
+        )
+      },
     },
-  ], [handleConnectClick, handleDelete, handleSaveRemark])
+  ], [
+    handleConnectClick,
+    handleDelete,
+    handleSaveRemark,
+    handlePreview,
+    handleClosePreview,
+    previewStatus,
+    previewAccount.isPending,
+    previewAccount.variables,
+    closePreview.isPending,
+  ])
 
   return (
     <>

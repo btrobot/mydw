@@ -24,7 +24,8 @@ import type {
  * Extended account response that includes fields added after initial code generation.
  * phone_masked is provided by the backend when a phone number has been stored.
  */
-export interface AccountResponseExtended extends AccountResponse {
+export interface AccountResponseExtended extends Omit<AccountResponse, 'status'> {
+  status: 'active' | 'inactive' | 'error' | 'logging_in' | 'session_expired' | 'disabled'
   phone_masked?: string | null
   dewu_nickname?: string | null
   dewu_uid?: string | null
@@ -140,4 +141,62 @@ export const useTestAccount = () =>
       const response = await testAccountApiAccountsTestAccountIdPost({ path: { account_id: accountId } })
       return response.data
     },
+  })
+
+// ---------------------------------------------------------------------------
+// Preview hooks
+// ---------------------------------------------------------------------------
+
+export interface PreviewStatus {
+  is_open: boolean
+  account_id: number | null
+}
+
+export const usePreviewAccount = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (accountId: number) => {
+      const { api } = await import('@/services/api')
+      const { data } = await api.post<PreviewStatus>(`/accounts/${accountId}/preview`)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['preview-status'] })
+    },
+  })
+}
+
+export const useClosePreview = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      accountId,
+      saveSession,
+    }: {
+      accountId: number
+      saveSession: boolean
+    }) => {
+      const { api } = await import('@/services/api')
+      const { data } = await api.post<PreviewStatus>(
+        `/accounts/${accountId}/preview/close`,
+        { save_session: saveSession },
+      )
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['preview-status'] })
+      queryClient.invalidateQueries({ queryKey: ['accounts'] })
+    },
+  })
+}
+
+export const usePreviewStatus = () =>
+  useQuery<PreviewStatus>({
+    queryKey: ['preview-status'],
+    queryFn: async () => {
+      const { api } = await import('@/services/api')
+      const { data } = await api.get<PreviewStatus>('/accounts/preview/status')
+      return data
+    },
+    refetchInterval: 3000,
   })

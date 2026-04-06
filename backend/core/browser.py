@@ -134,3 +134,120 @@ browser_manager = BrowserManager()
 async def get_browser_manager() -> BrowserManager:
     """获取浏览器管理器"""
     return browser_manager
+
+
+class PreviewBrowserManager:
+    """独立的 headed 浏览器管理器，用于账号预览"""
+
+    def __init__(self) -> None:
+        self.playwright = None
+        self.browser = None
+        self._current_account_id: Optional[int] = None
+        self._context = None
+        self._page = None
+        self._lock = asyncio.Lock()
+
+    async def open(self, account_id: int, storage_state: Optional[str] = None) -> bool:
+        """打开预览浏览器"""
+        async with self._lock:
+            # 如果已有预览窗口打开，先关闭
+            if self._current_account_id is not None:
+                await self._close_internal()
+
+            # 启动 headed 浏览器
+            if not self.playwright:
+                self.playwright = await async_playwright().start()
+            if not self.browser:
+                self.browser = await self.playwright.chromium.launch(headless=False)
+
+            # 创建 context
+            self._context = await self.browser.new_context(
+                viewport={"width": 1280, "height": 800},
+                locale="zh-CN",
+                timezone_id="Asia/Shanghai",
+            )
+
+            # 加载 storage_state
+            if storage_state:
+                try:
+                    state_data = decrypt_data(storage_state)
+                    state = json.loads(state_data)
+                    await self._context.set_storage_state(state)
+                    logger.info("账号 {} 预览 storage_state 加载成功", account_id)
+                except Exception as e:
+                    logger.warning("预览浏览器加载 storage_state 失败: {}", e)
+
+            # 打开页面
+            self._page = await self._context.new_page()
+            await self._page.goto("https://creator.dewu.com", timeout=30000)
+
+            self._current_account_id = account_id
+
+            # 监听浏览器断开（用户手动关闭窗口）
+            self.browser.on("disconnected", lambda _: self._on_browser_closed())
+
+            logger.info("账号 {} 预览浏览器已打开", account_id)
+            return True
+
+    async def close(self, save_session: bool = False) -> Optional[str]:
+        """关闭预览浏览器，可选保存 session"""
+        async with self._lock:
+            return await self._close_internal(save_session)
+
+    async def _close_internal(self, save_session: bool = False) -> Optional[str]:
+        """内部关闭方法（调用前必须持有锁）"""
+        saved_state = None
+        if save_session and self._context:
+            try:
+                state = await self._context.storage_state()
+                state_json = json.dumps(state)
+                saved_state = encrypt_data(state_json)
+                logger.info("预览 session 已保存: account_id={}", self._current_account_id)
+            except Exception as e:
+                logger.warning("保存预览 session 失败: {}", e)
+
+        if self._context:
+            try:
+                await self._context.close()
+            except Exception:
+                pass
+            self._context = None
+            self._page = None
+
+        if self.browser:
+            try:
+                await self.browser.close()
+            except Exception:
+                pass
+            self.browser = None
+
+        if self.playwright:
+            try:
+                await self.playwright.stop()
+            except Exception:
+                pass
+            self.playwright = None
+
+        self._current_account_id = None
+        return saved_state
+
+    def _on_browser_closed(self) -> None:
+        """浏览器被用户手动关闭时的回调"""
+        self._current_account_id = None
+        self._context = None
+        self._page = None
+        self.browser = None
+        self.playwright = None
+        logger.info("预览浏览器已被用户关闭")
+
+    @property
+    def is_open(self) -> bool:
+        return self._current_account_id is not None
+
+    @property
+    def current_account_id(self) -> Optional[int]:
+        return self._current_account_id
+
+
+# 全局预览浏览器管理器实例
+preview_manager = PreviewBrowserManager()

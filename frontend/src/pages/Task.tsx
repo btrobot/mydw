@@ -21,7 +21,7 @@ import {
   useDeleteAllTasks,
   useInitTasksFromMaterials,
 } from '../hooks'
-import type { AccountResponse } from '@/api'
+import type { AccountResponseExtended } from '../hooks/useAccount'
 
 interface Task {
   id: number
@@ -115,7 +115,7 @@ export default function Task() {
             initialValue={accounts[0]?.id}
           >
             <Select>
-              {accounts.map((a: AccountResponse) => (
+              {accounts.map((a: AccountResponseExtended) => (
                 <Select.Option key={a.id} value={a.id}>{a.account_name}</Select.Option>
               ))}
             </Select>
@@ -234,7 +234,7 @@ export default function Task() {
       dataIndex: 'account_id',
       key: 'account_id',
       width: 120,
-      render: (id: number) => accounts.find((a: AccountResponse) => a.id === id)?.account_name || `ID:${id}`,
+      render: (id: number) => accounts.find((a: AccountResponseExtended) => a.id === id)?.account_name || `ID:${id}`,
     },
     {
       title: '视频',
