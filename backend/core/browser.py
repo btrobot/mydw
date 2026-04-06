@@ -55,22 +55,24 @@ class BrowserManager:
             if account_id in self.contexts:
                 await self.contexts[account_id].close()
 
-            # 创建新上下文
-            context = await self.browser.new_context(
-                viewport={"width": 1920, "height": 1080},
-                locale="zh-CN",
-                timezone_id="Asia/Shanghai",
-            )
+            # 构建 context 参数
+            context_kwargs: Dict = {
+                "viewport": {"width": 1920, "height": 1080},
+                "locale": "zh-CN",
+                "timezone_id": "Asia/Shanghai",
+            }
 
-            # 如果有存储状态，加载它
+            # storage_state 必须在 new_context 时传入
             if storage_state:
                 try:
                     state_data = decrypt_data(storage_state)
                     state = json.loads(state_data)
-                    await context.set_storage_state(state)
-                    logger.info(f"账号 {account_id} 加载存储状态成功")
+                    context_kwargs["storage_state"] = state
+                    logger.info("账号 {} 加载存储状态成功", account_id)
                 except Exception as e:
-                    logger.warning(f"加载存储状态失败: {e}")
+                    logger.warning("加载存储状态失败: {}", e)
+
+            context = await self.browser.new_context(**context_kwargs)
 
             self.contexts[account_id] = context
             return context
@@ -160,22 +162,23 @@ class PreviewBrowserManager:
             if not self.browser:
                 self.browser = await self.playwright.chromium.launch(headless=False)
 
-            # 创建 context
-            self._context = await self.browser.new_context(
-                viewport={"width": 1280, "height": 800},
-                locale="zh-CN",
-                timezone_id="Asia/Shanghai",
-            )
-
-            # 加载 storage_state
+            # 解密 storage_state
+            context_kwargs: Dict = {
+                "viewport": {"width": 1280, "height": 800},
+                "locale": "zh-CN",
+                "timezone_id": "Asia/Shanghai",
+            }
             if storage_state:
                 try:
                     state_data = decrypt_data(storage_state)
                     state = json.loads(state_data)
-                    await self._context.set_storage_state(state)
-                    logger.info("账号 {} 预览 storage_state 加载成功", account_id)
+                    context_kwargs["storage_state"] = state
+                    logger.info("账号 {} 预览 storage_state 已准备", account_id)
                 except Exception as e:
-                    logger.warning("预览浏览器加载 storage_state 失败: {}", e)
+                    logger.warning("预览浏览器解密 storage_state 失败: {}", e)
+
+            # 创建 context（storage_state 必须在 new_context 时传入）
+            self._context = await self.browser.new_context(**context_kwargs)
 
             # 打开页面
             self._page = await self._context.new_page()
