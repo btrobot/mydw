@@ -129,7 +129,7 @@ class SendCodeResponse(BaseModel):
     """发送验证码响应"""
     success: bool
     message: str
-    status: str = "code_sent"
+    status: str = "waiting_phone"
 
 
 class VerifyCodeRequest(BaseModel):

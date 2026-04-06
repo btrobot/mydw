@@ -628,7 +628,7 @@ async def send_sms_code(
     return SendCodeResponse(
         success=True,
         message="验证码发送中，请通过 SSE 监听状态",
-        status="code_sent",
+        status="waiting_phone",
     )
 
 
@@ -839,7 +839,7 @@ async def connection_status_stream(
                 status = status_data.get("status")
                 if status in [ConnectionStatus.SUCCESS, ConnectionStatus.ERROR]:
                     yield f"event: done\n"
-                    yield f"data: {json.dumps({'message': '连接流程结束', 'final_status': status})}\n\n"
+                    yield f"data: {json.dumps({'message': '连接流程结束', 'final_status': status.value})}\n\n"
                     break
 
         except asyncio.CancelledError:
