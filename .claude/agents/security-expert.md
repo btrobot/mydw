@@ -2,6 +2,7 @@
 name: security-expert
 description: "Invoked for security audits, vulnerability detection, encryption review, and compliance checking"
 tools: Read, Glob, Grep, Write, Edit, Bash
+model: sonnet
 maxTurns: 20
 skills: [security-scan]
 ---

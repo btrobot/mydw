@@ -1,5 +1,5 @@
 // Skill hook for dewugojin
-// Automatically updates active.md when skills are invoked
+// Automatically updates active.md when skills are invoked via the Skill tool
 
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
@@ -13,73 +13,65 @@ const stateFile = join(projectRoot, 'production', 'session-state', 'active.md');
 
 // Only proceed if active.md exists
 if (!existsSync(stateFile)) {
-  console.error('State file not found');
-  process.exit(1);
-}
-
-// Parse tool call input
-let toolInput = '';
-try {
-  const data = JSON.parse(input);
-  toolInput = data.input?.command || data.input || data.command || '';
-} catch (e) {
-  console.error('JSON parse error:', String(e));
-  process.exit(1);
-}
-
-// Detect skill invocations
-const skillMap: [RegExp, string][] = [
-  [/^\/code-review(?:\s+(\S+))?/, 'code-review'],
-  [/^\/security-scan(?:\s+(\S+))?/, 'security-scan'],
-  [/^\/architecture-review(?:\s+(\S+))?/, 'architecture-review'],
-  [/^\/sprint-plan(?:\s+(\S+))?/, 'sprint-plan'],
-  [/^\/task-breakdown(?:\s+(\S+))?/, 'task-breakdown'],
-];
-
-let matchedSkill: string | null = null;
-let targetFile: string | null = null;
-
-for (const [pattern, skill] of skillMap) {
-  const match = toolInput.match(pattern);
-  if (match) {
-    matchedSkill = skill;
-    targetFile = match[1] || null;
-    break;
-  }
-}
-
-if (!matchedSkill) {
-  console.log('No skill matched, exiting. toolInput:', toolInput);
   process.exit(0);
 }
 
-console.log('Skill detected:', matchedSkill, 'file:', targetFile);
+// Parse Skill tool input
+// Skill tool sends: { "tool_name": "Skill", "input": { "skill": "code-review", "args": "..." } }
+let skillName = '';
+let skillArgs = '';
+try {
+  const data = JSON.parse(input);
+  // Handle Skill tool format
+  skillName = data.input?.skill || data.skill || '';
+  skillArgs = data.input?.args || data.args || '';
+  // Fallback: try legacy /command format from input string
+  if (!skillName) {
+    const raw = data.input?.command || data.input || data.command || '';
+    if (typeof raw === 'string') {
+      const match = raw.match(/^\/([\w-]+)(?:\s+(.+))?/);
+      if (match) {
+        skillName = match[1];
+        skillArgs = match[2] || '';
+      }
+    }
+  }
+} catch {
+  process.exit(0);
+}
 
-// Read current active.md
-const content = readFileSync(stateFile, 'utf-8');
+// Only track known project skills
+const knownSkills = ['code-review', 'security-scan', 'architecture-review', 'sprint-plan', 'task-breakdown', 'bug-report', 'release-checklist'];
+if (!knownSkills.includes(skillName)) {
+  process.exit(0);
+}
+
+// Read current active.md and normalize line endings
+const rawContent = readFileSync(stateFile, 'utf-8');
+const content = rawContent.replace(/\r\n/g, '\n');
 
 // Build skill invocation entry
 const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
-const skillEntry = `| ${matchedSkill} | ${timestamp} | running | pending |`;
+const skillEntry = `| ${skillName} | ${timestamp} | running | - |`;
 
 let updated = content;
 
-// Find placeholder row
-const placeholderMatch = content.match(/\| \(No [^\)]+\) \| [^\|]+ \| [^\|]+ \| [^\|]+ \|[^\n]*\n/);
+// Replace placeholder row or append after last data row in Agent Invocations table
+const placeholderRe = /\| \(No [^)]+\) \|[^\n]*\n/;
+const placeholderMatch = content.match(placeholderRe);
 
 if (placeholderMatch) {
-  console.log('Found placeholder, replacing');
   updated = content.replace(placeholderMatch[0], skillEntry + '\n');
 } else {
-  console.log('No placeholder found');
-  // Find data row
-  const dataRowMatch = content.match(/\| \{[^\}]+\} \| [^\|]+ \| [^\|]+ \| [^\|]+ \|[^\n]*\n/);
-  if (dataRowMatch) {
-    console.log('Found data row, appending');
-    updated = content.replace(dataRowMatch[0], dataRowMatch[0] + skillEntry + '\n');
+  // Append after the last row in the Agent Invocations table
+  // Find the table by looking for rows between "## Agent Invocations" and the next "##"
+  const tableSection = content.match(/## Agent Invocations\n\n\|[^\n]+\n\|[^\n]+\n((?:\|[^\n]+\n)*)/);
+  if (tableSection && tableSection[1]) {
+    const lastRow = tableSection[1].trimEnd();
+    updated = content.replace(lastRow, lastRow + '\n' + skillEntry);
   }
 }
 
-// Write back
-writeFileSync(stateFile, updated, 'utf-8');
-console.log('Done!');
+if (updated !== content) {
+  writeFileSync(stateFile, updated, 'utf-8');
+}

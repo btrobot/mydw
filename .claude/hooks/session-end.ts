@@ -1,6 +1,6 @@
 // Session end hook for dewugojin
 // Enhanced with automatic session state archival
-import { existsSync, readFileSync, appendFileSync, writeFileSync, mkdirSync, unlinkSync } from "fs";
+import { existsSync, readFileSync, appendFileSync, writeFileSync, mkdirSync, unlinkSync, renameSync } from "fs";
 import { join } from "path";
 import { findProjectRoot, header, warn, ok, info, git } from "./utils.ts";
 
@@ -65,6 +65,21 @@ if (recentCommits || uncommitted) {
 
   entry += "---\n\n";
   appendFileSync(join(sessionLogDir, "session-log.md"), entry, "utf-8");
+}
+
+// ============================================
+// Archive Agent Audit Log
+// ============================================
+
+const auditLogFile = join(sessionLogDir, "agent-audit.jsonl");
+if (existsSync(auditLogFile)) {
+  const auditContent = readFileSync(auditLogFile, "utf-8");
+  if (auditContent && auditContent.trim()) {
+    // Rename current log to timestamped archive
+    const archiveName = `agent-audit-${timestamp}.jsonl`;
+    renameSync(auditLogFile, join(sessionLogDir, archiveName));
+    info(`Agent audit log archived to ${archiveName}`);
+  }
 }
 
 // ============================================

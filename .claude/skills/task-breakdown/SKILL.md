@@ -32,8 +32,8 @@ allowed-tools: Read, Write, Glob, Grep
 
 | 功能类型 | 参与者 |
 |----------|--------|
-| UI 为主 | Frontend Lead, UI Developer |
-| API 为主 | Backend Lead, API Developer |
+| UI 为主 | Frontend Lead |
+| API 为主 | Backend Lead |
 | 自动化 | Backend Lead, Automation Developer |
 | 端到端 | 所有 Lead |
 
@@ -99,7 +99,7 @@ allowed-tools: Read, Write, Glob, Grep
 - [ ] 响应式布局
 
 **估计**: 1d
-**负责人**: UI Developer
+**负责人**: Frontend Lead
 **类型**: frontend
 
 ---
@@ -117,7 +117,7 @@ allowed-tools: Read, Write, Glob, Grep
 
 **依赖**: FE-AICLIP-01, BE-AICLIP-02
 **估计**: 1d
-**负责人**: UI Developer
+**负责人**: Frontend Lead
 **类型**: frontend
 
 ---
@@ -134,7 +134,7 @@ allowed-tools: Read, Write, Glob, Grep
 - [ ] 输入验证
 
 **估计**: 0.5d
-**负责人**: API Developer
+**负责人**: Backend Lead
 **类型**: backend
 
 ---
@@ -202,7 +202,7 @@ allowed-tools: Read, Write, Glob, Grep
 
 **依赖**: BE-AICLIP-01, BE-AICLIP-02, BE-AICLIP-03
 **估计**: 1d
-**负责人**: Test Engineer
+**负责人**: QA Lead
 **类型**: both
 
 ---

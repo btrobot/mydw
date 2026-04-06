@@ -70,7 +70,28 @@ allowed-tools: {tools}         # REQUIRED: comma-separated list
 
 ## Body Structure
 
-### 1. Invocation Handler
+### 1. Context Detection (Recommended)
+
+For skills that behave differently based on the target domain (e.g., Python vs TypeScript), add a `## Context Detection` section immediately after the trigger examples. This section SHOULD:
+
+- Detect domain from the file path argument (extension or directory prefix)
+- Fall back to `active.md` Active Task component if no argument is given
+- Set a domain label that controls which checklists and static checks are executed
+
+```markdown
+## Context Detection
+
+**IMPORTANT**: Before starting, determine scope from the argument:
+
+1. If the argument contains a file path:
+   - Path starts with `backend/` or ends with `.py` → **Python mode**
+   - Path starts with `frontend/` or ends with `.ts`/`.tsx` → **TypeScript mode**
+2. If no argument: check `active.md` for context, or use both modes
+```
+
+This avoids running irrelevant checks (e.g., `npm run typecheck` when reviewing a Python file) and produces focused, actionable reports.
+
+### 2. Invocation Handler
 
 ```markdown
 When this skill is invoked:

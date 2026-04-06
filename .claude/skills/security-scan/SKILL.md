@@ -1,7 +1,7 @@
 ---
 name: security-scan
 description: "安全扫描 - 检查代码漏洞和安全问题"
-argument-hint: "[范围: full|quick|dependencies]"
+argument-hint: "[范围: full|quick|dependencies] [路径: backend/|frontend/]"
 user-invocable: true
 allowed-tools: Read, Write, Glob, Grep, Bash
 ---
@@ -17,7 +17,20 @@ allowed-tools: Read, Write, Glob, Grep, Bash
 /security-scan quick
 /security-scan full
 /security-scan dependencies
+/security-scan backend/
+/security-scan frontend/
 ```
+
+## Context Detection
+
+**IMPORTANT**: Before starting the scan, determine scope from the argument:
+
+1. If the argument is a **mode** (`quick`/`full`/`dependencies`): scan all code using that mode
+2. If the argument is a **path**:
+   - Path starts with `backend/` or is a `.py` file → **Backend scope**: only scan Python files, skip npm audit, focus on SQLi/credential/logging patterns
+   - Path starts with `frontend/` or is a `.ts`/`.tsx` file → **Frontend scope**: only scan TypeScript files, skip pip-audit, focus on XSS/console.log/sensitive storage patterns
+3. If **no argument**: default to `quick` mode, scan all code
+4. If argument combines mode + path (e.g., `full backend/`): apply both filters
 
 ## 扫描范围
 
@@ -203,5 +216,5 @@ if not SECRET_KEY:
 
 **建议**: 立即修复
 
-**请求**: PM 批准紧急修复
+**请求**: User (Product Owner) 批准紧急修复
 ```

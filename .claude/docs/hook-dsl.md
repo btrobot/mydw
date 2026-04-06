@@ -34,22 +34,25 @@ powershell -c "irm bun.sh/install.ps1 | iex"
 
 ```
 hooks/
-├── utils.ts           # 共享工具函数
-├── session-start.ts   # 会话开始
-├── session-end.ts     # 会话结束
-└── pre-commit.ts      # 提交前检查
+├── utils.ts            # 共享工具函数
+├── session-start.ts    # 会话开始
+├── session-end.ts      # 会话结束
+├── pre-commit.ts       # 提交前检查
+├── log-agent.ts        # Agent 启动审计 (SubagentStart)
+├── log-agent-stop.ts   # Agent 完成审计 (SubagentStop)
+└── skill-hook.ts       # Skill 调用记录
 ```
 
 ### Settings Configuration
 
-> **Important**: Always use `cd $PWD &&` to ensure hooks run from the project root. Without this, relative paths like `.claude/hooks/...` will fail if Claude Code runs hooks from a different directory.
+> **Important**: Ensure hooks run from the project root. The recommended pattern is `PROJECT_ROOT=$(git rev-parse --show-toplevel) && bun "$PROJECT_ROOT/.claude/hooks/xxx.ts"`.
 
 ```json
 {
   "hooks": {
     "SessionStart": [{
       "hooks": [{
-        "command": "cd $PWD && bun .claude/hooks/session-start.ts",
+        "command": "PROJECT_ROOT=$(git rev-parse --show-toplevel) && bun \"$PROJECT_ROOT/.claude/hooks/session-start.ts\"",
         "timeout": 15
       }]
     }],

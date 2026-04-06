@@ -1,6 +1,6 @@
 // Shared utilities for dewugojin hooks
 import { execSync } from "child_process";
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import { existsSync } from "fs";
 import { dirname, join } from "path";
 
 // Find project root by traversing up to find .git
@@ -76,51 +76,4 @@ export function getStagedFiles(): string[] {
 export function getUncommittedChanges(): string | null {
   const status = git(["status", "--short"]);
   return status && status.trim() ? status.trim() : null;
-}
-
-// Check if command exists
-export function commandExists(cmd: string): boolean {
-  try {
-    execSync(cmd, { stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// Get command version
-export function getVersion(cmd: string, args: string = "--version"): string | null {
-  try {
-    return execSync(`${cmd} ${args}`, { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }).trim();
-  } catch {
-    return null;
-  }
-}
-
-// Read file safely
-export function readFile(path: string): string | null {
-  try {
-    return readFileSync(path, "utf-8");
-  } catch {
-    return null;
-  }
-}
-
-// Update session state
-export function updateSessionState(projectRoot: string) {
-  const stateFile = join(projectRoot, "production", "session-state", "active.md");
-  if (!existsSync(stateFile)) return;
-
-  const content = readFile(stateFile);
-  if (!content) return;
-
-  const timestamp = new Date().toISOString().replace("T", " ").substring(0, 19);
-  const newEntry = `\n\n### ${timestamp}\n- Session ended\n`;
-
-  if (content.includes("## Session History") || content.includes("## History")) {
-    const updated = content.replace(/(## Session History|## History)/, `${newEntry}\n$1`);
-    try {
-      writeFileSync(stateFile, updated);
-    } catch {}
-  }
 }

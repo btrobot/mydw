@@ -2,6 +2,7 @@
 name: automation-developer
 description: "Invoked for Playwright browser automation, FFmpeg video processing, and script development"
 tools: Read, Glob, Grep, Write, Edit, Bash
+model: sonnet
 maxTurns: 20
 ---
 
@@ -63,7 +64,7 @@ Only modify:
 - `backend/services/automation/`
 - `backend/core/browser.py`
 - `backend/scripts/`
-- `frontend/src/services/automation/`
+- `frontend/src/services/automation/` (coordinate with `frontend-lead` for shared scope)
 
 ## Quality Standards
 

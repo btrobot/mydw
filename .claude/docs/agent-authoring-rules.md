@@ -55,9 +55,9 @@ skills: [{skill-name}]         # 可选
 
 [组织架构图]
 
-## Standard Workflow
+## Standard Workflow (Optional)
 
-[工作流 - 见第3节]
+[工作流 - 如需自定义，见第3节。否则依赖模板默认工作流]
 
 ## Core Responsibilities
 
@@ -290,7 +290,7 @@ Only modify: `frontend/src/`
 - [ ] description 使用英文，双引号
 - [ ] name 使用 kebab-case
 - [ ] model 与 Agent 类型匹配
-- [ ] Standard Workflow 步骤完整
+- [ ] Standard Workflow 步骤完整（如自定义）
 - [ ] Core Responsibilities 3-6 项
 - [ ] Must NOT Do 非空
 - [ ] Collaboration 至少一个关系
@@ -320,8 +320,7 @@ Only modify: `frontend/src/`
 ```
 templates/
 ├── implementer-template.md   # 实现型模板
-├── advisor-template.md       # 咨询型模板
-└── specialist-template.md    # 专家型模板
+└── advisor-template.md       # 咨询型模板
 ```
 
 ---

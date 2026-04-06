@@ -18,6 +18,21 @@ allowed-tools: Read, Write, Glob, Grep, Bash
 /code-review frontend/src/pages/Account.tsx
 ```
 
+## Context Detection
+
+**IMPORTANT**: Before starting the review, determine the review scope from the argument:
+
+1. If the argument contains a file path:
+   - Path starts with `backend/` or file ends with `.py` → **Python mode**: use Backend checklist only, run `mypy`, grep for `print(`
+   - Path starts with `frontend/` or file ends with `.ts`/`.tsx` → **TypeScript mode**: use Frontend checklist only, run `npm run typecheck`, grep for `any`
+   - Other paths → use both checklists
+2. If no argument is provided:
+   - Check `active.md` for the current Active Task component
+   - If component mentions frontend/backend, use the corresponding mode
+   - Otherwise, use both checklists
+
+Set the `**Domain**` field in the report header to: `Python` | `TypeScript` | `Full Stack`
+
 ## 审查清单
 
 ### 1. 功能正确性
@@ -65,33 +80,40 @@ allowed-tools: Read, Write, Glob, Grep, Bash
 
 ## 执行步骤
 
-### Step 1: 读取代码
+### Step 1: 确定审查范围
 
-读取需要审查的文件。
+Detect the domain from the argument (see Context Detection above). This determines which checklist and static checks to run.
 
-### Step 2: 静态检查
+### Step 2: 读取代码
 
+读取需要审查的文件。If a directory is given, use Glob to find all source files in that directory.
+
+### Step 3: 静态检查
+
+Run the checks that match the detected domain:
+
+**TypeScript mode** (frontend):
 ```bash
-# TypeScript
-cd frontend
-npm run typecheck
-
-# Python
-cd backend
-mypy .
-
-# 通用
-grep -rn "any" --include="*.ts" frontend/src/
-grep -rn "print(" backend/
+cd frontend && npm run typecheck
 ```
+Then use Grep to search for `any` type usages in the target files.
 
-### Step 3: 生成审查报告
+**Python mode** (backend):
+```bash
+cd backend && mypy .
+```
+Then use Grep to search for `print(` calls in the target files.
+
+**Full Stack mode**: run both sets of checks.
+
+### Step 4: 生成审查报告
 
 ```markdown
 ## 代码审查报告
 
 **文件**: [路径]
-**审查者**: [Agent]
+**审查者**: [Agent name, auto-detected from context]
+**域**: [Python | TypeScript | Full Stack]
 **日期**: YYYY-MM-DD
 
 ---
@@ -144,7 +166,8 @@ grep -rn "print(" backend/
 ## 代码审查报告
 
 **文件**: backend/api/account.py
-**审查者**: Tech Lead
+**审查者**: [Agent name, auto-detected from context]
+**域**: Python
 **日期**: 2024-01-15
 
 ---

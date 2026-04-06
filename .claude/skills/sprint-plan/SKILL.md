@@ -1,7 +1,7 @@
 ---
 name: sprint-plan
 description: "Sprint 规划 - 创建和管理 Sprint 计划"
-argument-hint: "[操作: new|update|status|complete]"
+argument-hint: "[操作: new|status]"
 user-invocable: true
 allowed-tools: Read, Write, Glob, Grep
 ---
@@ -80,10 +80,10 @@ Sprint 规划工作流，用于创建和管理开发 Sprint。
 
 | 任务类型 | 负责人 |
 |----------|--------|
-| UI 组件 | UI Developer → Frontend Lead |
-| API 开发 | API Developer → Backend Lead |
-| 自动化 | Automation Developer → Backend Lead |
-| 测试 | Test Engineer → QA Lead |
+| UI 组件 | Frontend Lead |
+| API 开发 | Backend Lead |
+| 自动化 | Automation Developer (via Backend Lead) |
+| 测试 | QA Lead |
 | 基础设施 | DevOps Engineer |
 
 ## 示例 Sprint
@@ -100,11 +100,11 @@ Sprint 规划工作流，用于创建和管理开发 Sprint。
 ### 任务
 | ID | 任务 | 负责人 | 估计 | 依赖 | 状态 |
 |----|------|--------|------|------|------|
-| SP5-01 | FFmpeg 高光检测算法 | Automation Dev | 2d | - | [ ] |
-| SP5-02 | 高光检测 API | API Dev | 1d | SP5-01 | [ ] |
-| SP5-03 | AI 剪辑组件 | UI Dev | 2d | SP5-02 | [ ] |
-| SP5-04 | 完整剪辑流程测试 | Test Engineer | 1d | SP5-01 | [ ] |
-| SP5-05 | 部署配置更新 | DevOps | 0.5d | - | [ ] |
+| SP5-01 | FFmpeg 高光检测算法 | Automation Developer | 2d | - | [ ] |
+| SP5-02 | 高光检测 API | Backend Lead | 1d | SP5-01 | [ ] |
+| SP5-03 | AI 剪辑组件 | Frontend Lead | 2d | SP5-02 | [ ] |
+| SP5-04 | 完整剪辑流程测试 | QA Lead | 1d | SP5-01 | [ ] |
+| SP5-05 | 部署配置更新 | DevOps Engineer | 0.5d | - | [ ] |
 
 ### 容量
 - 总估计: 6.5 人天
@@ -126,7 +126,7 @@ Sprint 规划工作流，用于创建和管理开发 Sprint。
 Epic: AI 剪辑功能
 Feature: 高光检测
 Task: Sprint 5 规划
-Owner: Project Manager
+Owner: Tech Lead
 <!-- /STATUS -->
 
 ## 当前 Sprint

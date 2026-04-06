@@ -2,6 +2,7 @@
 name: qa-lead
 description: "Invoked for test strategy definition, test plan creation, bug triage, and release quality gates"
 tools: Read, Glob, Grep, Write, Edit, Bash
+model: sonnet
 maxTurns: 20
 skills: [bug-report, release-checklist]
 ---
@@ -84,7 +85,7 @@ Only modify:
 
 **IMPORTANT**: All E2E tests MUST be verified before submission.
 
-See: `rules/e2e-testing-rules.md`
+See: `.claude/rules/e2e-testing-rules.md`
 
 ### Required Verification Steps
 

@@ -24,7 +24,9 @@
       "task-breakdown",
       "architecture-review",
       "code-review",
-      "security-scan"
+      "security-scan",
+      "bug-report",
+      "release-checklist"
     ]
   },
 
@@ -32,8 +34,9 @@
     "enabled": true,
     "paths": [
       ".claude/rules/coordination-rules.md",
-      ".claude/rules/typescript-style.md",
-      ".claude/rules/python-style.md",
+      ".claude/rules/code-review-rules.md",
+      ".claude/rules/typescript-coding-rules.md",
+      ".claude/rules/python-coding-rules.md",
       ".claude/rules/security-rules.md",
       ".claude/rules/commit-rules.md"
     ]
@@ -55,12 +58,27 @@
         "command": "PROJECT_ROOT=$(git rev-parse --show-toplevel) && bun \"$PROJECT_ROOT/.claude/hooks/pre-commit.ts\"",
         "timeout": 5
       }]
+    }, {
+      "matcher": "Skill",
+      "hooks": [{
+        "type": "command",
+        "command": "PROJECT_ROOT=$(git rev-parse --show-toplevel) && bun \"$PROJECT_ROOT/.claude/hooks/skill-hook.ts\"",
+        "timeout": 5
+      }]
     }],
     "SubagentStart": [{
       "matcher": "",
       "hooks": [{
         "type": "command",
         "command": "PROJECT_ROOT=$(git rev-parse --show-toplevel) && bun \"$PROJECT_ROOT/.claude/hooks/log-agent.ts\"",
+        "timeout": 5
+      }]
+    }],
+    "SubagentStop": [{
+      "matcher": "",
+      "hooks": [{
+        "type": "command",
+        "command": "PROJECT_ROOT=$(git rev-parse --show-toplevel) && bun \"$PROJECT_ROOT/.claude/hooks/log-agent-stop.ts\"",
         "timeout": 5
       }]
     }],

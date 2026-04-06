@@ -11,9 +11,10 @@ User (Product Owner)
   └── Tech Lead (opus)     ← 战略决策层
         ├── Frontend Lead    ← 战术协调层
         ├── Backend Lead
-        ├── Automation Dev
+        │     └── Automation Developer
         ├── QA Lead
-        └── Security Expert
+        ├── Security Expert
+        └── DevOps Engineer
 ```
 
 | 层级 | Model | 职责 |

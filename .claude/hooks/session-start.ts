@@ -124,6 +124,25 @@ if (existsSync(stateFile)) {
       });
     }
 
+    // Show pending/failed handoffs from previous session
+    const handoffsMatch = content.match(/## Agent Handoffs\n\n\|[^\n]+\n\|[^\n]+\n([\s\S]*?)(?=\n##|\n---)/);
+    if (handoffsMatch && handoffsMatch[1].trim()) {
+      const rows = handoffsMatch[1].trim().split("\n").filter(Boolean);
+      const actionableRows = rows.filter((r) => {
+        const cols = r.split("|").map((c) => c.trim()).filter(Boolean);
+        // cols: [From, To, Task, Status, Outcome]
+        const status = cols[3]?.toLowerCase() || "";
+        return status === "pending" || status === "running" || status === "failed";
+      });
+      if (actionableRows.length > 0) {
+        console.log("\n  \x1b[33m[WARN]\x1b[0m Unresolved Handoffs:");
+        actionableRows.slice(0, 5).forEach((r) => {
+          const cols = r.split("|").map((c) => c.trim()).filter(Boolean);
+          console.log(`    - ${cols[0]} → ${cols[1]}: ${cols[2]} [${cols[3]}]`);
+        });
+      }
+    }
+
     console.log("\n  To resume: Review active.md for full context");
   }
 } else {
@@ -141,12 +160,9 @@ if (existsSync(stateFile)) {
     const template = readFileSync(templateFile, "utf-8");
     const timestamp = new Date().toISOString().replace("T", " ").substring(0, 19);
 
-    // Replace placeholder with actual timestamp
+    // Replace timestamp placeholder
     const newState = template
-      .replace(/\{timestamp\}/g, timestamp)
-      .replace(/\{component-name\}/g, "TBD")
-      .replace(/\{current-phase\}/g, "Planning")
-      .replace(/\{in-progress\|completed\|blocked\}/g, "in-progress");
+      .replace(/\{timestamp\}/g, timestamp);
 
     writeFileSync(stateFile, newState, "utf-8");
     ok("Created new session state from template");
@@ -184,6 +200,8 @@ console.log("  /task-breakdown      - Task breakdown");
 console.log("  /architecture-review  - Architecture review");
 console.log("  /code-review          - Code review");
 console.log("  /security-scan        - Security scan");
+console.log("  /bug-report           - Bug report");
+console.log("  /release-checklist    - Release checklist");
 console.log();
 
 ok("Session initialized");
