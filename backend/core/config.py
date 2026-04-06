@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     SESSION_TTL_HOURS: int = 24
     HEALTH_CHECK_INTERVAL_MINUTES: int = 30
 
+    # 批量健康检查
+    BATCH_HEALTH_CHECK_MAX_CONCURRENCY: int = 3
+    BATCH_HEALTH_CHECK_DEFAULT_INTERVAL: int = 2
+    BATCH_HEALTH_CHECK_TIMEOUT: int = 30
+    BATCH_HEALTH_CHECK_MAX_ACCOUNTS: int = 100
+
 
 # 创建配置实例
 settings = Settings()

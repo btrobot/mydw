@@ -200,3 +200,85 @@ export const usePreviewStatus = () =>
     },
     refetchInterval: 3000,
   })
+
+// ---------------------------------------------------------------------------
+// Health check hooks
+// ---------------------------------------------------------------------------
+
+export interface HealthCheckResult {
+  success: boolean
+  is_valid: boolean
+  message: string
+  expires_at?: string | null
+}
+
+export interface BatchHealthCheckResult {
+  total: number
+  checked: number
+  skipped: number
+  valid_count: number
+  expired_count: number
+  error_count: number
+  results: Array<{
+    account_id: number
+    account_name: string
+    previous_status: string
+    current_status: string
+    is_valid: boolean
+    message: string
+    checked_at: string
+  }>
+  started_at: string
+  completed_at: string
+}
+
+export interface BatchHealthCheckProgress {
+  in_progress: boolean
+  progress: number
+  total: number
+  current_account_name?: string | null
+  started_at?: string | null
+  logs: string[]
+}
+
+export const useHealthCheck = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (accountId: number) => {
+      const { api } = await import('@/services/api')
+      const { data } = await api.post<HealthCheckResult>(`/accounts/${accountId}/health-check`)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accounts'] })
+    },
+  })
+}
+
+export const useBatchHealthCheck = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const { api } = await import('@/services/api')
+      const { data } = await api.post<BatchHealthCheckResult>('/accounts/batch-health-check', {})
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accounts'] })
+    },
+  })
+}
+
+export const useBatchCheckStatus = (isRunning?: boolean) =>
+  useQuery<BatchHealthCheckProgress>({
+    queryKey: ['batch-health-check-status'],
+    queryFn: async () => {
+      const { api } = await import('@/services/api')
+      const { data } = await api.get<BatchHealthCheckProgress>('/accounts/batch-health-check/status')
+      return data
+    },
+    refetchInterval: (query) => {
+      // Poll while in_progress OR while the mutation is still pending (catches the final result)
+      return (query.state.data?.in_progress || isRunning) ? 1000 : false
+    },
+  })

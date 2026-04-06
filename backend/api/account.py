@@ -23,6 +23,8 @@ from schemas import (
     SendCodeRequest, SendCodeResponse,
     VerifyCodeRequest, VerifyCodeResponse,
     HealthCheckResponse,
+    BatchHealthCheckRequest, BatchHealthCheckResponse, BatchHealthCheckResultItem,
+    BatchHealthCheckStatusResponse,
     PreviewCloseRequest, PreviewStatusResponse,
 )
 from core.browser import browser_manager, preview_manager
@@ -336,6 +338,205 @@ async def get_account_stats(db: AsyncSession = Depends(get_db)):
         active_accounts=active_accounts or 0,
         today_published=today_published or 0,
         total_videos=total_videos or 0
+    )
+
+
+# ============ 批量健康检查 ============
+
+class BatchCheckState:
+    """批量检测全局状态（内存中，单例）"""
+    def __init__(self):
+        self.in_progress: bool = False
+        self.progress: int = 0
+        self.total: int = 0
+        self.current_account_name: Optional[str] = None
+        self.started_at: Optional[datetime] = None
+        self.logs: List[str] = []
+
+    def start(self, total: int) -> None:
+        self.in_progress = True
+        self.progress = 0
+        self.total = total
+        self.started_at = datetime.utcnow()
+        self.current_account_name = None
+        self.logs = []
+
+    def add_log(self, msg: str) -> None:
+        self.logs.append(msg)
+
+    def finish(self) -> None:
+        self.in_progress = False
+        self.current_account_name = None
+
+batch_check_state = BatchCheckState()
+
+
+async def _do_single_health_check(
+    db: AsyncSession,
+    account: Account,
+) -> BatchHealthCheckResultItem:
+    """执行单个账号的健康检查（复用现有逻辑）"""
+    previous_status = account.status
+    checked_at = datetime.utcnow()
+
+    if not account.storage_state:
+        return BatchHealthCheckResultItem(
+            account_id=account.id,
+            account_name=account.account_name,
+            previous_status=previous_status,
+            current_status=previous_status,
+            is_valid=False,
+            message="账号未登录",
+            checked_at=checked_at,
+        )
+
+    temp_ctx_id = -account.id
+    try:
+        context = await browser_manager.create_context(temp_ctx_id, account.storage_state)
+        page = await context.new_page()
+        try:
+            await page.goto("https://creator.dewu.com", timeout=settings.BATCH_HEALTH_CHECK_TIMEOUT * 1000)
+            is_valid = "/login" not in page.url
+        finally:
+            await browser_manager.close_context(temp_ctx_id)
+    except Exception as e:
+        logger.error("批量检查 - 账号 {} 失败: error_type={}", account.id, type(e).__name__)
+        return BatchHealthCheckResultItem(
+            account_id=account.id,
+            account_name=account.account_name,
+            previous_status=previous_status,
+            current_status=previous_status,
+            is_valid=False,
+            message=f"检查失败: {type(e).__name__}",
+            checked_at=checked_at,
+        )
+
+    now = datetime.utcnow()
+    session_ttl = timedelta(hours=settings.SESSION_TTL_HOURS)
+
+    if is_valid:
+        account.last_health_check = now
+        account.session_expires_at = now + session_ttl
+        current_status = account.status
+        msg = "Session 有效"
+    else:
+        account.status = AccountStatus.SESSION_EXPIRED.value
+        current_status = AccountStatus.SESSION_EXPIRED.value
+        msg = "Session 已过期"
+
+    await db.commit()
+
+    return BatchHealthCheckResultItem(
+        account_id=account.id,
+        account_name=account.account_name,
+        previous_status=previous_status,
+        current_status=current_status,
+        is_valid=is_valid,
+        message=msg,
+        checked_at=now,
+    )
+
+
+@router.post("/batch-health-check", response_model=BatchHealthCheckResponse)
+async def batch_health_check(
+    request: BatchHealthCheckRequest,
+    db: AsyncSession = Depends(get_db),
+) -> BatchHealthCheckResponse:
+    """
+    批量健康检查 - 串行执行，带间隔和熔断
+
+    默认检测所有非 inactive/disabled 账号。
+    连续 3 次非 session 过期错误自动停止。
+    """
+    if batch_check_state.in_progress:
+        raise HTTPException(status_code=409, detail="批量检测正在进行中")
+
+    query = select(Account)
+    if request.account_ids:
+        query = query.where(Account.id.in_(request.account_ids))
+    if request.skip_inactive:
+        query = query.where(Account.status.notin_([
+            AccountStatus.INACTIVE.value,
+            AccountStatus.DISABLED.value,
+        ]))
+    query = query.order_by(Account.id)
+
+    result = await db.execute(query)
+    accounts = list(result.scalars().all())
+
+    if not accounts:
+        raise HTTPException(status_code=400, detail="没有可检测的账号")
+
+    if len(accounts) > settings.BATCH_HEALTH_CHECK_MAX_ACCOUNTS:
+        accounts = accounts[:settings.BATCH_HEALTH_CHECK_MAX_ACCOUNTS]
+
+    batch_check_state.start(len(accounts))
+    started_at = batch_check_state.started_at
+
+    results: List[BatchHealthCheckResultItem] = []
+    consecutive_errors = 0
+    skipped = 0
+
+    try:
+        for account in accounts:
+            batch_check_state.current_account_name = account.account_name
+            batch_check_state.progress = len(results)
+
+            item = await _do_single_health_check(db, account)
+            results.append(item)
+
+            status_icon = "OK" if item.is_valid else "EXPIRED" if "过期" in item.message else "ERROR"
+            batch_check_state.add_log(
+                f"[{len(results)}/{len(accounts)}] {item.account_name} - {item.message} [{status_icon}]"
+            )
+
+            if not item.is_valid and "检查失败" in item.message:
+                consecutive_errors += 1
+                if consecutive_errors >= 3:
+                    logger.warning("批量检查熔断：连续 {} 次错误，停止检测", consecutive_errors)
+                    skipped = len(accounts) - len(results)
+                    break
+            else:
+                consecutive_errors = 0
+
+            if request.interval_seconds > 0 and account != accounts[-1]:
+                await asyncio.sleep(request.interval_seconds)
+    finally:
+        batch_check_state.finish()
+
+    completed_at = datetime.utcnow()
+    valid_count = sum(1 for r in results if r.is_valid)
+    expired_count = sum(1 for r in results if not r.is_valid and "过期" in r.message)
+    error_count = sum(1 for r in results if not r.is_valid and "失败" in r.message)
+
+    logger.info(
+        "批量健康检查完成: total={}, checked={}, valid={}, expired={}, error={}",
+        len(accounts), len(results), valid_count, expired_count, error_count
+    )
+
+    return BatchHealthCheckResponse(
+        total=len(accounts),
+        checked=len(results),
+        skipped=skipped,
+        valid_count=valid_count,
+        expired_count=expired_count,
+        error_count=error_count,
+        results=results,
+        started_at=started_at,
+        completed_at=completed_at,
+    )
+
+
+@router.get("/batch-health-check/status", response_model=BatchHealthCheckStatusResponse)
+async def batch_health_check_status() -> BatchHealthCheckStatusResponse:
+    """获取批量检测进度"""
+    return BatchHealthCheckStatusResponse(
+        in_progress=batch_check_state.in_progress,
+        progress=batch_check_state.progress,
+        total=batch_check_state.total,
+        current_account_name=batch_check_state.current_account_name,
+        started_at=batch_check_state.started_at,
+        logs=batch_check_state.logs,
     )
 
 

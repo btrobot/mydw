@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import {
   Table,
   Button,
@@ -14,6 +14,7 @@ import {
   Col,
   Typography,
   Tooltip,
+  Alert,
 } from 'antd'
 import type { MenuProps } from 'antd'
 import {
@@ -23,6 +24,8 @@ import {
   SearchOutlined,
   EyeOutlined,
   EyeInvisibleOutlined,
+  SyncOutlined,
+  LoadingOutlined,
 } from '@ant-design/icons'
 import {
   useAccounts,
@@ -32,8 +35,11 @@ import {
   usePreviewAccount,
   useClosePreview,
   usePreviewStatus,
+  useHealthCheck,
+  useBatchHealthCheck,
+  useBatchCheckStatus,
 } from '../hooks'
-import type { AccountResponseExtended, AccountQueryParams } from '../hooks/useAccount'
+import type { AccountResponseExtended, AccountQueryParams, BatchHealthCheckResult } from '../hooks/useAccount'
 import ConnectionModal from '../components/ConnectionModal'
 import StatusBadge from '../components/StatusBadge'
 import type { AccountCreate, AccountUpdate } from '@/api'
@@ -74,9 +80,13 @@ interface AccountToolbarProps {
   onTagChange: (value: string | undefined) => void
   tagOptions: string[]
   onAdd: () => void
+  onBatchCheck: () => void
+  batchChecking: boolean
+  batchProgress: number
+  batchTotal: number
 }
 
-function AccountToolbar({ onSearch, onTagChange, tagOptions, onAdd }: AccountToolbarProps) {
+function AccountToolbar({ onSearch, onTagChange, tagOptions, onAdd, onBatchCheck, batchChecking, batchProgress, batchTotal }: AccountToolbarProps) {
   return (
     <Row gutter={[12, 12]} style={{ marginBottom: 16 }} align="middle">
       <Col>
@@ -91,7 +101,6 @@ function AccountToolbar({ onSearch, onTagChange, tagOptions, onAdd }: AccountToo
           prefix={<SearchOutlined />}
           onSearch={onSearch}
           onChange={(e) => {
-            // Trigger search when cleared via the × button (value becomes '')
             if (e.target.value === '') onSearch('')
           }}
         />
@@ -104,6 +113,15 @@ function AccountToolbar({ onSearch, onTagChange, tagOptions, onAdd }: AccountToo
           onChange={(value: string | undefined) => onTagChange(value)}
           options={tagOptions.map((t) => ({ label: t, value: t }))}
         />
+      </Col>
+      <Col flex="auto" style={{ textAlign: 'right' }}>
+        <Button
+          icon={batchChecking ? <LoadingOutlined /> : <SyncOutlined />}
+          disabled={batchChecking}
+          onClick={onBatchCheck}
+        >
+          {batchChecking ? `检查中 (${batchProgress}/${batchTotal})` : '批量检查连接'}
+        </Button>
       </Col>
     </Row>
   )
@@ -165,6 +183,9 @@ export default function Account() {
   const [connectionModalVisible, setConnectionModalVisible] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState<AccountResponseExtended | null>(null)
   const [form] = Form.useForm<AccountFormValues>()
+  const [checkingIds, setCheckingIds] = useState<Set<number>>(new Set())
+  const [batchResult, setBatchResult] = useState<BatchHealthCheckResult | null>(null)
+  const logPanelRef = useRef<HTMLDivElement>(null)
 
   // Query params state
   const [queryParams, setQueryParams] = useState<AccountQueryParams>({})
@@ -179,6 +200,18 @@ export default function Account() {
   const previewAccount = usePreviewAccount()
   const closePreview = useClosePreview()
   const { data: previewStatus } = usePreviewStatus()
+
+  // Health check hooks
+  const healthCheck = useHealthCheck()
+  const batchHealthCheck = useBatchHealthCheck()
+  const { data: batchStatus } = useBatchCheckStatus(batchHealthCheck.isPending)
+
+  // Auto-scroll log panel to bottom when new logs arrive
+  useEffect(() => {
+    if (logPanelRef.current) {
+      logPanelRef.current.scrollTop = logPanelRef.current.scrollHeight
+    }
+  }, [batchStatus?.logs])
 
   // Derive unique tag options from all loaded accounts
   const tagOptions = useMemo<string[]>(() => {
@@ -278,6 +311,40 @@ export default function Account() {
     setQueryParams((prev) => ({ ...prev, tag: value || undefined }))
   }, [])
 
+  const handleHealthCheck = useCallback(async (record: AccountResponseExtended) => {
+    setCheckingIds(prev => new Set(prev).add(record.id))
+    try {
+      const result = await healthCheck.mutateAsync(record.id)
+      if (result.is_valid) {
+        message.success('Session 有效')
+      } else {
+        message.warning('Session 已过期，请重新登录')
+      }
+    } catch {
+      message.error('检查失败，请稍后重试')
+    } finally {
+      setCheckingIds(prev => {
+        const next = new Set(prev)
+        next.delete(record.id)
+        return next
+      })
+    }
+  }, [healthCheck])
+
+  const handleBatchCheck = useCallback(async () => {
+    try {
+      const result = await batchHealthCheck.mutateAsync()
+      setBatchResult(result)
+      setTimeout(() => setBatchResult(null), 8000)
+    } catch (error: unknown) {
+      if (error !== null && typeof error === 'object' && 'message' in error) {
+        message.error((error as Error).message || '批量检查失败')
+      } else {
+        message.error('批量检查失败')
+      }
+    }
+  }, [batchHealthCheck])
+
   // ---- Table columns ----
   const columns = useMemo(() => [
     {
@@ -371,24 +438,55 @@ export default function Account() {
           },
         ]
 
-        const connectLabel =
-          record.status === 'logging_in' ? '连接中' :
-          record.status === 'active' || record.status === 'session_expired' ? '重新连接' :
-          record.status === 'disabled' ? null : '连接'
+        const isChecking = checkingIds.has(record.id)
+
+        let connectButton = null
+        if (record.status === 'logging_in') {
+          connectButton = (
+            <Button type="link" size="small" icon={<LinkOutlined />} disabled>
+              连接中
+            </Button>
+          )
+        } else if (record.status === 'active') {
+          connectButton = (
+            <Button
+              type="link"
+              size="small"
+              icon={<SyncOutlined spin={isChecking} />}
+              loading={isChecking}
+              disabled={isChecking}
+              onClick={() => handleHealthCheck(record)}
+            >
+              检查连接
+            </Button>
+          )
+        } else if (record.status === 'session_expired' || record.status === 'error') {
+          connectButton = (
+            <Button
+              type="link"
+              size="small"
+              icon={<LinkOutlined />}
+              onClick={() => handleConnectClick(record)}
+            >
+              重新登录
+            </Button>
+          )
+        } else if (record.status !== 'disabled') {
+          connectButton = (
+            <Button
+              type="link"
+              size="small"
+              icon={<LinkOutlined />}
+              onClick={() => handleConnectClick(record)}
+            >
+              连接
+            </Button>
+          )
+        }
 
         return (
           <Space>
-            {connectLabel !== null && (
-              <Button
-                type="link"
-                size="small"
-                icon={<LinkOutlined />}
-                disabled={record.status === 'logging_in'}
-                onClick={() => handleConnectClick(record)}
-              >
-                {connectLabel}
-              </Button>
-            )}
+            {connectButton}
             {canPreview && (
               isThisPreviewOpen ? (
                 <Dropdown menu={{ items: closeMenuItems }} trigger={['click']}>
@@ -437,10 +535,12 @@ export default function Account() {
     handleSaveRemark,
     handlePreview,
     handleClosePreview,
+    handleHealthCheck,
     previewStatus,
     previewAccount.isPending,
     previewAccount.variables,
     closePreview.isPending,
+    checkingIds,
   ])
 
   return (
@@ -450,7 +550,56 @@ export default function Account() {
         onTagChange={handleTagChange}
         tagOptions={tagOptions}
         onAdd={handleAdd}
+        onBatchCheck={handleBatchCheck}
+        batchChecking={batchHealthCheck.isPending}
+        batchProgress={batchStatus?.progress ?? 0}
+        batchTotal={batchStatus?.total ?? 0}
       />
+
+      {batchResult && (
+        <Alert
+          style={{ marginBottom: 16 }}
+          type={batchResult.expired_count > 0 || batchResult.error_count > 0 ? 'warning' : 'success'}
+          message={`批量检查完成：${batchResult.valid_count} 个有效，${batchResult.expired_count} 个已过期，${batchResult.error_count} 个异常`}
+          closable
+          onClose={() => setBatchResult(null)}
+          showIcon
+        />
+      )}
+
+      {(batchStatus?.in_progress || (batchStatus?.logs && batchStatus.logs.length > 0)) && (
+        <div
+          ref={logPanelRef}
+          style={{
+            marginBottom: 16,
+            padding: '8px 12px',
+            background: '#fafafa',
+            border: '1px solid #f0f0f0',
+            borderRadius: 6,
+            maxHeight: 200,
+            overflowY: 'auto',
+            fontSize: 13,
+            fontFamily: 'monospace',
+          }}
+        >
+          {(batchStatus.logs).map((log, i) => (
+            <div
+              key={i}
+              style={{
+                padding: '2px 0',
+                color: log.includes('[ERROR]') ? '#ff4d4f' : log.includes('[EXPIRED]') ? '#faad14' : '#52c41a',
+              }}
+            >
+              {log}
+            </div>
+          ))}
+          {batchStatus.in_progress && batchStatus.current_account_name && (
+            <div style={{ padding: '2px 0', color: '#1890ff' }}>
+              [{(batchStatus.progress ?? 0) + 1}/{batchStatus.total}] {batchStatus.current_account_name} - 检查中...
+            </div>
+          )}
+        </div>
+      )}
 
       <Table<AccountResponseExtended>
         columns={columns}

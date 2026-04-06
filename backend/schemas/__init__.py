@@ -137,6 +137,59 @@ class HealthCheckResponse(BaseModel):
     expires_at: Optional[datetime] = None
 
 
+class BatchHealthCheckRequest(BaseModel):
+    """批量健康检查请求"""
+    account_ids: Optional[List[int]] = Field(
+        None, description="指定账号ID列表，为空则检测所有"
+    )
+    concurrency: int = Field(
+        default=1, ge=1, le=3,
+        description="并发数（默认串行，最大3）"
+    )
+    interval_seconds: int = Field(
+        default=2, ge=0, le=10,
+        description="每次检测间隔秒数"
+    )
+    skip_inactive: bool = Field(
+        default=True,
+        description="跳过 inactive/disabled 状态的账号"
+    )
+
+
+class BatchHealthCheckResultItem(BaseModel):
+    """单个账号检测结果"""
+    account_id: int
+    account_name: str
+    previous_status: str
+    current_status: str
+    is_valid: bool
+    message: str
+    checked_at: datetime
+
+
+class BatchHealthCheckResponse(BaseModel):
+    """批量健康检查响应"""
+    total: int
+    checked: int
+    skipped: int
+    valid_count: int
+    expired_count: int
+    error_count: int
+    results: List[BatchHealthCheckResultItem]
+    started_at: datetime
+    completed_at: datetime
+
+
+class BatchHealthCheckStatusResponse(BaseModel):
+    """批量检测进度"""
+    in_progress: bool
+    progress: int = 0
+    total: int = 0
+    current_account_name: Optional[str] = None
+    started_at: Optional[datetime] = None
+    logs: List[str] = Field(default_factory=list)
+
+
 class AccountLoginRequest(BaseModel):
     """账号登录请求"""
     account_id: str
