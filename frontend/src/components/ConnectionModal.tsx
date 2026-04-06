@@ -16,20 +16,31 @@ interface ConnectionModalProps {
   onCancel: () => void
 }
 
-interface ConnectRequest {
+// 表单字段
+interface FormValues {
   phone: string
   code: string
 }
 
-interface ConnectResponse {
+// send-code 端点请求体
+interface SendCodeRequest {
+  phone: string
+}
+
+// verify 端点请求体
+interface VerifyCodeRequest {
+  code: string
+}
+
+// verify 端点响应体
+interface VerifyCodeResponse {
   success: boolean
   message: string
   status: string
-  storage_state?: string
 }
 
 // SSE 状态枚举 (与后端 ConnectionStatus 一致)
-type ConnectionStatus = 'idle' | 'waiting_phone' | 'code_sent' | 'waiting_verify' | 'verifying' | 'connected' | 'error'
+type ConnectionStatus = 'idle' | 'waiting_phone' | 'code_sent' | 'waiting_verify' | 'verifying' | 'success' | 'error'
 
 // SSE 状态事件数据
 interface StatusUpdateEvent {
@@ -40,7 +51,7 @@ interface StatusUpdateEvent {
 
 // SSE 完成事件数据
 interface DoneEvent {
-  final_status: 'connected' | 'error'
+  final_status: 'success' | 'error'
   message?: string
 }
 
@@ -51,7 +62,7 @@ const STATUS_MESSAGES: Record<ConnectionStatus, string> = {
   waiting_verify: '等待输入验证码...',
   code_sent: '验证码已发送，请输入',
   verifying: '正在验证...',
-  connected: '连接成功！',
+  success: '连接成功！',
   error: '连接失败',
 }
 
@@ -64,7 +75,7 @@ export default function ConnectionModal({
   onSuccess,
   onCancel,
 }: ConnectionModalProps) {
-  const [form] = Form.useForm<ConnectRequest>()
+  const [form] = Form.useForm<FormValues>()
   const [countdown, setCountdown] = useState(0)
   const [loading, setLoading] = useState(false)
   const [sendLoading, setSendLoading] = useState(false)
@@ -111,7 +122,7 @@ export default function ConnectionModal({
     eventSource.addEventListener('done', (e: MessageEvent) => {
       try {
         const data: DoneEvent = JSON.parse(e.data)
-        if (data.final_status === 'connected') {
+        if (data.final_status === 'success') {
           message.success('连接成功')
           queryClient.invalidateQueries({ queryKey: ['accounts'] })
           onSuccess()
@@ -189,19 +200,19 @@ export default function ConnectionModal({
 
     setSendLoading(true)
     try {
-      // 发送验证码请求
-      // 注意：这里使用单独的发送验证码接口，如果没有则需要后端支持
-      // 当前实现：调用连接接口但只传手机号，由后端处理发送验证码逻辑
-      await axios.post(`/api/accounts/connect/${accountId}`, {
-        phone,
-        code: '', // 空验证码表示只发送
-      })
+      const body: SendCodeRequest = { phone }
+      await axios.post(`/api/accounts/connect/${accountId}/send-code`, body)
 
       message.success('验证码已发送')
       setCountdown(COUNTDOWN_SECONDS)
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
-        message.error(error.response?.data?.detail || '发送验证码失败')
+        const status = error.response?.status
+        if (status === 409) {
+          message.warning(error.response?.data?.detail || '账号正在连接中，请稍候')
+        } else {
+          message.error(error.response?.data?.detail || '发送验证码失败')
+        }
       } else if (error instanceof Error) {
         message.error(error.message)
       } else {
@@ -213,30 +224,31 @@ export default function ConnectionModal({
   }, [accountId, form])
 
   // 连接提交
-  const handleConnect = async (values: ConnectRequest) => {
+  const handleConnect = async (values: FormValues) => {
     setLoading(true)
     try {
-      const response = await axios.post<ConnectResponse>(
-        `/api/accounts/connect/${accountId}`,
-        {
-          phone: values.phone,
-          code: values.code,
-        }
+      const body: VerifyCodeRequest = { code: values.code }
+      const response = await axios.post<VerifyCodeResponse>(
+        `/api/accounts/connect/${accountId}/verify`,
+        body
       )
 
       const data = response.data
 
       if (data.success) {
-        message.success(data.message || '连接成功')
-        // 刷新账号列表
-        queryClient.invalidateQueries({ queryKey: ['accounts'] })
-        onSuccess()
+        // 成功路径：SSE 的 done 事件会负责关闭弹窗和刷新列表
+        // 此处不再重复调用 onSuccess，避免竞争
       } else {
-        message.error(data.message || '连接失败')
+        message.error(data.message || '验证码错误或已过期，请重新获取')
       }
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
-        message.error(error.response?.data?.detail || '连接失败')
+        const status = error.response?.status
+        if (status === 422) {
+          message.error(error.response?.data?.detail || '请先发送验证码')
+        } else {
+          message.error(error.response?.data?.detail || '连接失败')
+        }
       } else if (error instanceof Error) {
         message.error(error.message)
       } else {

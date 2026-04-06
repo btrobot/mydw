@@ -120,6 +120,30 @@ class ConnectionResponse(BaseModel):
 LoginResponse = ConnectionResponse
 
 
+class SendCodeRequest(BaseModel):
+    """发送验证码请求"""
+    phone: str = Field(..., min_length=11, max_length=11, description="手机号（11位）")
+
+
+class SendCodeResponse(BaseModel):
+    """发送验证码响应"""
+    success: bool
+    message: str
+    status: str = "code_sent"
+
+
+class VerifyCodeRequest(BaseModel):
+    """验证码登录请求"""
+    code: str = Field(..., min_length=4, max_length=6, description="短信验证码（4-6位）")
+
+
+class VerifyCodeResponse(BaseModel):
+    """验证码登录响应"""
+    success: bool
+    message: str
+    status: str = "inactive"
+
+
 class ConnectionStatusResponse(BaseModel):
     """连接状态响应"""
     is_connected: bool

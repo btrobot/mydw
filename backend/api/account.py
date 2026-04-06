@@ -11,6 +11,7 @@ from pathlib import Path
 from loguru import logger
 import asyncio
 import json
+import re
 
 from models import Account, Task, SystemLog
 from models import get_db
@@ -18,10 +19,12 @@ from schemas import (
     AccountCreate, AccountUpdate, AccountResponse, AccountStats,
     AccountLoginRequest, AccountTestRequest,
     ConnectionRequest, ConnectionResponse, ConnectionStatusResponse,
-    ConnectionStatus, AccountStatus
+    ConnectionStatus, AccountStatus,
+    SendCodeRequest, SendCodeResponse,
+    VerifyCodeRequest, VerifyCodeResponse,
 )
 from core.browser import browser_manager
-from core.dewu_client import get_dewu_client
+from core.dewu_client import get_dewu_client, get_or_create_client, release_client, _active_clients
 from utils.crypto import encrypt_data, decrypt_data
 
 router = APIRouter()
@@ -371,7 +374,7 @@ async def delete_account(
     return None
 
 
-@router.post("/connect/{account_id}", response_model=ConnectionResponse)
+@router.post("/connect/{account_id}", response_model=ConnectionResponse, deprecated=True)
 async def connect_account(
     account_id: int,
     request: ConnectionRequest,
@@ -530,6 +533,231 @@ async def connect_account(
             success=False,
             message=f"连接异常: {str(e)}",
             status="error"
+        )
+
+
+
+# ============ 两阶段连接端点 ============
+
+@router.post("/connect/{account_id}/send-code", response_model=SendCodeResponse, status_code=202)
+async def send_sms_code(
+    account_id: int,
+    request: SendCodeRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+) -> SendCodeResponse:
+    """
+    第一阶段：发送短信验证码
+
+    触发后端在浏览器中打开得物登录页，输入手机号并点击发送验证码按钮。
+    后端保持浏览器实例以供 verify 步骤使用。
+
+    浏览器操作为异步后台任务，通过 SSE 推送实际发送状态。
+    """
+    # 验证账号存在
+    result = await db.execute(select(Account).where(Account.id == account_id))
+    account = result.scalar_one_or_none()
+    if not account:
+        raise HTTPException(status_code=404, detail="账号不存在")
+
+    # 检查手机号格式
+    if not re.match(r'^1\d{10}$', request.phone):
+        raise HTTPException(status_code=400, detail="手机号格式不正确，必须为11位数字")
+
+    # 检查是否已有进行中的连接（非终态）
+    current_status = connection_status_manager.get_status(account_id)
+    if current_status:
+        terminal_states = {ConnectionStatus.SUCCESS, ConnectionStatus.ERROR, ConnectionStatus.IDLE}
+        if current_status["status"] not in terminal_states:
+            raise HTTPException(status_code=409, detail="账号正在连接中，请勿重复提交")
+
+    # 更新账号状态为连接中
+    account.status = AccountStatus.LOGGING_IN.value
+    await db.commit()
+
+    # 同步推送 WAITING_PHONE (progress=10)
+    await connection_status_manager.set_status(
+        account_id,
+        ConnectionStatus.WAITING_PHONE,
+        "正在打开浏览器，准备发送验证码",
+        10,
+    )
+
+    # 后台异步执行浏览器操作
+    async def _background_send_code(acc_id: int, phone: str) -> None:
+        try:
+            client = await get_or_create_client(acc_id)
+            send_success, send_message = await client.send_sms_code(phone)
+            if send_success:
+                await connection_status_manager.set_status(
+                    acc_id,
+                    ConnectionStatus.CODE_SENT,
+                    "验证码已发送，请在5分钟内输入",
+                    40,
+                )
+                logger.info("账号 {} 验证码发送成功", acc_id)
+            else:
+                await connection_status_manager.set_status(
+                    acc_id,
+                    ConnectionStatus.ERROR,
+                    send_message,
+                    0,
+                )
+                release_client(acc_id)
+                # 恢复账号状态——需要新建独立 db session
+                from models import get_db as make_db
+                async for session in make_db():
+                    res = await session.execute(select(Account).where(Account.id == acc_id))
+                    acc = res.scalar_one_or_none()
+                    if acc:
+                        acc.status = AccountStatus.INACTIVE.value
+                        await session.commit()
+                logger.warning("账号 {} 验证码发送失败: {}", acc_id, send_message)
+        except Exception as e:
+            logger.error("账号 {} 后台发送验证码异常: {}", acc_id, e, exc_info=True)
+            await connection_status_manager.set_status(
+                acc_id,
+                ConnectionStatus.ERROR,
+                f"发送验证码异常: {str(e)}",
+                0,
+            )
+            release_client(acc_id)
+
+    background_tasks.add_task(_background_send_code, account_id, request.phone)
+
+    return SendCodeResponse(
+        success=True,
+        message="验证码发送中，请通过 SSE 监听状态",
+        status="code_sent",
+    )
+
+
+@router.post("/connect/{account_id}/verify", response_model=VerifyCodeResponse)
+async def verify_sms_code(
+    account_id: int,
+    request: VerifyCodeRequest,
+    db: AsyncSession = Depends(get_db),
+) -> VerifyCodeResponse:
+    """
+    第二阶段：验证码登录
+
+    将用户输入的验证码填入浏览器中已打开的登录表单，
+    点击登录按钮，等待登录结果，成功后保存加密 session。
+    """
+    # 验证账号存在
+    result = await db.execute(select(Account).where(Account.id == account_id))
+    account = result.scalar_one_or_none()
+    if not account:
+        raise HTTPException(status_code=404, detail="账号不存在")
+
+    # 检查验证码格式（仅数字）
+    if not re.match(r'^\d{4,6}$', request.code):
+        raise HTTPException(status_code=400, detail="验证码格式不正确，需为4-6位数字")
+
+    # 检查是否有进行中的连接会话（code_sent 或 waiting_verify）
+    current_status = connection_status_manager.get_status(account_id)
+    valid_states = {ConnectionStatus.CODE_SENT, ConnectionStatus.WAITING_VERIFY}
+    if not current_status or current_status["status"] not in valid_states:
+        raise HTTPException(status_code=422, detail="没有进行中的连接会话，请先发送验证码")
+
+    # 获取已持有的 DewuClient 实例
+    client = _active_clients.get(account_id)
+    if not client:
+        raise HTTPException(status_code=422, detail="没有进行中的连接会话，请先发送验证码")
+
+    try:
+        # 推送 WAITING_VERIFY (progress=50)
+        await connection_status_manager.set_status(
+            account_id,
+            ConnectionStatus.WAITING_VERIFY,
+            "正在提交验证码",
+            50,
+        )
+
+        # 调用 verify_sms_code — 不传验证码内容到日志
+        verify_success, verify_message = await client.verify_sms_code(request.code)
+
+        if verify_success:
+            # 推送 VERIFYING (progress=80)
+            await connection_status_manager.set_status(
+                account_id,
+                ConnectionStatus.VERIFYING,
+                "验证码正确，正在保存连接状态",
+                80,
+            )
+
+            # 保存加密 session
+            storage_state = await client.save_login_session()
+            if storage_state:
+                account.storage_state = storage_state
+            else:
+                logger.warning("账号 {} 未能保存 storage state", account_id)
+
+            # 更新账号状态
+            account.status = AccountStatus.ACTIVE.value
+            account.last_login = datetime.utcnow()
+            await db.commit()
+
+            # 写入系统日志
+            log = SystemLog(
+                level="INFO",
+                module="account",
+                message=f"账号连接成功: {account.account_name}",
+            )
+            db.add(log)
+            await db.commit()
+
+            # 推送 SUCCESS (progress=100)
+            await connection_status_manager.set_status(
+                account_id,
+                ConnectionStatus.SUCCESS,
+                "连接成功",
+                100,
+            )
+            release_client(account_id)
+            logger.info("账号 {} 连接成功", account.account_name)
+
+            return VerifyCodeResponse(
+                success=True,
+                message="连接成功",
+                status="active",
+            )
+        else:
+            # 业务失败：验证码错误或过期
+            await connection_status_manager.set_status(
+                account_id,
+                ConnectionStatus.ERROR,
+                verify_message,
+                0,
+            )
+            account.status = AccountStatus.INACTIVE.value
+            await db.commit()
+            release_client(account_id)
+            logger.warning("账号 {} 验证码验证失败: {}", account.account_name, verify_message)
+
+            return VerifyCodeResponse(
+                success=False,
+                message=verify_message,
+                status="inactive",
+            )
+
+    except Exception as e:
+        logger.error("账号 {} 验证码登录异常: account_id={}, error_type={}", account.account_name, account_id, type(e).__name__, exc_info=True)
+
+        await connection_status_manager.set_status(
+            account_id,
+            ConnectionStatus.ERROR,
+            "登录过程发生内部错误",
+            0,
+        )
+        account.status = AccountStatus.ERROR.value
+        await db.commit()
+        release_client(account_id)
+
+        return VerifyCodeResponse(
+            success=False,
+            message="登录过程发生内部错误",
+            status="error",
         )
 
 
@@ -944,6 +1172,12 @@ async def disconnect_account(
 
     # 关闭浏览器上下文
     await browser_manager.close_context(account_id)
+
+    # 释放 DewuClient 实例（如果两阶段流程中被取消）
+    release_client(account_id)
+
+    # 清除 SSE 状态
+    connection_status_manager.clear_status(account_id)
 
     # 清除存储状态
     account.status = "inactive"

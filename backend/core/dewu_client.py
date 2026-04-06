@@ -463,21 +463,14 @@ class DewuClient:
             await self.page.screenshot(path=path, full_page=True)
             logger.info("登录页面截图已保存: path={}", path)
 
-    async def login_with_sms(self, phone: str, code: str) -> Tuple[bool, str]:
+    async def send_sms_code(self, phone: str) -> Tuple[bool, str]:
         """
-        通过手机验证码登录（一步完成）
-        - 打开登录页
-        - 勾选协议
-        - 输入手机号
-        - 点击发送验证码
-        - 输入验证码
-        - 点击登录
-        - 检测登录结果
-        - 返回登录状态
+        第一阶段：打开登录页，输入手机号，点击发送验证码
+
+        self.page 保持打开状态，供 verify_sms_code 使用。
 
         Args:
             phone: 手机号（11位）
-            code: 验证码（4-6位）
 
         Returns:
             Tuple[bool, str]: (成功标志, 消息)
@@ -489,7 +482,7 @@ class DewuClient:
                 if not self.page:
                     return False, "创建浏览器页面失败"
 
-            logger.info("账号 {} 开始手机登录", self.account_id)
+            logger.info("账号 {} 开始手机登录第一阶段：发送验证码", self.account_id)
 
             # 访问登录页面
             await self.page.goto(self.LOGIN_URL, wait_until="networkidle", timeout=60000)
@@ -534,6 +527,35 @@ class DewuClient:
             # 保存发送验证码后的截图
             await self._save_debug_screenshot("after_code_sent")
 
+            return True, "验证码已发送"
+
+        except PlaywrightTimeout as e:
+            logger.error("账号 {} 发送验证码等待元素超时: {}", self.account_id, e)
+            await self._save_debug_screenshot("send_code_timeout")
+            return False, f"等待页面元素超时: {e}"
+        except Exception as e:
+            logger.error("账号 {} 发送验证码过程异常: {}", self.account_id, e, exc_info=True)
+            return False, str(e)
+
+    async def verify_sms_code(self, code: str) -> Tuple[bool, str]:
+        """
+        第二阶段：输入验证码，点击登录，检测登录结果
+
+        前提：send_sms_code 已成功执行，self.page 持有登录页实例。
+
+        Args:
+            code: 短信验证码（4-6位）
+
+        Returns:
+            Tuple[bool, str]: (成功标志, 消息)
+        """
+        try:
+            # 前提检查：self.page 必须是 send_sms_code 遗留的登录页
+            if not self.page:
+                return False, "没有活跃的登录页面，请先调用 send_sms_code"
+
+            logger.info("账号 {} 开始手机登录第二阶段：验证码登录", self.account_id)
+
             # ========== 第四步：输入验证码 ==========
             code_input = await self._find_element(self.page, LOGIN_SELECTORS["code_input"])
             if not code_input:
@@ -575,12 +597,29 @@ class DewuClient:
             return success, message
 
         except PlaywrightTimeout as e:
-            logger.error("账号 {} 等待元素超时: {}", self.account_id, e)
-            await self._save_debug_screenshot("login_timeout")
+            logger.error("账号 {} 验证码登录等待元素超时: {}", self.account_id, e)
+            await self._save_debug_screenshot("verify_code_timeout")
             return False, f"等待页面元素超时: {e}"
         except Exception as e:
-            logger.error("账号 {} 登录过程异常: {}", self.account_id, e, exc_info=True)
+            logger.error("账号 {} 验证码登录过程异常: {}", self.account_id, e, exc_info=True)
             return False, str(e)
+
+    async def login_with_sms(self, phone: str, code: str) -> Tuple[bool, str]:
+        """
+        通过手机验证码登录（兼容包装，内部依次调用 send_sms_code + verify_sms_code）
+
+        Args:
+            phone: 手机号（11位）
+            code: 验证码（4-6位）
+
+        Returns:
+            Tuple[bool, str]: (成功标志, 消息)
+        """
+        send_success, send_message = await self.send_sms_code(phone)
+        if not send_success:
+            return False, send_message
+
+        return await self.verify_sms_code(code)
 
     async def _select_agree_checkbox(self) -> bool:
         """勾选同意协议复选框"""
@@ -724,3 +763,39 @@ class DewuClient:
 async def get_dewu_client(account_id: int) -> DewuClient:
     """获取得物客户端"""
     return DewuClient(account_id)
+
+
+# ========== 模块级实例管理 ==========
+
+_active_clients: Dict[int, DewuClient] = {}
+
+
+async def get_or_create_client(account_id: int) -> DewuClient:
+    """
+    获取或创建指定账号的 DewuClient 实例
+
+    两阶段登录流程（send_sms_code / verify_sms_code）期间，
+    浏览器实例必须在两次调用之间保持存活。
+    使用此函数确保同一账号复用同一实例。
+
+    Args:
+        account_id: 账号数据库主键 ID
+
+    Returns:
+        DewuClient: 该账号的客户端实例
+    """
+    if account_id not in _active_clients:
+        _active_clients[account_id] = DewuClient(account_id)
+    return _active_clients[account_id]
+
+
+def release_client(account_id: int) -> None:
+    """
+    释放并移除指定账号的 DewuClient 实例
+
+    在登录流程结束（成功或失败）后调用，避免僵尸浏览器实例。
+
+    Args:
+        account_id: 账号数据库主键 ID
+    """
+    _active_clients.pop(account_id, None)
