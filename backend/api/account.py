@@ -4,9 +4,9 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from typing import List, AsyncGenerator, Dict, Optional, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from loguru import logger
 import asyncio
@@ -22,10 +22,12 @@ from schemas import (
     ConnectionStatus, AccountStatus,
     SendCodeRequest, SendCodeResponse,
     VerifyCodeRequest, VerifyCodeResponse,
+    HealthCheckResponse,
 )
 from core.browser import browser_manager
+from core.config import settings
 from core.dewu_client import get_dewu_client, get_or_create_client, release_client, _active_clients
-from utils.crypto import encrypt_data, decrypt_data
+from utils.crypto import encrypt_data, decrypt_data, mask_phone
 
 router = APIRouter()
 
@@ -240,6 +242,12 @@ async def create_account(
         account_name=account_data.account_name,
         status="inactive"
     )
+    if account_data.phone:
+        account.phone_encrypted = encrypt_data(account_data.phone)
+    if account_data.tags:
+        account.tags = json.dumps(account_data.tags)
+    if account_data.remark:
+        account.remark = account_data.remark
     db.add(account)
     await db.commit()
     await db.refresh(account)
@@ -250,23 +258,46 @@ async def create_account(
     await db.commit()
 
     logger.info(f"创建账号: {account.account_name} ({account.account_id})")
-    return account
+    response = AccountResponse.model_validate(account)
+    if account.phone_encrypted:
+        response.phone_masked = mask_phone(decrypt_data(account.phone_encrypted))
+    return response
 
 
 @router.get("/", response_model=List[AccountResponse])
 async def list_accounts(
     status: str = None,
+    tag: Optional[str] = None,
+    search: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
 ):
-    """获取账号列表"""
+    """获取账号列表（支持状态过滤、标签筛选、关键词搜索）"""
     query = select(Account)
     if status:
         query = query.where(Account.status == status)
+    if tag:
+        query = query.where(Account.tags.contains(f'"{tag}"'))
+    if search:
+        keyword = f"%{search}%"
+        query = query.where(
+            or_(
+                Account.account_name.ilike(keyword),
+                Account.account_id.ilike(keyword),
+                Account.dewu_nickname.ilike(keyword),
+                Account.remark.ilike(keyword),
+            )
+        )
     query = query.order_by(Account.created_at.desc())
 
     result = await db.execute(query)
     accounts = result.scalars().all()
-    return accounts
+    responses = []
+    for account in accounts:
+        resp = AccountResponse.model_validate(account)
+        if account.phone_encrypted:
+            resp.phone_masked = mask_phone(decrypt_data(account.phone_encrypted))
+        responses.append(resp)
+    return responses
 
 
 @router.get("/stats", response_model=AccountStats)
@@ -319,7 +350,10 @@ async def get_account(
     if not account:
         raise HTTPException(status_code=404, detail="账号不存在")
 
-    return account
+    response = AccountResponse.model_validate(account)
+    if account.phone_encrypted:
+        response.phone_masked = mask_phone(decrypt_data(account.phone_encrypted))
+    return response
 
 
 @router.put("/{account_id}", response_model=AccountResponse)
@@ -341,6 +375,24 @@ async def update_account(
     # 如果更新了 cookie，进行加密
     if "cookie" in update_data and update_data["cookie"]:
         update_data["cookie"] = encrypt_data(update_data["cookie"])
+
+    # 处理 tags（需要 JSON 序列化）
+    if "tags" in update_data:
+        if update_data["tags"] is not None:
+            account.tags = json.dumps(update_data["tags"])
+        del update_data["tags"]
+
+    # 处理 remark
+    if "remark" in update_data:
+        if update_data["remark"] is not None:
+            account.remark = update_data["remark"]
+        del update_data["remark"]
+
+    # 处理 phone（加密后写入 phone_encrypted）
+    if "phone" in update_data:
+        if update_data["phone"]:
+            account.phone_encrypted = encrypt_data(update_data["phone"])
+        del update_data["phone"]
 
     for field, value in update_data.items():
         setattr(account, field, value)
@@ -372,6 +424,75 @@ async def delete_account(
 
     logger.info(f"删除账号: {account.account_name}")
     return None
+
+
+@router.post("/{account_id}/health-check", response_model=HealthCheckResponse)
+async def health_check(
+    account_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> HealthCheckResponse:
+    """
+    检查账号 Session 是否仍有效
+
+    创建临时浏览器上下文加载 storage_state，
+    导航到 creator.dewu.com，通过 URL 判断 session 是否过期。
+    """
+    result = await db.execute(select(Account).where(Account.id == account_id))
+    account = result.scalar_one_or_none()
+
+    if not account:
+        raise HTTPException(status_code=404, detail="账号不存在")
+
+    if not account.storage_state:
+        return HealthCheckResponse(
+            success=True,
+            is_valid=False,
+            message="账号未登录",
+        )
+
+    temp_ctx_id = -account_id  # 临时上下文 ID，不影响正常连接
+    try:
+        context = await browser_manager.create_context(temp_ctx_id, account.storage_state)
+        page = await context.new_page()
+        try:
+            await page.goto("https://creator.dewu.com", timeout=15000)
+            is_valid = "/login" not in page.url
+        finally:
+            await browser_manager.close_context(temp_ctx_id)
+    except Exception as e:
+        logger.error("账号 {} 健康检查失败: error_type={}", account_id, type(e).__name__, exc_info=True)
+        return HealthCheckResponse(
+            success=False,
+            is_valid=False,
+            message=f"检查失败: {type(e).__name__}",
+        )
+
+    now = datetime.utcnow()
+    session_ttl = timedelta(hours=settings.SESSION_TTL_HOURS)
+
+    if is_valid:
+        account.last_health_check = now
+        account.session_expires_at = now + session_ttl
+        expires_at = account.session_expires_at
+        message = "Session 有效"
+    else:
+        account.status = AccountStatus.SESSION_EXPIRED.value
+        expires_at = None
+        message = "Session 已过期，请重新登录"
+
+    await db.commit()
+
+    logger.info(
+        "账号 {} 健康检查完成: is_valid={}, account_id={}",
+        account.account_name, is_valid, account_id
+    )
+
+    return HealthCheckResponse(
+        success=True,
+        is_valid=is_valid,
+        message=message,
+        expires_at=expires_at,
+    )
 
 
 @router.post("/connect/{account_id}", response_model=ConnectionResponse, deprecated=True)
@@ -560,8 +681,16 @@ async def send_sms_code(
     if not account:
         raise HTTPException(status_code=404, detail="账号不存在")
 
-    # 检查手机号格式
-    if not re.match(r'^1\d{10}$', request.phone):
+    # 确定实际使用的手机号
+    phone = request.phone
+    if not phone:
+        if account.phone_encrypted:
+            phone = decrypt_data(account.phone_encrypted)
+        else:
+            raise HTTPException(status_code=400, detail="没有存储的手机号，请输入手机号")
+
+    # 验证手机号格式
+    if not re.match(r'^1\d{10}$', phone):
         raise HTTPException(status_code=400, detail="手机号格式不正确，必须为11位数字")
 
     # 检查是否已有进行中的连接（非终态）
@@ -587,6 +716,8 @@ async def send_sms_code(
     async def _background_send_code(acc_id: int, phone: str) -> None:
         try:
             client = await get_or_create_client(acc_id)
+            # 将本次使用的手机号挂在 client 实例上，供 verify 阶段使用
+            client._phone = phone
             send_success, send_message = await client.send_sms_code(phone)
             if send_success:
                 await connection_status_manager.set_status(
@@ -623,7 +754,7 @@ async def send_sms_code(
             )
             release_client(acc_id)
 
-    background_tasks.add_task(_background_send_code, account_id, request.phone)
+    background_tasks.add_task(_background_send_code, account_id, phone)
 
     return SendCodeResponse(
         success=True,
@@ -692,6 +823,10 @@ async def verify_sms_code(
                 account.storage_state = storage_state
             else:
                 logger.warning("账号 {} 未能保存 storage state", account_id)
+
+            # 保存加密手机号（使用本次登录实际使用的手机号）
+            if hasattr(client, '_phone') and client._phone:
+                account.phone_encrypted = encrypt_data(client._phone)
 
             # 更新账号状态
             account.status = AccountStatus.ACTIVE.value

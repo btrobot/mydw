@@ -352,6 +352,204 @@ class DewuClient:
             logger.error(f"获取用户信息失败: {e}")
             return None
 
+    async def scrape_profile(self) -> Optional[Dict[str, str]]:
+        """
+        登录成功后抓取用户 profile 信息。
+
+        前提：login 已成功，self.page 处于已登录状态。
+
+        Returns:
+            Optional[Dict]: {"nickname": "...", "uid": "...", "avatar_url": "..."}
+            失败返回 None（不影响登录流程）
+        """
+        async def _do_scrape() -> Optional[Dict[str, str]]:
+            # 前提检查：page 必须存在且不处于登录页
+            if not self.page:
+                logger.warning("账号 {} scrape_profile: page 不存在", self.account_id)
+                return None
+
+            current_url = self.page.url
+            if "login" in current_url.lower():
+                logger.warning("账号 {} scrape_profile: 当前页面仍在登录页 url={}", self.account_id, current_url)
+                return None
+
+            # 第一步：从当前页面 DOM 提取信息
+            profile: Dict[str, Optional[str]] = await self.page.evaluate("""
+                () => {
+                    // 昵称：多选择器尝试
+                    const nicknameSelectors = [
+                        '.user-name',
+                        '.nickname',
+                        '[class*="user-name"]',
+                        '[class*="nickname"]',
+                        '[class*="header-user"] [class*="name"]',
+                        'header [class*="user"] [class*="name"]',
+                        'nav [class*="user"] span',
+                    ];
+                    let nickname = null;
+                    for (const sel of nicknameSelectors) {
+                        const el = document.querySelector(sel);
+                        if (el && el.textContent && el.textContent.trim()) {
+                            nickname = el.textContent.trim();
+                            break;
+                        }
+                    }
+
+                    // 头像：导航栏区域 img
+                    const avatarSelectors = [
+                        'header [class*="avatar"] img',
+                        'nav [class*="avatar"] img',
+                        '[class*="header-user"] img',
+                        '[class*="user-avatar"] img',
+                        '.user-avatar img',
+                    ];
+                    let avatar_url = null;
+                    for (const sel of avatarSelectors) {
+                        const el = document.querySelector(sel);
+                        if (el && el.src) {
+                            avatar_url = el.src;
+                            break;
+                        }
+                    }
+
+                    // UID：从页面元素或 URL 中尝试提取
+                    const uidSelectors = [
+                        '[class*="uid"]',
+                        '[class*="user-id"]',
+                        '[data-uid]',
+                        '[data-user-id]',
+                    ];
+                    let uid = null;
+                    for (const sel of uidSelectors) {
+                        const el = document.querySelector(sel);
+                        if (el) {
+                            uid = el.getAttribute('data-uid') ||
+                                  el.getAttribute('data-user-id') ||
+                                  (el.textContent && el.textContent.trim()) ||
+                                  null;
+                            if (uid) break;
+                        }
+                    }
+                    // UID 备用：从当前 URL 路径段中匹配纯数字
+                    if (!uid) {
+                        const parts = window.location.pathname.split('/');
+                        for (const part of parts) {
+                            if (/^\\d{5,}$/.test(part)) {
+                                uid = part;
+                                break;
+                            }
+                        }
+                    }
+
+                    return { nickname, uid, avatar_url };
+                }
+            """)
+
+            # 判断当前页面信息是否足够
+            has_info = profile.get("nickname") or profile.get("uid")
+            if has_info:
+                logger.info(
+                    "账号 {} scrape_profile 成功（当前页面）: nickname_found={} uid_found={}",
+                    self.account_id,
+                    bool(profile.get("nickname")),
+                    bool(profile.get("uid")),
+                )
+                return {k: v for k, v in profile.items()}
+
+            # 第二步：当前页面信息不足，在新 tab 中访问个人中心
+            logger.info("账号 {} scrape_profile: 当前页面信息不足，尝试新 tab", self.account_id)
+            new_page = None
+            try:
+                context = self.page.context
+                new_page = await context.new_page()
+                await new_page.goto(
+                    f"{self.BASE_URL}/user/profile",
+                    wait_until="domcontentloaded",
+                    timeout=8000,
+                )
+                await new_page.wait_for_timeout(1500)
+
+                profile2: Dict[str, Optional[str]] = await new_page.evaluate("""
+                    () => {
+                        const nicknameSelectors = [
+                            '.user-name',
+                            '.nickname',
+                            '[class*="user-name"]',
+                            '[class*="nickname"]',
+                            '[class*="profile"] [class*="name"]',
+                        ];
+                        let nickname = null;
+                        for (const sel of nicknameSelectors) {
+                            const el = document.querySelector(sel);
+                            if (el && el.textContent && el.textContent.trim()) {
+                                nickname = el.textContent.trim();
+                                break;
+                            }
+                        }
+
+                        const avatarSelectors = [
+                            '[class*="avatar"] img',
+                            '[class*="profile"] img',
+                            '.user-avatar img',
+                        ];
+                        let avatar_url = null;
+                        for (const sel of avatarSelectors) {
+                            const el = document.querySelector(sel);
+                            if (el && el.src) {
+                                avatar_url = el.src;
+                                break;
+                            }
+                        }
+
+                        let uid = null;
+                        const uidSelectors = ['[class*="uid"]', '[data-uid]', '[data-user-id]'];
+                        for (const sel of uidSelectors) {
+                            const el = document.querySelector(sel);
+                            if (el) {
+                                uid = el.getAttribute('data-uid') ||
+                                      el.getAttribute('data-user-id') ||
+                                      (el.textContent && el.textContent.trim()) ||
+                                      null;
+                                if (uid) break;
+                            }
+                        }
+                        if (!uid) {
+                            const parts = window.location.pathname.split('/');
+                            for (const part of parts) {
+                                if (/^\\d{5,}$/.test(part)) {
+                                    uid = part;
+                                    break;
+                                }
+                            }
+                        }
+
+                        return { nickname, uid, avatar_url };
+                    }
+                """)
+                logger.info(
+                    "账号 {} scrape_profile 成功（新 tab）: nickname_found={} uid_found={}",
+                    self.account_id,
+                    bool(profile2.get("nickname")),
+                    bool(profile2.get("uid")),
+                )
+                return {k: v for k, v in profile2.items()}
+            finally:
+                if new_page:
+                    try:
+                        await new_page.close()
+                    except Exception:
+                        pass
+
+        try:
+            result = await asyncio.wait_for(_do_scrape(), timeout=10.0)
+            return result
+        except asyncio.TimeoutError:
+            logger.warning("账号 {} scrape_profile 超时（10s）", self.account_id)
+            return None
+        except Exception as e:
+            logger.warning("账号 {} scrape_profile 异常: error_type={}", self.account_id, type(e).__name__)
+            return None
+
     async def upload_video(self, video_path: str, title: str, content: str,
                           topic: str = "", cover_path: str = None) -> Tuple[bool, str]:
         """

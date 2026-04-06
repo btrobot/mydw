@@ -75,3 +75,10 @@ def encrypt_data(data: str) -> str:
 def decrypt_data(data: str) -> str:
     """解密数据"""
     return _crypto.decrypt(data)
+
+
+def mask_phone(phone: str) -> str:
+    """将手机号脱敏，例如 13812348000 → 138****8000。"""
+    if len(phone) == 11:
+        return phone[:3] + "****" + phone[7:]
+    return "***"

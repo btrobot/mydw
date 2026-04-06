@@ -4,27 +4,28 @@
  * 提供手机验证码连接功能，支持 SSE 实时状态推送
  */
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Modal, Form, Input, Button, Space, message, Progress, Alert } from 'antd'
+import { Modal, Form, Input, Button, Space, message, Progress, Alert, Switch } from 'antd'
 import axios from 'axios'
 import { useQueryClient } from '@tanstack/react-query'
 
 interface ConnectionModalProps {
   accountId: number
   accountName: string
+  phoneMasked?: string | null
   open: boolean
   onSuccess: () => void
   onCancel: () => void
 }
 
-// 表单字段
+// 表单字段 — phone is optional when using stored number
 interface FormValues {
-  phone: string
+  phone?: string
   code: string
 }
 
 // send-code 端点请求体
 interface SendCodeRequest {
-  phone: string
+  phone?: string
 }
 
 // verify 端点请求体
@@ -71,6 +72,7 @@ const COUNTDOWN_SECONDS = 60
 export default function ConnectionModal({
   accountId,
   accountName,
+  phoneMasked,
   open,
   onSuccess,
   onCancel,
@@ -79,6 +81,10 @@ export default function ConnectionModal({
   const [countdown, setCountdown] = useState(0)
   const [loading, setLoading] = useState(false)
   const [sendLoading, setSendLoading] = useState(false)
+
+  // 使用已存储手机号的开关 — 仅在有存储手机号时有效
+  const hasStoredPhone = Boolean(phoneMasked)
+  const [useStoredPhone, setUseStoredPhone] = useState(hasStoredPhone)
 
   // SSE 状态
   const [statusMessage, setStatusMessage] = useState('')
@@ -185,22 +191,30 @@ export default function ConnectionModal({
       setStatusMessage('')
       setProgress(0)
       setConnectionError(false)
+      // 重新打开时恢复默认：有存储号码则默认使用
+      setUseStoredPhone(Boolean(phoneMasked))
     }
-  }, [open, form])
+  }, [open, form, phoneMasked])
 
   // 发送验证码 - 触发后端发送短信验证码
   const handleSendCode = useCallback(async () => {
-    const phone = form.getFieldValue('phone')
+    // 使用已存储手机号时跳过前端格式验证
+    if (!useStoredPhone) {
+      const phone = form.getFieldValue('phone') as string | undefined
 
-    // 验证手机号格式
-    if (!phone || !/^1\d{10}$/.test(phone)) {
-      message.error('请输入正确的手机号')
-      return
+      // 验证手机号格式
+      if (!phone || !/^1\d{10}$/.test(phone)) {
+        message.error('请输入正确的手机号')
+        return
+      }
     }
 
     setSendLoading(true)
     try {
-      const body: SendCodeRequest = { phone }
+      const body: SendCodeRequest = useStoredPhone
+        ? {}
+        : { phone: form.getFieldValue('phone') as string }
+
       await axios.post(`/api/accounts/connect/${accountId}/send-code`, body)
 
       message.success('验证码已发送')
@@ -221,7 +235,7 @@ export default function ConnectionModal({
     } finally {
       setSendLoading(false)
     }
-  }, [accountId, form])
+  }, [accountId, form, useStoredPhone])
 
   // 连接提交
   const handleConnect = async (values: FormValues) => {
@@ -260,10 +274,12 @@ export default function ConnectionModal({
   }
 
   // 表单验证规则
-  const phoneRules = [
-    { required: true, message: '请输入手机号' },
-    { pattern: /^1\d{10}$/, message: '手机号格式不正确' },
-  ]
+  const phoneRules = useStoredPhone
+    ? []
+    : [
+        { required: true, message: '请输入手机号' },
+        { pattern: /^1\d{10}$/, message: '手机号格式不正确' },
+      ]
 
   const codeRules = [
     { required: true, message: '请输入验证码' },
@@ -309,16 +325,37 @@ export default function ConnectionModal({
         onFinish={handleConnect}
         autoComplete="off"
       >
+        {/* 使用已存储手机号开关 — 仅在有存储号码时显示 */}
+        {hasStoredPhone && (
+          <Form.Item style={{ marginBottom: 12 }}>
+            <Space>
+              <Switch
+                checked={useStoredPhone}
+                onChange={setUseStoredPhone}
+                disabled={loading}
+                size="small"
+              />
+              <span style={{ color: '#595959' }}>
+                使用已存储的手机号（{phoneMasked}）
+              </span>
+            </Space>
+          </Form.Item>
+        )}
+
         <Form.Item
           name="phone"
           label="手机号"
           rules={phoneRules}
-          extra="请输入得物账号绑定的手机号"
+          extra={useStoredPhone ? undefined : '请输入得物账号绑定的手机号'}
         >
           <Input
-            placeholder="请输入手机号"
+            placeholder={
+              useStoredPhone
+                ? `${phoneMasked ?? ''}，留空使用已存储号码`
+                : '请输入手机号'
+            }
             maxLength={11}
-            disabled={loading}
+            disabled={loading || useStoredPhone}
           />
         </Form.Item>
 

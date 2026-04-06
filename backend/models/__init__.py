@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, func
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -25,10 +25,21 @@ class Account(Base):
     account_name = Column(String(128), nullable=False)
     cookie = Column(Text, nullable=True)  # 加密存储
     storage_state = Column(Text, nullable=True)  # Playwright storage state
-    status = Column(String(32), default="active", index=True)  # active, inactive, error
+    status = Column(String(32), default="active", index=True)  # active, inactive, error, session_expired, disabled
     last_login = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # 扩展字段（账号管理 P0 — 001_account_management）
+    phone_encrypted = Column(Text, nullable=True)            # AES-256-GCM 加密手机号
+    dewu_nickname = Column(String(128), nullable=True)       # 得物昵称
+    dewu_uid = Column(String(64), nullable=True)             # 得物平台 UID
+    avatar_url = Column(String(512), nullable=True)          # 头像 URL
+    tags = Column(Text, default='[]')                        # JSON 数组标签
+    remark = Column(Text, nullable=True)                     # 备注
+    session_expires_at = Column(DateTime, nullable=True)     # Session 过期时间
+    last_health_check = Column(DateTime, nullable=True)      # 上次健康检查时间
+    login_fail_count = Column(Integer, default=0)            # 连续登录失败次数
 
     # 关系
     tasks = relationship("Task", back_populates="account")
@@ -176,6 +187,11 @@ async def init_db():
     # 创建所有表
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # 执行迁移脚本（幂等）
+    import importlib
+    migration_001 = importlib.import_module("migrations.001_account_management")
+    await migration_001.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

@@ -1,10 +1,11 @@
 """
 得物掘金工具 - Pydantic Schemas
 """
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
+from typing import Optional, List, Any
 from datetime import datetime
 from enum import Enum
+import json
 
 
 # ============ 枚举定义 ============
@@ -14,6 +15,8 @@ class AccountStatus(str, Enum):
     INACTIVE = "inactive"
     ERROR = "error"
     LOGGING_IN = "logging_in"
+    SESSION_EXPIRED = "session_expired"
+    DISABLED = "disabled"
 
 
 class ConnectionStatus(str, Enum):
@@ -67,7 +70,9 @@ class AccountBase(BaseModel):
 
 class AccountCreate(AccountBase):
     """创建账号"""
-    pass
+    phone: Optional[str] = Field(None, min_length=11, max_length=11, description="明文手机号，后端加密存储")
+    tags: List[str] = Field(default_factory=list)
+    remark: Optional[str] = None
 
 
 class AccountUpdate(BaseModel):
@@ -75,6 +80,9 @@ class AccountUpdate(BaseModel):
     account_name: Optional[str] = None
     status: Optional[AccountStatus] = None
     cookie: Optional[str] = None
+    phone: Optional[str] = Field(None, min_length=11, max_length=11, description="明文手机号，后端加密存储")
+    tags: Optional[List[str]] = None
+    remark: Optional[str] = None
 
 
 class AccountResponse(AccountBase):
@@ -86,6 +94,47 @@ class AccountResponse(AccountBase):
     last_login: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
+
+    # 扩展字段
+    phone_masked: Optional[str] = None          # "138****8000"
+    dewu_nickname: Optional[str] = None
+    dewu_uid: Optional[str] = None
+    avatar_url: Optional[str] = None
+    tags: List[str] = Field(default_factory=list)
+    remark: Optional[str] = None
+    session_expires_at: Optional[datetime] = None
+    last_health_check: Optional[datetime] = None
+    login_fail_count: int = 0
+
+    @model_validator(mode="before")
+    @classmethod
+    def _parse_tags(cls, data: Any) -> Any:
+        """将数据库中的 JSON 字符串解析为 List[str]。"""
+        # ORM 对象时，从属性读取
+        tags_raw = data.get("tags") if isinstance(data, dict) else getattr(data, "tags", None)
+        if isinstance(tags_raw, str):
+            try:
+                parsed = json.loads(tags_raw)
+            except (ValueError, TypeError):
+                parsed = []
+            if isinstance(data, dict):
+                data["tags"] = parsed
+            else:
+                # ORM 对象不可直接赋值，转为 dict 再处理
+                data = {
+                    c.key: getattr(data, c.key)
+                    for c in data.__class__.__table__.columns
+                }
+                data["tags"] = parsed
+        return data
+
+
+class HealthCheckResponse(BaseModel):
+    """健康检查响应"""
+    success: bool
+    is_valid: bool
+    message: str
+    expires_at: Optional[datetime] = None
 
 
 class AccountLoginRequest(BaseModel):
@@ -122,7 +171,7 @@ LoginResponse = ConnectionResponse
 
 class SendCodeRequest(BaseModel):
     """发送验证码请求"""
-    phone: str = Field(..., min_length=11, max_length=11, description="手机号（11位）")
+    phone: Optional[str] = Field(None, min_length=11, max_length=11, description="手机号（11位），为空则使用已存储的手机号")
 
 
 class SendCodeResponse(BaseModel):

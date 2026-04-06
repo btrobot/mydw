@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_DIR: str = "logs"
 
+    # 账号会话配置
+    SESSION_TTL_HOURS: int = 24
+    HEALTH_CHECK_INTERVAL_MINUTES: int = 30
+
 
 # 创建配置实例
 settings = Settings()

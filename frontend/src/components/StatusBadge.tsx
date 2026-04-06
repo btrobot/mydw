@@ -4,9 +4,10 @@ import {
   ClockCircleOutlined,
   LoadingOutlined,
   ExclamationCircleOutlined,
+  MinusCircleOutlined,
 } from '@ant-design/icons'
 
-type AccountStatus = 'active' | 'inactive' | 'logging_in' | 'error'
+type AccountStatus = 'active' | 'inactive' | 'logging_in' | 'error' | 'session_expired' | 'disabled'
 
 interface StatusConfig {
   color: string
@@ -39,6 +40,16 @@ const STATUS_CONFIG: Record<AccountStatus, StatusConfig> = {
     color: 'error',
     icon: <ExclamationCircleOutlined />,
     text: '异常',
+  },
+  session_expired: {
+    color: 'warning',
+    icon: <ExclamationCircleOutlined />,
+    text: '会话过期',
+  },
+  disabled: {
+    color: 'default',
+    icon: <MinusCircleOutlined />,
+    text: '已禁用',
   },
 }
 
