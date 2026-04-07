@@ -199,9 +199,19 @@ async def upload_video(
     # SP8-01: file_hash 去重
     file_hash = await compute_file_hash(str(file_path))
     if file_hash:
-        dup = await db.execute(select(Video).where(Video.file_hash == file_hash))
-        if dup.scalars().first():
-            logger.info("视频重复: hash={}, filename={}", file_hash[:16], safe_name)
+        dup_result = await db.execute(select(Video).where(Video.file_hash == file_hash))
+        existing_video = dup_result.scalars().first()
+        if existing_video:
+            # 删除已写入的物理文件，阻止重复入库
+            try:
+                file_path.unlink()
+            except Exception as unlink_err:
+                logger.warning("重复视频物理文件删除失败: filename={}, error={}", safe_name, str(unlink_err))
+            logger.info("视频重复已拒绝: hash={}, filename={}, existing_id={}", file_hash[:16], safe_name, existing_video.id)
+            raise HTTPException(
+                status_code=409,
+                detail="视频已存在，existing_id={}".format(existing_video.id),
+            )
     video.file_hash = file_hash
     db.add(video)
     await db.commit()
