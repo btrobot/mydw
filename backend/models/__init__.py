@@ -98,6 +98,7 @@ class Product(Base):
     tasks = relationship("Task", back_populates="product")
     videos = relationship("Video", back_populates="product")
     copywritings = relationship("Copywriting", back_populates="product")
+    topics = relationship("Topic", secondary="product_topics")
 
 
 class Video(Base):
@@ -192,6 +193,17 @@ class TaskTopic(Base):
     topic_id = Column(Integer, ForeignKey("topics.id"), nullable=False, index=True)
 
     __table_args__ = (UniqueConstraint('task_id', 'topic_id'),)
+
+
+class ProductTopic(Base):
+    """商品-话题关联表"""
+    __tablename__ = "product_topics"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True)
+    topic_id = Column(Integer, ForeignKey("topics.id"), nullable=False, index=True)
+
+    __table_args__ = (UniqueConstraint('product_id', 'topic_id'),)
 
 
 class PublishLog(Base):
@@ -290,6 +302,8 @@ async def init_db():
     await migration_007.run_migration(engine)
     migration_008 = importlib.import_module("migrations.008_task_cover_fk")
     await migration_008.run_migration(engine)
+    migration_009 = importlib.import_module("migrations.009_product_topics")
+    await migration_009.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

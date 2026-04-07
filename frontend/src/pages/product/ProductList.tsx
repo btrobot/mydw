@@ -4,15 +4,14 @@ import {
   Button, Space, Typography, message,
   Modal, Form, Input, Popconfirm,
 } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, LinkOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, LinkOutlined, SyncOutlined } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns, ActionType } from '@ant-design/pro-components'
 
 import { useCreateProductV2, useDeleteProductV2, useUpdateProductV2, useBatchDeleteProducts, useVideos, useCopywritings } from '@/hooks'
-import type { ProductResponse } from '@/types/material'
+import type { ProductResponse, ProductListResponse, ParseMaterialsResponse } from '@/types/material'
 import { handleApiError } from '@/utils/error'
 import { api } from '@/services/api'
-import type { ProductListResponse } from '@/types/material'
 
 const { Text, Link } = Typography
 
@@ -35,6 +34,8 @@ export default function ProductList() {
   const [editingProduct, setEditingProduct] = useState<ProductResponse | null>(null)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [form] = Form.useForm<ProductFormValues>()
+
+  const [parsingIds, setParsingIds] = useState<Set<number>>(new Set())
 
   const createProduct = useCreateProductV2()
   const deleteProduct = useDeleteProductV2()
@@ -87,6 +88,27 @@ export default function ProductList() {
       handleApiError(error, '批量删除失败')
     }
   }, [selectedIds, batchDeleteProducts])
+
+  const handleParse = useCallback(async (id: number) => {
+    setParsingIds((prev) => new Set(prev).add(id))
+    try {
+      const { data } = await api.post<ParseMaterialsResponse>(`/products/${id}/parse-materials`)
+      const videoCount = data.video ? 1 : 0
+      const coverCount = data.covers.length
+      const copywritingCount = data.copywriting ? 1 : 0
+      const topicCount = data.topics.length
+      message.success(`解析完成：视频 ${videoCount} 个，封面 ${coverCount} 张，文案 ${copywritingCount} 条，话题 ${topicCount} 个`)
+      actionRef.current?.reload()
+    } catch (error: unknown) {
+      handleApiError(error, '解析素材失败')
+    } finally {
+      setParsingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+    }
+  }, [])
 
   const columns: ProColumns<ProductResponse>[] = [
     {
@@ -142,10 +164,19 @@ export default function ProductList() {
     {
       title: '操作',
       key: 'action',
-      width: 120,
+      width: 180,
       hideInSearch: true,
       render: (_, record) => (
         <Space>
+          <Button
+            type="link"
+            size="small"
+            icon={<SyncOutlined />}
+            loading={parsingIds.has(record.id)}
+            onClick={() => handleParse(record.id)}
+          >
+            解析
+          </Button>
           <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
             编辑
           </Button>

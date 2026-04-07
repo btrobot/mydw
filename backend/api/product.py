@@ -9,7 +9,8 @@ from sqlalchemy import select, func
 from loguru import logger
 
 from models import Product, Video, Copywriting, get_db
-from schemas import ProductCreate, ProductUpdate, ProductResponse, ProductListResponse
+from schemas import ProductCreate, ProductUpdate, ProductResponse, ProductListResponse, ParseMaterialsResponse
+from services.product_parse_service import parse_and_create_materials
 
 router = APIRouter(tags=["商品管理"])
 
@@ -137,3 +138,28 @@ async def delete_product(
     await db.delete(product)
     await db.commit()
     logger.info("商品删除成功: product_id={}", product_id)
+
+
+@router.post("/{product_id}/parse-materials", response_model=ParseMaterialsResponse)
+async def parse_product_materials(
+    product_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> ParseMaterialsResponse:
+    """解析商品得物页面素材（封面、视频、标题、话题），覆盖更新已有素材记录"""
+    result = await db.execute(select(Product).where(Product.id == product_id))
+    product = result.scalars().first()
+    if not product:
+        raise HTTPException(status_code=404, detail="商品不存在")
+    if not product.dewu_url:
+        raise HTTPException(status_code=400, detail="商品未配置得物商品页 URL")
+
+    logger.info("触发商品素材解析: product_id={}", product_id)
+    try:
+        data = await parse_and_create_materials(db=db, product=product)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.error("商品素材解析异常: product_id={}, error_type={}", product_id, type(e).__name__)
+        raise HTTPException(status_code=500, detail="素材解析失败，请稍后重试")
+
+    return ParseMaterialsResponse(**data)

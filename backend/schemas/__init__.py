@@ -709,3 +709,16 @@ class ApiResponse(BaseModel):
     success: bool = True
     message: str = "操作成功"
     data: Optional[dict] = None
+
+
+# ============ 商品素材解析 Schema ============
+
+class ParseMaterialsResponse(BaseModel):
+    """商品素材解析响应"""
+    success: bool
+    product_id: int
+    title: str
+    topics: List[str]
+    videos_downloaded: int
+    covers_downloaded: int
+    errors: List[str] = Field(default_factory=list)
