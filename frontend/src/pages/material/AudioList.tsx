@@ -51,6 +51,7 @@ export default function AudioList() {
   }, [selectedIds, batchDeleteAudios])
 
   const columns = [
+    { title: 'ID', dataIndex: 'id', key: 'id', width: 70, sorter: (a: AudioResponse, b: AudioResponse) => a.id - b.id },
     { title: '名称', dataIndex: 'name', key: 'name', ellipsis: true },
     {
       title: '大小',
@@ -58,6 +59,7 @@ export default function AudioList() {
       key: 'file_size',
       width: 90,
       render: (v: number | null) => formatSize(v),
+      sorter: (a: AudioResponse, b: AudioResponse) => (a.file_size ?? 0) - (b.file_size ?? 0),
     },
     {
       title: '时长',
@@ -65,6 +67,7 @@ export default function AudioList() {
       key: 'duration',
       width: 80,
       render: (v: number | null) => formatDuration(v),
+      sorter: (a: AudioResponse, b: AudioResponse) => (a.duration ?? 0) - (b.duration ?? 0),
     },
     {
       title: '创建时间',
@@ -72,6 +75,7 @@ export default function AudioList() {
       key: 'created_at',
       width: 160,
       render: (v: string) => new Date(v).toLocaleString('zh-CN'),
+      sorter: (a: AudioResponse, b: AudioResponse) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
     },
     {
       title: '操作',

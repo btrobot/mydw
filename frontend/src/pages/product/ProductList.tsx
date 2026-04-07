@@ -85,6 +85,7 @@ export default function ProductList() {
   }, [selectedIds, batchDeleteProducts])
 
   const columns = [
+    { title: 'ID', dataIndex: 'id', key: 'id', width: 70, sorter: (a: ProductResponse, b: ProductResponse) => a.id - b.id },
     {
       title: '商品名称',
       dataIndex: 'name',
@@ -124,6 +125,7 @@ export default function ProductList() {
       dataIndex: 'created_at',
       key: 'created_at',
       width: 160,
+      sorter: (a: ProductResponse, b: ProductResponse) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
       render: (v: string) => new Date(v).toLocaleString('zh-CN'),
     },
     {

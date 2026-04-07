@@ -55,6 +55,7 @@ export default function CoverList() {
   }, [selectedIds, batchDeleteCovers])
 
   const columns = [
+    { title: 'ID', dataIndex: 'id', key: 'id', width: 70, sorter: (a: CoverResponse, b: CoverResponse) => a.id - b.id },
     { title: '文件路径', dataIndex: 'file_path', key: 'file_path', ellipsis: true },
     {
       title: '关联视频',
@@ -69,6 +70,7 @@ export default function CoverList() {
       key: 'file_size',
       width: 90,
       render: (v: number | null) => formatSize(v),
+      sorter: (a: CoverResponse, b: CoverResponse) => (a.file_size ?? 0) - (b.file_size ?? 0),
     },
     {
       title: '尺寸',
@@ -83,6 +85,7 @@ export default function CoverList() {
       key: 'created_at',
       width: 160,
       render: (v: string) => new Date(v).toLocaleString('zh-CN'),
+      sorter: (a: CoverResponse, b: CoverResponse) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
     },
     {
       title: '操作',

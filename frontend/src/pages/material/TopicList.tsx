@@ -24,7 +24,6 @@ interface TopicFormValues {
 }
 
 export default function TopicList() {
-  const [sort, setSort] = useState<string>('created_at')
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [globalModalOpen, setGlobalModalOpen] = useState(false)
   const [searchKeyword, setSearchKeyword] = useState<string>('')
@@ -33,7 +32,7 @@ export default function TopicList() {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [form] = Form.useForm<TopicFormValues>()
 
-  const { data: topics = [], isLoading } = useTopics(sort)
+  const { data: topics = [], isLoading } = useTopics()
   const { data: searchResults = [], isFetching: isSearching } = useSearchTopics(searchKeyword)
   const { data: globalTopicsData } = useGlobalTopics()
   const createTopic = useCreateTopic()
@@ -97,6 +96,7 @@ export default function TopicList() {
   }, [selectedIds, batchDeleteTopics])
 
   const columns = [
+    { title: 'ID', dataIndex: 'id', key: 'id', width: 70, sorter: (a: TopicResponse, b: TopicResponse) => a.id - b.id },
     { title: '话题名称', dataIndex: 'name', key: 'name', ellipsis: true },
     {
       title: '热度',
@@ -104,6 +104,7 @@ export default function TopicList() {
       key: 'heat',
       width: 80,
       render: (v: number) => v.toLocaleString(),
+      sorter: (a: TopicResponse, b: TopicResponse) => a.heat - b.heat,
     },
     {
       title: '来源',
@@ -117,6 +118,7 @@ export default function TopicList() {
       key: 'created_at',
       width: 160,
       render: (v: string) => new Date(v).toLocaleString('zh-CN'),
+      sorter: (a: TopicResponse, b: TopicResponse) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
     },
     {
       title: '操作',
@@ -188,17 +190,6 @@ export default function TopicList() {
       </Card>
 
       <ListPageLayout
-        filterBar={
-          <Select
-            value={sort}
-            onChange={setSort}
-            style={{ width: 120 }}
-            options={[
-              { label: '最新', value: 'created_at' },
-              { label: '热度', value: 'heat' },
-            ]}
-          />
-        }
         actionBar={
           <Space>
             <Button icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>

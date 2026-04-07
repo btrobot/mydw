@@ -101,6 +101,7 @@ export default function VideoList() {
   }, [scanVideos])
 
   const columns = [
+    { title: 'ID', dataIndex: 'id', key: 'id', width: 70, sorter: (a: VideoResponse, b: VideoResponse) => a.id - b.id },
     { title: '名称', dataIndex: 'name', key: 'name', ellipsis: true },
     {
       title: '状态',
@@ -124,6 +125,7 @@ export default function VideoList() {
       key: 'file_size',
       width: 90,
       render: (v: number | null) => formatSize(v),
+      sorter: (a: VideoResponse, b: VideoResponse) => (a.file_size ?? 0) - (b.file_size ?? 0),
     },
     {
       title: '时长',
@@ -131,6 +133,7 @@ export default function VideoList() {
       key: 'duration',
       width: 80,
       render: (v: number | null) => formatDuration(v),
+      sorter: (a: VideoResponse, b: VideoResponse) => (a.duration ?? 0) - (b.duration ?? 0),
     },
     {
       title: '创建时间',
@@ -138,6 +141,7 @@ export default function VideoList() {
       key: 'created_at',
       width: 160,
       render: (v: string) => new Date(v).toLocaleString('zh-CN'),
+      sorter: (a: VideoResponse, b: VideoResponse) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
     },
     {
       title: '操作',

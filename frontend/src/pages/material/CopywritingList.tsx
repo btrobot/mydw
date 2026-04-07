@@ -94,6 +94,7 @@ export default function CopywritingList() {
   }, [selectedIds, batchDeleteCopywritings])
 
   const columns = [
+    { title: 'ID', dataIndex: 'id', key: 'id', width: 70, sorter: (a: CopywritingResponse, b: CopywritingResponse) => a.id - b.id },
     {
       title: '内容',
       dataIndex: 'content',
@@ -120,6 +121,7 @@ export default function CopywritingList() {
       key: 'created_at',
       width: 160,
       render: (v: string) => new Date(v).toLocaleString('zh-CN'),
+      sorter: (a: CopywritingResponse, b: CopywritingResponse) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
     },
     {
       title: '操作',
