@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@ant-design/icons": "^5.2.6",
+    "@ant-design/pro-components": "^2.8.10",
     "@hey-api/client-fetch": "^0.13.1",
     "@tanstack/react-query": "^5.17.0",
     "antd": "^5.12.0",

@@ -5,12 +5,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/services/api'
 import type { CopywritingResponse, CopywritingListResponse, CopywritingCreate, BatchDeleteResponse } from '@/types/material'
 
-export const useCopywritings = (productId?: number) =>
+export const useCopywritings = (params?: { keyword?: string; sourceType?: string; productId?: number }) =>
   useQuery<CopywritingResponse[]>({
-    queryKey: ['copywritings', productId],
+    queryKey: ['copywritings', params],
     queryFn: async () => {
-      const params = productId !== undefined ? { product_id: productId } : {}
-      const { data } = await api.get<CopywritingListResponse>('/copywritings', { params })
+      const queryParams: Record<string, string | number> = {}
+      if (params?.keyword) queryParams.keyword = params.keyword
+      if (params?.sourceType) queryParams.source_type = params.sourceType
+      if (params?.productId !== undefined) queryParams.product_id = params.productId
+      const { data } = await api.get<CopywritingListResponse>('/copywritings', { params: queryParams })
       return data.items
     },
   })

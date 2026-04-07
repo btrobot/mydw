@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import {
   Table, Button, Space, Typography, message,
-  Modal, Form, Input, Popconfirm, Upload, Tag,
+  Modal, Form, Input, Popconfirm, Upload, Tag, Select,
 } from 'antd'
 import type { UploadProps } from 'antd'
 import {
@@ -16,6 +16,8 @@ import ListPageLayout from '@/components/ListPageLayout'
 import ProductSelect from '@/components/ProductSelect'
 import BatchDeleteButton from '@/components/BatchDeleteButton'
 
+type FileStatusFilter = 'normal' | 'missing'
+
 const { Text } = Typography
 
 interface VideoFormValues {
@@ -25,13 +27,19 @@ interface VideoFormValues {
 }
 
 export default function VideoList() {
-  const [productFilter, setProductFilter] = useState<number | undefined>(undefined)
+  const [keyword, setKeyword] = useState<string | undefined>(undefined)
+  const [fileStatusFilter, setFileStatusFilter] = useState<FileStatusFilter | undefined>(undefined)
   const [uploadProductId, setUploadProductId] = useState<number | undefined>(undefined)
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [form] = Form.useForm<VideoFormValues>()
 
-  const { data: videos = [], isLoading } = useVideos(productFilter)
+  const { data: rawVideos = [], isLoading } = useVideos({ keyword })
+  const videos = fileStatusFilter === undefined
+    ? rawVideos
+    : rawVideos.filter((v) =>
+        fileStatusFilter === 'normal' ? v.file_exists === true : v.file_exists === false
+      )
   const createVideo = useCreateVideo()
   const deleteVideo = useDeleteVideo()
   const uploadVideo = useUploadVideo()
@@ -159,13 +167,27 @@ export default function VideoList() {
     <>
       <ListPageLayout
         filterBar={
-          <ProductSelect
-            allowClear
-            placeholder="按商品筛选"
-            style={{ width: 160 }}
-            value={productFilter}
-            onChange={setProductFilter}
-          />
+          <Space>
+            <Input
+              allowClear
+              placeholder="搜索视频名称"
+              style={{ width: 200 }}
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value || undefined)}
+            />
+            <Select<FileStatusFilter>
+              allowClear
+              placeholder="文件状态"
+              style={{ width: 140 }}
+              value={fileStatusFilter}
+              onChange={(v) => setFileStatusFilter(v)}
+              onClear={() => setFileStatusFilter(undefined)}
+              options={[
+                { label: '正常', value: 'normal' },
+                { label: '缺失', value: 'missing' },
+              ]}
+            />
+          </Space>
         }
         actionBar={
           <Space>

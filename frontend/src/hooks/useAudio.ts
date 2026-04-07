@@ -5,11 +5,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/services/api'
 import type { AudioResponse, BatchDeleteResponse } from '@/types/material'
 
-export const useAudios = () =>
+export const useAudios = (keyword?: string) =>
   useQuery<AudioResponse[]>({
-    queryKey: ['audios'],
+    queryKey: ['audios', keyword],
     queryFn: async () => {
-      const { data } = await api.get<AudioResponse[]>('/audios')
+      const { data } = await api.get<AudioResponse[]>('/audios', {
+        params: keyword ? { keyword } : undefined,
+      })
       return data
     },
   })

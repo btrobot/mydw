@@ -5,11 +5,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/services/api'
 import type { VideoResponse, VideoListResponse, VideoCreate, BatchDeleteResponse } from '@/types/material'
 
-export const useVideos = (productId?: number) =>
+interface UseVideosOptions {
+  keyword?: string
+  productId?: number
+}
+
+export const useVideos = (options?: UseVideosOptions) =>
   useQuery<VideoResponse[]>({
-    queryKey: ['videos', productId],
+    queryKey: ['videos', options],
     queryFn: async () => {
-      const params = productId !== undefined ? { product_id: productId } : {}
+      const params: Record<string, string | number> = {}
+      if (options?.keyword) params.keyword = options.keyword
+      if (options?.productId !== undefined) params.product_id = options.productId
       const { data } = await api.get<VideoListResponse>('/videos', { params })
       return data.items
     },

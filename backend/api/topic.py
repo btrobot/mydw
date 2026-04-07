@@ -21,11 +21,20 @@ async def list_topics(
     sort: str = Query("created_at", description="排序字段: created_at | heat"),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
+    keyword: str = Query(None, description="按名称模糊搜索"),
+    source: str = Query(None, description="按来源精确过滤"),
     db: AsyncSession = Depends(get_db),
 ) -> TopicListResponse:
-    """获取话题列表（支持分页和排序）"""
+    """获取话题列表（支持分页、排序和过滤）"""
     query = select(Topic)
     count_query = select(func.count()).select_from(Topic)
+
+    if keyword:
+        query = query.where(Topic.name.ilike(f"%{keyword}%"))
+        count_query = count_query.where(Topic.name.ilike(f"%{keyword}%"))
+    if source:
+        query = query.where(Topic.source == source)
+        count_query = count_query.where(Topic.source == source)
 
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0

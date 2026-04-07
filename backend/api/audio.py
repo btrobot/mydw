@@ -65,12 +65,14 @@ async def upload_audio(
 async def list_audios(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
+    keyword: str = Query(None, description="按名称模糊搜索"),
     db: AsyncSession = Depends(get_db),
 ) -> list[AudioResponse]:
-    """获取音频列表（支持分页）"""
-    result = await db.execute(
-        select(Audio).order_by(Audio.created_at.desc()).offset(skip).limit(limit)
-    )
+    """获取音频列表（支持分页和关键词过滤）"""
+    query = select(Audio).order_by(Audio.created_at.desc())
+    if keyword:
+        query = query.where(Audio.name.ilike(f"%{keyword}%"))
+    result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
 
 

@@ -12,11 +12,10 @@ import type {
   BatchDeleteResponse,
 } from '@/types/material'
 
-export const useTopics = (sort?: string) =>
+export const useTopics = (params?: { keyword?: string; source?: string }) =>
   useQuery<TopicResponse[]>({
-    queryKey: ['topics', sort],
+    queryKey: ['topics', params],
     queryFn: async () => {
-      const params = sort ? { sort } : {}
       const { data } = await api.get<TopicListResponse>('/topics', { params })
       return data.items
     },

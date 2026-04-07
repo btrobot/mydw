@@ -1,16 +1,18 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Table, Button, Space, Typography, message,
+  Button, Space, Typography, message,
   Modal, Form, Input, Popconfirm,
 } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, LinkOutlined } from '@ant-design/icons'
-import BatchDeleteButton from '@/components/BatchDeleteButton'
+import { ProTable } from '@ant-design/pro-components'
+import type { ProColumns, ActionType } from '@ant-design/pro-components'
 
-import { useProductsV2, useCreateProductV2, useDeleteProductV2, useUpdateProductV2, useBatchDeleteProducts, useVideos, useCopywritings } from '@/hooks'
+import { useCreateProductV2, useDeleteProductV2, useUpdateProductV2, useBatchDeleteProducts, useVideos, useCopywritings } from '@/hooks'
 import type { ProductResponse } from '@/types/material'
 import { handleApiError } from '@/utils/error'
-import ListPageLayout from '@/components/ListPageLayout'
+import { api } from '@/services/api'
+import type { ProductListResponse } from '@/types/material'
 
 const { Text, Link } = Typography
 
@@ -20,21 +22,20 @@ interface ProductFormValues {
 }
 
 function ProductCountCell({ productId, type }: { productId: number; type: 'videos' | 'copywritings' }) {
-  const { data: videos = [] } = useVideos(type === 'videos' ? productId : undefined)
-  const { data: copywritings = [] } = useCopywritings(type === 'copywritings' ? productId : undefined)
+  const { data: videos = [] } = useVideos(type === 'videos' ? { productId } : undefined)
+  const { data: copywritings = [] } = useCopywritings(type === 'copywritings' ? { productId } : undefined)
   const count = type === 'videos' ? videos.length : copywritings.length
   return <Text>{count}</Text>
 }
 
 export default function ProductList() {
   const navigate = useNavigate()
+  const actionRef = useRef<ActionType>()
   const [modalOpen, setModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<ProductResponse | null>(null)
-  const [searchText, setSearchText] = useState('')
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [form] = Form.useForm<ProductFormValues>()
 
-  const { data: products = [], isLoading } = useProductsV2(searchText || undefined)
   const createProduct = useCreateProductV2()
   const deleteProduct = useDeleteProductV2()
   const updateProduct = useUpdateProductV2()
@@ -53,6 +54,7 @@ export default function ProductList() {
       setModalOpen(false)
       setEditingProduct(null)
       form.resetFields()
+      actionRef.current?.reload()
     } catch (error: unknown) {
       if (error !== null && typeof error === 'object' && 'errorFields' in error) return
       handleApiError(error, editingProduct ? '更新商品失败' : '添加商品失败')
@@ -69,6 +71,7 @@ export default function ProductList() {
     try {
       await deleteProduct.mutateAsync(id)
       message.success('删除商品成功')
+      actionRef.current?.reload()
     } catch (error: unknown) {
       handleApiError(error, '删除商品失败')
     }
@@ -79,36 +82,43 @@ export default function ProductList() {
       await batchDeleteProducts.mutateAsync(selectedIds)
       setSelectedIds([])
       message.success(`已删除 ${selectedIds.length} 个商品`)
+      actionRef.current?.reload()
     } catch (error: unknown) {
       handleApiError(error, '批量删除失败')
     }
   }, [selectedIds, batchDeleteProducts])
 
-  const columns = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 70, sorter: (a: ProductResponse, b: ProductResponse) => a.id - b.id },
+  const columns: ProColumns<ProductResponse>[] = [
+    {
+      title: 'ID',
+      dataIndex: 'id',
+      width: 70,
+      sorter: true,
+      hideInSearch: true,
+    },
     {
       title: '商品名称',
       dataIndex: 'name',
-      key: 'name',
       ellipsis: true,
-      render: (v: string, record: ProductResponse) => (
-        <Link onClick={() => navigate(`/product/${record.id}`)}>{v}</Link>
+      render: (_, record) => (
+        <Link onClick={() => navigate(`/product/${record.id}`)}>{record.name}</Link>
       ),
     },
     {
       title: '商品链接',
       dataIndex: 'link',
-      key: 'link',
       ellipsis: true,
-      render: (v: string | null) => v
-        ? <Text type="secondary" style={{ fontSize: 12 }}>{v}</Text>
+      hideInSearch: true,
+      render: (_, record) => record.link
+        ? <Text type="secondary" style={{ fontSize: 12 }}>{record.link}</Text>
         : <Text type="secondary">—</Text>,
     },
     {
       title: '视频数',
       key: 'video_count',
       width: 80,
-      render: (_: unknown, record: ProductResponse) => (
+      hideInSearch: true,
+      render: (_, record) => (
         <ProductCountCell productId={record.id} type="videos" />
       ),
     },
@@ -116,23 +126,25 @@ export default function ProductList() {
       title: '文案数',
       key: 'copywriting_count',
       width: 80,
-      render: (_: unknown, record: ProductResponse) => (
+      hideInSearch: true,
+      render: (_, record) => (
         <ProductCountCell productId={record.id} type="copywritings" />
       ),
     },
     {
       title: '创建时间',
       dataIndex: 'created_at',
-      key: 'created_at',
       width: 160,
-      sorter: (a: ProductResponse, b: ProductResponse) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-      render: (v: string) => new Date(v).toLocaleString('zh-CN'),
+      sorter: true,
+      hideInSearch: true,
+      render: (_, record) => new Date(record.created_at).toLocaleString('zh-CN'),
     },
     {
       title: '操作',
       key: 'action',
       width: 120,
-      render: (_: unknown, record: ProductResponse) => (
+      hideInSearch: true,
+      render: (_, record) => (
         <Space>
           <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
             编辑
@@ -149,43 +161,41 @@ export default function ProductList() {
 
   return (
     <>
-      <ListPageLayout
-        filterBar={
-          <Input
-            placeholder="搜索商品名称"
-            style={{ width: 200 }}
-            allowClear
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-          />
-        }
-        actionBar={
-          <Space>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => { setEditingProduct(null); form.resetFields(); setModalOpen(true) }}
-            >
-              添加商品
+      <ProTable<ProductResponse>
+        actionRef={actionRef}
+        rowKey="id"
+        columns={columns}
+        request={async (params) => {
+          const { data } = await api.get<ProductListResponse>('/products', {
+            params: params.name ? { name: params.name } : undefined,
+          })
+          return { data: data.items, success: true, total: data.total }
+        }}
+        rowSelection={{
+          selectedRowKeys: selectedIds,
+          onChange: (keys) => setSelectedIds(keys as number[]),
+        }}
+        tableAlertOptionRender={() => (
+          <Popconfirm title={`确定删除 ${selectedIds.length} 项？`} onConfirm={handleBatchDelete}>
+            <Button danger size="small" icon={<DeleteOutlined />} loading={batchDeleteProducts.isPending}>
+              批量删除 ({selectedIds.length})
             </Button>
-            <BatchDeleteButton
-              count={selectedIds.length}
-              onConfirm={handleBatchDelete}
-              loading={batchDeleteProducts.isPending}
-            />
-          </Space>
-        }
-      >
-        <Table<ProductResponse>
-          dataSource={products}
-          rowKey="id"
-          columns={columns}
-          loading={isLoading}
-          pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
-          size="small"
-          rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys as number[]) }}
-        />
-      </ListPageLayout>
+          </Popconfirm>
+        )}
+        toolBarRender={() => [
+          <Button
+            key="add"
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => { setEditingProduct(null); form.resetFields(); setModalOpen(true) }}
+          >
+            添加商品
+          </Button>,
+        ]}
+        pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
+        size="small"
+        search={{ labelWidth: 'auto' }}
+      />
 
       <Modal
         title={editingProduct ? '编辑商品' : '添加商品'}

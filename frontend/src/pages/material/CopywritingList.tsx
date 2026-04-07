@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import {
   Table, Button, Space, Typography, message,
-  Modal, Form, Input, Popconfirm, Upload, Tag,
+  Modal, Form, Input, Popconfirm, Upload, Tag, Select,
 } from 'antd'
 import type { UploadProps } from 'antd'
 import { PlusOutlined, ImportOutlined } from '@ant-design/icons'
@@ -16,6 +16,12 @@ import ListPageLayout from '@/components/ListPageLayout'
 import ProductSelect from '@/components/ProductSelect'
 import BatchDeleteButton from '@/components/BatchDeleteButton'
 
+const SOURCE_TYPE_OPTIONS = [
+  { label: 'manual', value: 'manual' },
+  { label: 'import', value: 'import' },
+  { label: 'ai_clip', value: 'ai_clip' },
+]
+
 const { Text } = Typography
 
 interface CopywritingFormValues {
@@ -24,14 +30,15 @@ interface CopywritingFormValues {
 }
 
 export default function CopywritingList() {
-  const [productFilter, setProductFilter] = useState<number | undefined>(undefined)
+  const [keyword, setKeyword] = useState<string | undefined>(undefined)
+  const [sourceType, setSourceType] = useState<string | undefined>(undefined)
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [editingCw, setEditingCw] = useState<CopywritingResponse | null>(null)
   const [importProductId, setImportProductId] = useState<number | undefined>(undefined)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [form] = Form.useForm<CopywritingFormValues>()
 
-  const { data: copywritings = [], isLoading } = useCopywritings(productFilter)
+  const { data: copywritings = [], isLoading } = useCopywritings({ keyword, sourceType })
   const createCopywriting = useCreateCopywriting()
   const deleteCopywriting = useDeleteCopywriting()
   const updateCopywriting = useUpdateCopywriting()
@@ -142,13 +149,23 @@ export default function CopywritingList() {
     <>
       <ListPageLayout
         filterBar={
-          <ProductSelect
-            allowClear
-            placeholder="按商品筛选"
-            style={{ width: 160 }}
-            value={productFilter}
-            onChange={setProductFilter}
-          />
+          <Space>
+            <Input
+              allowClear
+              placeholder="搜索文案内容"
+              style={{ width: 200 }}
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value || undefined)}
+            />
+            <Select
+              allowClear
+              placeholder="来源类型"
+              style={{ width: 140 }}
+              value={sourceType}
+              onChange={(v: string | undefined) => setSourceType(v)}
+              options={SOURCE_TYPE_OPTIONS}
+            />
+          </Space>
         }
         actionBar={
           <Space>

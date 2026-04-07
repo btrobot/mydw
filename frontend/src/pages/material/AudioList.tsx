@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import {
   Table, Button, Space, message,
-  Popconfirm, Upload,
+  Popconfirm, Upload, Input,
 } from 'antd'
 import type { UploadProps } from 'antd'
 import { UploadOutlined } from '@ant-design/icons'
@@ -15,7 +15,8 @@ import BatchDeleteButton from '@/components/BatchDeleteButton'
 
 export default function AudioList() {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
-  const { data: audios = [], isLoading } = useAudios()
+  const [keyword, setKeyword] = useState<string>('')
+  const { data: audios = [], isLoading } = useAudios(keyword || undefined)
   const uploadAudio = useUploadAudio()
   const deleteAudio = useDeleteAudio()
   const batchDeleteAudios = useBatchDeleteAudios()
@@ -91,6 +92,15 @@ export default function AudioList() {
 
   return (
     <ListPageLayout
+      filterBar={
+        <Input
+          allowClear
+          style={{ width: 200 }}
+          placeholder="搜索音频名称"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+        />
+      }
       actionBar={
         <Space>
           <Upload

@@ -26,13 +26,19 @@ interface TopicFormValues {
 export default function TopicList() {
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [globalModalOpen, setGlobalModalOpen] = useState(false)
+  const [searchModalOpen, setSearchModalOpen] = useState(false)
   const [searchKeyword, setSearchKeyword] = useState<string>('')
   const [searchInput, setSearchInput] = useState<string>('')
+  const [filterKeyword, setFilterKeyword] = useState<string>('')
+  const [filterSource, setFilterSource] = useState<string | undefined>(undefined)
   const [selectedGlobalIds, setSelectedGlobalIds] = useState<number[]>([])
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [form] = Form.useForm<TopicFormValues>()
 
-  const { data: topics = [], isLoading } = useTopics()
+  const { data: topics = [], isLoading } = useTopics({
+    keyword: filterKeyword || undefined,
+    source: filterSource,
+  })
   const { data: searchResults = [], isFetching: isSearching } = useSearchTopics(searchKeyword)
   const { data: globalTopicsData } = useGlobalTopics()
   const createTopic = useCreateTopic()
@@ -46,7 +52,6 @@ export default function TopicList() {
   const handleSearch = useCallback(() => {
     setSearchKeyword(searchInput.trim())
   }, [searchInput])
-
 
   const handleOpenGlobalModal = useCallback(() => {
     setSelectedGlobalIds(globalTopicsData?.topic_ids ?? [])
@@ -134,11 +139,90 @@ export default function TopicList() {
 
   return (
     <>
-      <Card size="small" style={{ marginBottom: 12 }} title={<><SearchOutlined /> 搜索话题</>}>
-        <Space style={{ marginBottom: 8 }}>
+      <Card
+        size="small"
+        style={{ marginBottom: 12 }}
+        title={<><GlobalOutlined /> 全局话题</>}
+        extra={
+          <Button size="small" icon={<GlobalOutlined />} onClick={handleOpenGlobalModal}>
+            设置全局话题
+          </Button>
+        }
+      >
+        {globalTopics.length === 0 ? (
+          <Empty description="暂未设置全局话题" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        ) : (
+          <Space wrap>
+            {globalTopics.map((t: TopicResponse) => (
+              <Tag key={t.id} color="geekblue">{t.name}</Tag>
+            ))}
+          </Space>
+        )}
+      </Card>
+
+      <ListPageLayout
+        filterBar={
+          <Space>
+            <Input
+              allowClear
+              style={{ width: 200 }}
+              placeholder="搜索话题名称"
+              value={filterKeyword}
+              onChange={(e) => setFilterKeyword(e.target.value)}
+            />
+            <Select
+              allowClear
+              style={{ width: 140 }}
+              placeholder="来源"
+              value={filterSource}
+              onChange={(v) => setFilterSource(v)}
+              options={[
+                { label: '手动', value: 'manual' },
+                { label: '搜索', value: 'search' },
+              ]}
+            />
+          </Space>
+        }
+        actionBar={
+          <Space>
+            <Button icon={<SearchOutlined />} onClick={() => setSearchModalOpen(true)}>
+              搜索得物话题
+            </Button>
+            <Button icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
+              添加话题
+            </Button>
+            <BatchDeleteButton
+              count={selectedIds.length}
+              onConfirm={handleBatchDelete}
+              loading={batchDeleteTopics.isPending}
+            />
+          </Space>
+        }
+      >
+        <Table<TopicResponse>
+          dataSource={topics}
+          rowKey="id"
+          columns={columns}
+          loading={isLoading}
+          pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
+          size="small"
+          rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys as number[]) }}
+        />
+      </ListPageLayout>
+
+      {/* 搜索得物话题 Modal */}
+      <Modal
+        title={<><SearchOutlined /> 搜索得物话题</>}
+        open={searchModalOpen}
+        onCancel={() => { setSearchModalOpen(false); setSearchKeyword(''); setSearchInput('') }}
+        footer={null}
+        destroyOnClose
+        width={560}
+      >
+        <Space style={{ marginBottom: 12 }}>
           <Input
             placeholder="输入关键词搜索话题"
-            style={{ width: 240 }}
+            style={{ width: 280 }}
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onPressEnter={handleSearch}
@@ -166,54 +250,9 @@ export default function TopicList() {
             </Space>
           )
         )}
-      </Card>
+      </Modal>
 
-      <Card
-        size="small"
-        style={{ marginBottom: 12 }}
-        title={<><GlobalOutlined /> 全局话题</>}
-        extra={
-          <Button size="small" icon={<GlobalOutlined />} onClick={handleOpenGlobalModal}>
-            设置全局话题
-          </Button>
-        }
-      >
-        {globalTopics.length === 0 ? (
-          <Empty description="暂未设置全局话题" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-        ) : (
-          <Space wrap>
-            {globalTopics.map((t: TopicResponse) => (
-              <Tag key={t.id} color="geekblue">{t.name}</Tag>
-            ))}
-          </Space>
-        )}
-      </Card>
-
-      <ListPageLayout
-        actionBar={
-          <Space>
-            <Button icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
-              添加话题
-            </Button>
-            <BatchDeleteButton
-              count={selectedIds.length}
-              onConfirm={handleBatchDelete}
-              loading={batchDeleteTopics.isPending}
-            />
-          </Space>
-        }
-      >
-        <Table<TopicResponse>
-          dataSource={topics}
-          rowKey="id"
-          columns={columns}
-          loading={isLoading}
-          pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
-          size="small"
-          rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys as number[]) }}
-        />
-      </ListPageLayout>
-
+      {/* 添加话题 Modal */}
       <Modal
         title="添加话题"
         open={addModalOpen}
@@ -232,6 +271,7 @@ export default function TopicList() {
         </Form>
       </Modal>
 
+      {/* 设置全局话题 Modal */}
       <Modal
         title="设置全局话题"
         open={globalModalOpen}
