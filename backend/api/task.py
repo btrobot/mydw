@@ -214,7 +214,7 @@ async def init_tasks_from_materials(
         raise HTTPException(status_code=404, detail="账号不存在")
 
     service = TaskService(db)
-    count, tasks = await service.auto_generate_tasks(account_id, count=count)
+    count, tasks = await service.init_from_materials(account_id, count=count)
 
     return {
         "success": True,

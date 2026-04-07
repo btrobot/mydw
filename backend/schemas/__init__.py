@@ -354,6 +354,7 @@ class MaterialCreate(MaterialBase):
     """创建素材"""
     path: Optional[str] = None
     content: Optional[str] = None
+    product_id: Optional[int] = None
 
 
 class MaterialUpdate(BaseModel):
@@ -361,6 +362,7 @@ class MaterialUpdate(BaseModel):
     name: Optional[str] = None
     path: Optional[str] = None
     content: Optional[str] = None
+    product_id: Optional[int] = None
 
 
 class MaterialResponse(MaterialBase):
@@ -372,7 +374,28 @@ class MaterialResponse(MaterialBase):
     content: Optional[str] = None
     size: Optional[int] = None
     duration: Optional[int] = None
+    product_id: Optional[int] = None
+    product_name: Optional[str] = None
     created_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def _resolve_product_name(cls, data: Any) -> Any:
+        """从 ORM 关系中读取 product.name 填充 product_name。"""
+        product = (
+            data.get("product") if isinstance(data, dict)
+            else getattr(data, "product", None)
+        )
+        if product and hasattr(product, "name"):
+            if isinstance(data, dict):
+                data["product_name"] = product.name
+            else:
+                data = {
+                    c.key: getattr(data, c.key)
+                    for c in data.__class__.__table__.columns
+                }
+                data["product_name"] = product.name
+        return data
 
 
 class MaterialListResponse(BaseModel):
@@ -384,7 +407,7 @@ class MaterialListResponse(BaseModel):
 # ============ 商品 Schema ============
 
 class ProductBase(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=256)
     link: Optional[str] = None
 
 

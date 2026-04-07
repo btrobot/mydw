@@ -10,11 +10,12 @@ from pathlib import Path
 from pydantic import BaseModel
 from loguru import logger
 
-from models import Material
+from models import Material, Product
 from models import get_db
 from schemas import (
     MaterialCreate, MaterialUpdate, MaterialResponse,
-    MaterialListResponse, MaterialType
+    MaterialListResponse, MaterialType,
+    ProductCreate, ProductResponse, ProductListResponse,
 )
 from core.config import settings
 from services.material_service import MaterialService
@@ -69,12 +70,13 @@ async def create_material(
         type=material_data.type.value,
         name=material_data.name,
         path=material_data.path,
-        content=material_data.content
+        content=material_data.content,
+        product_id=material_data.product_id
     )
     db.add(material)
     await db.commit()
     await db.refresh(material)
-    logger.info(f"创建素材: {material.name}")
+    logger.info("创建素材: {}", material.name)
     return material
 
 
@@ -103,7 +105,7 @@ async def upload_material(
     db.add(material)
     await db.commit()
     await db.refresh(material)
-    logger.info(f"上传素材: {file.filename}")
+    logger.info("上传素材: {}", file.filename)
     return material
 
 
@@ -208,12 +210,13 @@ async def get_material_content(material_id: int, db: AsyncSession = Depends(get_
         try:
             with open(material.path, 'r', encoding='utf-8') as f:
                 material.content = f.read()
-        except:
+        except UnicodeDecodeError:
             try:
                 with open(material.path, 'r', encoding='gbk') as f:
                     material.content = f.read()
             except Exception as e:
-                raise HTTPException(status_code=500, detail=f"读取文件失败: {e}")
+                logger.error("读取素材文件失败: material_id={}, error={}", material_id, str(e))
+                raise HTTPException(status_code=500, detail="读取文件失败")
 
     return {"id": material.id, "name": material.name, "type": material.type, "content": material.content or ""}
 
@@ -269,4 +272,44 @@ async def delete_all_materials(type: Optional[str] = None, db: AsyncSession = De
         await db.delete(material)
 
     await db.commit()
+    return None
+
+
+# ============ 商品 API (迁移自 system.py) ============
+
+@router.post("/products", response_model=ProductResponse, status_code=201)
+async def create_product_material(
+    product_data: ProductCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """创建商品"""
+    product = Product(name=product_data.name, link=product_data.link)
+    db.add(product)
+    await db.commit()
+    await db.refresh(product)
+    logger.info("创建商品: {}", product.name)
+    return product
+
+
+@router.get("/products", response_model=ProductListResponse)
+async def list_products_material(db: AsyncSession = Depends(get_db)):
+    """获取商品列表"""
+    result = await db.execute(select(Product).order_by(Product.created_at.desc()))
+    products = result.scalars().all()
+    return ProductListResponse(total=len(products), items=products)
+
+
+@router.delete("/products/{product_id}", status_code=204)
+async def delete_product_material(
+    product_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """删除商品"""
+    result = await db.execute(select(Product).where(Product.id == product_id))
+    product = result.scalar_one_or_none()
+    if not product:
+        raise HTTPException(status_code=404, detail="商品不存在")
+    await db.delete(product)
+    await db.commit()
+    logger.info("删除商品: {}", product.name)
     return None

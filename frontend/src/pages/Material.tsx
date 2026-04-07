@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
-import { Table, Button, Space, Tabs, Card, List, Typography, message, Upload, Row, Col } from 'antd'
-import { UploadOutlined, SyncOutlined, ScanOutlined, FileOutlined } from '@ant-design/icons'
-import { useMaterials, useMaterialStats, useScanMaterials, useImportMaterials, useDeleteMaterial } from '../hooks'
+import { useEffect, useState, useCallback, type CSSProperties } from 'react'
+import { Table, Button, Space, Tabs, Card, List, Typography, message, Upload, Row, Col, Modal, Form, Input, Select, Popconfirm } from 'antd'
+import { UploadOutlined, SyncOutlined, ScanOutlined, FileOutlined, ShopOutlined, PlusOutlined, DeleteOutlined, LinkOutlined } from '@ant-design/icons'
+import { useMaterials, useMaterialStats, useScanMaterials, useImportMaterials, useDeleteMaterial, useProducts, useCreateProduct, useDeleteProduct, useUpdateMaterial } from '../hooks'
 import { api } from '../services/api'
 
 const { Text } = Typography
@@ -10,9 +10,11 @@ interface Material {
   id: number
   type: string
   name?: string | null
-  path?: string | null  // 改为可选以匹配 MaterialResponse
+  path?: string | null
   content?: string | null
   size?: number | null
+  product_id?: number | null
+  product_name?: string | null
   created_at: string
 }
 
@@ -42,6 +44,8 @@ function formatSize(bytes: number): string {
 export default function Material() {
   const [files, setFiles] = useState<FileInfo[]>([])
   const [activeTab, setActiveTab] = useState('video')
+  const [productModalVisible, setProductModalVisible] = useState(false)
+  const [productForm] = Form.useForm<{ name: string; link?: string }>()
 
   // 使用 React Query hooks
   const { data: materialsData, refetch: refetchMaterials } = useMaterials()
@@ -49,19 +53,27 @@ export default function Material() {
   const scanMaterials = useScanMaterials()
   const importMaterials = useImportMaterials()
   const deleteMaterial = useDeleteMaterial()
+  const { data: products = [] } = useProducts()
+  const createProduct = useCreateProduct()
+  const deleteProduct = useDeleteProduct()
+  const updateMaterial = useUpdateMaterial()
 
   // 规范化 materials 数据
   const materials = Array.isArray(materialsData) ? materialsData : []
 
   // 获取本地文件列表
-  const fetchFiles = async () => {
+  const fetchFiles = useCallback(async () => {
     try {
-      const res = await api.get(`/materials/path/${activeTab}`)
+      const res = await api.get<{ files?: FileInfo[] }>(`/materials/path/${activeTab}`)
       setFiles(res.data.files || [])
-    } catch (error) {
-      console.error('获取文件失败:', error)
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        message.error(error.message)
+      } else {
+        message.error('获取文件失败')
+      }
     }
-  }
+  }, [activeTab])
 
   // 当切换标签时刷新文件列表
   useEffect(() => {
@@ -70,7 +82,7 @@ export default function Material() {
 
   const handleScan = async () => {
     try {
-      const res = await scanMaterials.mutateAsync({ type: activeTab }) as any
+      const res = await scanMaterials.mutateAsync({ type: activeTab }) as { total?: number }
       message.success(`扫描完成，发现 ${res?.total || 0} 个文件`)
       fetchFiles()
     } catch (error) {
@@ -80,7 +92,7 @@ export default function Material() {
 
   const handleImport = async () => {
     try {
-      const res = await importMaterials.mutateAsync({ type: activeTab }) as any
+      const res = await importMaterials.mutateAsync({ type: activeTab }) as { success?: number; failed?: number }
       message.success(`导入完成: 成功 ${res?.success || 0}, 失败 ${res?.failed || 0}`)
       refetchMaterials()
       refetchStats()
@@ -99,6 +111,40 @@ export default function Material() {
       message.error('删除失败')
     }
   }
+
+  const handleAddProduct = useCallback(async () => {
+    try {
+      const values = await productForm.validateFields()
+      await createProduct.mutateAsync(values)
+      message.success('添加商品成功')
+      setProductModalVisible(false)
+      productForm.resetFields()
+    } catch (error: unknown) {
+      if (error !== null && typeof error === 'object' && 'errorFields' in error) return
+      message.error('添加商品失败')
+    }
+  }, [productForm, createProduct])
+
+  const handleDeleteProduct = useCallback(async (id: number) => {
+    try {
+      await deleteProduct.mutateAsync(id)
+      message.success('删除商品成功')
+    } catch (error) {
+      message.error('删除商品失败')
+    }
+  }, [deleteProduct])
+
+  const handleLinkProduct = useCallback(async (materialId: number, productId: number | undefined) => {
+    try {
+      await updateMaterial.mutateAsync({ materialId, data: { product_id: productId ?? null } as Record<string, unknown> })
+      message.success('关联已更新')
+      refetchMaterials()
+    } catch (error) {
+      message.error('关联失败')
+    }
+  }, [updateMaterial, refetchMaterials])
+
+  const productOptions = products.map((p: { id: number; name: string }) => ({ label: p.name, value: p.id }))
 
   const columns = [
     {
@@ -136,10 +182,27 @@ export default function Material() {
       render: (text: string) => new Date(text).toLocaleString('zh-CN'),
     },
     {
+      title: '关联商品',
+      dataIndex: 'product_id',
+      key: 'product_id',
+      width: 150,
+      render: (_: unknown, record: Material) => (
+        <Select
+          allowClear
+          size="small"
+          placeholder="选择商品"
+          style={{ width: 130 }}
+          value={record.product_id ?? undefined}
+          options={productOptions}
+          onChange={(val: number | undefined) => handleLinkProduct(record.id, val)}
+        />
+      ),
+    },
+    {
       title: '操作',
       key: 'action',
       width: 80,
-      render: (_: any, record: Material) => (
+      render: (_: unknown, record: Material) => (
         <Button type="link" danger size="small" onClick={() => handleDelete(record.id)}>
           删除
         </Button>
@@ -168,6 +231,33 @@ export default function Material() {
 
   return (
     <>
+      {/* 商品管理 */}
+      <Card
+        title={<><ShopOutlined /> 商品管理</>}
+        size="small"
+        style={{ marginBottom: 16 }}
+        extra={
+          <Button size="small" icon={<PlusOutlined />} onClick={() => setProductModalVisible(true)}>
+            添加商品
+          </Button>
+        }
+      >
+        <Space wrap>
+          {products.map((p: { id: number; name: string; link?: string | null }) => (
+            <Card key={p.id} size="small" style={{ width: 200 }}>
+              <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                <Text strong>{p.name}</Text>
+                {p.link && <Text type="secondary" style={{ fontSize: 12 }} ellipsis>{p.link}</Text>}
+                <Popconfirm title="确定删除？" onConfirm={() => handleDeleteProduct(p.id)}>
+                  <Button type="link" danger size="small" icon={<DeleteOutlined />}>删除</Button>
+                </Popconfirm>
+              </Space>
+            </Card>
+          ))}
+          {products.length === 0 && <Text type="secondary">暂无商品，点击"添加商品"开始</Text>}
+        </Space>
+      </Card>
+
       {/* 统计卡片 */}
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={4}>
@@ -279,12 +369,31 @@ export default function Material() {
           />
         </Card>
       </Space>
+
+      {/* 添加商品 Modal */}
+      <Modal
+        title="添加商品"
+        open={productModalVisible}
+        onOk={handleAddProduct}
+        confirmLoading={createProduct.isPending}
+        onCancel={() => { setProductModalVisible(false); productForm.resetFields() }}
+        destroyOnClose
+      >
+        <Form form={productForm} layout="vertical">
+          <Form.Item name="name" label="商品名称" rules={[{ required: true, message: '请输入商品名称' }]}>
+            <Input placeholder="请输入商品名称" />
+          </Form.Item>
+          <Form.Item name="link" label="商品链接">
+            <Input placeholder="请输入得物商品链接" prefix={<LinkOutlined />} />
+          </Form.Item>
+        </Form>
+      </Modal>
     </>
   )
 }
 
 // 简单的统计组件
-function Statistic({ title, value, suffix, valueStyle }: { title: string; value: number; suffix?: string; valueStyle?: any }) {
+function Statistic({ title, value, suffix, valueStyle }: { title: string; value: number; suffix?: string; valueStyle?: CSSProperties }) {
   return (
     <div>
       <Text type="secondary" style={{ fontSize: 12 }}>{title}</Text>

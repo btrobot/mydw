@@ -22,7 +22,7 @@ class TaskService:
         self.db.add(task)
         await self.db.commit()
         await self.db.refresh(task)
-        logger.info(f"创建任务: ID={task.id}")
+        logger.info("创建任务: ID={}", task.id)
         return task
 
     async def create_tasks_batch(self, tasks_data: List[dict]) -> Tuple[int, List[Task]]:
@@ -35,7 +35,7 @@ class TaskService:
         for task in tasks:
             await self.db.refresh(task)
 
-        logger.info(f"批量创建任务: {len(tasks)} 个")
+        logger.info("批量创建任务: {} 个", len(tasks))
         return len(tasks), tasks
 
     async def get_task(self, task_id: int) -> Optional[Task]:
@@ -45,8 +45,8 @@ class TaskService:
 
     async def get_tasks(
         self,
-        status: str = None,
-        account_id: int = None,
+        status: Optional[str] = None,
+        account_id: Optional[int] = None,
         limit: int = 50,
         offset: int = 0
     ) -> Tuple[int, List[Task]]:
@@ -102,7 +102,7 @@ class TaskService:
         await self.db.commit()
         return True
 
-    async def delete_all_tasks(self, status: str = None) -> int:
+    async def delete_all_tasks(self, status: Optional[str] = None) -> int:
         """删除所有任务"""
         query = select(Task)
         if status:
@@ -116,10 +116,10 @@ class TaskService:
             await self.db.delete(task)
 
         await self.db.commit()
-        logger.info(f"删除任务: {count} 个")
+        logger.info("删除任务: {} 个", count)
         return count
 
-    async def get_next_pending_task(self, account_id: int = None) -> Optional[Task]:
+    async def get_next_pending_task(self, account_id: Optional[int] = None) -> Optional[Task]:
         """获取下一个待发布任务"""
         query = select(Task).where(Task.status == "pending")
 
@@ -219,42 +219,117 @@ class TaskService:
 
         return count >= limit
 
+    async def _match_content_and_topics(self, videos: List[Material]) -> List[dict]:
+        """
+        为视频列表匹配文案和话题，返回每个视频对应的 {content, topic} 列表。
+
+        文案优先按 product_id 匹配，无关联时轮询无商品文案。
+        话题按索引轮询。
+        """
+        texts_result = await self.db.execute(select(Material).where(Material.type == "text"))
+        texts = texts_result.scalars().all()
+        texts_by_product: dict = {}
+        texts_no_product: list = []
+        for t in texts:
+            if t.product_id:
+                texts_by_product.setdefault(t.product_id, []).append(t)
+            else:
+                texts_no_product.append(t)
+
+        topics_result = await self.db.execute(select(Material).where(Material.type == "topic"))
+        topics = topics_result.scalars().all()
+
+        result = []
+        for i, video in enumerate(videos):
+            content = ""
+            if video.product_id and video.product_id in texts_by_product:
+                matched = texts_by_product[video.product_id]
+                content = matched[i % len(matched)].content or ""
+            elif texts_no_product:
+                content = texts_no_product[i % len(texts_no_product)].content or ""
+
+            topic = topics[i % len(topics)].content if topics else ""
+            result.append({"content": content, "topic": topic})
+
+        return result
+
     async def auto_generate_tasks(
         self,
         account_id: int,
-        video_pattern: str = None,
+        video_pattern: Optional[str] = None,
         count: int = 10
     ) -> Tuple[int, List[Task]]:
         """
-        自动生成任务（基于素材）
+        自动生成任务（基于素材，智能关联商品）
+
+        优先使用有 product_id 的视频素材，文案按 product_id 匹配。
         """
-        # 获取素材
-        videos = await self.db.execute(
-            select(Material).where(Material.type == "video").limit(count)
+        videos_q = select(Material).where(Material.type == "video")
+        videos_result = await self.db.execute(
+            videos_q.order_by(Material.product_id.isnot(None).desc(), Material.created_at.desc()).limit(count)
         )
-        videos = videos.scalars().all()
+        videos = list(videos_result.scalars().all())
 
-        texts = await self.db.execute(
-            select(Material).where(Material.type == "text")
-        )
-        texts = texts.scalars().all()
+        if not videos:
+            return 0, []
 
-        topics = await self.db.execute(
-            select(Material).where(Material.type == "topic")
-        )
-        topics = topics.scalars().all()
-
-        # 生成任务
-        tasks_data = []
-        for i, video in enumerate(videos):
-            task_data = {
+        matched = await self._match_content_and_topics(videos)
+        tasks_data = [
+            {
                 "account_id": account_id,
                 "video_path": video.path,
-                "content": texts[i % len(texts)].content if texts else "",
-                "topic": topics[i % len(topics)].content if topics else "",
+                "material_id": video.id,
+                "product_id": video.product_id,
+                "content": matched[i]["content"],
+                "topic": matched[i]["topic"],
                 "status": "pending",
-                "priority": 0
+                "priority": 0,
             }
-            tasks_data.append(task_data)
+            for i, video in enumerate(videos)
+        ]
+
+        return await self.create_tasks_batch(tasks_data)
+
+    async def init_from_materials(
+        self,
+        account_id: int,
+        count: int = 10
+    ) -> Tuple[int, List[Task]]:
+        """
+        从素材初始化任务 — 只使用未被 pending 任务引用的视频素材。
+        """
+        from sqlalchemy import and_
+
+        # 找出已被 pending 任务引用的 video_path
+        used_paths_q = select(Task.video_path).where(
+            and_(Task.status == "pending", Task.video_path.isnot(None))
+        )
+        used_result = await self.db.execute(used_paths_q)
+        used_paths = {r[0] for r in used_result}
+
+        videos_q = select(Material).where(Material.type == "video")
+        videos_result = await self.db.execute(
+            videos_q.order_by(Material.product_id.isnot(None).desc(), Material.created_at.desc())
+        )
+        all_videos = videos_result.scalars().all()
+        videos = [v for v in all_videos if v.path not in used_paths][:count]
+
+        if not videos:
+            return 0, []
+
+        matched = await self._match_content_and_topics(videos)
+        tasks_data = [
+            {
+                "account_id": account_id,
+                "video_path": video.path,
+                "material_id": video.id,
+                "product_id": video.product_id,
+                "content": matched[i]["content"],
+                "topic": matched[i]["topic"],
+                "status": "pending",
+                "priority": 0,
+            }
+            for i, video in enumerate(videos)
+        ]
 
         return await self.create_tasks_batch(tasks_data)

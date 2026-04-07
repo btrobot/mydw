@@ -9,7 +9,7 @@ from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 
-from models import Task, Account, PublishLog, PublishConfig
+from models import Task, Account, PublishLog, PublishConfig, Product
 from core.browser import browser_manager
 from core.dewu_client import get_dewu_client
 
@@ -132,13 +132,24 @@ class PublishService:
                 await self.db.commit()
                 return False, "登录已过期"
 
+            # 读取商品链接
+            product_link = None
+            if task.product_id:
+                prod_result = await self.db.execute(
+                    select(Product).where(Product.id == task.product_id)
+                )
+                product = prod_result.scalar_one_or_none()
+                if product:
+                    product_link = product.link
+
             # 发布视频
             success, msg = await client.upload_video(
                 video_path=task.video_path,
                 title=task.content[:50] if task.content else "视频标题",
                 content=task.content or "",
                 topic=task.topic,
-                cover_path=task.cover_path
+                cover_path=task.cover_path,
+                product_link=product_link
             )
 
             if success:

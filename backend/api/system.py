@@ -152,7 +152,7 @@ async def backup_data(request: BackupRequest, db: AsyncSession = Depends(get_db)
 
 # ============ 商品 API ============
 
-@router.post("/products", response_model=ProductResponse, status_code=201)
+@router.post("/products", response_model=ProductResponse, status_code=201, deprecated=True)
 async def create_product(
     product_data: ProductCreate,
     db: AsyncSession = Depends(get_db)
@@ -170,7 +170,7 @@ async def create_product(
     return product
 
 
-@router.get("/products", response_model=ProductListResponse)
+@router.get("/products", response_model=ProductListResponse, deprecated=True)
 async def list_products(db: AsyncSession = Depends(get_db)):
     """获取商品列表"""
     result = await db.execute(select(Product).order_by(Product.created_at.desc()))
@@ -179,7 +179,7 @@ async def list_products(db: AsyncSession = Depends(get_db)):
     return ProductListResponse(total=len(products), items=products)
 
 
-@router.delete("/products/{product_id}", status_code=204)
+@router.delete("/products/{product_id}", status_code=204, deprecated=True)
 async def delete_product(
     product_id: int,
     db: AsyncSession = Depends(get_db)

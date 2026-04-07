@@ -12,9 +12,6 @@ import {
   importMaterialsApiMaterialsImportPost,
   deleteAllMaterialsApiMaterialsDelete,
   getMaterialStatsApiMaterialsStatsGet,
-  listProductsApiSystemProductsGet,
-  createProductApiSystemProductsPost,
-  deleteProductApiSystemProductsProductIdDelete,
 } from '@/api'
 
 import type {
@@ -23,8 +20,6 @@ import type {
   MaterialCreate,
   MaterialUpdate,
   ScanRequest,
-  ProductListResponse,
-  ProductCreate,
 } from '@/api'
 
 export const useMaterials = () =>
@@ -45,7 +40,8 @@ export const useMaterial = (materialId: number) =>
     queryKey: ['material', materialId],
     queryFn: async () => {
       const response = await getMaterialApiMaterialsMaterialIdGet({ path: { material_id: materialId } })
-      return response.data!
+      if (!response.data) throw new Error('素材不存在')
+      return response.data as MaterialResponse
     },
     enabled: !!materialId,
   })
@@ -131,27 +127,38 @@ export const useMaterialStats = () =>
     queryKey: ['materialStats'],
     queryFn: async () => {
       const response = await getMaterialStatsApiMaterialsStatsGet()
-      return response.data!
+      if (!response.data) throw new Error('获取统计数据失败')
+      return response.data as MaterialStatsResponse
     },
   })
 
-// ============ Product Hooks ============
+// ============ Product Hooks (迁移到 /materials/products) ============
+
+export interface ProductItem {
+  id: number
+  name: string
+  link?: string | null
+  description?: string | null
+  created_at: string
+}
 
 export const useProducts = () =>
-  useQuery<ProductListResponse>({
+  useQuery<ProductItem[]>({
     queryKey: ['products'],
     queryFn: async () => {
-      const response = await listProductsApiSystemProductsGet()
-      return response.data ?? { total: 0, items: [] }
+      const { api } = await import('@/services/api')
+      const { data } = await api.get<{ total: number; items: ProductItem[] }>('/materials/products')
+      return data?.items ?? []
     },
   })
 
 export const useCreateProduct = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (data: ProductCreate) => {
-      const response = await createProductApiSystemProductsPost({ body: data })
-      return response.data
+    mutationFn: async (data: { name: string; link?: string }) => {
+      const { api } = await import('@/services/api')
+      const { data: result } = await api.post('/materials/products', data)
+      return result
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
@@ -163,7 +170,8 @@ export const useDeleteProduct = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (productId: number) => {
-      await deleteProductApiSystemProductsProductIdDelete({ path: { product_id: productId } })
+      const { api } = await import('@/services/api')
+      await api.delete(`/materials/products/${productId}`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })

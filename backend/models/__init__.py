@@ -87,12 +87,14 @@ class Material(Base):
     content = Column(Text, nullable=True)  # 文本内容（文案/话题）
     size = Column(Integer, nullable=True)  # 文件大小
     duration = Column(Integer, nullable=True)  # 视频时长（秒）
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=True, index=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # 关系
     tasks = relationship("Task", back_populates="material")
+    product = relationship("Product", back_populates="materials")
 
 
 class Product(Base):
@@ -109,6 +111,7 @@ class Product(Base):
 
     # 关系
     tasks = relationship("Task", back_populates="product")
+    materials = relationship("Material", back_populates="product")
 
 
 class PublishLog(Base):
@@ -192,6 +195,8 @@ async def init_db():
     import importlib
     migration_001 = importlib.import_module("migrations.001_account_management")
     await migration_001.run_migration(engine)
+    migration_002 = importlib.import_module("migrations.002_material_product_link")
+    await migration_002.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

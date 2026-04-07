@@ -551,7 +551,8 @@ class DewuClient:
             return None
 
     async def upload_video(self, video_path: str, title: str, content: str,
-                          topic: str = "", cover_path: str = None) -> Tuple[bool, str]:
+                          topic: str = "", cover_path: Optional[str] = None,
+                          product_link: Optional[str] = None) -> Tuple[bool, str]:
         """
         上传视频
         返回: (成功标志, 消息/视频ID)
@@ -605,6 +606,18 @@ class DewuClient:
                     timeout=5000
                 )
                 await cover_input.set_input_files(cover_path)
+
+            # 填入商品链接
+            if product_link:
+                try:
+                    product_input = await self.page.wait_for_selector(
+                        'input[class*="product"], input[placeholder*="商品"], input[placeholder*="链接"]',
+                        timeout=5000
+                    )
+                    await product_input.fill(product_link)
+                    logger.info("账号 {} 已填入商品链接", self.account_id)
+                except Exception as e:
+                    logger.warning("账号 {} 填入商品链接失败: {}", self.account_id, e)
 
             # 点击发布按钮
             publish_btn = await self.page.wait_for_selector(
