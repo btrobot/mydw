@@ -110,3 +110,6 @@ async def run_ffmpeg(cmd: list[str]) -> tuple[int, str, str]:
 - `docs/data-model.md` -- Video, Audio, Cover table schemas
 - `.claude/rules/python-coding-rules.md` -- Python coding standards
 - `.claude/rules/security-rules.md` -- Credential handling rules
+- `.claude/memory/PROJECT.md` -- 项目禁止规则 (启动时读取)
+- `.claude/memory/PATTERNS.md` -- Patchright/FFmpeg 代码模板 (实现前参考)
+- `production/session-state/active.md` -- 会话状态 (任务开始/完成时更新)

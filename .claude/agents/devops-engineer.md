@@ -121,3 +121,5 @@ jobs:
 - `frontend/package.json` -- Node.js dependencies and scripts
 - `.claude/rules/commit-rules.md` -- Commit message format
 - `.claude/rules/coordination-rules.md` -- Collaboration protocol
+- `.claude/memory/PROJECT.md` -- 项目技术栈和环境要求 (配置时参考)
+- `production/session-state/active.md` -- 会话状态 (部署/配置变更时更新)

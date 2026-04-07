@@ -102,3 +102,14 @@ backend/
 # 安装依赖
 .\venv\Scripts\playwright.exe install-deps
 ```
+
+## References
+
+| Document | Path | What it answers |
+|----------|------|-----------------|
+| API Reference | `docs/api-reference.md` | API endpoint contracts |
+| Data Model | `docs/data-model.md` | Database schemas |
+| Python Rules | `.claude/rules/python-coding-rules.md` | Coding standards |
+| Security Rules | `.claude/rules/security-rules.md` | Encryption, credentials |
+| Project Memory | `.claude/memory/PROJECT.md` | 项目禁止规则、必做规则 |
+| Session State | `production/session-state/active.md` | 当前任务状态和进度 |

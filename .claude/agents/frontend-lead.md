@@ -142,3 +142,6 @@ catch (error: unknown) {
 - `.claude/rules/typescript-coding-rules.md` -- TypeScript coding standards
 - `.claude/rules/e2e-testing-rules.md` -- Playwright E2E test patterns
 - `.claude/rules/code-review-rules.md` -- Review checklist
+- `.claude/memory/PROJECT.md` -- 项目禁止规则和必做规则 (启动时读取)
+- `.claude/memory/PATTERNS.md` -- 前端代码模板 (实现前参考)
+- `production/session-state/active.md` -- 会话状态 (任务开始/完成时更新)

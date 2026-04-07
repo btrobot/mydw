@@ -92,6 +92,12 @@ Escalate when:
 ### Coordinates With
 - `frontend-lead` — Frontend [domain]
 - `backend-lead` — Backend [domain]
+
+## Key References
+
+- `.claude/memory/PROJECT.md` -- 项目禁止规则 (审查时参考)
+- `.claude/memory/DECISIONS.md` -- 架构决策记录 (审查时参考)
+- `production/session-state/active.md` -- 会话状态 (发现问题时更新)
 ```
 
 ---

@@ -91,6 +91,13 @@ Ask the user for decision when:
 Only modify:
 - `[范围1]/`
 - `[范围2]/`
+
+## Key References
+
+- `[域入口]/CLAUDE.md` -- 域开发规范
+- `.claude/memory/PROJECT.md` -- 项目禁止规则 (启动时读取)
+- `.claude/memory/PATTERNS.md` -- 代码模板 (实现前参考)
+- `production/session-state/active.md` -- 会话状态 (任务开始/完成时更新)
 ```
 
 ---
@@ -103,5 +110,6 @@ Only modify:
 4. 填写 Can Do / Must NOT Do
 5. 配置 Directory Scope
 6. 按需添加其他章节（Quality Standards, Code Patterns 等）
+7. 在 Key References 中保留 Memory + Session State 引用
 
 **不要复制 Standard Workflow，只替换占位符！**

@@ -36,6 +36,10 @@ dewugojin/
 ├── production/            # Session state & logs
 └── .claude/               # Agent framework
     ├── agents/            # Agent definitions
+    ├── memory/            # Persistent cross-session memory
+    │   ├── PROJECT.md     # Project facts, anti-patterns, standards
+    │   ├── PATTERNS.md    # Code templates and common patterns
+    │   └── DECISIONS.md   # Architecture decision records (ADR)
     ├── skills/            # Skill workflows
     ├── hooks/             # Lifecycle hooks
     └── rules/             # Coding standards
@@ -83,6 +87,23 @@ User (Product Owner)
 | Cross-domain prohibition | No modifying other domain's code without authorization |
 | Retry limit | Max 2 retries per prompt, then reroute or absorb |
 
+## Memory System
+
+**Directory**: `.claude/memory/` -- persistent cross-session knowledge.
+
+| File | Purpose | Update trigger |
+|------|---------|---------------|
+| `PROJECT.md` | Project facts, anti-patterns, must-do rules | New lessons learned, standard changes |
+| `PATTERNS.md` | Code templates, common patterns | New pattern discovered, pattern refined |
+| `DECISIONS.md` | Architecture Decision Records (ADR) | New architecture decision made |
+
+Memory files survive across sessions and context compressions. Agents should:
+- Read memory files at session start to avoid repeating past mistakes
+- Update memory files when discovering new anti-patterns or making architecture decisions
+
+Note: Claude Code built-in memory (`~/.claude/projects/.../memory/`) is for user preferences and behavioral corrections only. Project knowledge lives in `.claude/memory/`.
+- Reference patterns from `PATTERNS.md` instead of reinventing solutions
+
 ## Session State
 
 **File**: `production/session-state/active.md` -- the live checkpoint.
@@ -111,6 +132,9 @@ Compress at ~60-70% context usage. Read `active.md` to recover after compression
 | Doc System Spec | docs/ai-doc-system-spec.md | Documentation standards |
 | Doc Checklist | docs/doc-checklist.md | Documentation quality verification |
 | Usage Guide | .claude/docs/usage-guide.md | Multi-agent usage examples |
+| Project Memory | .claude/memory/PROJECT.md | Project facts, anti-patterns, must-do |
+| Pattern Memory | .claude/memory/PATTERNS.md | Code templates, common patterns |
+| Decision Memory | .claude/memory/DECISIONS.md | Architecture decisions (ADR) |
 
 ## Available Skills
 

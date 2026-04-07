@@ -222,3 +222,7 @@ allowed-tools: Read, Write, Glob, Grep
 **总计**: 7d
 **缓冲后**: 8.5d (~9d)
 ```
+
+## 输出
+
+更新 `production/session-state/active.md` 任务分解结果。

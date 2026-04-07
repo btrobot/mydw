@@ -246,7 +246,7 @@ except Exception as e:
 
 ## 输出
 
-审查完成后更新状态：
+审查完成后更新 `production/session-state/active.md`：
 
 ```markdown
 ## 决策日志

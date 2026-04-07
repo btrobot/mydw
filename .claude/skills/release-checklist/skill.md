@@ -168,3 +168,7 @@ cd frontend && npm run build
 ### 回滚记录
 无 / [原因]
 ```
+
+## 输出
+
+更新 `production/session-state/active.md` 发布检查结果。

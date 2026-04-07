@@ -218,3 +218,5 @@ if not SECRET_KEY:
 
 **请求**: User (Product Owner) 批准紧急修复
 ```
+
+同时更新 `production/session-state/active.md` 安全扫描结果。

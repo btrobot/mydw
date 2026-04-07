@@ -119,3 +119,7 @@ Proposed | Accepted | Deprecated
 - `.claude/rules/coordination-rules.md` -- Handoff protocol, conflict resolution
 - `.claude/rules/api-design-rules.md` -- REST conventions
 - `.claude/rules/security-rules.md` -- Security standards
+- `.claude/memory/PROJECT.md` -- 项目事实、反模式、必做规则 (启动时读取)
+- `.claude/memory/PATTERNS.md` -- 代码模板和常用模式
+- `.claude/memory/DECISIONS.md` -- 架构决策记录 (决策前读取，决策后更新)
+- `production/session-state/active.md` -- 会话状态 (任务开始/完成/决策/阻塞时更新)

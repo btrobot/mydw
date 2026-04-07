@@ -103,3 +103,6 @@ Read-only access to all source code and configuration files.
 - `.claude/rules/security-rules.md` -- Security standards and patterns
 - `.claude/rules/python-coding-rules.md` -- Logging and error handling rules
 - `.claude/rules/code-review-rules.md` -- Security review checklist
+- `.claude/memory/PROJECT.md` -- 安全禁止规则和加密标准 (审计时参考)
+- `.claude/memory/DECISIONS.md` -- 安全相关架构决策 (ADR-003 加密方案)
+- `production/session-state/active.md` -- 会话状态 (发现漏洞时更新)

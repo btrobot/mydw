@@ -102,3 +102,5 @@ catch (error: unknown) {
 | TypeScript Rules | `.claude/rules/typescript-coding-rules.md` | Coding standards |
 | E2E Testing Rules | `.claude/rules/e2e-testing-rules.md` | Playwright test patterns |
 | Dev Guide | `docs/dev-guide.md` | Full setup instructions |
+| Project Memory | `.claude/memory/PROJECT.md` | 项目禁止规则、必做规则 |
+| Session State | `production/session-state/active.md` | 当前任务状态和进度 |

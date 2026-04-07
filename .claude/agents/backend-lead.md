@@ -121,3 +121,6 @@ logger.info(f"Cookie: {cookie}")  # Never log sensitive data
 - `.claude/rules/api-design-rules.md` -- REST conventions, response models
 - `.claude/rules/security-rules.md` -- Encryption, credential protection
 - `.claude/rules/code-review-rules.md` -- Review checklist
+- `.claude/memory/PROJECT.md` -- 项目禁止规则和必做规则 (启动时读取)
+- `.claude/memory/PATTERNS.md` -- 后端代码模板 (实现前参考)
+- `production/session-state/active.md` -- 会话状态 (任务开始/完成时更新)

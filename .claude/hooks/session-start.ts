@@ -71,79 +71,21 @@ const stateFile = join(stateDir, "active.md");
 const templateFile = join(stateDir, "active.md.template");
 
 if (existsSync(stateFile)) {
-  // Load existing session state
+  // Load existing session state — output preview so Claude can see it
   header("ACTIVE SESSION STATE DETECTED", "yellow");
-  console.log("Found unfinished work from previous session.\n");
+  console.log("A previous session left state at: production/session-state/active.md");
+  console.log("Read this file to recover context and continue where you left off.");
+  console.log();
 
   const content = readFileSync(stateFile, "utf-8");
   if (content) {
-    // Parse status block
-    const statusMatch = content.match(/<!-- STATUS -->([\s\S]*?)<!-- \/STATUS -->/);
-    if (statusMatch) {
-      const epic = statusMatch[1].match(/Epic:(?:[ \t]*)([^\n]*)/)?.[1]?.trim() || "";
-      const feature = statusMatch[1].match(/Feature:(?:[ \t]*)([^\n]*)/)?.[1]?.trim() || "";
-      const task = statusMatch[1].match(/Task:(?:[ \t]*)([^\n]*)/)?.[1]?.trim() || "";
-
-      if (task.length > 0) {
-        console.log("  Current Task:", task);
-        if (feature.length > 0) console.log("  Feature:", feature);
-        if (epic.length > 0) console.log("  Epic:", epic);
-      }
+    // Output first 20 lines as quick summary
+    console.log("Quick summary:");
+    const lines = content.split("\n");
+    lines.slice(0, 20).forEach((line) => console.log(`  ${line}`));
+    if (lines.length > 20) {
+      console.log(`  ... (${lines.length} total lines — read the full file to continue)`);
     }
-
-    // Parse current component and phase
-    const componentMatch = content.match(/\*\*Component\*\*:\s*(.+)/);
-    const phaseMatch = content.match(/\*\*Phase\*\*:\s*(.+)/);
-    const taskStatusMatch = content.match(/\*\*Status\*\*:\s*(.+)/);
-
-    if (componentMatch) console.log("  Component:", componentMatch[1].trim());
-    if (phaseMatch) console.log("  Phase:", phaseMatch[1].trim());
-    if (taskStatusMatch) console.log("  Status:", taskStatusMatch[1].trim());
-
-    // Show open questions
-    const questionsMatch = content.match(/## Open Questions\n([\s\S]*?)(?=\n##|\n---)/);
-    if (questionsMatch && questionsMatch[1].trim()) {
-      console.log("\n  Open Questions:");
-      const questions = questionsMatch[1].trim().split(/\n(?=\d+\.)/);
-      questions.slice(0, 3).forEach((q) => {
-        const lines = q.split("\n").filter(Boolean);
-        if (lines[0]) console.log(`    - ${lines[0].replace(/^\d+\.\s*\*\*/, "").replace(/\*\*:/, ":")}`);
-      });
-    }
-
-    // Show blockers
-    const blockersMatch = content.match(/## Blocker Notes\n([\s\S]*?)(?=\n##|\n---)/);
-    if (blockersMatch && blockersMatch[1].trim()) {
-      console.log("\n  Blockers:");
-      const blockers = blockersMatch[1].trim().split("\n").filter(Boolean).slice(0, 3);
-      blockers.forEach((b) => {
-        if (b.includes("- **")) {
-          const text = b.replace(/^- \*\*/, "").replace(/\*\*:/, ":");
-          console.log(`    - ${text}`);
-        }
-      });
-    }
-
-    // Show pending/failed handoffs from previous session
-    const handoffsMatch = content.match(/## Agent Handoffs\n\n\|[^\n]+\n\|[^\n]+\n([\s\S]*?)(?=\n##|\n---)/);
-    if (handoffsMatch && handoffsMatch[1].trim()) {
-      const rows = handoffsMatch[1].trim().split("\n").filter(Boolean);
-      const actionableRows = rows.filter((r) => {
-        const cols = r.split("|").map((c) => c.trim()).filter(Boolean);
-        // cols: [From, To, Task, Status, Outcome]
-        const status = cols[3]?.toLowerCase() || "";
-        return status === "pending" || status === "running" || status === "failed";
-      });
-      if (actionableRows.length > 0) {
-        console.log("\n  \x1b[33m[WARN]\x1b[0m Unresolved Handoffs:");
-        actionableRows.slice(0, 5).forEach((r) => {
-          const cols = r.split("|").map((c) => c.trim()).filter(Boolean);
-          console.log(`    - ${cols[0]} → ${cols[1]}: ${cols[2]} [${cols[3]}]`);
-        });
-      }
-    }
-
-    console.log("\n  To resume: Review active.md for full context");
   }
 } else {
   // No existing session state - create from template
@@ -166,14 +108,45 @@ if (existsSync(stateFile)) {
 
     writeFileSync(stateFile, newState, "utf-8");
     ok("Created new session state from template");
-    console.log();
-    console.log("  Session Started:", timestamp);
     console.log("  File: production/session-state/active.md");
     console.log();
-    console.log("  Next: Update STATUS block and Active Task section");
+
+    // Output the newly created content so Claude can see it
+    console.log("Quick summary:");
+    const lines = newState.split("\n");
+    lines.slice(0, 20).forEach((line) => console.log(`  ${line}`));
+    if (lines.length > 20) {
+      console.log(`  ... (${lines.length} total lines — read the full file to continue)`);
+    }
   } else {
     warn("Template not found: production/session-state/active.md.template");
   }
+}
+
+// ============================================
+// Memory System Check
+// ============================================
+
+console.log();
+const memoryDir = join(projectRoot, ".claude", "memory");
+if (existsSync(memoryDir)) {
+  header("Memory System");
+  const memoryFiles = ["PROJECT.md", "PATTERNS.md", "DECISIONS.md"];
+  let found = 0;
+  for (const file of memoryFiles) {
+    const filePath = join(memoryDir, file);
+    if (existsSync(filePath)) {
+      ok(`${file}: Loaded`);
+      found++;
+    } else {
+      warn(`${file}: Missing`);
+    }
+  }
+  if (found > 0) {
+    console.log(`  Read .claude/memory/ files to access persistent project knowledge.`);
+  }
+} else {
+  warn("Memory system not initialized (.claude/memory/ not found)");
 }
 
 // ============================================

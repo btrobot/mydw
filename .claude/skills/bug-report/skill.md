@@ -134,3 +134,5 @@ Bug 报告工作流，记录和跟踪缺陷。
 ### 已关闭
 - BUG-XXX: [标题] - 已修复
 ```
+
+同时更新 `production/session-state/active.md` Bug 记录。

@@ -116,3 +116,6 @@ See: `.claude/rules/e2e-testing-rules.md`
 - `.claude/rules/e2e-testing-rules.md` -- Playwright E2E test patterns
 - `.claude/rules/code-review-rules.md` -- Review checklist and severity levels
 - `.claude/rules/coordination-rules.md` -- Handoff and escalation protocol
+- `.claude/memory/PROJECT.md` -- 项目质量标准和禁止规则 (测试时参考)
+- `.claude/memory/PATTERNS.md` -- 代码模板 (验证实现是否符合模式)
+- `production/session-state/active.md` -- 会话状态 (测试结果更新)
