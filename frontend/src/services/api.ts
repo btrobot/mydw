@@ -13,7 +13,6 @@ export const api = axios.create({
 // 请求拦截器
 api.interceptors.request.use(
   (config) => {
-    console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`)
     return config
   },
   (error) => {
@@ -27,7 +26,6 @@ api.interceptors.response.use(
     return response
   },
   (error) => {
-    console.error('[API Error]', error.response?.data || error.message)
     return Promise.reject(error)
   }
 )

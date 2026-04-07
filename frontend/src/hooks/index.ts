@@ -89,3 +89,21 @@ export {
   useAddCover,
   useFullPipeline,
 } from './useAIClip'
+
+// Product Hooks (new domain API)
+export { useProducts as useProductsV2, useCreateProduct as useCreateProductV2, useDeleteProduct as useDeleteProductV2 } from './useProduct'
+
+// Video Hooks
+export { useVideos, useCreateVideo, useDeleteVideo } from './useVideo'
+
+// Copywriting Hooks
+export { useCopywritings, useCreateCopywriting, useDeleteCopywriting } from './useCopywriting'
+
+// Cover Hooks
+export { useCovers, useUploadCover, useDeleteCover } from './useCover'
+
+// Audio Hooks
+export { useAudios, useUploadAudio, useDeleteAudio } from './useAudio'
+
+// Topic Hooks
+export { useTopics, useCreateTopic, useDeleteTopic } from './useTopic'

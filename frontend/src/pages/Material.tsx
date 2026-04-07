@@ -1,386 +1,158 @@
-import { useEffect, useState, useCallback, type CSSProperties } from 'react'
-import { Table, Button, Space, Tabs, Card, List, Typography, message, Upload, Row, Col, Modal, Form, Input, Select, Popconfirm } from 'antd'
-import { UploadOutlined, SyncOutlined, ScanOutlined, FileOutlined, ShopOutlined, PlusOutlined, DeleteOutlined, LinkOutlined } from '@ant-design/icons'
-import { useMaterials, useMaterialStats, useScanMaterials, useImportMaterials, useDeleteMaterial, useProducts, useCreateProduct, useDeleteProduct, useUpdateMaterial } from '../hooks'
-import { api } from '../services/api'
+import { useState, useCallback } from 'react'
+import {
+  Table, Button, Space, Tabs, Card, Typography, message,
+  Modal, Form, Input, Select, Popconfirm, Upload, Tag, Empty,
+} from 'antd'
+import type { UploadProps } from 'antd'
+import {
+  PlusOutlined, DeleteOutlined, ShopOutlined, UploadOutlined,
+  LinkOutlined,
+} from '@ant-design/icons'
+import type { AxiosError } from 'axios'
+
+import { useProductsV2, useCreateProductV2, useDeleteProductV2 } from '@/hooks'
+import { useVideos, useCreateVideo, useDeleteVideo } from '@/hooks'
+import { useCopywritings, useCreateCopywriting, useDeleteCopywriting } from '@/hooks'
+import { useCovers, useUploadCover, useDeleteCover } from '@/hooks'
+import { useAudios, useUploadAudio, useDeleteAudio } from '@/hooks'
+import { useTopics, useCreateTopic, useDeleteTopic } from '@/hooks'
+
+import type {
+  ProductResponse,
+  VideoResponse,
+  CopywritingResponse,
+  CoverResponse,
+  AudioResponse,
+  TopicResponse,
+} from '@/types/material'
 
 const { Text } = Typography
 
-interface Material {
-  id: number
-  type: string
-  name?: string | null
-  path?: string | null
-  content?: string | null
-  size?: number | null
-  product_id?: number | null
-  product_name?: string | null
-  created_at: string
-}
+// ─── helpers ────────────────────────────────────────────────────────────────
 
-interface FileInfo {
-  name: string
-  path: string
-  size: number
-  type: string
-}
-
-const typeLabels: Record<string, string> = {
-  video: '视频',
-  text: '文案',
-  cover: '封面',
-  topic: '话题',
-  audio: '音频',
-}
-
-function formatSize(bytes: number): string {
-  if (!bytes) return '0 B'
+function formatSize(bytes: number | null): string {
+  if (!bytes) return '—'
   const k = 1024
   const sizes = ['B', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
 }
 
-export default function Material() {
-  const [files, setFiles] = useState<FileInfo[]>([])
-  const [activeTab, setActiveTab] = useState('video')
-  const [productModalVisible, setProductModalVisible] = useState(false)
-  const [productForm] = Form.useForm<{ name: string; link?: string }>()
+function formatDuration(seconds: number | null): string {
+  if (!seconds) return '—'
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
 
-  // 使用 React Query hooks
-  const { data: materialsData, refetch: refetchMaterials } = useMaterials()
-  const { data: stats, refetch: refetchStats } = useMaterialStats()
-  const scanMaterials = useScanMaterials()
-  const importMaterials = useImportMaterials()
-  const deleteMaterial = useDeleteMaterial()
-  const { data: products = [] } = useProducts()
-  const createProduct = useCreateProduct()
-  const deleteProduct = useDeleteProduct()
-  const updateMaterial = useUpdateMaterial()
-
-  // 规范化 materials 数据
-  const materials = Array.isArray(materialsData) ? materialsData : []
-
-  // 获取本地文件列表
-  const fetchFiles = useCallback(async () => {
-    try {
-      const res = await api.get<{ files?: FileInfo[] }>(`/materials/path/${activeTab}`)
-      setFiles(res.data.files || [])
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        message.error(error.message)
-      } else {
-        message.error('获取文件失败')
-      }
-    }
-  }, [activeTab])
-
-  // 当切换标签时刷新文件列表
-  useEffect(() => {
-    fetchFiles()
-  }, [activeTab])
-
-  const handleScan = async () => {
-    try {
-      const res = await scanMaterials.mutateAsync({ type: activeTab }) as { total?: number }
-      message.success(`扫描完成，发现 ${res?.total || 0} 个文件`)
-      fetchFiles()
-    } catch (error) {
-      message.error('扫描失败')
-    }
+function handleApiError(error: unknown, fallback: string): void {
+  const axiosErr = error as AxiosError<{ detail?: string }>
+  if (axiosErr.isAxiosError) {
+    message.error(axiosErr.response?.data?.detail ?? axiosErr.message)
+  } else if (error instanceof Error) {
+    message.error(error.message)
+  } else {
+    message.error(fallback)
   }
+}
 
-  const handleImport = async () => {
-    try {
-      const res = await importMaterials.mutateAsync({ type: activeTab }) as { success?: number; failed?: number }
-      message.success(`导入完成: 成功 ${res?.success || 0}, 失败 ${res?.failed || 0}`)
-      refetchMaterials()
-      refetchStats()
-    } catch (error) {
-      message.error('导入失败')
-    }
-  }
+// ─── Product section ─────────────────────────────────────────────────────────
 
-  const handleDelete = async (id: number) => {
-    try {
-      await deleteMaterial.mutateAsync(id)
-      message.success('删除成功')
-      refetchMaterials()
-      refetchStats()
-    } catch (error) {
-      message.error('删除失败')
-    }
-  }
+interface ProductFormValues {
+  name: string
+  link?: string
+}
 
-  const handleAddProduct = useCallback(async () => {
+function ProductSection() {
+  const [modalOpen, setModalOpen] = useState(false)
+  const [form] = Form.useForm<ProductFormValues>()
+
+  const { data: products = [], isLoading } = useProductsV2()
+  const createProduct = useCreateProductV2()
+  const deleteProduct = useDeleteProductV2()
+
+  const handleAdd = useCallback(async () => {
     try {
-      const values = await productForm.validateFields()
+      const values = await form.validateFields()
       await createProduct.mutateAsync(values)
       message.success('添加商品成功')
-      setProductModalVisible(false)
-      productForm.resetFields()
+      setModalOpen(false)
+      form.resetFields()
     } catch (error: unknown) {
-      if (error !== null && typeof error === 'object' && 'errorFields' in error) return
-      message.error('添加商品失败')
+      if (
+        error !== null &&
+        typeof error === 'object' &&
+        'errorFields' in error
+      ) return
+      handleApiError(error, '添加商品失败')
     }
-  }, [productForm, createProduct])
+  }, [form, createProduct])
 
-  const handleDeleteProduct = useCallback(async (id: number) => {
+  const handleDelete = useCallback(async (id: number) => {
     try {
       await deleteProduct.mutateAsync(id)
       message.success('删除商品成功')
-    } catch (error) {
-      message.error('删除商品失败')
+    } catch (error: unknown) {
+      handleApiError(error, '删除商品失败')
     }
   }, [deleteProduct])
 
-  const handleLinkProduct = useCallback(async (materialId: number, productId: number | undefined) => {
-    try {
-      await updateMaterial.mutateAsync({ materialId, data: { product_id: productId ?? null } as Record<string, unknown> })
-      message.success('关联已更新')
-      refetchMaterials()
-    } catch (error) {
-      message.error('关联失败')
-    }
-  }, [updateMaterial, refetchMaterials])
-
-  const productOptions = products.map((p: { id: number; name: string }) => ({ label: p.name, value: p.id }))
-
-  const columns = [
-    {
-      title: '名称',
-      dataIndex: 'name',
-      key: 'name',
-      render: (name: string) => (
-        <Space>
-          <FileOutlined />
-          <Text>{name}</Text>
-        </Space>
-      ),
-    },
-    {
-      title: '内容预览',
-      dataIndex: 'content',
-      key: 'content',
-      ellipsis: true,
-      render: (content: string | null) => content ? (
-        <Text type="secondary" style={{ maxWidth: 300 }}>{content.substring(0, 50)}...</Text>
-      ) : '-',
-    },
-    {
-      title: '大小',
-      dataIndex: 'size',
-      key: 'size',
-      width: 100,
-      render: (size: number | null) => formatSize(size || 0),
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      width: 160,
-      render: (text: string) => new Date(text).toLocaleString('zh-CN'),
-    },
-    {
-      title: '关联商品',
-      dataIndex: 'product_id',
-      key: 'product_id',
-      width: 150,
-      render: (_: unknown, record: Material) => (
-        <Select
-          allowClear
-          size="small"
-          placeholder="选择商品"
-          style={{ width: 130 }}
-          value={record.product_id ?? undefined}
-          options={productOptions}
-          onChange={(val: number | undefined) => handleLinkProduct(record.id, val)}
-        />
-      ),
-    },
-    {
-      title: '操作',
-      key: 'action',
-      width: 80,
-      render: (_: unknown, record: Material) => (
-        <Button type="link" danger size="small" onClick={() => handleDelete(record.id)}>
-          删除
-        </Button>
-      ),
-    },
-  ]
-
-  const tabItems = [
-    { key: 'video', label: `视频 (${stats?.video?.count || 0})` },
-    { key: 'text', label: `文案 (${stats?.text?.count || 0})` },
-    { key: 'cover', label: `封面 (${stats?.cover?.count || 0})` },
-    { key: 'topic', label: `话题 (${stats?.topic?.count || 0})` },
-    { key: 'audio', label: `音频 (${stats?.audio?.count || 0})` },
-  ]
-
-  const getUploadAccept = () => {
-    const accepts: Record<string, string> = {
-      video: 'video/*',
-      audio: 'audio/*',
-      cover: 'image/*',
-      text: 'text/plain',
-      topic: 'text/plain',
-    }
-    return accepts[activeTab] || '*'
-  }
-
   return (
     <>
-      {/* 商品管理 */}
       <Card
         title={<><ShopOutlined /> 商品管理</>}
         size="small"
         style={{ marginBottom: 16 }}
+        loading={isLoading}
         extra={
-          <Button size="small" icon={<PlusOutlined />} onClick={() => setProductModalVisible(true)}>
+          <Button
+            size="small"
+            icon={<PlusOutlined />}
+            onClick={() => setModalOpen(true)}
+          >
             添加商品
           </Button>
         }
       >
-        <Space wrap>
-          {products.map((p: { id: number; name: string; link?: string | null }) => (
-            <Card key={p.id} size="small" style={{ width: 200 }}>
-              <Space direction="vertical" size={2} style={{ width: '100%' }}>
-                <Text strong>{p.name}</Text>
-                {p.link && <Text type="secondary" style={{ fontSize: 12 }} ellipsis>{p.link}</Text>}
-                <Popconfirm title="确定删除？" onConfirm={() => handleDeleteProduct(p.id)}>
-                  <Button type="link" danger size="small" icon={<DeleteOutlined />}>删除</Button>
-                </Popconfirm>
-              </Space>
-            </Card>
-          ))}
-          {products.length === 0 && <Text type="secondary">暂无商品，点击"添加商品"开始</Text>}
-        </Space>
+        {products.length === 0 ? (
+          <Empty description="暂无商品，点击「添加商品」开始" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        ) : (
+          <Space wrap>
+            {products.map((p: ProductResponse) => (
+              <Card key={p.id} size="small" style={{ width: 200 }}>
+                <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                  <Text strong ellipsis>{p.name}</Text>
+                  {p.link && (
+                    <Text type="secondary" style={{ fontSize: 12 }} ellipsis>
+                      {p.link}
+                    </Text>
+                  )}
+                  <Popconfirm title="确定删除此商品？" onConfirm={() => handleDelete(p.id)}>
+                    <Button type="link" danger size="small" icon={<DeleteOutlined />}>
+                      删除
+                    </Button>
+                  </Popconfirm>
+                </Space>
+              </Card>
+            ))}
+          </Space>
+        )}
       </Card>
 
-      {/* 统计卡片 */}
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={4}>
-          <Card size="small">
-            <Statistic title="视频" value={Number(stats?.video?.count) || 0} suffix={`(${formatSize(Number(stats?.video?.size) || 0)})`} />
-          </Card>
-        </Col>
-        <Col span={4}>
-          <Card size="small">
-            <Statistic title="文案" value={Number(stats?.text?.count) || 0} />
-          </Card>
-        </Col>
-        <Col span={4}>
-          <Card size="small">
-            <Statistic title="封面" value={Number(stats?.cover?.count) || 0} />
-          </Card>
-        </Col>
-        <Col span={4}>
-          <Card size="small">
-            <Statistic title="话题" value={Number(stats?.topic?.count) || 0} />
-          </Card>
-        </Col>
-        <Col span={4}>
-          <Card size="small">
-            <Statistic title="音频" value={Number(stats?.audio?.count) || 0} />
-          </Card>
-        </Col>
-        <Col span={4}>
-          <Card size="small">
-            <Statistic title="总计" value={Number((stats as { total?: { count?: number } })?.total?.count) || 0} valueStyle={{ color: '#1890ff' }} />
-          </Card>
-        </Col>
-      </Row>
-
-      <Tabs
-        activeKey={activeTab}
-        onChange={setActiveTab}
-        items={tabItems}
-        style={{ marginBottom: 16 }}
-      />
-
-      <Space style={{ marginBottom: 16 }}>
-        <Upload
-          accept={getUploadAccept()}
-          showUploadList={false}
-          customRequest={async ({ file, onSuccess }) => {
-            try {
-              const formData = new FormData()
-              formData.append('file', file as File)
-              await api.post(`/materials/upload/${activeTab}`, formData)
-              message.success('上传成功')
-              refetchMaterials()
-              fetchFiles()
-              refetchStats()
-              onSuccess?.({})
-            } catch (error) {
-              message.error('上传失败')
-            }
-          }}
-        >
-          <Button icon={<UploadOutlined />}>上传{typeLabels[activeTab]}</Button>
-        </Upload>
-
-        <Button icon={<ScanOutlined />} onClick={handleScan} loading={scanMaterials.isPending}>
-          扫描本地
-        </Button>
-
-        <Button icon={<SyncOutlined />} onClick={handleImport} loading={importMaterials.isPending}>
-          导入到数据库
-        </Button>
-
-        <Button icon={<FileOutlined />} onClick={fetchFiles}>
-          刷新
-        </Button>
-      </Space>
-
-      <Space style={{ width: '100%' }} size="large">
-        <Card title="素材库" style={{ flex: 1 }} extra={<Text type="secondary">{materials.length} 条</Text>}>
-          <Table
-            columns={columns}
-            dataSource={materials}
-            rowKey="id"
-            loading={materialsData === undefined}
-            pagination={{ pageSize: 10 }}
-            size="small"
-          />
-        </Card>
-
-        <Card
-          title="本地文件"
-          extra={<Text type="secondary">{files.length} 个文件</Text>}
-          style={{ flex: 1, maxHeight: 500, overflow: 'auto' }}
-        >
-          <List
-            size="small"
-            dataSource={files}
-            renderItem={(item: FileInfo) => (
-              <List.Item>
-                <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                  <Space>
-                    <FileOutlined />
-                    <Text>{item.name}</Text>
-                  </Space>
-                  <Text type="secondary">{formatSize(item.size)}</Text>
-                </Space>
-              </List.Item>
-            )}
-            locale={{ emptyText: '暂无文件，点击"扫描本地"查找素材' }}
-          />
-        </Card>
-      </Space>
-
-      {/* 添加商品 Modal */}
       <Modal
         title="添加商品"
-        open={productModalVisible}
-        onOk={handleAddProduct}
+        open={modalOpen}
+        onOk={handleAdd}
         confirmLoading={createProduct.isPending}
-        onCancel={() => { setProductModalVisible(false); productForm.resetFields() }}
+        onCancel={() => { setModalOpen(false); form.resetFields() }}
         destroyOnClose
       >
-        <Form form={productForm} layout="vertical">
-          <Form.Item name="name" label="商品名称" rules={[{ required: true, message: '请输入商品名称' }]}>
+        <Form form={form} layout="vertical">
+          <Form.Item
+            name="name"
+            label="商品名称"
+            rules={[{ required: true, message: '请输入商品名称' }]}
+          >
             <Input placeholder="请输入商品名称" />
           </Form.Item>
           <Form.Item name="link" label="商品链接">
@@ -392,15 +164,606 @@ export default function Material() {
   )
 }
 
-// 简单的统计组件
-function Statistic({ title, value, suffix, valueStyle }: { title: string; value: number; suffix?: string; valueStyle?: CSSProperties }) {
+// ─── Video tab ───────────────────────────────────────────────────────────────
+
+interface VideoFormValues {
+  name: string
+  file_path: string
+  product_id?: number
+}
+
+function VideoTab() {
+  const [productFilter, setProductFilter] = useState<number | undefined>(undefined)
+  const [addModalOpen, setAddModalOpen] = useState(false)
+  const [form] = Form.useForm<VideoFormValues>()
+
+  const { data: products = [] } = useProductsV2()
+  const { data: videos = [], isLoading } = useVideos(productFilter)
+  const createVideo = useCreateVideo()
+  const deleteVideo = useDeleteVideo()
+
+  const productOptions = products.map((p: ProductResponse) => ({ label: p.name, value: p.id }))
+
+  const handleAdd = useCallback(async () => {
+    try {
+      const values = await form.validateFields()
+      await createVideo.mutateAsync(values)
+      message.success('添加视频成功')
+      setAddModalOpen(false)
+      form.resetFields()
+    } catch (error: unknown) {
+      if (
+        error !== null &&
+        typeof error === 'object' &&
+        'errorFields' in error
+      ) return
+      handleApiError(error, '添加视频失败')
+    }
+  }, [form, createVideo])
+
+  const handleDelete = useCallback(async (id: number) => {
+    try {
+      await deleteVideo.mutateAsync(id)
+      message.success('删除成功')
+    } catch (error: unknown) {
+      handleApiError(error, '删除视频失败')
+    }
+  }, [deleteVideo])
+
+  const columns = [
+    { title: '名称', dataIndex: 'name', key: 'name', ellipsis: true },
+    {
+      title: '关联商品',
+      dataIndex: 'product_name',
+      key: 'product_name',
+      width: 120,
+      render: (name: string | null) => name ? <Tag>{name}</Tag> : <Text type="secondary">—</Text>,
+    },
+    {
+      title: '大小',
+      dataIndex: 'file_size',
+      key: 'file_size',
+      width: 90,
+      render: (v: number | null) => formatSize(v),
+    },
+    {
+      title: '时长',
+      dataIndex: 'duration',
+      key: 'duration',
+      width: 80,
+      render: (v: number | null) => formatDuration(v),
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 160,
+      render: (v: string) => new Date(v).toLocaleString('zh-CN'),
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 80,
+      render: (_: unknown, record: VideoResponse) => (
+        <Popconfirm title="确定删除？" onConfirm={() => handleDelete(record.id)}>
+          <Button type="link" danger size="small">删除</Button>
+        </Popconfirm>
+      ),
+    },
+  ]
+
   return (
-    <div>
-      <Text type="secondary" style={{ fontSize: 12 }}>{title}</Text>
-      <div>
-        <Text style={{ fontSize: 20, ...valueStyle }}>{value}</Text>
-        {suffix && <Text type="secondary" style={{ fontSize: 12 }}> {suffix}</Text>}
-      </div>
-    </div>
+    <>
+      <Space style={{ marginBottom: 12 }}>
+        <Select
+          allowClear
+          placeholder="按商品筛选"
+          style={{ width: 160 }}
+          options={productOptions}
+          value={productFilter}
+          onChange={setProductFilter}
+        />
+        <Button icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
+          添加视频
+        </Button>
+      </Space>
+
+      <Table<VideoResponse>
+        dataSource={videos}
+        rowKey="id"
+        columns={columns}
+        loading={isLoading}
+        pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
+        size="small"
+      />
+
+      <Modal
+        title="添加视频"
+        open={addModalOpen}
+        onOk={handleAdd}
+        confirmLoading={createVideo.isPending}
+        onCancel={() => { setAddModalOpen(false); form.resetFields() }}
+        destroyOnClose
+      >
+        <Form form={form} layout="vertical">
+          <Form.Item name="name" label="视频名称" rules={[{ required: true, message: '请输入名称' }]}>
+            <Input placeholder="视频名称" />
+          </Form.Item>
+          <Form.Item name="file_path" label="文件路径" rules={[{ required: true, message: '请输入文件路径' }]}>
+            <Input placeholder="本地文件路径" />
+          </Form.Item>
+          <Form.Item name="product_id" label="关联商品">
+            <Select allowClear placeholder="选择商品" options={productOptions} />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </>
+  )
+}
+
+// ─── Copywriting tab ─────────────────────────────────────────────────────────
+
+interface CopywritingFormValues {
+  content: string
+  product_id?: number
+}
+
+function CopywritingTab() {
+  const [productFilter, setProductFilter] = useState<number | undefined>(undefined)
+  const [addModalOpen, setAddModalOpen] = useState(false)
+  const [form] = Form.useForm<CopywritingFormValues>()
+
+  const { data: products = [] } = useProductsV2()
+  const { data: copywritings = [], isLoading } = useCopywritings(productFilter)
+  const createCopywriting = useCreateCopywriting()
+  const deleteCopywriting = useDeleteCopywriting()
+
+  const productOptions = products.map((p: ProductResponse) => ({ label: p.name, value: p.id }))
+
+  const handleAdd = useCallback(async () => {
+    try {
+      const values = await form.validateFields()
+      await createCopywriting.mutateAsync(values)
+      message.success('添加文案成功')
+      setAddModalOpen(false)
+      form.resetFields()
+    } catch (error: unknown) {
+      if (
+        error !== null &&
+        typeof error === 'object' &&
+        'errorFields' in error
+      ) return
+      handleApiError(error, '添加文案失败')
+    }
+  }, [form, createCopywriting])
+
+  const handleDelete = useCallback(async (id: number) => {
+    try {
+      await deleteCopywriting.mutateAsync(id)
+      message.success('删除成功')
+    } catch (error: unknown) {
+      handleApiError(error, '删除文案失败')
+    }
+  }, [deleteCopywriting])
+
+  const columns = [
+    {
+      title: '内容',
+      dataIndex: 'content',
+      key: 'content',
+      ellipsis: true,
+      render: (v: string) => <Text>{v.substring(0, 80)}{v.length > 80 ? '…' : ''}</Text>,
+    },
+    {
+      title: '关联商品',
+      dataIndex: 'product_name',
+      key: 'product_name',
+      width: 120,
+      render: (name: string | null) => name ? <Tag>{name}</Tag> : <Text type="secondary">—</Text>,
+    },
+    {
+      title: '来源',
+      dataIndex: 'source_type',
+      key: 'source_type',
+      width: 80,
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 160,
+      render: (v: string) => new Date(v).toLocaleString('zh-CN'),
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 80,
+      render: (_: unknown, record: CopywritingResponse) => (
+        <Popconfirm title="确定删除？" onConfirm={() => handleDelete(record.id)}>
+          <Button type="link" danger size="small">删除</Button>
+        </Popconfirm>
+      ),
+    },
+  ]
+
+  return (
+    <>
+      <Space style={{ marginBottom: 12 }}>
+        <Select
+          allowClear
+          placeholder="按商品筛选"
+          style={{ width: 160 }}
+          options={productOptions}
+          value={productFilter}
+          onChange={setProductFilter}
+        />
+        <Button icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
+          添加文案
+        </Button>
+      </Space>
+
+      <Table<CopywritingResponse>
+        dataSource={copywritings}
+        rowKey="id"
+        columns={columns}
+        loading={isLoading}
+        pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
+        size="small"
+      />
+
+      <Modal
+        title="添加文案"
+        open={addModalOpen}
+        onOk={handleAdd}
+        confirmLoading={createCopywriting.isPending}
+        onCancel={() => { setAddModalOpen(false); form.resetFields() }}
+        destroyOnClose
+      >
+        <Form form={form} layout="vertical">
+          <Form.Item name="content" label="文案内容" rules={[{ required: true, message: '请输入文案内容' }]}>
+            <Input.TextArea rows={4} placeholder="请输入文案内容" />
+          </Form.Item>
+          <Form.Item name="product_id" label="关联商品">
+            <Select allowClear placeholder="选择商品" options={productOptions} />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </>
+  )
+}
+
+// ─── Cover tab ───────────────────────────────────────────────────────────────
+
+function CoverTab() {
+  const [videoFilter, setVideoFilter] = useState<number | undefined>(undefined)
+  const { data: covers = [], isLoading } = useCovers(videoFilter)
+  const uploadCover = useUploadCover()
+  const deleteCover = useDeleteCover()
+
+  const handleUpload: UploadProps['customRequest'] = useCallback(async ({ file, onSuccess, onError }) => {
+    try {
+      await uploadCover.mutateAsync({ file: file as File, videoId: videoFilter })
+      message.success('封面上传成功')
+      onSuccess?.({})
+    } catch (error: unknown) {
+      handleApiError(error, '封面上传失败')
+      onError?.(new Error('上传失败'))
+    }
+  }, [uploadCover, videoFilter])
+
+  const handleDelete = useCallback(async (id: number) => {
+    try {
+      await deleteCover.mutateAsync(id)
+      message.success('删除成功')
+    } catch (error: unknown) {
+      handleApiError(error, '删除封面失败')
+    }
+  }, [deleteCover])
+
+  const columns = [
+    { title: '文件路径', dataIndex: 'file_path', key: 'file_path', ellipsis: true },
+    {
+      title: '关联视频',
+      dataIndex: 'video_id',
+      key: 'video_id',
+      width: 100,
+      render: (v: number | null) => v ? <Tag>视频 #{v}</Tag> : <Text type="secondary">—</Text>,
+    },
+    {
+      title: '大小',
+      dataIndex: 'file_size',
+      key: 'file_size',
+      width: 90,
+      render: (v: number | null) => formatSize(v),
+    },
+    {
+      title: '尺寸',
+      key: 'dimensions',
+      width: 100,
+      render: (_: unknown, record: CoverResponse) =>
+        record.width && record.height ? `${record.width}×${record.height}` : '—',
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 160,
+      render: (v: string) => new Date(v).toLocaleString('zh-CN'),
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 80,
+      render: (_: unknown, record: CoverResponse) => (
+        <Popconfirm title="确定删除？" onConfirm={() => handleDelete(record.id)}>
+          <Button type="link" danger size="small">删除</Button>
+        </Popconfirm>
+      ),
+    },
+  ]
+
+  return (
+    <>
+      <Space style={{ marginBottom: 12 }}>
+        <Input
+          placeholder="视频ID筛选"
+          style={{ width: 140 }}
+          type="number"
+          allowClear
+          onChange={(e) => {
+            const v = e.target.value
+            setVideoFilter(v ? Number(v) : undefined)
+          }}
+        />
+        <Upload
+          accept="image/jpeg,image/png,image/webp"
+          showUploadList={false}
+          customRequest={handleUpload}
+        >
+          <Button icon={<UploadOutlined />} loading={uploadCover.isPending}>
+            上传封面
+          </Button>
+        </Upload>
+      </Space>
+
+      <Table<CoverResponse>
+        dataSource={covers}
+        rowKey="id"
+        columns={columns}
+        loading={isLoading}
+        pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
+        size="small"
+      />
+    </>
+  )
+}
+
+// ─── Audio tab ───────────────────────────────────────────────────────────────
+
+function AudioTab() {
+  const { data: audios = [], isLoading } = useAudios()
+  const uploadAudio = useUploadAudio()
+  const deleteAudio = useDeleteAudio()
+
+  const handleUpload: UploadProps['customRequest'] = useCallback(async ({ file, onSuccess, onError }) => {
+    try {
+      await uploadAudio.mutateAsync(file as File)
+      message.success('音频上传成功')
+      onSuccess?.({})
+    } catch (error: unknown) {
+      handleApiError(error, '音频上传失败')
+      onError?.(new Error('上传失败'))
+    }
+  }, [uploadAudio])
+
+  const handleDelete = useCallback(async (id: number) => {
+    try {
+      await deleteAudio.mutateAsync(id)
+      message.success('删除成功')
+    } catch (error: unknown) {
+      handleApiError(error, '删除音频失败')
+    }
+  }, [deleteAudio])
+
+  const columns = [
+    { title: '名称', dataIndex: 'name', key: 'name', ellipsis: true },
+    {
+      title: '大小',
+      dataIndex: 'file_size',
+      key: 'file_size',
+      width: 90,
+      render: (v: number | null) => formatSize(v),
+    },
+    {
+      title: '时长',
+      dataIndex: 'duration',
+      key: 'duration',
+      width: 80,
+      render: (v: number | null) => formatDuration(v),
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 160,
+      render: (v: string) => new Date(v).toLocaleString('zh-CN'),
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 80,
+      render: (_: unknown, record: AudioResponse) => (
+        <Popconfirm title="确定删除？" onConfirm={() => handleDelete(record.id)}>
+          <Button type="link" danger size="small">删除</Button>
+        </Popconfirm>
+      ),
+    },
+  ]
+
+  return (
+    <>
+      <Space style={{ marginBottom: 12 }}>
+        <Upload
+          accept="audio/mpeg,audio/mp3,audio/wav,audio/aac,audio/ogg"
+          showUploadList={false}
+          customRequest={handleUpload}
+        >
+          <Button icon={<UploadOutlined />} loading={uploadAudio.isPending}>
+            上传音频
+          </Button>
+        </Upload>
+      </Space>
+
+      <Table<AudioResponse>
+        dataSource={audios}
+        rowKey="id"
+        columns={columns}
+        loading={isLoading}
+        pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
+        size="small"
+      />
+    </>
+  )
+}
+
+// ─── Topic tab ───────────────────────────────────────────────────────────────
+
+interface TopicFormValues {
+  name: string
+  heat?: number
+}
+
+function TopicTab() {
+  const [sort, setSort] = useState<string>('created_at')
+  const [addModalOpen, setAddModalOpen] = useState(false)
+  const [form] = Form.useForm<TopicFormValues>()
+
+  const { data: topics = [], isLoading } = useTopics(sort)
+  const createTopic = useCreateTopic()
+  const deleteTopic = useDeleteTopic()
+
+  const handleAdd = useCallback(async () => {
+    try {
+      const values = await form.validateFields()
+      await createTopic.mutateAsync(values)
+      message.success('添加话题成功')
+      setAddModalOpen(false)
+      form.resetFields()
+    } catch (error: unknown) {
+      if (
+        error !== null &&
+        typeof error === 'object' &&
+        'errorFields' in error
+      ) return
+      handleApiError(error, '添加话题失败')
+    }
+  }, [form, createTopic])
+
+  const handleDelete = useCallback(async (id: number) => {
+    try {
+      await deleteTopic.mutateAsync(id)
+      message.success('删除成功')
+    } catch (error: unknown) {
+      handleApiError(error, '删除话题失败')
+    }
+  }, [deleteTopic])
+
+  const columns = [
+    { title: '话题名称', dataIndex: 'name', key: 'name', ellipsis: true },
+    {
+      title: '热度',
+      dataIndex: 'heat',
+      key: 'heat',
+      width: 80,
+      render: (v: number) => v.toLocaleString(),
+    },
+    {
+      title: '来源',
+      dataIndex: 'source',
+      key: 'source',
+      width: 80,
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 160,
+      render: (v: string) => new Date(v).toLocaleString('zh-CN'),
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 80,
+      render: (_: unknown, record: TopicResponse) => (
+        <Popconfirm title="确定删除？" onConfirm={() => handleDelete(record.id)}>
+          <Button type="link" danger size="small">删除</Button>
+        </Popconfirm>
+      ),
+    },
+  ]
+
+  return (
+    <>
+      <Space style={{ marginBottom: 12 }}>
+        <Select
+          value={sort}
+          onChange={setSort}
+          style={{ width: 120 }}
+          options={[
+            { label: '最新', value: 'created_at' },
+            { label: '热度', value: 'heat' },
+          ]}
+        />
+        <Button icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
+          添加话题
+        </Button>
+      </Space>
+
+      <Table<TopicResponse>
+        dataSource={topics}
+        rowKey="id"
+        columns={columns}
+        loading={isLoading}
+        pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
+        size="small"
+      />
+
+      <Modal
+        title="添加话题"
+        open={addModalOpen}
+        onOk={handleAdd}
+        confirmLoading={createTopic.isPending}
+        onCancel={() => { setAddModalOpen(false); form.resetFields() }}
+        destroyOnClose
+      >
+        <Form form={form} layout="vertical">
+          <Form.Item name="name" label="话题名称" rules={[{ required: true, message: '请输入话题名称' }]}>
+            <Input placeholder="话题名称" />
+          </Form.Item>
+          <Form.Item name="heat" label="热度">
+            <Input type="number" placeholder="0" />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </>
+  )
+}
+
+// ─── Main page ───────────────────────────────────────────────────────────────
+
+const tabItems = [
+  { key: 'video', label: '视频', children: <VideoTab /> },
+  { key: 'copywriting', label: '文案', children: <CopywritingTab /> },
+  { key: 'cover', label: '封面', children: <CoverTab /> },
+  { key: 'audio', label: '音频', children: <AudioTab /> },
+  { key: 'topic', label: '话题', children: <TopicTab /> },
+]
+
+export default function Material() {
+  return (
+    <>
+      <ProductSection />
+      <Tabs defaultActiveKey="video" items={tabItems} />
+    </>
   )
 }
