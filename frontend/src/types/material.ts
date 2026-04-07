@@ -128,3 +128,12 @@ export interface TopicCreate {
   heat?: number
   source?: string
 }
+
+export interface GlobalTopicsResponse {
+  topic_ids: number[]
+  topics: TopicResponse[]
+}
+
+export interface SetGlobalTopicsRequest {
+  topic_ids: number[]
+}

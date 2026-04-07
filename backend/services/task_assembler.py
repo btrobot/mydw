@@ -1,6 +1,8 @@
 """
 SP3-04: TaskAssembler — 为视频组装任务，自动匹配同 product 的文案和话题
+SP4-04: 集成全局话题配置
 """
+import json
 from typing import Dict, List, Optional
 
 from loguru import logger
@@ -8,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from models import Copywriting, Task, TaskTopic, Topic, Video
+from models import Copywriting, PublishConfig, Task, TaskTopic, Topic, Video
 
 
 class TaskAssembler:
@@ -60,9 +62,24 @@ class TaskAssembler:
             for cw in cw_result.scalars().all():
                 copywritings_by_product.setdefault(cw.product_id, []).append(cw)
 
-        # 3. 查询所有话题（轮询使用）
-        topics_result = await self.db.execute(select(Topic))
-        topics: List[Topic] = list(topics_result.scalars().all())
+        # 3. 读取全局话题配置
+        cfg_result = await self.db.execute(select(PublishConfig).limit(1))
+        config = cfg_result.scalars().first()
+        global_topic_ids: List[int] = []
+        if config and config.global_topic_ids:
+            try:
+                global_topic_ids = json.loads(config.global_topic_ids)
+            except (ValueError, TypeError):
+                global_topic_ids = []
+
+        # 查询全局话题对象（保持顺序）
+        global_topics: List[Topic] = []
+        if global_topic_ids:
+            topics_result = await self.db.execute(
+                select(Topic).where(Topic.id.in_(global_topic_ids))
+            )
+            topic_map = {t.id: t for t in topics_result.scalars().all()}
+            global_topics = [topic_map[tid] for tid in global_topic_ids if tid in topic_map]
 
         # 4. 为每个视频创建 Task
         created_tasks: List[Task] = []
@@ -75,6 +92,9 @@ class TaskAssembler:
                 if candidates:
                     matched_cw = candidates[idx % len(candidates)]
 
+            # 双写旧字段 topic（话题名称拼接）
+            topic_names: str = " ".join(f"#{t.name}" for t in global_topics) if global_topics else ""
+
             task = Task(
                 video_id=video.id,
                 copywriting_id=matched_cw.id if matched_cw else None,
@@ -83,17 +103,16 @@ class TaskAssembler:
                 # 双写旧字段（双写期兼容）
                 video_path=video.file_path,
                 content=matched_cw.content if matched_cw else None,
+                topic=topic_names or None,
                 status="pending",
                 priority=0,
             )
             self.db.add(task)
             await self.db.flush()  # 获取 task.id，用于创建 TaskTopic
 
-            # 5. 创建 TaskTopic 关联（轮询话题）
-            if topics:
-                topic = topics[idx % len(topics)]
-                task_topic = TaskTopic(task_id=task.id, topic_id=topic.id)
-                self.db.add(task_topic)
+            # 5. 创建 TaskTopic 关联（全局话题）
+            for topic in global_topics:
+                self.db.add(TaskTopic(task_id=task.id, topic_id=topic.id))
 
             created_tasks.append(task)
             logger.info(

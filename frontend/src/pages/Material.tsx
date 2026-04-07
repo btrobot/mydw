@@ -6,7 +6,7 @@ import {
 import type { UploadProps } from 'antd'
 import {
   PlusOutlined, DeleteOutlined, ShopOutlined, UploadOutlined,
-  LinkOutlined,
+  LinkOutlined, SearchOutlined, GlobalOutlined,
 } from '@ant-design/icons'
 import type { AxiosError } from 'axios'
 
@@ -15,7 +15,7 @@ import { useVideos, useCreateVideo, useDeleteVideo } from '@/hooks'
 import { useCopywritings, useCreateCopywriting, useDeleteCopywriting } from '@/hooks'
 import { useCovers, useUploadCover, useDeleteCover } from '@/hooks'
 import { useAudios, useUploadAudio, useDeleteAudio } from '@/hooks'
-import { useTopics, useCreateTopic, useDeleteTopic } from '@/hooks'
+import { useTopics, useCreateTopic, useDeleteTopic, useSearchTopics, useGlobalTopics, useSetGlobalTopics } from '@/hooks'
 
 import type {
   ProductResponse,
@@ -636,11 +636,45 @@ interface TopicFormValues {
 function TopicTab() {
   const [sort, setSort] = useState<string>('created_at')
   const [addModalOpen, setAddModalOpen] = useState(false)
+  const [globalModalOpen, setGlobalModalOpen] = useState(false)
+  const [searchKeyword, setSearchKeyword] = useState<string>('')
+  const [searchInput, setSearchInput] = useState<string>('')
+  const [selectedGlobalIds, setSelectedGlobalIds] = useState<number[]>([])
   const [form] = Form.useForm<TopicFormValues>()
 
   const { data: topics = [], isLoading } = useTopics(sort)
+  const { data: searchResults = [], isFetching: isSearching } = useSearchTopics(searchKeyword)
+  const { data: globalTopicsData } = useGlobalTopics()
   const createTopic = useCreateTopic()
   const deleteTopic = useDeleteTopic()
+  const setGlobalTopics = useSetGlobalTopics()
+
+  const globalTopics = globalTopicsData?.topics ?? []
+
+  const handleSearch = useCallback(() => {
+    setSearchKeyword(searchInput.trim())
+  }, [searchInput])
+
+  const handleAddFromSearch = useCallback(async (topic: TopicResponse) => {
+    // Add to library if not already present (topic already exists in /topics)
+    // Just show success — the topic is already in the library from search
+    message.success(`话题「${topic.name}」已在话题库中`)
+  }, [])
+
+  const handleOpenGlobalModal = useCallback(() => {
+    setSelectedGlobalIds(globalTopicsData?.topic_ids ?? [])
+    setGlobalModalOpen(true)
+  }, [globalTopicsData])
+
+  const handleSaveGlobalTopics = useCallback(async () => {
+    try {
+      await setGlobalTopics.mutateAsync({ topic_ids: selectedGlobalIds })
+      message.success('全局话题设置成功')
+      setGlobalModalOpen(false)
+    } catch (error: unknown) {
+      handleApiError(error, '设置全局话题失败')
+    }
+  }, [setGlobalTopics, selectedGlobalIds])
 
   const handleAdd = useCallback(async () => {
     try {
@@ -667,6 +701,8 @@ function TopicTab() {
       handleApiError(error, '删除话题失败')
     }
   }, [deleteTopic])
+
+  const topicOptions = topics.map((t: TopicResponse) => ({ label: t.name, value: t.id }))
 
   const columns = [
     { title: '话题名称', dataIndex: 'name', key: 'name', ellipsis: true },
@@ -704,6 +740,66 @@ function TopicTab() {
 
   return (
     <>
+      {/* Search area */}
+      <Card size="small" style={{ marginBottom: 12 }} title={<><SearchOutlined /> 搜索话题</>}>
+        <Space style={{ marginBottom: 8 }}>
+          <Input
+            placeholder="输入关键词搜索话题"
+            style={{ width: 240 }}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onPressEnter={handleSearch}
+            allowClear
+            onClear={() => { setSearchKeyword(''); setSearchInput('') }}
+          />
+          <Button icon={<SearchOutlined />} onClick={handleSearch} loading={isSearching}>
+            搜索
+          </Button>
+        </Space>
+        {searchKeyword && (
+          isSearching ? (
+            <Text type="secondary">搜索中…</Text>
+          ) : searchResults.length === 0 ? (
+            <Empty description="未找到相关话题" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          ) : (
+            <Space wrap>
+              {searchResults.map((t: TopicResponse) => (
+                <Space key={t.id} size={4}>
+                  <Tag color="blue">{t.name}</Tag>
+                  <Tag color="orange">{t.heat.toLocaleString()}</Tag>
+                  <Button size="small" type="link" onClick={() => handleAddFromSearch(t)}>
+                    添加
+                  </Button>
+                </Space>
+              ))}
+            </Space>
+          )
+        )}
+      </Card>
+
+      {/* Global topics area */}
+      <Card
+        size="small"
+        style={{ marginBottom: 12 }}
+        title={<><GlobalOutlined /> 全局话题</>}
+        extra={
+          <Button size="small" icon={<GlobalOutlined />} onClick={handleOpenGlobalModal}>
+            设置全局话题
+          </Button>
+        }
+      >
+        {globalTopics.length === 0 ? (
+          <Empty description="暂未设置全局话题" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        ) : (
+          <Space wrap>
+            {globalTopics.map((t: TopicResponse) => (
+              <Tag key={t.id} color="geekblue">{t.name}</Tag>
+            ))}
+          </Space>
+        )}
+      </Card>
+
+      {/* Topic library */}
       <Space style={{ marginBottom: 12 }}>
         <Select
           value={sort}
@@ -728,6 +824,7 @@ function TopicTab() {
         size="small"
       />
 
+      {/* Add topic modal */}
       <Modal
         title="添加话题"
         open={addModalOpen}
@@ -744,6 +841,32 @@ function TopicTab() {
             <Input type="number" placeholder="0" />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* Set global topics modal */}
+      <Modal
+        title="设置全局话题"
+        open={globalModalOpen}
+        onOk={handleSaveGlobalTopics}
+        confirmLoading={setGlobalTopics.isPending}
+        onCancel={() => setGlobalModalOpen(false)}
+        destroyOnClose
+        width={520}
+      >
+        <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+          从话题库中选择话题作为全局默认话题，发布时自动附加。
+        </Text>
+        <Select
+          mode="multiple"
+          style={{ width: '100%' }}
+          placeholder="选择话题（可多选）"
+          options={topicOptions}
+          value={selectedGlobalIds}
+          onChange={setSelectedGlobalIds}
+          filterOption={(input, option) =>
+            (option?.label as string ?? '').toLowerCase().includes(input.toLowerCase())
+          }
+        />
       </Modal>
     </>
   )

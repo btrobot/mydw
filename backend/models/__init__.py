@@ -248,6 +248,7 @@ class PublishConfig(Base):
     max_per_account_per_day = Column(Integer, default=5)
     shuffle = Column(Boolean, default=False)
     auto_start = Column(Boolean, default=False)
+    global_topic_ids = Column(Text, default='[]')  # JSON数组存储全局话题ID
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -308,6 +309,8 @@ async def init_db():
     await migration_004.run_migration(engine)
     migration_005 = importlib.import_module("migrations.005_task_add_fk")
     await migration_005.run_migration(engine)
+    migration_006 = importlib.import_module("migrations.006_global_topics")
+    await migration_006.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

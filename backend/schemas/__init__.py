@@ -764,6 +764,19 @@ class PreviewStatusResponse(BaseModel):
     account_id: Optional[int] = None
 
 
+# ============ 全局话题 Schema (SP4-03) ============
+
+class GlobalTopicRequest(BaseModel):
+    """设置全局话题请求"""
+    topic_ids: List[int] = Field(..., description="话题ID列表")
+
+
+class GlobalTopicResponse(BaseModel):
+    """全局话题响应"""
+    topic_ids: List[int]
+    topics: List[TopicResponse]
+
+
 # ============ 通用响应 ============
 
 class ApiResponse(BaseModel):

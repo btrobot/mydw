@@ -107,4 +107,4 @@ export { useCovers, useUploadCover, useDeleteCover } from './useCover'
 export { useAudios, useUploadAudio, useDeleteAudio } from './useAudio'
 
 // Topic Hooks
-export { useTopics, useCreateTopic, useDeleteTopic } from './useTopic'
+export { useTopics, useCreateTopic, useDeleteTopic, useSearchTopics, useGlobalTopics, useSetGlobalTopics } from './useTopic'

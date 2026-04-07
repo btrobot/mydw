@@ -3,7 +3,13 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/services/api'
-import type { TopicResponse, TopicListResponse, TopicCreate } from '@/types/material'
+import type {
+  TopicResponse,
+  TopicListResponse,
+  TopicCreate,
+  GlobalTopicsResponse,
+  SetGlobalTopicsRequest,
+} from '@/types/material'
 
 export const useTopics = (sort?: string) =>
   useQuery<TopicResponse[]>({
@@ -36,6 +42,38 @@ export const useDeleteTopic = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['topics'] })
+    },
+  })
+}
+
+export const useSearchTopics = (keyword: string) =>
+  useQuery<TopicResponse[]>({
+    queryKey: ['topics', 'search', keyword],
+    queryFn: async () => {
+      const { data } = await api.get<TopicListResponse>('/topics/search', { params: { keyword } })
+      return data.items
+    },
+    enabled: keyword.trim().length > 0,
+  })
+
+export const useGlobalTopics = () =>
+  useQuery<GlobalTopicsResponse>({
+    queryKey: ['topics', 'global'],
+    queryFn: async () => {
+      const { data } = await api.get<GlobalTopicsResponse>('/topics/global')
+      return data
+    },
+  })
+
+export const useSetGlobalTopics = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload: SetGlobalTopicsRequest) => {
+      const { data } = await api.put<GlobalTopicsResponse>('/topics/global', payload)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['topics', 'global'] })
     },
   })
 }
