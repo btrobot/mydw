@@ -105,6 +105,8 @@ class Product(Base):
     name = Column(String(256), unique=True, nullable=False, index=True)
     link = Column(String(512), nullable=True)
     description = Column(Text, nullable=True)
+    dewu_url = Column(String(512), nullable=True)   # 得物商品页 URL (SP1-06)
+    image_url = Column(String(512), nullable=True)  # 商品图片 (SP1-06)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -112,6 +114,91 @@ class Product(Base):
     # 关系
     tasks = relationship("Task", back_populates="product")
     materials = relationship("Material", back_populates="product")
+    videos = relationship("Video", back_populates="product")
+    copywritings = relationship("Copywriting", back_populates="product")
+
+
+class Video(Base):
+    """视频素材表 (SP1-01)"""
+    __tablename__ = "videos"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=True, index=True)
+    name = Column(String(256), nullable=False)
+    file_path = Column(String(512), nullable=False)
+    file_size = Column(Integer, nullable=True)
+    duration = Column(Integer, nullable=True)   # 秒
+    width = Column(Integer, nullable=True)
+    height = Column(Integer, nullable=True)
+    file_hash = Column(String(64), nullable=True)
+    source_type = Column(String(32), default="original")
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # 关系
+    product = relationship("Product", back_populates="videos")
+    covers = relationship("Cover", back_populates="video")
+
+
+class Copywriting(Base):
+    """文案素材表 (SP1-02)"""
+    __tablename__ = "copywritings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=True, index=True)
+    content = Column(Text, nullable=False)
+    source_type = Column(String(32), default="manual")
+    source_ref = Column(String(256), nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # 关系
+    product = relationship("Product", back_populates="copywritings")
+
+
+class Cover(Base):
+    """封面素材表 (SP1-03)"""
+    __tablename__ = "covers"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    video_id = Column(Integer, ForeignKey("videos.id"), nullable=True, index=True)
+    file_path = Column(String(512), nullable=False)
+    file_size = Column(Integer, nullable=True)
+    width = Column(Integer, nullable=True)
+    height = Column(Integer, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # 关系
+    video = relationship("Video", back_populates="covers")
+
+
+class Audio(Base):
+    """音频素材表 (SP1-04)"""
+    __tablename__ = "audios"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(256), nullable=False)
+    file_path = Column(String(512), nullable=False)
+    file_size = Column(Integer, nullable=True)
+    duration = Column(Integer, nullable=True)  # 秒
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Topic(Base):
+    """话题表 (SP1-05)"""
+    __tablename__ = "topics"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(256), unique=True, nullable=False, index=True)
+    heat = Column(Integer, default=0)
+    source = Column(String(32), default="manual")
+    last_synced = Column(DateTime, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class PublishLog(Base):
@@ -197,6 +284,10 @@ async def init_db():
     await migration_001.run_migration(engine)
     migration_002 = importlib.import_module("migrations.002_material_product_link")
     await migration_002.run_migration(engine)
+    migration_003 = importlib.import_module("migrations.003_product_enhance")
+    await migration_003.run_migration(engine)
+    migration_004 = importlib.import_module("migrations.004_material_split")
+    await migration_004.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

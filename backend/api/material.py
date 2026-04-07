@@ -1,6 +1,7 @@
 """
 素材管理 API
 """
+# 兼容层 — 所有端点已迁移到独立资源 API，此模块将在后续版本移除
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -60,7 +61,7 @@ class MaterialPathResponse(BaseModel):
 
 # ============ API 端点 ============
 
-@router.post("/", response_model=MaterialResponse, status_code=201)
+@router.post("/", response_model=MaterialResponse, status_code=201, deprecated=True)
 async def create_material(
     material_data: MaterialCreate,
     db: AsyncSession = Depends(get_db)
@@ -80,7 +81,7 @@ async def create_material(
     return material
 
 
-@router.post("/upload/{material_type}", response_model=MaterialResponse)
+@router.post("/upload/{material_type}", response_model=MaterialResponse, deprecated=True)
 async def upload_material(
     material_type: MaterialType,
     file: UploadFile = File(...),
@@ -109,7 +110,7 @@ async def upload_material(
     return material
 
 
-@router.get("/", response_model=MaterialListResponse)
+@router.get("/", response_model=MaterialListResponse, deprecated=True)
 async def list_materials(
     type: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
@@ -124,7 +125,7 @@ async def list_materials(
     return MaterialListResponse(total=len(materials), items=materials)
 
 
-@router.get("/stats", response_model=MaterialStatsResponse)
+@router.get("/stats", response_model=MaterialStatsResponse, deprecated=True)
 async def get_material_stats(db: AsyncSession = Depends(get_db)):
     """获取素材统计"""
     service = MaterialService(db, str(MATERIAL_PATH))
@@ -140,8 +141,8 @@ async def get_material_stats(db: AsyncSession = Depends(get_db)):
     )
 
 
-@router.get("/path/{material_type}", response_model=MaterialPathResponse)
-async def get_material_path(material_type: str):
+@router.get("/path/{material_type}", response_model=MaterialPathResponse, deprecated=True)
+async def get_material_path(material_type: str) -> MaterialPathResponse:
     """获取素材类型目录"""
     type_dir = MATERIAL_PATH / material_type
     if not type_dir.exists():
@@ -160,8 +161,8 @@ async def get_material_path(material_type: str):
     return MaterialPathResponse(path=str(type_dir), files=files, type=material_type)
 
 
-@router.post("/scan", response_model=ScanResponse)
-async def scan_materials(request: ScanRequest = None, db: AsyncSession = Depends(get_db)):
+@router.post("/scan", response_model=ScanResponse, deprecated=True)
+async def scan_materials(request: Optional[ScanRequest] = None, db: AsyncSession = Depends(get_db)):
     """扫描本地素材目录"""
     material_type = request.type if request else None
     service = MaterialService(db, str(MATERIAL_PATH))
@@ -169,7 +170,7 @@ async def scan_materials(request: ScanRequest = None, db: AsyncSession = Depends
     return ScanResponse(total=len(files), files=files)
 
 
-@router.post("/import", response_model=ImportResponse)
+@router.post("/import", response_model=ImportResponse, deprecated=True)
 async def import_materials(type: Optional[str] = None, db: AsyncSession = Depends(get_db)):
     """批量导入本地素材"""
     service = MaterialService(db, str(MATERIAL_PATH))
@@ -177,7 +178,7 @@ async def import_materials(type: Optional[str] = None, db: AsyncSession = Depend
     return ImportResponse(success=success, failed=failed, total=success + failed)
 
 
-@router.post("/import/{material_type}", response_model=ImportResponse)
+@router.post("/import/{material_type}", response_model=ImportResponse, deprecated=True)
 async def import_materials_by_type(material_type: str, db: AsyncSession = Depends(get_db)):
     """导入指定类型的素材"""
     service = MaterialService(db, str(MATERIAL_PATH))
@@ -185,7 +186,7 @@ async def import_materials_by_type(material_type: str, db: AsyncSession = Depend
     return ImportResponse(success=success, failed=failed, total=success + failed)
 
 
-@router.get("/{material_id}", response_model=MaterialResponse)
+@router.get("/{material_id}", response_model=MaterialResponse, deprecated=True)
 async def get_material(material_id: int, db: AsyncSession = Depends(get_db)):
     """获取素材详情"""
     result = await db.execute(select(Material).where(Material.id == material_id))
@@ -195,7 +196,7 @@ async def get_material(material_id: int, db: AsyncSession = Depends(get_db)):
     return material
 
 
-@router.get("/{material_id}/content")
+@router.get("/{material_id}/content", deprecated=True)
 async def get_material_content(material_id: int, db: AsyncSession = Depends(get_db)):
     """获取素材内容"""
     result = await db.execute(select(Material).where(Material.id == material_id))
@@ -221,7 +222,7 @@ async def get_material_content(material_id: int, db: AsyncSession = Depends(get_
     return {"id": material.id, "name": material.name, "type": material.type, "content": material.content or ""}
 
 
-@router.put("/{material_id}", response_model=MaterialResponse)
+@router.put("/{material_id}", response_model=MaterialResponse, deprecated=True)
 async def update_material(material_id: int, material_data: MaterialUpdate, db: AsyncSession = Depends(get_db)):
     """更新素材"""
     result = await db.execute(select(Material).where(Material.id == material_id))
@@ -237,7 +238,7 @@ async def update_material(material_id: int, material_data: MaterialUpdate, db: A
     return material
 
 
-@router.delete("/{material_id}", status_code=204)
+@router.delete("/{material_id}", status_code=204, deprecated=True)
 async def delete_material(material_id: int, db: AsyncSession = Depends(get_db)):
     """删除素材"""
     result = await db.execute(select(Material).where(Material.id == material_id))
@@ -255,7 +256,7 @@ async def delete_material(material_id: int, db: AsyncSession = Depends(get_db)):
     return None
 
 
-@router.delete("/", status_code=204)
+@router.delete("/", status_code=204, deprecated=True)
 async def delete_all_materials(type: Optional[str] = None, db: AsyncSession = Depends(get_db)):
     """删除所有素材"""
     query = select(Material)
@@ -277,7 +278,7 @@ async def delete_all_materials(type: Optional[str] = None, db: AsyncSession = De
 
 # ============ 商品 API (迁移自 system.py) ============
 
-@router.post("/products", response_model=ProductResponse, status_code=201)
+@router.post("/products", response_model=ProductResponse, status_code=201, deprecated=True)
 async def create_product_material(
     product_data: ProductCreate,
     db: AsyncSession = Depends(get_db)
@@ -291,7 +292,7 @@ async def create_product_material(
     return product
 
 
-@router.get("/products", response_model=ProductListResponse)
+@router.get("/products", response_model=ProductListResponse, deprecated=True)
 async def list_products_material(db: AsyncSession = Depends(get_db)):
     """获取商品列表"""
     result = await db.execute(select(Product).order_by(Product.created_at.desc()))
@@ -299,7 +300,7 @@ async def list_products_material(db: AsyncSession = Depends(get_db)):
     return ProductListResponse(total=len(products), items=products)
 
 
-@router.delete("/products/{product_id}", status_code=204)
+@router.delete("/products/{product_id}", status_code=204, deprecated=True)
 async def delete_product_material(
     product_id: int,
     db: AsyncSession = Depends(get_db)

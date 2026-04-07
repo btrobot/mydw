@@ -413,13 +413,18 @@ class ProductBase(BaseModel):
 
 class ProductCreate(ProductBase):
     """创建商品"""
-    pass
+    description: Optional[str] = None
+    dewu_url: Optional[str] = None
+    image_url: Optional[str] = None
 
 
 class ProductUpdate(BaseModel):
     """更新商品"""
     name: Optional[str] = None
     link: Optional[str] = None
+    description: Optional[str] = None
+    dewu_url: Optional[str] = None
+    image_url: Optional[str] = None
 
 
 class ProductResponse(ProductBase):
@@ -428,13 +433,207 @@ class ProductResponse(ProductBase):
 
     id: int
     description: Optional[str] = None
+    dewu_url: Optional[str] = None
+    image_url: Optional[str] = None
     created_at: datetime
+    updated_at: datetime
 
 
 class ProductListResponse(BaseModel):
     """商品列表响应"""
     total: int
     items: List[ProductResponse]
+
+
+# ============ Video Schema (SP1-01) ============
+
+class VideoCreate(BaseModel):
+    """创建视频"""
+    name: str = Field(..., min_length=1, max_length=256)
+    file_path: str = Field(..., min_length=1, max_length=512)
+    product_id: Optional[int] = None
+    file_size: Optional[int] = None
+    duration: Optional[int] = None
+
+
+class VideoUpdate(BaseModel):
+    """更新视频"""
+    name: Optional[str] = None
+    product_id: Optional[int] = None
+
+
+class VideoResponse(BaseModel):
+    """视频响应"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    product_id: Optional[int] = None
+    product_name: Optional[str] = None
+    name: str
+    file_path: str
+    file_size: Optional[int] = None
+    duration: Optional[int] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    file_hash: Optional[str] = None
+    source_type: str
+    created_at: datetime
+    updated_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def _resolve_product_name(cls, data: Any) -> Any:
+        """从 ORM 关系中读取 product.name 填充 product_name。"""
+        product = (
+            data.get("product") if isinstance(data, dict)
+            else getattr(data, "product", None)
+        )
+        if product and hasattr(product, "name"):
+            if isinstance(data, dict):
+                data["product_name"] = product.name
+            else:
+                data = {
+                    c.key: getattr(data, c.key)
+                    for c in data.__class__.__table__.columns
+                }
+                data["product_name"] = product.name
+        return data
+
+
+class VideoListResponse(BaseModel):
+    """视频列表响应"""
+    total: int
+    items: List[VideoResponse]
+
+
+# ============ Copywriting Schema (SP1-02) ============
+
+class CopywritingCreate(BaseModel):
+    """创建文案"""
+    content: str = Field(..., min_length=1)
+    product_id: Optional[int] = None
+    source_type: str = Field(default="manual", max_length=32)
+    source_ref: Optional[str] = None
+
+
+class CopywritingUpdate(BaseModel):
+    """更新文案"""
+    content: Optional[str] = None
+    product_id: Optional[int] = None
+    source_type: Optional[str] = None
+    source_ref: Optional[str] = None
+
+
+class CopywritingResponse(BaseModel):
+    """文案响应"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    product_id: Optional[int] = None
+    product_name: Optional[str] = None
+    content: str
+    source_type: str
+    source_ref: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def _resolve_product_name(cls, data: Any) -> Any:
+        """从 ORM 关系中读取 product.name 填充 product_name。"""
+        product = (
+            data.get("product") if isinstance(data, dict)
+            else getattr(data, "product", None)
+        )
+        if product and hasattr(product, "name"):
+            if isinstance(data, dict):
+                data["product_name"] = product.name
+            else:
+                data = {
+                    c.key: getattr(data, c.key)
+                    for c in data.__class__.__table__.columns
+                }
+                data["product_name"] = product.name
+        return data
+
+
+class CopywritingListResponse(BaseModel):
+    """文案列表响应"""
+    total: int
+    items: List[CopywritingResponse]
+
+
+# ============ Cover Schema (SP1-03) ============
+
+class CoverCreate(BaseModel):
+    """创建封面"""
+    file_path: str = Field(..., min_length=1, max_length=512)
+    video_id: Optional[int] = None
+    file_size: Optional[int] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+
+
+class CoverResponse(BaseModel):
+    """封面响应"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    video_id: Optional[int] = None
+    file_path: str
+    file_size: Optional[int] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    created_at: datetime
+
+
+# ============ Audio Schema (SP1-04) ============
+
+class AudioCreate(BaseModel):
+    """创建音频"""
+    name: str = Field(..., min_length=1, max_length=256)
+    file_path: str = Field(..., min_length=1, max_length=512)
+    file_size: Optional[int] = None
+    duration: Optional[int] = None
+
+
+class AudioResponse(BaseModel):
+    """音频响应"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    file_path: str
+    file_size: Optional[int] = None
+    duration: Optional[int] = None
+    created_at: datetime
+
+
+# ============ Topic Schema (SP1-05) ============
+
+class TopicCreate(BaseModel):
+    """创建话题"""
+    name: str = Field(..., min_length=1, max_length=256)
+    heat: int = Field(default=0, ge=0)
+    source: str = Field(default="manual", max_length=32)
+
+
+class TopicResponse(BaseModel):
+    """话题响应"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    heat: int
+    source: str
+    last_synced: Optional[datetime] = None
+    created_at: datetime
+
+
+class TopicListResponse(BaseModel):
+    """话题列表响应"""
+    total: int
+    items: List[TopicResponse]
 
 
 # ============ 发布控制 Schema ============
