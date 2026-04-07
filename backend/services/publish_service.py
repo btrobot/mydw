@@ -8,6 +8,7 @@ from loguru import logger
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
+from sqlalchemy.orm import selectinload
 
 from models import Task, Account, PublishLog, PublishConfig, Product
 from core.browser import browser_manager
@@ -88,6 +89,20 @@ class PublishService:
             task.status = "running"
             await self.db.commit()
 
+            # 重新查询 task，预加载所有关系（传入的 task 可能未加载关系）
+            task_result = await self.db.execute(
+                select(Task).options(
+                    selectinload(Task.video),
+                    selectinload(Task.copywriting),
+                    selectinload(Task.audio),
+                    selectinload(Task.product),
+                    selectinload(Task.topics),
+                ).where(Task.id == task.id)
+            )
+            task = task_result.scalar_one_or_none()
+            if not task:
+                return False, "任务不存在"
+
             # 获取账号
             result = await self.db.execute(
                 select(Account).where(Account.id == task.account_id)
@@ -132,9 +147,22 @@ class PublishService:
                 await self.db.commit()
                 return False, "登录已过期"
 
-            # 读取商品链接
-            product_link = None
-            if task.product_id:
+            # 读取素材字段（FK优先，fallback旧字段）
+            video_path: Optional[str] = (
+                task.video.file_path if task.video else task.video_path
+            )
+            content: str = (
+                task.copywriting.content if task.copywriting else task.content or ""
+            )
+            topic: Optional[str] = (
+                ", ".join(t.name for t in task.topics) if task.topics else task.topic
+            )
+
+            # 读取商品链接（product 关系已预加载，fallback 到单独查询）
+            product_link: Optional[str] = None
+            if task.product:
+                product_link = task.product.link
+            elif task.product_id:
                 prod_result = await self.db.execute(
                     select(Product).where(Product.id == task.product_id)
                 )
@@ -144,10 +172,10 @@ class PublishService:
 
             # 发布视频
             success, msg = await client.upload_video(
-                video_path=task.video_path,
-                title=task.content[:50] if task.content else "视频标题",
-                content=task.content or "",
-                topic=task.topic,
+                video_path=video_path,
+                title=content[:50] if content else "视频标题",
+                content=content,
+                topic=topic,
                 cover_path=task.cover_path,
                 product_link=product_link
             )

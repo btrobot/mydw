@@ -43,6 +43,7 @@ export {
   useInitTasksFromMaterials,
   useAutoGenerateTasks,
   useTaskStats,
+  useAssembleTasks,
 } from './useTask'
 
 // Material Hooks

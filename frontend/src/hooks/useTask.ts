@@ -164,3 +164,20 @@ export const useTaskStats = () =>
       return response.data!
     },
   })
+
+export const useAssembleTasks = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (data: {
+      video_ids: number[]
+      account_ids: number[]
+      strategy?: string
+      copywriting_mode?: string
+    }) => {
+      const { api } = await import('@/services/api')
+      const { data: result } = await api.post<TaskResponse[]>('/tasks/assemble', data)
+      return result
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+  })
+}

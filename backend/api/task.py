@@ -7,13 +7,16 @@ from typing import Optional, List
 from pydantic import BaseModel
 from loguru import logger
 
+from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from models import Task, Account
 from models import get_db
 from schemas import (
     TaskCreate, TaskUpdate, TaskResponse, TaskListResponse,
-    TaskPublishRequest, TaskBatchCreateRequest
+    TaskPublishRequest, TaskBatchCreateRequest, AssembleTasksRequest
 )
 from services.task_service import TaskService
+from services.task_distributor import TaskDistributor
 from services.scheduler import scheduler
 
 router = APIRouter()
@@ -66,9 +69,28 @@ async def list_tasks(
     db: AsyncSession = Depends(get_db)
 ):
     """获取任务列表"""
-    service = TaskService(db)
-    total, tasks = await service.get_tasks(status, account_id, limit, offset)
-    return TaskListResponse(total=total, items=tasks)
+    query = select(Task).options(
+        selectinload(Task.video),
+        selectinload(Task.copywriting),
+        selectinload(Task.topics),
+        selectinload(Task.product),
+    )
+    if status:
+        query = query.where(Task.status == status)
+    if account_id:
+        query = query.where(Task.account_id == account_id)
+
+    count_query = select(func.count(Task.id))
+    if status:
+        count_query = count_query.where(Task.status == status)
+    if account_id:
+        count_query = count_query.where(Task.account_id == account_id)
+
+    total_count = (await db.execute(count_query)).scalar()
+    query = query.order_by(Task.priority.desc(), Task.created_at.desc()).offset(offset).limit(limit)
+    tasks = (await db.execute(query)).scalars().all()
+
+    return TaskListResponse(total=total_count, items=list(tasks))
 
 
 @router.get("/stats", response_model=TaskStatsResponse)
@@ -169,7 +191,7 @@ async def batch_create_tasks(
     return tasks
 
 
-@router.post("/auto-generate")
+@router.post("/auto-generate", deprecated=True)
 async def auto_generate_tasks(
     request: AutoGenerateRequest,
     db: AsyncSession = Depends(get_db)
@@ -201,7 +223,7 @@ async def shuffle_tasks(db: AsyncSession = Depends(get_db)):
     return await scheduler.shuffle_tasks(db)
 
 
-@router.post("/init-from-materials")
+@router.post("/init-from-materials", deprecated=True)
 async def init_tasks_from_materials(
     account_id: int,
     count: int = Query(default=10, ge=1, le=100),
@@ -221,3 +243,26 @@ async def init_tasks_from_materials(
         "message": f"从素材初始化 {count} 个任务",
         "count": count
     }
+
+
+@router.post("/assemble", response_model=List[TaskResponse], status_code=201)
+async def assemble_tasks(
+    request: AssembleTasksRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """组装任务 — 多视频+多账号自动分配"""
+    distributor = TaskDistributor(db)
+    tasks = await distributor.distribute(
+        video_ids=request.video_ids,
+        account_ids=request.account_ids,
+        strategy=request.strategy,
+        copywriting_mode=request.copywriting_mode,
+    )
+    logger.info(
+        "组装任务完成: video_count={}, account_count={}, task_count={}, strategy={}",
+        len(request.video_ids),
+        len(request.account_ids),
+        len(tasks),
+        request.strategy,
+    )
+    return tasks

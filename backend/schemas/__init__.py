@@ -298,6 +298,9 @@ class TaskCreate(TaskBase):
     account_id: int
     product_id: Optional[int] = None
     material_id: Optional[int] = None
+    video_id: Optional[int] = None
+    copywriting_id: Optional[int] = None
+    audio_id: Optional[int] = None
 
 
 class TaskUpdate(BaseModel):
@@ -319,12 +322,39 @@ class TaskResponse(TaskBase):
     id: int
     account_id: int
     product_id: Optional[int] = None
+    video_id: Optional[int] = None
+    copywriting_id: Optional[int] = None
+    audio_id: Optional[int] = None
+    topic_ids: List[int] = Field(default_factory=list)
     status: TaskStatus
     publish_time: Optional[datetime] = None
     error_msg: Optional[str] = None
     priority: int
     created_at: datetime
     updated_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def _resolve_topic_ids(cls, data: Any) -> Any:
+        """从 ORM 关系中读取 topics 列表填充 topic_ids。"""
+        topics_raw = (
+            data.get("topics") if isinstance(data, dict)
+            else getattr(data, "topics", None)
+        )
+        if topics_raw is not None and not isinstance(topics_raw, list):
+            # 懒加载未触发时跳过
+            return data
+        if topics_raw:
+            ids = [t.id if hasattr(t, "id") else t for t in topics_raw]
+            if isinstance(data, dict):
+                data["topic_ids"] = ids
+            else:
+                data = {
+                    c.key: getattr(data, c.key)
+                    for c in data.__class__.__table__.columns
+                }
+                data["topic_ids"] = ids
+        return data
 
 
 class TaskListResponse(BaseModel):
@@ -341,6 +371,14 @@ class TaskPublishRequest(BaseModel):
 class TaskBatchCreateRequest(BaseModel):
     """批量创建任务"""
     tasks: List[TaskCreate]
+
+
+class AssembleTasksRequest(BaseModel):
+    """组装任务请求 — 多视频+多账号自动分配"""
+    video_ids: List[int] = Field(..., min_length=1)
+    account_ids: List[int] = Field(..., min_length=1)
+    strategy: str = Field(default="round_robin", pattern="^(round_robin|manual)$")
+    copywriting_mode: str = Field(default="auto_match", pattern="^(auto_match|manual)$")
 
 
 # ============ 素材 Schema ============

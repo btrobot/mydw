@@ -5,6 +5,7 @@ from typing import List, Optional, Tuple
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update
+from sqlalchemy.orm import selectinload
 from loguru import logger
 
 from models import Task, Account, Material, Product, PublishLog, PublishConfig
@@ -21,7 +22,15 @@ class TaskService:
         task = Task(**task_data)
         self.db.add(task)
         await self.db.commit()
-        await self.db.refresh(task)
+        result = await self.db.execute(
+            select(Task).options(
+                selectinload(Task.topics),
+                selectinload(Task.video),
+                selectinload(Task.copywriting),
+                selectinload(Task.product),
+            ).where(Task.id == task.id)
+        )
+        task = result.scalars().first()
         logger.info("创建任务: ID={}", task.id)
         return task
 
@@ -31,12 +40,20 @@ class TaskService:
         self.db.add_all(tasks)
         await self.db.commit()
 
-        # 刷新所有任务
-        for task in tasks:
-            await self.db.refresh(task)
+        # 重新查询以预加载关系，避免 lazy loading MissingGreenlet
+        task_ids = [task.id for task in tasks]
+        result = await self.db.execute(
+            select(Task).options(
+                selectinload(Task.topics),
+                selectinload(Task.video),
+                selectinload(Task.copywriting),
+                selectinload(Task.product),
+            ).where(Task.id.in_(task_ids))
+        )
+        loaded_tasks = result.scalars().all()
 
-        logger.info("批量创建任务: {} 个", len(tasks))
-        return len(tasks), tasks
+        logger.info("批量创建任务: {} 个", len(loaded_tasks))
+        return len(loaded_tasks), list(loaded_tasks)
 
     async def get_task(self, task_id: int) -> Optional[Task]:
         """获取任务"""

@@ -60,6 +60,11 @@ class Task(Base):
     cover_path = Column(String(512), nullable=True)
     audio_path = Column(String(512), nullable=True)
 
+    # SP3-01: 素材 FK（双写期，旧字段保留）
+    video_id = Column(Integer, ForeignKey("videos.id"), nullable=True, index=True)
+    copywriting_id = Column(Integer, ForeignKey("copywritings.id"), nullable=True, index=True)
+    audio_id = Column(Integer, ForeignKey("audios.id"), nullable=True, index=True)
+
     status = Column(String(32), default="pending", index=True)  # pending, running, success, failed, paused
     publish_time = Column(DateTime, nullable=True, index=True)
     error_msg = Column(Text, nullable=True)
@@ -74,6 +79,10 @@ class Task(Base):
     product = relationship("Product", back_populates="tasks")
     material = relationship("Material", back_populates="tasks")
     logs = relationship("PublishLog", back_populates="task")
+    video = relationship("Video")
+    copywriting = relationship("Copywriting")
+    audio = relationship("Audio")
+    topics = relationship("Topic", secondary="task_topics")
 
 
 class Material(Base):
@@ -201,6 +210,15 @@ class Topic(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class TaskTopic(Base):
+    """任务-话题关联表 (SP3-02)"""
+    __tablename__ = "task_topics"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False, index=True)
+    topic_id = Column(Integer, ForeignKey("topics.id"), nullable=False, index=True)
+
+
 class PublishLog(Base):
     """发布日志表"""
     __tablename__ = "publish_logs"
@@ -288,6 +306,8 @@ async def init_db():
     await migration_003.run_migration(engine)
     migration_004 = importlib.import_module("migrations.004_material_split")
     await migration_004.run_migration(engine)
+    migration_005 = importlib.import_module("migrations.005_task_add_fk")
+    await migration_005.run_migration(engine)
 
     logger.info("数据库初始化完成")
 
