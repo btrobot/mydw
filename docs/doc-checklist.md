@@ -9,12 +9,15 @@
 
 ### 1.1 必要文档是否存在
 
+> 缺失的文档应创建对应任务，不阻塞其他检查项。
+
 ```
 [ ] CLAUDE.md 存在且有 ## References 表
 [ ] backend/CLAUDE.md 存在
 [ ] docs/system-architecture.md 存在
 [ ] docs/dev-guide.md 存在
 [ ] docs/data-model.md 存在
+[ ] docs/api-reference.md 存在
 ```
 
 ### 1.2 References 表覆盖度
@@ -91,7 +94,14 @@ grep "^### " docs/api-reference.md | wc -l
 [ ] 自动生成的文档有 <!-- AUTO-GENERATED --> 标记
 ```
 
-### 3.2 单一事实来源
+### 3.2 文档体积
+
+```
+[ ] 根 CLAUDE.md 不超过 200 行
+[ ] 每个文档不超过 500 行（超过则拆分）
+```
+
+### 3.3 单一事实来源
 
 ```
 [ ] 同一信息不在两个文档中重复描述
