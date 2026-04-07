@@ -967,3 +967,952 @@ Owner:
   production/session-logs/session-log.md
 ---
 
+
+## Archived Session State: 2026-04-06T04-56-02
+# Session State
+
+<!-- Auto-generated. Do not commit sensitive information. -->
+
+<!-- STATUS -->
+Epic:
+Feature:
+Task:
+Owner:
+<!-- /STATUS -->
+
+## Current Context
+
+**Session Started**: 2026-04-06 04:53:22
+**Last Updated**: 2026-04-06 04:53:22
+
+## Active Task
+
+**Component**: TBD
+**Phase**: Planning
+**Status**: in-progress
+
+## Progress
+
+- [ ] Task item 1
+- [ ] Task item 2
+- [ ] Task item 3
+
+## Key Decisions
+
+| Decision | Rationale | Date |
+|----------|-----------|------|
+| - | - | - |
+
+## Files Being Worked On
+
+- None yet
+
+## Open Questions
+
+- None
+
+## Blocker Notes
+
+- None
+
+## Agent Invocations
+
+| Agent | Timestamp | Status | Result |
+|-------|-----------|--------|--------|
+| (No agent invocations yet) | - | - | - |
+
+## Session Log
+
+- (Session started)
+
+---
+*Last Updated: 2026-04-06 04:53:22*
+
+---
+
+## Session End: 2026-04-06T04-56-02
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T04-56-13
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T05-04-18
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T05-08-04
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T05-16-19
+### Uncommitted Changes
+  .claude/rules/coordination-rules.md
+  production/session-logs/session-log.md
+  production/session-state/active.md.template
+---
+
+## Session End: 2026-04-06T05-25-10
+### Uncommitted Changes
+  .claude/docs/hook-dsl.md
+  .claude/hooks/log-agent.ts
+  .claude/rules/coordination-rules.md
+  .claude/settings.json
+  production/session-logs/session-log.md
+  production/session-state/active.md.template
+---
+
+## Session End: 2026-04-06T05-46-33
+### Uncommitted Changes
+  .claude/docs/hook-dsl.md
+  .claude/docs/skill-dsl.md
+  .claude/hooks/log-agent.ts
+  .claude/rules/coordination-rules.md
+  .claude/settings.json
+  .claude/skills/code-review/SKILL.md
+  .claude/skills/security-scan/SKILL.md
+  production/session-logs/session-log.md
+  production/session-state/active.md.template
+---
+
+## Session End: 2026-04-06T05-50-42
+### Uncommitted Changes
+  .claude/docs/hook-dsl.md
+  .claude/docs/skill-dsl.md
+  .claude/hooks/log-agent.ts
+  .claude/rules/coordination-rules.md
+  .claude/settings.json
+  .claude/skills/code-review/SKILL.md
+  .claude/skills/security-scan/SKILL.md
+  production/session-logs/session-log.md
+  production/session-state/active.md.template
+---
+
+## Session End: 2026-04-06T05-52-25
+### Uncommitted Changes
+  .claude/agents/tech-lead.md
+  .claude/docs/hook-dsl.md
+  .claude/docs/skill-dsl.md
+  .claude/hooks/log-agent.ts
+  .claude/rules/coordination-rules.md
+  .claude/settings.json
+  .claude/skills/code-review/SKILL.md
+  .claude/skills/security-scan/SKILL.md
+  .claude/skills/sprint-plan/SKILL.md
+  production/session-logs/session-log.md
+  production/session-state/active.md.template
+---
+
+## Session End: 2026-04-06T05-56-49
+### Uncommitted Changes
+  .claude/agents/tech-lead.md
+  .claude/docs/hook-dsl.md
+  .claude/docs/skill-dsl.md
+  .claude/hooks/log-agent.ts
+  .claude/hooks/session-end.ts
+  .claude/hooks/session-start.ts
+  .claude/hooks/skill-hook.ts
+  .claude/rules/coordination-rules.md
+  .claude/settings.json
+  .claude/skills/code-review/SKILL.md
+  .claude/skills/security-scan/SKILL.md
+  .claude/skills/sprint-plan/SKILL.md
+  design/x-01.md
+  production/session-logs/session-log.md
+  production/session-state/active.md.template
+---
+
+## Session End: 2026-04-06T06-08-52
+### Uncommitted Changes
+  .claude/agents/tech-lead.md
+  .claude/docs/hook-dsl.md
+  .claude/docs/skill-dsl.md
+  .claude/hooks/log-agent.ts
+  .claude/hooks/session-end.ts
+  .claude/hooks/session-start.ts
+  .claude/hooks/skill-hook.ts
+  .claude/rules/coordination-rules.md
+  .claude/settings.json
+  .claude/skills/code-review/SKILL.md
+  .claude/skills/security-scan/SKILL.md
+  .claude/skills/sprint-plan/SKILL.md
+  design/x-01.md
+  production/session-logs/session-log.md
+  production/session-state/active.md.template
+---
+
+## Session End: 2026-04-06T06-17-28
+### Uncommitted Changes
+  .claude/agents/automation-developer.md
+  .claude/agents/backend-lead.md
+  .claude/agents/devops-engineer.md
+  .claude/agents/frontend-lead.md
+  .claude/agents/qa-lead.md
+  .claude/agents/security-expert.md
+  .claude/agents/tech-lead.md
+  .claude/docs/agent-authoring-rules.md
+  .claude/docs/agent-design-principles.md
+  .claude/docs/hook-dsl.md
+  .claude/docs/skill-dsl.md
+  .claude/hooks/log-agent.ts
+  .claude/hooks/session-end.ts
+  .claude/hooks/session-start.ts
+  .claude/hooks/skill-hook.ts
+  .claude/hooks/utils.ts
+  .claude/rules/coordination-rules.md
+  .claude/settings.json
+  .claude/skills/code-review/SKILL.md
+  .claude/skills/security-scan/SKILL.md
+  .claude/skills/sprint-plan/SKILL.md
+  .claude/skills/task-breakdown/SKILL.md
+  design/x-01.md
+  production/session-logs/session-log.md
+  production/session-state/active.md.template
+---
+
+## Session End: 2026-04-06T06-18-33
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T06-22-52
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+
+## Archived Session State: 2026-04-06T06-51-35
+# Session State
+
+<!-- Auto-generated. Do not commit sensitive information. -->
+
+<!-- STATUS -->
+Epic:
+Feature:
+Task:
+Owner:
+<!-- /STATUS -->
+
+## Current Context
+
+**Session Started**: 2026-04-06 06:41:58
+**Last Updated**: 2026-04-06 06:41:58
+
+## Active Task
+
+**Component**: TBD
+**Phase**: Planning
+**Status**: in-progress
+
+## Progress
+
+- [ ] Task item 1
+- [ ] Task item 2
+- [ ] Task item 3
+
+## Key Decisions
+
+| Decision | Rationale | Date |
+|----------|-----------|------|
+| - | - | - |
+
+## Files Being Worked On
+
+- None yet
+
+## Open Questions
+
+- None
+
+## Blocker Notes
+
+- None
+
+## Agent Invocations
+
+| Agent | Timestamp | Status | Result |
+|-------|-----------|--------|--------|
+| (No agent invocations yet) | - | - | - |
+
+## Agent Handoffs
+
+| From | To | Task | Status | Outcome |
+|------|----|------|--------|---------|
+| (No handoffs yet) | - | - | - | - |
+
+## Session Log
+
+- (Session started)
+
+---
+*Last Updated: 2026-04-06 06:41:58*
+
+---
+
+## Session End: 2026-04-06T06-51-35
+### Uncommitted Changes
+  CLAUDE.md
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T06-52-06
+### Uncommitted Changes
+  CLAUDE.md
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T06-54-20
+### Uncommitted Changes
+  CLAUDE.md
+  production/session-logs/session-log.md
+---
+
+
+## Archived Session State: 2026-04-06T06-56-37
+# Session State
+
+<!-- Auto-generated. Do not commit sensitive information. -->
+
+<!-- STATUS -->
+Epic:
+Feature:
+Task:
+Owner:
+<!-- /STATUS -->
+
+## Current Context
+
+**Session Started**: 2026-04-06 06:56:09
+**Last Updated**: 2026-04-06 06:56:09
+
+## Active Task
+
+**Component**: TBD
+**Phase**: Planning
+**Status**: in-progress
+
+## Progress
+
+- [ ] Task item 1
+- [ ] Task item 2
+- [ ] Task item 3
+
+## Key Decisions
+
+| Decision | Rationale | Date |
+|----------|-----------|------|
+| - | - | - |
+
+## Files Being Worked On
+
+- None yet
+
+## Open Questions
+
+- None
+
+## Blocker Notes
+
+- None
+
+## Agent Invocations
+
+| Agent | Timestamp | Status | Result |
+|-------|-----------|--------|--------|
+| (No agent invocations yet) | - | - | - |
+
+## Agent Handoffs
+
+| From | To | Task | Status | Outcome |
+|------|----|------|--------|---------|
+| (No handoffs yet) | - | - | - | - |
+
+## Session Log
+
+- (Session started)
+
+---
+*Last Updated: 2026-04-06 06:56:09*
+
+---
+
+## Session End: 2026-04-06T06-56-37
+### Uncommitted Changes
+  CLAUDE.md
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T06-58-13
+### Uncommitted Changes
+  CLAUDE.md
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T06-59-29
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T07-15-45
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T08-19-53
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T08-36-05
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T08-42-21
+### Uncommitted Changes
+  backend/core/dewu_client.py
+  frontend/src/components/ConnectionModal.tsx
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T08-51-20
+### Uncommitted Changes
+  backend/api/account.py
+  backend/core/dewu_client.py
+  backend/schemas/__init__.py
+  frontend/src/components/ConnectionModal.tsx
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T08-53-28
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T08-55-45
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T09-01-36
+### Uncommitted Changes
+  backend/main.py
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T09-10-35
+### Uncommitted Changes
+  backend/main.py
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T09-13-02
+### Uncommitted Changes
+  backend/main.py
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T09-21-52
+### Uncommitted Changes
+  backend/main.py
+  backend/requirements.txt
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T09-24-51
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T10-29-09
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T11-43-26
+### Uncommitted Changes
+  backend/api/account.py
+  backend/core/config.py
+  backend/core/dewu_client.py
+  backend/models/__init__.py
+  backend/schemas/__init__.py
+  backend/utils/crypto.py
+  frontend/src/components/ConnectionModal.tsx
+  frontend/src/components/StatusBadge.tsx
+  frontend/src/hooks/useAccount.ts
+  frontend/src/pages/Account.tsx
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T11-45-41
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T12-07-26
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T12-12-25
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T12-22-31
+### Uncommitted Changes
+  frontend/src/hooks/index.ts
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T12-35-47
+### Uncommitted Changes
+  frontend/src/hooks/index.ts
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T13-08-18
+### Uncommitted Changes
+  frontend/src/hooks/index.ts
+  production/session-logs/session-log.md
+---
+
+
+## Archived Session State: 2026-04-06T13-28-10
+# Session State
+
+<!-- Auto-generated. Do not commit sensitive information. -->
+
+<!-- STATUS -->
+Epic:
+Feature:
+Task:
+Owner:
+<!-- /STATUS -->
+
+## Current Context
+
+**Session Started**: 2026-04-06 13:21:32
+**Last Updated**: 2026-04-06 13:21:32
+
+## Active Task
+
+**Component**: TBD
+**Phase**: Planning
+**Status**: in-progress
+
+## Progress
+
+- [ ] Task item 1
+- [ ] Task item 2
+- [ ] Task item 3
+
+## Key Decisions
+
+| Decision | Rationale | Date |
+|----------|-----------|------|
+| - | - | - |
+
+## Files Being Worked On
+
+- None yet
+
+## Open Questions
+
+- None
+
+## Blocker Notes
+
+- None
+
+## Agent Invocations
+
+| Agent | Timestamp | Status | Result |
+|-------|-----------|--------|--------|
+| (No agent invocations yet) | - | - | - |
+
+## Agent Handoffs
+
+| From | To | Task | Status | Outcome |
+|------|----|------|--------|---------|
+| (No handoffs yet) | - | - | - | - |
+
+## Session Log
+
+- (Session started)
+
+---
+*Last Updated: 2026-04-06 13:21:32*
+
+---
+
+## Session End: 2026-04-06T13-28-10
+### Uncommitted Changes
+  frontend/src/hooks/index.ts
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T13-35-20
+### Uncommitted Changes
+  frontend/src/hooks/index.ts
+  production/session-logs/session-log.md
+---
+
+
+## Archived Session State: 2026-04-06T13-52-33
+# Session State
+
+<!-- Auto-generated. Do not commit sensitive information. -->
+
+<!-- STATUS -->
+Epic: 批量登录检测 (Batch Health Check)
+Feature: 状态同步机制
+Task: 架构设计
+Owner: Tech Lead
+<!-- /STATUS -->
+
+## Current Context
+
+**Session Started**: 2026-04-06 13:44:42
+**Last Updated**: 2026-04-06 14:30:00
+
+## Active Task
+
+**Component**: Backend/Batch Health Check Design
+**Phase**: Architecture Design Complete
+**Status**: Completed
+
+## Progress
+
+- [x] 分析现有状态机设计 (state-machine.md)
+- [x] 分析现有 API 结构 (backend/api/account.py)
+- [x] 分析前端组件 (Account.tsx, useAccount.ts)
+- [x] 设计批量健康检查 API
+- [x] 设计状态机变更
+- [x] 设计前端 UX
+- [x] 编写架构设计文档 (batch-health-check-design.md)
+
+## Key Decisions
+
+| Decision | Rationale | Date |
+|----------|-----------|------|
+| "重新连接"按钮文案 | `active` 状态改为"验证连接"；`session_expired` 改为"重新登录" | 2026-04-06 |
+| 批量检测模式 | 同步模式 + 前端轮询状态，简化实现 | 2026-04-06 |
+| 并发控制 | 使用 BrowserSemaphore 控制，默认 3 个并发 | 2026-04-06 |
+| 过期账号处理 | 保持 `session_expired`，不自动重登录 | 2026-04-06 |
+| 新增状态 HEALTH_CHECKING | 健康检查进行中时禁用操作按钮 | 2026-04-06 |
+
+## Files Being Worked On
+
+- `backend/docs/batch-health-check-design.md` - 架构设计文档
+
+## Open Questions
+
+- [Q1] 是否需要启动时自动检测？ - 待用户决策 P2
+- [Q2] 定时检测间隔配置位置？ - 建议放在系统设置页
+- [Q3] SSE vs 轮询？ - 当前方案使用轮询，简化实现
+
+## Blocker Notes
+
+- None
+
+## Implementation Plan
+
+### P0 (必须实现)
+| 功能 | 工作量 | Owner |
+|------|--------|-------|
+| 单账号"验证连接"按钮文案修改 | 0.5h | Frontend Lead |
+| 状态 Badge 新增 health_checking | 0.5h | Frontend Lead |
+
+### P1 (核心功能)
+| 功能 | 工作量 | Owner |
+|------|--------|-------|
+| 批量健康检查 API | 4h | Backend Lead |
+| 并发控制 BrowserSemaphore | 2h | Backend Lead |
+| 批量检测状态端点 | 1h | Backend Lead |
+| 前端批量检测按钮 | 3h | Frontend Lead |
+| 批量检测结果 Banner | 1h | Frontend Lead |
+
+### P2 (增强功能)
+| 功能 | 工作量 | Owner |
+|------|--------|-------|
+| 取消批量检测 | 1h | Backend Lead |
+| 前端结果详情 Modal | 2h | Frontend Lead |
+| 自动健康检测配置 | 3h | Frontend+Backend |
+| 启动时自动检测 | 2h | Frontend+Backend |
+
+## Agent Invocations
+
+| Agent | Timestamp | Status | Result |
+|-------|-----------|--------|--------|
+| (No agent invocations yet) | - | - | - |
+
+## Agent Handoffs
+
+| From | To | Task | Status | Outcome |
+|------|----|------|--------|---------|
+| (No handoffs yet) | - | - | - | - |
+
+## Session Log
+
+- (Session started)
+
+---
+*Last Updated: 2026-04-06 13:44:42*
+
+---
+
+## Session End: 2026-04-06T13-52-33
+### Uncommitted Changes
+  frontend/src/hooks/index.ts
+  production/session-logs/session-log.md
+---
+
+
+## Archived Session State: 2026-04-06T14-09-16
+# Session State
+
+<!-- Auto-generated. Do not commit sensitive information. -->
+
+<!-- STATUS -->
+Epic:
+Feature:
+Task:
+Owner:
+<!-- /STATUS -->
+
+## Current Context
+
+**Session Started**: 2026-04-06 13:59:48
+**Last Updated**: 2026-04-06 13:59:48
+
+## Active Task
+
+**Component**: TBD
+**Phase**: Planning
+**Status**: in-progress
+
+## Progress
+
+- [ ] Task item 1
+- [ ] Task item 2
+- [ ] Task item 3
+
+## Key Decisions
+
+| Decision | Rationale | Date |
+|----------|-----------|------|
+| - | - | - |
+
+## Files Being Worked On
+
+- None yet
+
+## Open Questions
+
+- None
+
+## Blocker Notes
+
+- None
+
+## Agent Invocations
+
+| Agent | Timestamp | Status | Result |
+|-------|-----------|--------|--------|
+| (No agent invocations yet) | - | - | - |
+
+## Agent Handoffs
+
+| From | To | Task | Status | Outcome |
+|------|----|------|--------|---------|
+| (No handoffs yet) | - | - | - | - |
+
+## Session Log
+
+- (Session started)
+
+---
+*Last Updated: 2026-04-06 13:59:48*
+
+---
+
+## Session End: 2026-04-06T14-09-16
+### Uncommitted Changes
+  frontend/src/hooks/index.ts
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T14-18-54
+### Uncommitted Changes
+  backend/api/account.py
+  backend/core/config.py
+  backend/schemas/__init__.py
+  frontend/src/hooks/index.ts
+  frontend/src/hooks/useAccount.ts
+  frontend/src/pages/Account.tsx
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T14-28-44
+### Uncommitted Changes
+  backend/api/account.py
+  backend/core/config.py
+  backend/schemas/__init__.py
+  frontend/src/hooks/index.ts
+  frontend/src/hooks/useAccount.ts
+  frontend/src/pages/Account.tsx
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T14-40-11
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T15-08-29
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T15-16-26
+### Uncommitted Changes
+  backend/api/account.py
+  backend/core/browser.py
+  backend/core/config.py
+  backend/core/dewu_client.py
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T15-20-53
+### Uncommitted Changes
+  backend/api/account.py
+  backend/core/browser.py
+  backend/core/config.py
+  backend/core/dewu_client.py
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T15-23-42
+### Uncommitted Changes
+  backend/api/account.py
+  backend/core/browser.py
+  backend/core/config.py
+  backend/core/dewu_client.py
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T22-33-46
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T22-35-06
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+
+## Archived Session State: 2026-04-06T22-52-44
+# Session State
+
+<!-- Auto-generated. Do not commit sensitive information. -->
+
+<!-- STATUS -->
+Epic:
+Feature:
+Task:
+Owner:
+<!-- /STATUS -->
+
+## Current Context
+
+**Session Started**: 2026-04-06 22:47:03
+**Last Updated**: 2026-04-06 22:47:03
+
+## Active Task
+
+**Component**: TBD
+**Phase**: Planning
+**Status**: in-progress
+
+## Progress
+
+- [ ] Task item 1
+- [ ] Task item 2
+- [ ] Task item 3
+
+## Key Decisions
+
+| Decision | Rationale | Date |
+|----------|-----------|------|
+| - | - | - |
+
+## Files Being Worked On
+
+- None yet
+
+## Open Questions
+
+- None
+
+## Blocker Notes
+
+- None
+
+## Agent Invocations
+
+| Agent | Timestamp | Status | Result |
+|-------|-----------|--------|--------|
+| (No agent invocations yet) | - | - | - |
+
+## Agent Handoffs
+
+| From | To | Task | Status | Outcome |
+|------|----|------|--------|---------|
+| (No handoffs yet) | - | - | - | - |
+
+## Session Log
+
+- (Session started)
+
+---
+*Last Updated: 2026-04-06 22:47:03*
+
+---
+
+## Session End: 2026-04-06T22-52-44
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T22-57-09
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T23-06-42
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T23-44-01
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T23-45-28
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+
+## Session End: 2026-04-06T23-55-12
+### Uncommitted Changes
+  production/session-logs/session-log.md
+---
+

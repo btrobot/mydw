@@ -42,6 +42,8 @@ release/
 .env
 .env.local
 
+.omc/
+
 # ============================================
 # Session State Files
 # ============================================
@@ -49,4 +51,6 @@ release/
 
 production/session-state/*.md
 !production/session-state/*.md.template
+
+production/session-logs/*.jsonl
 
