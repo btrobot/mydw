@@ -1,4 +1,4 @@
-import { Row, Col } from 'antd'
+import { Row, Col, Card } from 'antd'
 
 interface ListPageLayoutProps {
   title?: string
@@ -9,14 +9,18 @@ interface ListPageLayoutProps {
 
 export default function ListPageLayout({ filterBar, actionBar, children }: ListPageLayoutProps) {
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {(filterBar ?? actionBar) && (
-        <Row justify="space-between" align="middle" style={{ marginBottom: 12 }}>
-          <Col>{filterBar}</Col>
-          <Col>{actionBar}</Col>
-        </Row>
+        <Card size="small" styles={{ body: { paddingBlock: 12 } }}>
+          <Row justify="space-between" align="middle">
+            <Col>{filterBar}</Col>
+            <Col>{actionBar}</Col>
+          </Row>
+        </Card>
       )}
-      {children}
+      <Card size="small" styles={{ body: { padding: 0 } }}>
+        {children}
+      </Card>
     </div>
   )
 }
