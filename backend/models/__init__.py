@@ -52,16 +52,8 @@ class Task(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=True)
-    material_id = Column(Integer, ForeignKey("materials.id"), nullable=True)
 
-    # DEPRECATED: Sprint 7 移除，使用 video_id FK 替代
-    video_path = Column(String(512), nullable=True)
-    content = Column(Text, nullable=True)  # 文案
-    topic = Column(String(256), nullable=True)  # 话题
-    cover_path = Column(String(512), nullable=True)
-    audio_path = Column(String(512), nullable=True)
-
-    # SP3-01: 素材 FK（双写期，旧字段保留）
+    # 素材 FK
     video_id = Column(Integer, ForeignKey("videos.id"), nullable=True, index=True)
     copywriting_id = Column(Integer, ForeignKey("copywritings.id"), nullable=True, index=True)
     audio_id = Column(Integer, ForeignKey("audios.id"), nullable=True, index=True)
@@ -78,33 +70,12 @@ class Task(Base):
     # 关系
     account = relationship("Account", back_populates="tasks")
     product = relationship("Product", back_populates="tasks")
-    material = relationship("Material", back_populates="tasks")
     logs = relationship("PublishLog", back_populates="task")
     video = relationship("Video")
     copywriting = relationship("Copywriting")
     audio = relationship("Audio")
     topics = relationship("Topic", secondary="task_topics", passive_deletes=True)
 
-
-class Material(Base):
-    """素材表"""
-    __tablename__ = "materials"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    type = Column(String(32), nullable=False, index=True)  # video, text, cover, topic, audio
-    name = Column(String(256), nullable=True)
-    path = Column(String(512), nullable=True)  # 文件路径
-    content = Column(Text, nullable=True)  # 文本内容（文案/话题）
-    size = Column(Integer, nullable=True)  # 文件大小
-    duration = Column(Integer, nullable=True)  # 视频时长（秒）
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=True, index=True)
-
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # 关系
-    tasks = relationship("Task", back_populates="material")
-    product = relationship("Product", back_populates="materials")
 
 
 class Product(Base):
@@ -123,7 +94,6 @@ class Product(Base):
 
     # 关系
     tasks = relationship("Task", back_populates="product")
-    materials = relationship("Material", back_populates="product")
     videos = relationship("Video", back_populates="product")
     copywritings = relationship("Copywriting", back_populates="product")
 

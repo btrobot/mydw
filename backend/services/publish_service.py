@@ -148,15 +148,15 @@ class PublishService:
                 await self.db.commit()
                 return False, "登录已过期"
 
-            # 读取素材字段（FK优先，fallback旧字段）
+            # 读取素材字段（FK关系）
             video_path: Optional[str] = (
-                task.video.file_path if task.video else task.video_path
+                task.video.file_path if task.video else None
             )
             content: str = (
-                task.copywriting.content if task.copywriting else task.content or ""
+                task.copywriting.content if task.copywriting else ""
             )
             topic: Optional[str] = (
-                ", ".join(t.name for t in task.topics) if task.topics else task.topic
+                ", ".join(t.name for t in task.topics) if task.topics else None
             )
 
             # 读取商品链接（product 关系已预加载，fallback 到单独查询）

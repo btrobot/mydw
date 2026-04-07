@@ -15,7 +15,6 @@ interface SystemStats {
   success_tasks: number
   failed_tasks: number
   total_products: number
-  total_materials: number
 }
 
 interface LogItem {
@@ -40,7 +39,6 @@ export default function Dashboard() {
     success_tasks: 0,
     failed_tasks: 0,
     total_products: 0,
-    total_materials: 0,
   }
   const logs = (logsData as { items: LogItem[] })?.items || []
 

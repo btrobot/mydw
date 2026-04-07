@@ -34,11 +34,6 @@ class TaskStatsResponse(BaseModel):
     today_success: int
 
 
-class AutoGenerateRequest(BaseModel):
-    account_id: int
-    count: int = 10
-
-
 # ============ API 端点 ============
 
 @router.post("/", response_model=TaskResponse, status_code=201)
@@ -47,7 +42,6 @@ async def create_task(
     db: AsyncSession = Depends(get_db)
 ):
     """创建任务"""
-    # 检查账号是否存在
     result = await db.execute(
         select(Account).where(Account.id == task_data.account_id)
     )
@@ -121,7 +115,6 @@ async def update_task(
     service = TaskService(db)
     update_dict = task_data.model_dump(exclude_unset=True)
 
-    # 处理枚举类型
     if 'status' in update_dict and update_dict['status']:
         update_dict['status'] = update_dict['status'].value
 
@@ -166,8 +159,7 @@ async def publish_task(
     if task.status == "running":
         raise HTTPException(status_code=400, detail="任务正在发布中")
 
-    # TODO: 添加到发布队列
-    logger.info(f"任务 {task_id} 已添加到发布队列")
+    logger.info("任务 {} 已添加到发布队列", task_id)
     return {"success": True, "message": "任务已添加到发布队列"}
 
 
@@ -179,7 +171,6 @@ async def batch_create_tasks(
     """批量创建任务"""
     service = TaskService(db)
 
-    # 检查所有账号是否存在
     account_ids = set(t.account_id for t in batch_data.tasks)
     for aid in account_ids:
         result = await db.execute(select(Account).where(Account.id == aid))
@@ -191,58 +182,10 @@ async def batch_create_tasks(
     return tasks
 
 
-@router.post("/auto-generate", deprecated=True)
-async def auto_generate_tasks(
-    request: AutoGenerateRequest,
-    db: AsyncSession = Depends(get_db)
-):
-    """自动生成任务"""
-    # 检查账号
-    result = await db.execute(
-        select(Account).where(Account.id == request.account_id)
-    )
-    if not result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="账号不存在")
-
-    service = TaskService(db)
-    count, tasks = await service.auto_generate_tasks(
-        request.account_id,
-        count=request.count
-    )
-
-    return {
-        "success": True,
-        "message": f"自动生成 {count} 个任务",
-        "count": count
-    }
-
-
 @router.post("/shuffle")
 async def shuffle_tasks(db: AsyncSession = Depends(get_db)):
     """打乱任务顺序"""
     return await scheduler.shuffle_tasks(db)
-
-
-@router.post("/init-from-materials", deprecated=True)
-async def init_tasks_from_materials(
-    account_id: int,
-    count: int = Query(default=10, ge=1, le=100),
-    db: AsyncSession = Depends(get_db)
-):
-    """从素材初始化任务"""
-    # 检查账号
-    result = await db.execute(select(Account).where(Account.id == account_id))
-    if not result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="账号不存在")
-
-    service = TaskService(db)
-    count, tasks = await service.init_from_materials(account_id, count=count)
-
-    return {
-        "success": True,
-        "message": f"从素材初始化 {count} 个任务",
-        "count": count
-    }
 
 
 @router.post("/assemble", response_model=List[TaskResponse], status_code=201)

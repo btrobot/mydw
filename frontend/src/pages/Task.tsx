@@ -26,11 +26,7 @@ interface Task {
   id: number
   account_id: number
   video_id?: number | null
-  video_path?: string | null
-  content?: string | null
-  topic?: string | null
   topic_ids?: number[] | null
-  cover_path?: string | null
   status: string
   publish_time?: string | null
   error_msg?: string | null
@@ -165,30 +161,20 @@ export default function Task() {
       dataIndex: 'video_id',
       key: 'video_id',
       ellipsis: true,
-      render: (videoId: number | null | undefined, record: Task) => {
+      render: (videoId: number | null | undefined) => {
         if (videoId) {
           const video = videos.find((v: VideoResponse) => v.id === videoId)
           if (video) return <span style={{ fontSize: 12 }}>{video.name}</span>
         }
-        if (record.video_path) {
-          return <span style={{ fontSize: 12 }}>{record.video_path.split(/[/\\]/).pop()}</span>
-        }
         return '-'
       },
-    },
-    {
-      title: '文案',
-      dataIndex: 'content',
-      key: 'content',
-      ellipsis: true,
-      width: 180,
     },
     {
       title: '话题标签',
       dataIndex: 'topic_ids',
       key: 'topic_ids',
       width: 160,
-      render: (topicIds: number[] | null | undefined, record: Task) => {
+      render: (topicIds: number[] | null | undefined) => {
         if (topicIds && topicIds.length > 0) {
           return (
             <Space size={2} wrap>
@@ -197,9 +183,6 @@ export default function Task() {
               ))}
             </Space>
           )
-        }
-        if (record.topic) {
-          return <span style={{ fontSize: 12 }}>{record.topic}</span>
         }
         return '-'
       },

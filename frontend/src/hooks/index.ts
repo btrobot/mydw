@@ -40,27 +40,9 @@ export {
   useBatchCreateTasks,
   useShuffleTasks,
   useDeleteAllTasks,
-  useInitTasksFromMaterials,
-  useAutoGenerateTasks,
   useTaskStats,
   useAssembleTasks,
 } from './useTask'
-
-// Material Hooks
-export {
-  useMaterials,
-  useMaterial,
-  useCreateMaterial,
-  useUpdateMaterial,
-  useDeleteMaterial,
-  useScanMaterials,
-  useImportMaterials,
-  useDeleteAllMaterials,
-  useMaterialStats,
-  useProducts,
-  useCreateProduct,
-  useDeleteProduct,
-} from './useMaterial'
 
 // Publish Hooks
 export {

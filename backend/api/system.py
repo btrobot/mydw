@@ -9,11 +9,11 @@ from datetime import datetime
 from pathlib import Path
 from loguru import logger
 
-from models import Account, Task, Material, Product, SystemLog, PublishConfig
+from models import Account, Task, Product, SystemLog, PublishConfig
 from models import get_db
 from schemas import (
     SystemStats, SystemLogResponse, SystemLogListResponse,
-    BackupRequest, ProductCreate, ProductResponse, ProductListResponse
+    BackupRequest,
 )
 
 router = APIRouter()
@@ -40,9 +40,6 @@ async def get_system_stats(db: AsyncSession = Depends(get_db)):
         select(func.count(Task.id)).where(Task.status == "failed")
     )
 
-    # 素材统计
-    total_materials = await db.execute(select(func.count(Material.id)))
-
     # 商品统计
     total_products = await db.execute(select(func.count(Product.id)))
 
@@ -53,7 +50,6 @@ async def get_system_stats(db: AsyncSession = Depends(get_db)):
         pending_tasks=pending_tasks.scalar() or 0,
         success_tasks=success_tasks.scalar() or 0,
         failed_tasks=failed_tasks.scalar() or 0,
-        total_materials=total_materials.scalar() or 0,
         total_products=total_products.scalar() or 0
     )
 
@@ -148,51 +144,3 @@ async def backup_data(request: BackupRequest, db: AsyncSession = Depends(get_db)
         "success": True,
         "backup_file": str(backup_file)
     }
-
-
-# ============ 商品 API ============
-
-@router.post("/products", response_model=ProductResponse, status_code=201, deprecated=True)
-async def create_product(
-    product_data: ProductCreate,
-    db: AsyncSession = Depends(get_db)
-):
-    """创建商品"""
-    product = Product(
-        name=product_data.name,
-        link=product_data.link
-    )
-    db.add(product)
-    await db.commit()
-    await db.refresh(product)
-
-    logger.info(f"创建商品: {product.name}")
-    return product
-
-
-@router.get("/products", response_model=ProductListResponse, deprecated=True)
-async def list_products(db: AsyncSession = Depends(get_db)):
-    """获取商品列表"""
-    result = await db.execute(select(Product).order_by(Product.created_at.desc()))
-    products = result.scalars().all()
-
-    return ProductListResponse(total=len(products), items=products)
-
-
-@router.delete("/products/{product_id}", status_code=204, deprecated=True)
-async def delete_product(
-    product_id: int,
-    db: AsyncSession = Depends(get_db)
-):
-    """删除商品"""
-    result = await db.execute(select(Product).where(Product.id == product_id))
-    product = result.scalar_one_or_none()
-
-    if not product:
-        raise HTTPException(status_code=404, detail="商品不存在")
-
-    await db.delete(product)
-    await db.commit()
-
-    logger.info(f"删除商品: {product.name}")
-    return None

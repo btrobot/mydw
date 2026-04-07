@@ -92,18 +92,11 @@ class TaskAssembler:
                 if candidates:
                     matched_cw = candidates[idx % len(candidates)]
 
-            # 双写旧字段 topic（话题名称拼接）
-            topic_names: str = " ".join(f"#{t.name}" for t in global_topics) if global_topics else ""
-
             task = Task(
                 video_id=video.id,
                 copywriting_id=matched_cw.id if matched_cw else None,
                 product_id=video.product_id,
                 account_id=account_id,
-                # 双写旧字段（双写期兼容）
-                video_path=video.file_path,
-                content=matched_cw.content if matched_cw else None,
-                topic=topic_names or None,
                 status="pending",
                 priority=0,
             )

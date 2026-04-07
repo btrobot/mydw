@@ -12,8 +12,6 @@ import {
   batchCreateTasksApiTasksBatchPost,
   shuffleTasksApiTasksShufflePost,
   deleteAllTasksApiTasksDelete,
-  initTasksFromMaterialsApiTasksInitFromMaterialsPost,
-  autoGenerateTasksApiTasksAutoGeneratePost,
   getTaskStatsApiTasksStatsGet,
 } from '@/api'
 
@@ -24,7 +22,6 @@ import type {
   TaskCreate,
   TaskUpdate,
   TaskBatchCreateRequest,
-  AutoGenerateRequest,
 } from '@/api'
 
 export const useTasks = () =>
@@ -123,32 +120,6 @@ export const useDeleteAllTasks = () => {
   return useMutation({
     mutationFn: async () => {
       await deleteAllTasksApiTasksDelete()
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
-    },
-  })
-}
-
-export const useInitTasksFromMaterials = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (data: { account_id: number; count?: number }) => {
-      const response = await initTasksFromMaterialsApiTasksInitFromMaterialsPost({ query: data })
-      return response.data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
-    },
-  })
-}
-
-export const useAutoGenerateTasks = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (data: AutoGenerateRequest) => {
-      const response = await autoGenerateTasksApiTasksAutoGeneratePost({ body: data })
-      return response.data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })

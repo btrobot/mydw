@@ -47,14 +47,6 @@ class TaskStatus(str, Enum):
     PAUSED = "paused"
 
 
-class MaterialType(str, Enum):
-    VIDEO = "video"
-    TEXT = "text"
-    COVER = "cover"
-    TOPIC = "topic"
-    AUDIO = "audio"
-
-
 class PublishStatus(str, Enum):
     IDLE = "idle"
     RUNNING = "running"
@@ -286,43 +278,24 @@ class AccountStats(BaseModel):
 
 # ============ 任务 Schema ============
 
-class TaskBase(BaseModel):
-    video_path: Optional[str] = None
-    content: Optional[str] = None
-    topic: Optional[str] = None
-    cover_path: Optional[str] = None
-
-
-class TaskCreate(TaskBase):
+class TaskCreate(BaseModel):
     """创建任务"""
     account_id: int
     product_id: Optional[int] = None
-    material_id: Optional[int] = None
     video_id: Optional[int] = None
     copywriting_id: Optional[int] = None
     audio_id: Optional[int] = None
 
-    @field_validator('video_path')
-    @classmethod
-    def validate_path(cls, v: Optional[str]) -> Optional[str]:
-        if v and '..' in v:
-            raise ValueError('路径不能包含 ..')
-        return v
-
 
 class TaskUpdate(BaseModel):
     """更新任务"""
-    video_path: Optional[str] = None
-    content: Optional[str] = None
-    topic: Optional[str] = None
-    cover_path: Optional[str] = None
     account_id: Optional[int] = None
     product_id: Optional[int] = None
     status: Optional[TaskStatus] = None
     priority: Optional[int] = None
 
 
-class TaskResponse(TaskBase):
+class TaskResponse(BaseModel):
     """任务响应"""
     model_config = ConfigDict(from_attributes=True)
 
@@ -349,7 +322,6 @@ class TaskResponse(TaskBase):
             else getattr(data, "topics", None)
         )
         if topics_raw is not None and not isinstance(topics_raw, list):
-            # 懒加载未触发时跳过
             return data
         if topics_raw:
             ids = [t.id if hasattr(t, "id") else t for t in topics_raw]
@@ -386,67 +358,6 @@ class AssembleTasksRequest(BaseModel):
     account_ids: List[int] = Field(..., min_length=1)
     strategy: str = Field(default="round_robin", pattern="^(round_robin|manual)$")
     copywriting_mode: str = Field(default="auto_match", pattern="^(auto_match|manual)$")
-
-
-# ============ 素材 Schema ============
-
-class MaterialBase(BaseModel):
-    type: MaterialType
-    name: Optional[str] = None
-
-
-class MaterialCreate(MaterialBase):
-    """创建素材"""
-    path: Optional[str] = None
-    content: Optional[str] = None
-    product_id: Optional[int] = None
-
-
-class MaterialUpdate(BaseModel):
-    """更新素材"""
-    name: Optional[str] = None
-    path: Optional[str] = None
-    content: Optional[str] = None
-    product_id: Optional[int] = None
-
-
-class MaterialResponse(MaterialBase):
-    """素材响应"""
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    path: Optional[str] = None
-    content: Optional[str] = None
-    size: Optional[int] = None
-    duration: Optional[int] = None
-    product_id: Optional[int] = None
-    product_name: Optional[str] = None
-    created_at: datetime
-
-    @model_validator(mode="before")
-    @classmethod
-    def _resolve_product_name(cls, data: Any) -> Any:
-        """从 ORM 关系中读取 product.name 填充 product_name。"""
-        product = (
-            data.get("product") if isinstance(data, dict)
-            else getattr(data, "product", None)
-        )
-        if product and hasattr(product, "name"):
-            if isinstance(data, dict):
-                data["product_name"] = product.name
-            else:
-                data = {
-                    c.key: getattr(data, c.key)
-                    for c in data.__class__.__table__.columns
-                }
-                data["product_name"] = product.name
-        return data
-
-
-class MaterialListResponse(BaseModel):
-    """素材列表响应"""
-    total: int
-    items: List[MaterialResponse]
 
 
 # ============ 商品 Schema ============
@@ -739,7 +650,6 @@ class SystemStats(BaseModel):
     success_tasks: int
     failed_tasks: int
     total_products: int
-    total_materials: int
 
 
 class SystemLogResponse(BaseModel):

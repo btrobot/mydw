@@ -3,7 +3,6 @@
 """
 from services.publish_service import PublishService, get_publish_service
 from services.scheduler import TaskScheduler, scheduler
-from services.material_service import MaterialService
 from services.task_service import TaskService
 
 __all__ = [
@@ -11,6 +10,5 @@ __all__ = [
     "get_publish_service",
     "TaskScheduler",
     "scheduler",
-    "MaterialService",
     "TaskService",
 ]

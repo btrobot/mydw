@@ -5,7 +5,7 @@ SP3-11: 任务编排集成测试
 - 基础组装（2 Video + 2 Account）
 - round_robin 分配策略（3 Video + 2 Account）
 - 文案自动匹配（同 product_id）
-- 向后兼容旧字段（video_path / content）
+- FK 字段创建任务
 """
 import pytest
 from httpx import AsyncClient
@@ -146,25 +146,24 @@ async def test_assemble_with_copywriting(
 
 
 @pytest.mark.asyncio
-async def test_backward_compat(
+async def test_create_task_with_fk(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """旧字段 (video_path / content) 创建 task，GET /api/tasks 仍可返回。"""
+    """通过 FK 字段 (video_id) 创建 task，GET /api/tasks 仍可返回。"""
     acct = await _create_account(db_session, "bc_a1")
+    vid = await _create_video(db_session, "bc_v1")
     await db_session.commit()
 
     resp = await client.post(
         "/api/tasks/",
         json={
             "account_id": acct.id,
-            "video_path": "videos/legacy_video.mp4",
-            "content": "旧版文案内容",
+            "video_id": vid.id,
         },
     )
     assert resp.status_code == 201
 
     tasks = await _get_all_tasks(client)
     assert len(tasks) == 1
-    assert tasks[0]["video_path"] == "videos/legacy_video.mp4"
-    assert tasks[0]["content"] == "旧版文案内容"
+    assert tasks[0]["video_id"] == vid.id
     assert tasks[0]["account_id"] == acct.id

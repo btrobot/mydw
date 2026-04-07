@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from api import account, task, material, publish, system, ai, product, video, copywriting, cover, audio, topic
+from api import account, task, publish, system, ai, product, video, copywriting, cover, audio, topic
 from models import init_db
 from core.config import settings
 
@@ -45,7 +45,6 @@ app.add_middleware(
 # 注册路由
 app.include_router(account.router, prefix="/api/accounts", tags=["账号管理"])
 app.include_router(task.router, prefix="/api/tasks", tags=["任务管理"])
-app.include_router(material.router, prefix="/api/materials", tags=["素材管理"])
 app.include_router(publish.router, prefix="/api/publish", tags=["发布控制"])
 app.include_router(system.router, prefix="/api/system", tags=["系统"])
 app.include_router(ai.router, prefix="/api/ai", tags=["AI剪辑"])
