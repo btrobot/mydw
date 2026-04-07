@@ -197,6 +197,7 @@ function VideoTab() {
   const [productFilter, setProductFilter] = useState<number | undefined>(undefined)
   const [uploadProductId, setUploadProductId] = useState<number | undefined>(undefined)
   const [addModalOpen, setAddModalOpen] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [form] = Form.useForm<VideoFormValues>()
 
   const { data: products = [] } = useProductsV2()
@@ -233,6 +234,14 @@ function VideoTab() {
       handleApiError(error, '删除视频失败')
     }
   }, [deleteVideo])
+
+  const handleBatchDelete = useCallback(async () => {
+    for (const id of selectedIds) {
+      try { await deleteVideo.mutateAsync(id) } catch { /* skip */ }
+    }
+    setSelectedIds([])
+    message.success(`已删除 ${selectedIds.length} 个视频`)
+  }, [selectedIds, deleteVideo])
 
   const handleUpload = useCallback(async (options: Parameters<NonNullable<UploadProps['customRequest']>>[0]) => {
     try {
@@ -349,6 +358,11 @@ function VideoTab() {
         <Button icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
           手动添加
         </Button>
+        {selectedIds.length > 0 && (
+          <Popconfirm title={`确定删除 ${selectedIds.length} 项？`} onConfirm={handleBatchDelete}>
+            <Button danger icon={<DeleteOutlined />}>批量删除 ({selectedIds.length})</Button>
+          </Popconfirm>
+        )}
       </Space>
 
       <Table<VideoResponse>
@@ -358,6 +372,7 @@ function VideoTab() {
         loading={isLoading}
         pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
         size="small"
+        rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys as number[]) }}
       />
 
       <Modal
@@ -396,6 +411,7 @@ function CopywritingTab() {
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [editingCw, setEditingCw] = useState<CopywritingResponse | null>(null)
   const [importProductId, setImportProductId] = useState<number | undefined>(undefined)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [form] = Form.useForm<CopywritingFormValues>()
 
   const { data: products = [] } = useProductsV2()
@@ -455,6 +471,14 @@ function CopywritingTab() {
       handleApiError(error, '删除文案失败')
     }
   }, [deleteCopywriting])
+
+  const handleBatchDelete = useCallback(async () => {
+    for (const id of selectedIds) {
+      try { await deleteCopywriting.mutateAsync(id) } catch { /* skip */ }
+    }
+    setSelectedIds([])
+    message.success(`已删除 ${selectedIds.length} 个文案`)
+  }, [selectedIds, deleteCopywriting])
 
   const columns = [
     {
@@ -526,6 +550,11 @@ function CopywritingTab() {
             批量导入
           </Button>
         </Upload>
+        {selectedIds.length > 0 && (
+          <Popconfirm title={`确定删除 ${selectedIds.length} 项？`} onConfirm={handleBatchDelete}>
+            <Button danger icon={<DeleteOutlined />}>批量删除 ({selectedIds.length})</Button>
+          </Popconfirm>
+        )}
       </Space>
 
       <Table<CopywritingResponse>
@@ -535,6 +564,7 @@ function CopywritingTab() {
         loading={isLoading}
         pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
         size="small"
+        rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys as number[]) }}
       />
 
       <Modal
@@ -562,6 +592,7 @@ function CopywritingTab() {
 
 function CoverTab() {
   const [videoFilter, setVideoFilter] = useState<number | undefined>(undefined)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
   const { data: covers = [], isLoading } = useCovers(videoFilter)
   const uploadCover = useUploadCover()
   const deleteCover = useDeleteCover()
@@ -585,6 +616,14 @@ function CoverTab() {
       handleApiError(error, '删除封面失败')
     }
   }, [deleteCover])
+
+  const handleBatchDelete = useCallback(async () => {
+    for (const id of selectedIds) {
+      try { await deleteCover.mutateAsync(id) } catch { /* skip */ }
+    }
+    setSelectedIds([])
+    message.success(`已删除 ${selectedIds.length} 个封面`)
+  }, [selectedIds, deleteCover])
 
   const columns = [
     { title: '文件路径', dataIndex: 'file_path', key: 'file_path', ellipsis: true },
@@ -650,6 +689,11 @@ function CoverTab() {
             上传封面
           </Button>
         </Upload>
+        {selectedIds.length > 0 && (
+          <Popconfirm title={`确定删除 ${selectedIds.length} 项？`} onConfirm={handleBatchDelete}>
+            <Button danger icon={<DeleteOutlined />}>批量删除 ({selectedIds.length})</Button>
+          </Popconfirm>
+        )}
       </Space>
 
       <Table<CoverResponse>
@@ -659,6 +703,7 @@ function CoverTab() {
         loading={isLoading}
         pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
         size="small"
+        rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys as number[]) }}
       />
     </>
   )
@@ -667,6 +712,7 @@ function CoverTab() {
 // ─── Audio tab ───────────────────────────────────────────────────────────────
 
 function AudioTab() {
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
   const { data: audios = [], isLoading } = useAudios()
   const uploadAudio = useUploadAudio()
   const deleteAudio = useDeleteAudio()
@@ -690,6 +736,14 @@ function AudioTab() {
       handleApiError(error, '删除音频失败')
     }
   }, [deleteAudio])
+
+  const handleBatchDelete = useCallback(async () => {
+    for (const id of selectedIds) {
+      try { await deleteAudio.mutateAsync(id) } catch { /* skip */ }
+    }
+    setSelectedIds([])
+    message.success(`已删除 ${selectedIds.length} 个音频`)
+  }, [selectedIds, deleteAudio])
 
   const columns = [
     { title: '名称', dataIndex: 'name', key: 'name', ellipsis: true },
@@ -738,6 +792,11 @@ function AudioTab() {
             上传音频
           </Button>
         </Upload>
+        {selectedIds.length > 0 && (
+          <Popconfirm title={`确定删除 ${selectedIds.length} 项？`} onConfirm={handleBatchDelete}>
+            <Button danger icon={<DeleteOutlined />}>批量删除 ({selectedIds.length})</Button>
+          </Popconfirm>
+        )}
       </Space>
 
       <Table<AudioResponse>
@@ -747,6 +806,7 @@ function AudioTab() {
         loading={isLoading}
         pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
         size="small"
+        rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys as number[]) }}
       />
     </>
   )
@@ -766,6 +826,7 @@ function TopicTab() {
   const [searchKeyword, setSearchKeyword] = useState<string>('')
   const [searchInput, setSearchInput] = useState<string>('')
   const [selectedGlobalIds, setSelectedGlobalIds] = useState<number[]>([])
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [form] = Form.useForm<TopicFormValues>()
 
   const { data: topics = [], isLoading } = useTopics(sort)
@@ -827,6 +888,14 @@ function TopicTab() {
       handleApiError(error, '删除话题失败')
     }
   }, [deleteTopic])
+
+  const handleBatchDelete = useCallback(async () => {
+    for (const id of selectedIds) {
+      try { await deleteTopic.mutateAsync(id) } catch { /* skip */ }
+    }
+    setSelectedIds([])
+    message.success(`已删除 ${selectedIds.length} 个话题`)
+  }, [selectedIds, deleteTopic])
 
   const topicOptions = topics.map((t: TopicResponse) => ({ label: t.name, value: t.id }))
 
@@ -939,6 +1008,11 @@ function TopicTab() {
         <Button icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
           添加话题
         </Button>
+        {selectedIds.length > 0 && (
+          <Popconfirm title={`确定删除 ${selectedIds.length} 项？`} onConfirm={handleBatchDelete}>
+            <Button danger icon={<DeleteOutlined />}>批量删除 ({selectedIds.length})</Button>
+          </Popconfirm>
+        )}
       </Space>
 
       <Table<TopicResponse>
@@ -948,6 +1022,7 @@ function TopicTab() {
         loading={isLoading}
         pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
         size="small"
+        rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys as number[]) }}
       />
 
       {/* Add topic modal */}
