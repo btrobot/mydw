@@ -16,6 +16,7 @@ Multi-Agent collaboration rules ensuring efficient coordination and conflict res
 用户 (Product Owner)
   └── Tech Lead (opus)
         ├── Frontend Lead (sonnet)
+        │     └── UI Designer (sonnet)
         ├── Backend Lead (sonnet)
         │     └── Automation Developer (sonnet)
         ├── QA Lead (sonnet)
@@ -46,6 +47,7 @@ Multi-Agent collaboration rules ensuring efficient coordination and conflict res
 | Agent | Collaborates With | Topics |
 |-------|------------------|--------|
 | Frontend Lead | Backend Lead | API contracts, Type definitions |
+| Frontend Lead | UI Designer | Page specs, Layout templates, Design review |
 | Backend Lead | QA Lead | Test cases, Acceptance criteria |
 | Backend Lead | Automation Developer | Playwright/FFmpeg scripts, API endpoints |
 | QA Lead | DevOps Engineer | CI/CD, Test automation |
@@ -208,6 +210,7 @@ Changes affecting multiple domains MUST trigger propagation:
 
 ### Impact Scope
 - [ ] Frontend Lead
+- [ ] UI Designer
 - [ ] Backend Lead
 - [ ] Automation Developer
 - [ ] QA Lead
@@ -241,6 +244,7 @@ Unless explicitly authorized:
 | Automation Developer → Cross-domain | Can only modify automation-scoped files |
 | QA Lead → Implementation | Can only modify test files |
 | DevOps Engineer → Application | Can only modify CI/CD and config files |
+| UI Designer → Implementation | Can only modify docs/page-specs/ and docs/ui-templates.md |
 
 ### Authorization Process
 
@@ -260,6 +264,7 @@ To make cross-domain changes:
 | Product | User | Feature scope, priority |
 | Technical architecture | Tech Lead | System design, API contracts |
 | Frontend implementation | Frontend Lead | Component structure, state management |
+| UI design | UI Designer | Layout templates, page specs, design review |
 | Backend implementation | Backend Lead | API implementation, database design |
 | Automation | Automation Developer | Browser/video automation |
 | Security | Security Expert | Security measures |

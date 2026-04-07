@@ -295,6 +295,7 @@ POST /ai/full-pipeline
 用户 (Product Owner)
   └── Tech Lead (opus, maxTurns=40)
         ├── Frontend Lead (sonnet, maxTurns=25)
+        │     └── UI Designer (sonnet, maxTurns=20)
         ├── Backend Lead (sonnet, maxTurns=25)
         │     └── Automation Developer (sonnet, maxTurns=25)
         ├── QA Lead (sonnet, maxTurns=25)
@@ -335,7 +336,7 @@ dewugojin/
 │   ├── session-state/     # 会话状态文件
 │   └── session-logs/      # 归档日志 + Agent 审计 JSONL
 ├── .claude/
-│   ├── agents/            # 7 个 Agent 定义
+│   ├── agents/            # 8 个 Agent 定义
 │   ├── skills/            # 7 个 Skill 工作流
 │   ├── hooks/             # 6 个生命周期 Hook
 │   └── rules/             # 编码规范 + 协作规则

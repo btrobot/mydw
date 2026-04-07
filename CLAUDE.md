@@ -51,6 +51,7 @@ dewugojin/
 User (Product Owner)
   └── Tech Lead (opus)
         ├── Frontend Lead (sonnet)
+        │     └── UI Designer (sonnet)
         ├── Backend Lead (sonnet)
         │     └── Automation Developer (sonnet)
         ├── QA Lead (sonnet)
@@ -83,7 +84,7 @@ User (Product Owner)
 |------|-------------|
 | Vertical delegation | Complex decisions flow through hierarchy |
 | Horizontal collaboration | Same-level agents negotiate, don't bind |
-| Conflict escalation | Tech issues -> Tech Lead; Security -> Security Expert |
+| Conflict escalation | Tech issues -> Tech Lead; Security -> Security Expert; UI -> UI Designer |
 | Cross-domain prohibition | No modifying other domain's code without authorization |
 | Retry limit | Max 2 retries per prompt, then reroute or absorb |
 
