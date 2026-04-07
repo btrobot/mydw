@@ -10,9 +10,15 @@ import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Account from './pages/Account'
 import Task from './pages/Task'
-import Material from './pages/Material'
 import AIClip from './pages/AIClip'
 import Settings from './pages/Settings'
+import MaterialOverview from './pages/material/MaterialOverview'
+import VideoList from './pages/material/VideoList'
+import CopywritingList from './pages/material/CopywritingList'
+import CoverList from './pages/material/CoverList'
+import AudioList from './pages/material/AudioList'
+import TopicList from './pages/material/TopicList'
+import ProductList from './pages/product/ProductList'
 
 dayjs.locale('zh-cn')
 
@@ -34,7 +40,19 @@ function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="account" element={<Account />} />
               <Route path="task" element={<Task />} />
-              <Route path="material" element={<Material />} />
+
+              {/* 素材中心 */}
+              <Route path="material" element={<Navigate to="/material/overview" replace />} />
+              <Route path="material/overview" element={<MaterialOverview />} />
+              <Route path="material/video" element={<VideoList />} />
+              <Route path="material/copywriting" element={<CopywritingList />} />
+              <Route path="material/cover" element={<CoverList />} />
+              <Route path="material/audio" element={<AudioList />} />
+              <Route path="material/topic" element={<TopicList />} />
+
+              {/* 商品管理 */}
+              <Route path="product" element={<ProductList />} />
+
               <Route path="ai-clip" element={<AIClip />} />
               <Route path="settings" element={<Settings />} />
             </Route>
