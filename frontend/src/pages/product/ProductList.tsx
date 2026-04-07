@@ -8,6 +8,7 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, LinkOutlined } from '@ant-d
 import { useProductsV2, useCreateProductV2, useDeleteProductV2, useUpdateProductV2 } from '@/hooks'
 import type { ProductResponse } from '@/types/material'
 import { handleApiError } from '@/utils/error'
+import ListPageLayout from '@/components/ListPageLayout'
 
 const { Text } = Typography
 
@@ -109,31 +110,35 @@ export default function ProductList() {
 
   return (
     <>
-      <Space style={{ marginBottom: 12 }}>
-        <Input
-          placeholder="搜索商品名称"
-          style={{ width: 200 }}
-          allowClear
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
+      <ListPageLayout
+        filterBar={
+          <Input
+            placeholder="搜索商品名称"
+            style={{ width: 200 }}
+            allowClear
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+          />
+        }
+        actionBar={
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => { setEditingProduct(null); form.resetFields(); setModalOpen(true) }}
+          >
+            添加商品
+          </Button>
+        }
+      >
+        <Table<ProductResponse>
+          dataSource={filtered}
+          rowKey="id"
+          columns={columns}
+          loading={isLoading}
+          pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
+          size="small"
         />
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => { setEditingProduct(null); form.resetFields(); setModalOpen(true) }}
-        >
-          添加商品
-        </Button>
-      </Space>
-
-      <Table<ProductResponse>
-        dataSource={filtered}
-        rowKey="id"
-        columns={columns}
-        loading={isLoading}
-        pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
-        size="small"
-      />
+      </ListPageLayout>
 
       <Modal
         title={editingProduct ? '编辑商品' : '添加商品'}

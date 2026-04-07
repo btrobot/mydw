@@ -4,7 +4,7 @@ import {
   Modal, Form, Input, Select, Popconfirm, Upload, Tag,
 } from 'antd'
 import type { UploadProps } from 'antd'
-import { PlusOutlined, DeleteOutlined, ImportOutlined } from '@ant-design/icons'
+import { PlusOutlined, ImportOutlined } from '@ant-design/icons'
 
 import {
   useProductsV2, useCopywritings, useCreateCopywriting, useDeleteCopywriting,
@@ -12,6 +12,9 @@ import {
 } from '@/hooks'
 import type { ProductResponse, CopywritingResponse } from '@/types/material'
 import { handleApiError } from '@/utils/error'
+import ListPageLayout from '@/components/ListPageLayout'
+import ProductSelect from '@/components/ProductSelect'
+import BatchDeleteButton from '@/components/BatchDeleteButton'
 
 const { Text } = Typography
 
@@ -84,9 +87,13 @@ export default function CopywritingList() {
   }, [deleteCopywriting])
 
   const handleBatchDelete = useCallback(async () => {
-    const result = await batchDeleteCopywritings.mutateAsync(selectedIds)
-    setSelectedIds([])
-    message.success(`已删除 ${result.deleted} 个文案${result.skipped > 0 ? `，${result.skipped} 项被跳过` : ''}`)
+    try {
+      const result = await batchDeleteCopywritings.mutateAsync(selectedIds)
+      setSelectedIds([])
+      message.success(`已删除 ${result.deleted} 个文案${result.skipped > 0 ? `，${result.skipped} 项被跳过` : ''}`)
+    } catch (error: unknown) {
+      handleApiError(error, '批量删除失败')
+    }
   }, [selectedIds, batchDeleteCopywritings])
 
   const columns = [
@@ -134,47 +141,54 @@ export default function CopywritingList() {
 
   return (
     <>
-      <Space style={{ marginBottom: 12 }}>
-        <Select
-          allowClear
-          placeholder="按商品筛选"
-          style={{ width: 160 }}
-          options={productOptions}
-          value={productFilter}
-          onChange={setProductFilter}
+      <ListPageLayout
+        filterBar={
+          <ProductSelect
+            allowClear
+            placeholder="按商品筛选"
+            style={{ width: 160 }}
+            value={productFilter}
+            onChange={setProductFilter}
+          />
+        }
+        actionBar={
+          <Space>
+            <Button
+              icon={<PlusOutlined />}
+              onClick={() => { setEditingCw(null); form.resetFields(); setAddModalOpen(true) }}
+            >
+              添加文案
+            </Button>
+            <ProductSelect
+              allowClear
+              placeholder="导入到商品"
+              style={{ width: 140 }}
+              value={importProductId}
+              onChange={setImportProductId}
+            />
+            <Upload accept=".txt" showUploadList={false} customRequest={handleImport}>
+              <Button icon={<ImportOutlined />} loading={importCopywritings.isPending}>
+                批量导入
+              </Button>
+            </Upload>
+            <BatchDeleteButton
+              count={selectedIds.length}
+              onConfirm={handleBatchDelete}
+              loading={batchDeleteCopywritings.isPending}
+            />
+          </Space>
+        }
+      >
+        <Table<CopywritingResponse>
+          dataSource={copywritings}
+          rowKey="id"
+          columns={columns}
+          loading={isLoading}
+          pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
+          size="small"
+          rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys as number[]) }}
         />
-        <Button icon={<PlusOutlined />} onClick={() => { setEditingCw(null); form.resetFields(); setAddModalOpen(true) }}>
-          添加文案
-        </Button>
-        <Select
-          allowClear
-          placeholder="导入到商品"
-          style={{ width: 140 }}
-          options={productOptions}
-          value={importProductId}
-          onChange={setImportProductId}
-        />
-        <Upload accept=".txt" showUploadList={false} customRequest={handleImport}>
-          <Button icon={<ImportOutlined />} loading={importCopywritings.isPending}>
-            批量导入
-          </Button>
-        </Upload>
-        {selectedIds.length > 0 && (
-          <Popconfirm title={`确定删除 ${selectedIds.length} 项？`} onConfirm={handleBatchDelete}>
-            <Button danger icon={<DeleteOutlined />}>批量删除 ({selectedIds.length})</Button>
-          </Popconfirm>
-        )}
-      </Space>
-
-      <Table<CopywritingResponse>
-        dataSource={copywritings}
-        rowKey="id"
-        columns={columns}
-        loading={isLoading}
-        pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
-        size="small"
-        rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys as number[]) }}
-      />
+      </ListPageLayout>
 
       <Modal
         title={editingCw ? '编辑文案' : '添加文案'}

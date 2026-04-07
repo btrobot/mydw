@@ -50,6 +50,7 @@ export interface VideoResponse {
   height: number | null
   file_hash: string | null
   source_type: string
+  file_exists?: boolean
   created_at: string
   updated_at: string
 }

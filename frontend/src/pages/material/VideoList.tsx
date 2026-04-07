@@ -5,13 +5,16 @@ import {
 } from 'antd'
 import type { UploadProps } from 'antd'
 import {
-  PlusOutlined, DeleteOutlined, UploadOutlined, ScanOutlined,
+  PlusOutlined, UploadOutlined, ScanOutlined,
 } from '@ant-design/icons'
 
 import { useProductsV2, useVideos, useCreateVideo, useDeleteVideo, useUploadVideo, useScanVideos, useBatchDeleteVideos } from '@/hooks'
 import type { ProductResponse, VideoResponse } from '@/types/material'
 import { formatSize, formatDuration } from '@/utils/format'
 import { handleApiError } from '@/utils/error'
+import ListPageLayout from '@/components/ListPageLayout'
+import ProductSelect from '@/components/ProductSelect'
+import BatchDeleteButton from '@/components/BatchDeleteButton'
 
 const { Text } = Typography
 
@@ -61,9 +64,13 @@ export default function VideoList() {
   }, [deleteVideo])
 
   const handleBatchDelete = useCallback(async () => {
-    const result = await batchDeleteVideos.mutateAsync(selectedIds)
-    setSelectedIds([])
-    message.success(`已删除 ${result.deleted} 个视频${result.skipped > 0 ? `，${result.skipped} 项被跳过` : ''}`)
+    try {
+      const result = await batchDeleteVideos.mutateAsync(selectedIds)
+      setSelectedIds([])
+      message.success(`已删除 ${result.deleted} 个视频${result.skipped > 0 ? `，${result.skipped} 项被跳过` : ''}`)
+    } catch (error: unknown) {
+      handleApiError(error, '批量删除失败')
+    }
   }, [selectedIds, batchDeleteVideos])
 
   const handleUpload = useCallback(async (options: Parameters<NonNullable<UploadProps['customRequest']>>[0]) => {
@@ -149,54 +156,58 @@ export default function VideoList() {
 
   return (
     <>
-      <Space style={{ marginBottom: 12 }}>
-        <Select
-          allowClear
-          placeholder="按商品筛选"
-          style={{ width: 160 }}
-          options={productOptions}
-          value={productFilter}
-          onChange={setProductFilter}
+      <ListPageLayout
+        filterBar={
+          <ProductSelect
+            allowClear
+            placeholder="按商品筛选"
+            style={{ width: 160 }}
+            value={productFilter}
+            onChange={setProductFilter}
+          />
+        }
+        actionBar={
+          <Space>
+            <ProductSelect
+              allowClear
+              placeholder="上传到商品"
+              style={{ width: 160 }}
+              value={uploadProductId}
+              onChange={setUploadProductId}
+            />
+            <Upload
+              accept="video/mp4,video/quicktime"
+              showUploadList={false}
+              customRequest={handleUpload}
+            >
+              <Button icon={<UploadOutlined />} loading={uploadVideo.isPending}>
+                上传视频
+              </Button>
+            </Upload>
+            <Button icon={<ScanOutlined />} onClick={handleScan} loading={scanVideos.isPending}>
+              扫描导入
+            </Button>
+            <Button icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
+              手动添加
+            </Button>
+            <BatchDeleteButton
+              count={selectedIds.length}
+              onConfirm={handleBatchDelete}
+              loading={batchDeleteVideos.isPending}
+            />
+          </Space>
+        }
+      >
+        <Table<VideoResponse>
+          dataSource={videos}
+          rowKey="id"
+          columns={columns}
+          loading={isLoading}
+          pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
+          size="small"
+          rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys as number[]) }}
         />
-        <Select
-          allowClear
-          placeholder="上传到商品"
-          style={{ width: 160 }}
-          options={productOptions}
-          value={uploadProductId}
-          onChange={setUploadProductId}
-        />
-        <Upload
-          accept="video/mp4,video/quicktime"
-          showUploadList={false}
-          customRequest={handleUpload}
-        >
-          <Button icon={<UploadOutlined />} loading={uploadVideo.isPending}>
-            上传视频
-          </Button>
-        </Upload>
-        <Button icon={<ScanOutlined />} onClick={handleScan} loading={scanVideos.isPending}>
-          扫描导入
-        </Button>
-        <Button icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
-          手动添加
-        </Button>
-        {selectedIds.length > 0 && (
-          <Popconfirm title={`确定删除 ${selectedIds.length} 项？`} onConfirm={handleBatchDelete}>
-            <Button danger icon={<DeleteOutlined />}>批量删除 ({selectedIds.length})</Button>
-          </Popconfirm>
-        )}
-      </Space>
-
-      <Table<VideoResponse>
-        dataSource={videos}
-        rowKey="id"
-        columns={columns}
-        loading={isLoading}
-        pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
-        size="small"
-        rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys as number[]) }}
-      />
+      </ListPageLayout>
 
       <Modal
         title="添加视频"

@@ -4,12 +4,14 @@ import {
   Popconfirm, Upload,
 } from 'antd'
 import type { UploadProps } from 'antd'
-import { DeleteOutlined, UploadOutlined } from '@ant-design/icons'
+import { UploadOutlined } from '@ant-design/icons'
 
 import { useAudios, useUploadAudio, useDeleteAudio, useBatchDeleteAudios } from '@/hooks'
 import type { AudioResponse } from '@/types/material'
 import { formatSize, formatDuration } from '@/utils/format'
 import { handleApiError } from '@/utils/error'
+import ListPageLayout from '@/components/ListPageLayout'
+import BatchDeleteButton from '@/components/BatchDeleteButton'
 
 export default function AudioList() {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
@@ -39,9 +41,13 @@ export default function AudioList() {
   }, [deleteAudio])
 
   const handleBatchDelete = useCallback(async () => {
-    const result = await batchDeleteAudios.mutateAsync(selectedIds)
-    setSelectedIds([])
-    message.success(`已删除 ${result.deleted} 个音频${result.skipped > 0 ? `，${result.skipped} 项被跳过` : ''}`)
+    try {
+      const result = await batchDeleteAudios.mutateAsync(selectedIds)
+      setSelectedIds([])
+      message.success(`已删除 ${result.deleted} 个音频${result.skipped > 0 ? `，${result.skipped} 项被跳过` : ''}`)
+    } catch (error: unknown) {
+      handleApiError(error, '批量删除失败')
+    }
   }, [selectedIds, batchDeleteAudios])
 
   const columns = [
@@ -80,24 +86,26 @@ export default function AudioList() {
   ]
 
   return (
-    <>
-      <Space style={{ marginBottom: 12 }}>
-        <Upload
-          accept="audio/mpeg,audio/mp3,audio/wav,audio/aac,audio/ogg"
-          showUploadList={false}
-          customRequest={handleUpload}
-        >
-          <Button icon={<UploadOutlined />} loading={uploadAudio.isPending}>
-            上传音频
-          </Button>
-        </Upload>
-        {selectedIds.length > 0 && (
-          <Popconfirm title={`确定删除 ${selectedIds.length} 项？`} onConfirm={handleBatchDelete}>
-            <Button danger icon={<DeleteOutlined />}>批量删除 ({selectedIds.length})</Button>
-          </Popconfirm>
-        )}
-      </Space>
-
+    <ListPageLayout
+      actionBar={
+        <Space>
+          <Upload
+            accept="audio/mpeg,audio/mp3,audio/wav,audio/aac,audio/ogg"
+            showUploadList={false}
+            customRequest={handleUpload}
+          >
+            <Button icon={<UploadOutlined />} loading={uploadAudio.isPending}>
+              上传音频
+            </Button>
+          </Upload>
+          <BatchDeleteButton
+            count={selectedIds.length}
+            onConfirm={handleBatchDelete}
+            loading={batchDeleteAudios.isPending}
+          />
+        </Space>
+      }
+    >
       <Table<AudioResponse>
         dataSource={audios}
         rowKey="id"
@@ -107,6 +115,6 @@ export default function AudioList() {
         size="small"
         rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys as number[]) }}
       />
-    </>
+    </ListPageLayout>
   )
 }

@@ -1,15 +1,17 @@
 import { useState, useCallback } from 'react'
 import {
   Table, Button, Space, Typography, message,
-  Popconfirm, Upload, Tag,
+  Popconfirm, Upload, Tag, InputNumber,
 } from 'antd'
 import type { UploadProps } from 'antd'
-import { DeleteOutlined, UploadOutlined } from '@ant-design/icons'
+import { UploadOutlined } from '@ant-design/icons'
 
 import { useCovers, useUploadCover, useDeleteCover, useBatchDeleteCovers } from '@/hooks'
 import type { CoverResponse } from '@/types/material'
 import { formatSize } from '@/utils/format'
 import { handleApiError } from '@/utils/error'
+import ListPageLayout from '@/components/ListPageLayout'
+import BatchDeleteButton from '@/components/BatchDeleteButton'
 
 const { Text } = Typography
 
@@ -42,9 +44,13 @@ export default function CoverList() {
   }, [deleteCover])
 
   const handleBatchDelete = useCallback(async () => {
-    const result = await batchDeleteCovers.mutateAsync(selectedIds)
-    setSelectedIds([])
-    message.success(`已删除 ${result.deleted} 个封面${result.skipped > 0 ? `，${result.skipped} 项被跳过` : ''}`)
+    try {
+      const result = await batchDeleteCovers.mutateAsync(selectedIds)
+      setSelectedIds([])
+      message.success(`已删除 ${result.deleted} 个封面${result.skipped > 0 ? `，${result.skipped} 项被跳过` : ''}`)
+    } catch (error: unknown) {
+      handleApiError(error, '批量删除失败')
+    }
   }, [selectedIds, batchDeleteCovers])
 
   const columns = [
@@ -90,33 +96,35 @@ export default function CoverList() {
   ]
 
   return (
-    <>
-      <Space style={{ marginBottom: 12 }}>
-        <input
-          type="number"
+    <ListPageLayout
+      filterBar={
+        <InputNumber
           placeholder="视频ID筛选"
-          style={{ width: 140, padding: '4px 8px', border: '1px solid #d9d9d9', borderRadius: 6 }}
-          onChange={(e) => {
-            const v = e.target.value
-            setVideoFilter(v ? Number(v) : undefined)
-          }}
+          style={{ width: 140 }}
+          min={1}
+          value={videoFilter}
+          onChange={(v) => setVideoFilter(v ?? undefined)}
         />
-        <Upload
-          accept="image/jpeg,image/png,image/webp"
-          showUploadList={false}
-          customRequest={handleUpload}
-        >
-          <Button icon={<UploadOutlined />} loading={uploadCover.isPending}>
-            上传封面
-          </Button>
-        </Upload>
-        {selectedIds.length > 0 && (
-          <Popconfirm title={`确定删除 ${selectedIds.length} 项？`} onConfirm={handleBatchDelete}>
-            <Button danger icon={<DeleteOutlined />}>批量删除 ({selectedIds.length})</Button>
-          </Popconfirm>
-        )}
-      </Space>
-
+      }
+      actionBar={
+        <Space>
+          <Upload
+            accept="image/jpeg,image/png,image/webp"
+            showUploadList={false}
+            customRequest={handleUpload}
+          >
+            <Button icon={<UploadOutlined />} loading={uploadCover.isPending}>
+              上传封面
+            </Button>
+          </Upload>
+          <BatchDeleteButton
+            count={selectedIds.length}
+            onConfirm={handleBatchDelete}
+            loading={batchDeleteCovers.isPending}
+          />
+        </Space>
+      }
+    >
       <Table<CoverResponse>
         dataSource={covers}
         rowKey="id"
@@ -126,6 +134,6 @@ export default function CoverList() {
         size="small"
         rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys as number[]) }}
       />
-    </>
+    </ListPageLayout>
   )
 }

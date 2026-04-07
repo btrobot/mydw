@@ -4,7 +4,7 @@ import {
   Modal, Form, Input, Select, Popconfirm, Card, Tag, Empty,
 } from 'antd'
 import {
-  PlusOutlined, DeleteOutlined, SearchOutlined, GlobalOutlined,
+  PlusOutlined, SearchOutlined, GlobalOutlined,
 } from '@ant-design/icons'
 
 import {
@@ -13,6 +13,8 @@ import {
 } from '@/hooks'
 import type { TopicResponse } from '@/types/material'
 import { handleApiError } from '@/utils/error'
+import ListPageLayout from '@/components/ListPageLayout'
+import BatchDeleteButton from '@/components/BatchDeleteButton'
 
 const { Text } = Typography
 
@@ -88,9 +90,13 @@ export default function TopicList() {
   }, [deleteTopic])
 
   const handleBatchDelete = useCallback(async () => {
-    const result = await batchDeleteTopics.mutateAsync(selectedIds)
-    setSelectedIds([])
-    message.success(`已删除 ${result.deleted} 个话题${result.skipped > 0 ? `，${result.skipped} 项被跳过` : ''}`)
+    try {
+      const result = await batchDeleteTopics.mutateAsync(selectedIds)
+      setSelectedIds([])
+      message.success(`已删除 ${result.deleted} 个话题${result.skipped > 0 ? `，${result.skipped} 项被跳过` : ''}`)
+    } catch (error: unknown) {
+      handleApiError(error, '批量删除失败')
+    }
   }, [selectedIds, batchDeleteTopics])
 
   const columns = [
@@ -186,35 +192,41 @@ export default function TopicList() {
         )}
       </Card>
 
-      <Space style={{ marginBottom: 12 }}>
-        <Select
-          value={sort}
-          onChange={setSort}
-          style={{ width: 120 }}
-          options={[
-            { label: '最新', value: 'created_at' },
-            { label: '热度', value: 'heat' },
-          ]}
+      <ListPageLayout
+        filterBar={
+          <Select
+            value={sort}
+            onChange={setSort}
+            style={{ width: 120 }}
+            options={[
+              { label: '最新', value: 'created_at' },
+              { label: '热度', value: 'heat' },
+            ]}
+          />
+        }
+        actionBar={
+          <Space>
+            <Button icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
+              添加话题
+            </Button>
+            <BatchDeleteButton
+              count={selectedIds.length}
+              onConfirm={handleBatchDelete}
+              loading={batchDeleteTopics.isPending}
+            />
+          </Space>
+        }
+      >
+        <Table<TopicResponse>
+          dataSource={topics}
+          rowKey="id"
+          columns={columns}
+          loading={isLoading}
+          pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
+          size="small"
+          rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys as number[]) }}
         />
-        <Button icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
-          添加话题
-        </Button>
-        {selectedIds.length > 0 && (
-          <Popconfirm title={`确定删除 ${selectedIds.length} 项？`} onConfirm={handleBatchDelete}>
-            <Button danger icon={<DeleteOutlined />}>批量删除 ({selectedIds.length})</Button>
-          </Popconfirm>
-        )}
-      </Space>
-
-      <Table<TopicResponse>
-        dataSource={topics}
-        rowKey="id"
-        columns={columns}
-        loading={isLoading}
-        pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
-        size="small"
-        rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys as number[]) }}
-      />
+      </ListPageLayout>
 
       <Modal
         title="添加话题"
