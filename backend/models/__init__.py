@@ -82,7 +82,7 @@ class Task(Base):
     video = relationship("Video")
     copywriting = relationship("Copywriting")
     audio = relationship("Audio")
-    topics = relationship("Topic", secondary="task_topics")
+    topics = relationship("Topic", secondary="task_topics", passive_deletes=True)
 
 
 class Material(Base):
@@ -215,7 +215,7 @@ class TaskTopic(Base):
     __tablename__ = "task_topics"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False, index=True)
+    task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
     topic_id = Column(Integer, ForeignKey("topics.id"), nullable=False, index=True)
 
 

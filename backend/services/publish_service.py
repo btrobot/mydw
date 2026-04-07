@@ -272,13 +272,6 @@ class PublishService:
         logger.info("发布已停止")
 
 
-# 全局发布服务
-_publish_service: Optional[PublishService] = None
-
-
 def get_publish_service(db: AsyncSession) -> PublishService:
     """获取发布服务实例"""
-    global _publish_service
-    if _publish_service is None:
-        _publish_service = PublishService(db)
-    return _publish_service
+    return PublishService(db)
