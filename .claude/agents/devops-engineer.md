@@ -112,3 +112,12 @@ jobs:
       - name: Type check
         run: cd frontend && npm run typecheck
 ```
+
+## Key References
+
+- `docs/dev-guide.md` -- Development environment setup
+- `docs/system-architecture.md` -- System component diagram
+- `backend/requirements.txt` -- Python dependencies
+- `frontend/package.json` -- Node.js dependencies and scripts
+- `.claude/rules/commit-rules.md` -- Commit message format
+- `.claude/rules/coordination-rules.md` -- Collaboration protocol

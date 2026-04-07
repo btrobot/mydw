@@ -102,3 +102,11 @@ async def run_ffmpeg(cmd: list[str]) -> tuple[int, str, str]:
     stdout, stderr = await proc.communicate()
     return proc.returncode, stdout.decode(), stderr.decode()
 ```
+
+## Key References
+
+- `backend/CLAUDE.md` -- Backend setup, Playwright install
+- `docs/api-reference.md#ai-clip----apiai` -- AI clip API endpoints
+- `docs/data-model.md` -- Video, Audio, Cover table schemas
+- `.claude/rules/python-coding-rules.md` -- Python coding standards
+- `.claude/rules/security-rules.md` -- Credential handling rules

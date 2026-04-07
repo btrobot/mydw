@@ -109,3 +109,13 @@ Proposed | Accepted | Deprecated
 ### Consequences
 [Positive] [Negative] [Neutral]
 ```
+
+## Key References
+
+- `docs/system-architecture.md` -- System component diagram and data flow
+- `docs/api-reference.md` -- All API endpoint contracts
+- `docs/data-model.md` -- Database table schemas and relationships
+- `docs/dev-guide.md` -- Development environment setup
+- `.claude/rules/coordination-rules.md` -- Handoff protocol, conflict resolution
+- `.claude/rules/api-design-rules.md` -- REST conventions
+- `.claude/rules/security-rules.md` -- Security standards

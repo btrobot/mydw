@@ -111,3 +111,13 @@ logger.info(f"账号 {account_id} 登录成功")
 print(f"账号 {account_id} 登录成功")  # Never use print
 logger.info(f"Cookie: {cookie}")  # Never log sensitive data
 ```
+
+## Key References
+
+- `backend/CLAUDE.md` -- Backend setup, venv, project structure
+- `docs/api-reference.md` -- API endpoint contracts
+- `docs/data-model.md` -- Database table schemas and relationships
+- `.claude/rules/python-coding-rules.md` -- Python coding standards
+- `.claude/rules/api-design-rules.md` -- REST conventions, response models
+- `.claude/rules/security-rules.md` -- Encryption, credential protection
+- `.claude/rules/code-review-rules.md` -- Review checklist

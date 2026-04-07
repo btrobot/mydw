@@ -107,3 +107,12 @@ See: `.claude/rules/e2e-testing-rules.md`
 - [ ] No security vulnerabilities (S1/S2)
 - [ ] E2E tests pass
 - [ ] Documentation updated
+
+## Key References
+
+- `docs/api-reference.md` -- API endpoints to test
+- `docs/data-model.md` -- Database schemas for data validation
+- `docs/doc-checklist.md` -- Documentation quality verification
+- `.claude/rules/e2e-testing-rules.md` -- Playwright E2E test patterns
+- `.claude/rules/code-review-rules.md` -- Review checklist and severity levels
+- `.claude/rules/coordination-rules.md` -- Handoff and escalation protocol

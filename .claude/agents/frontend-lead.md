@@ -133,3 +133,12 @@ catch (error: unknown) {
   }
 }
 ```
+
+## Key References
+
+- `frontend/CLAUDE.md` -- Frontend tech stack, project structure, quick start
+- `docs/api-reference.md` -- Backend API endpoint contracts
+- `docs/data-model.md` -- Database schemas (for understanding API responses)
+- `.claude/rules/typescript-coding-rules.md` -- TypeScript coding standards
+- `.claude/rules/e2e-testing-rules.md` -- Playwright E2E test patterns
+- `.claude/rules/code-review-rules.md` -- Review checklist

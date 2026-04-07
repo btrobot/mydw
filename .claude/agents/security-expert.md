@@ -94,3 +94,12 @@ Read-only access to all source code and configuration files.
 - [ ] Sensitive data encrypted at rest
 - [ ] No sensitive data in logs
 - [ ] Environment variables for secrets
+
+## Key References
+
+- `docs/api-reference.md` -- API endpoints to audit
+- `docs/data-model.md` -- Encrypted fields, sensitive data locations
+- `backend/utils/crypto.py` -- AES-256-GCM encryption implementation
+- `.claude/rules/security-rules.md` -- Security standards and patterns
+- `.claude/rules/python-coding-rules.md` -- Logging and error handling rules
+- `.claude/rules/code-review-rules.md` -- Security review checklist
