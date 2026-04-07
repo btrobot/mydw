@@ -1,44 +1,47 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import {
-  Table, Button, Space, Typography, message,
-  Popconfirm, Upload, Tag, Select,
+  Button, Typography, message,
+  Popconfirm, Upload, Tag,
 } from 'antd'
 import type { UploadProps } from 'antd'
-import { UploadOutlined } from '@ant-design/icons'
+import { UploadOutlined, DeleteOutlined } from '@ant-design/icons'
+import { ProTable } from '@ant-design/pro-components'
+import type { ProColumns, ActionType } from '@ant-design/pro-components'
 
-import { useCovers, useUploadCover, useDeleteCover, useBatchDeleteCovers, useVideos } from '@/hooks'
+import { useUploadCover, useDeleteCover, useBatchDeleteCovers, useVideos } from '@/hooks'
 import type { CoverResponse } from '@/types/material'
 import { formatSize } from '@/utils/format'
 import { handleApiError } from '@/utils/error'
-import ListPageLayout from '@/components/ListPageLayout'
-import BatchDeleteButton from '@/components/BatchDeleteButton'
+import { api } from '@/services/api'
 
 const { Text } = Typography
 
 export default function CoverList() {
-  const [videoFilter, setVideoFilter] = useState<number | undefined>(undefined)
+  const actionRef = useRef<ActionType>()
   const [selectedIds, setSelectedIds] = useState<number[]>([])
+
   const { data: videos = [] } = useVideos()
-  const { data: covers = [], isLoading } = useCovers(videoFilter)
   const uploadCover = useUploadCover()
   const deleteCover = useDeleteCover()
   const batchDeleteCovers = useBatchDeleteCovers()
 
   const handleUpload = useCallback(async (options: Parameters<NonNullable<UploadProps['customRequest']>>[0]) => {
     try {
-      await uploadCover.mutateAsync({ file: options.file as File, videoId: videoFilter })
+      await uploadCover.mutateAsync({ file: options.file as File })
       message.success('封面上传成功')
       options.onSuccess?.({})
+      actionRef.current?.reload()
     } catch (error: unknown) {
       handleApiError(error, '封面上传失败')
       options.onError?.(new Error('上传失败') as never)
     }
-  }, [uploadCover, videoFilter])
+  }, [uploadCover])
 
   const handleDelete = useCallback(async (id: number) => {
     try {
       await deleteCover.mutateAsync(id)
       message.success('删除成功')
+      actionRef.current?.reload()
     } catch (error: unknown) {
       handleApiError(error, '删除封面失败')
     }
@@ -49,96 +52,116 @@ export default function CoverList() {
       const result = await batchDeleteCovers.mutateAsync(selectedIds)
       setSelectedIds([])
       message.success(`已删除 ${result.deleted} 个封面${result.skipped > 0 ? `，${result.skipped} 项被跳过` : ''}`)
+      actionRef.current?.reload()
     } catch (error: unknown) {
       handleApiError(error, '批量删除失败')
     }
   }, [selectedIds, batchDeleteCovers])
 
-  const columns = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 70, sorter: (a: CoverResponse, b: CoverResponse) => a.id - b.id },
-    { title: '文件路径', dataIndex: 'file_path', key: 'file_path', ellipsis: true },
+  const columns: ProColumns<CoverResponse>[] = [
+    {
+      title: 'ID',
+      dataIndex: 'id',
+      width: 70,
+      sorter: true,
+      hideInSearch: true,
+    },
+    {
+      title: '文件路径',
+      dataIndex: 'file_path',
+      ellipsis: true,
+      hideInSearch: true,
+    },
     {
       title: '关联视频',
       dataIndex: 'video_id',
-      key: 'video_id',
-      width: 100,
-      render: (v: number | null) => v ? <Tag>视频 #{v}</Tag> : <Text type="secondary">—</Text>,
+      width: 160,
+      valueType: 'select',
+      fieldProps: {
+        placeholder: '按视频筛选',
+        allowClear: true,
+        options: videos.map((v) => ({ label: v.name, value: v.id })),
+      },
+      render: (_, record) =>
+        record.video_id
+          ? <Tag>视频 #{record.video_id}</Tag>
+          : <Text type="secondary">—</Text>,
     },
     {
       title: '大小',
       dataIndex: 'file_size',
-      key: 'file_size',
       width: 90,
-      render: (v: number | null) => formatSize(v),
-      sorter: (a: CoverResponse, b: CoverResponse) => (a.file_size ?? 0) - (b.file_size ?? 0),
+      hideInSearch: true,
+      render: (_, record) => formatSize(record.file_size),
     },
     {
       title: '尺寸',
       key: 'dimensions',
       width: 100,
-      render: (_: unknown, record: CoverResponse) =>
+      hideInSearch: true,
+      render: (_, record) =>
         record.width && record.height ? `${record.width}×${record.height}` : '—',
     },
     {
       title: '创建时间',
       dataIndex: 'created_at',
-      key: 'created_at',
       width: 160,
-      render: (v: string) => new Date(v).toLocaleString('zh-CN'),
-      sorter: (a: CoverResponse, b: CoverResponse) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      sorter: true,
+      hideInSearch: true,
+      render: (_, record) => new Date(record.created_at).toLocaleString('zh-CN'),
     },
     {
       title: '操作',
       key: 'action',
       width: 80,
-      render: (_: unknown, record: CoverResponse) => (
+      hideInSearch: true,
+      render: (_, record) => (
         <Popconfirm title="确定删除？" onConfirm={() => handleDelete(record.id)}>
-          <Button type="link" danger size="small">删除</Button>
+          <Button type="link" danger size="small" icon={<DeleteOutlined />}>
+            删除
+          </Button>
         </Popconfirm>
       ),
     },
   ]
 
   return (
-    <ListPageLayout
-      filterBar={
-        <Select
-          placeholder="按视频筛选"
-          style={{ width: 200 }}
-          allowClear
-          value={videoFilter}
-          onChange={(v: number | undefined) => setVideoFilter(v)}
-          options={videos.map((video) => ({ label: video.name, value: video.id }))}
-        />
-      }
-      actionBar={
-        <Space>
-          <Upload
-            accept="image/jpeg,image/png,image/webp"
-            showUploadList={false}
-            customRequest={handleUpload}
-          >
-            <Button icon={<UploadOutlined />} loading={uploadCover.isPending}>
-              上传封面
-            </Button>
-          </Upload>
-          <BatchDeleteButton
-            count={selectedIds.length}
-            onConfirm={handleBatchDelete}
-            loading={batchDeleteCovers.isPending}
-          />
-        </Space>
-      }
-    >
-      <Table<CoverResponse>
-        dataSource={covers}
-        rowKey="id"
-        columns={columns}
-        loading={isLoading}
-        pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
-        size="small"
-        rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys as number[]) }}
-      />
-    </ListPageLayout>
+    <ProTable<CoverResponse>
+      actionRef={actionRef}
+      rowKey="id"
+      columns={columns}
+      request={async (params) => {
+        const { data } = await api.get<CoverResponse[]>('/covers', {
+          params: params.video_id !== undefined ? { video_id: params.video_id } : undefined,
+        })
+        return { data, success: true, total: data.length }
+      }}
+      rowSelection={{
+        selectedRowKeys: selectedIds,
+        onChange: (keys) => setSelectedIds(keys as number[]),
+      }}
+      tableAlertOptionRender={() => (
+        <Popconfirm title={`确定删除 ${selectedIds.length} 项？`} onConfirm={handleBatchDelete}>
+          <Button danger size="small" icon={<DeleteOutlined />} loading={batchDeleteCovers.isPending}>
+            批量删除 ({selectedIds.length})
+          </Button>
+        </Popconfirm>
+      )}
+      toolBarRender={() => [
+        <Upload
+          key="upload"
+          accept="image/jpeg,image/png,image/webp"
+          showUploadList={false}
+          customRequest={handleUpload}
+        >
+          <Button icon={<UploadOutlined />} loading={uploadCover.isPending} type="primary">
+            上传封面
+          </Button>
+        </Upload>,
+      ]}
+      pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
+      size="small"
+      search={{ labelWidth: 'auto' }}
+    />
   )
 }

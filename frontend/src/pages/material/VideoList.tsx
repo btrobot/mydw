@@ -1,22 +1,21 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import {
-  Table, Button, Space, Typography, message,
-  Modal, Form, Input, Popconfirm, Upload, Tag, Select,
+  Button, Space, Typography, message,
+  Modal, Form, Input, Popconfirm, Upload, Tag,
 } from 'antd'
 import type { UploadProps } from 'antd'
 import {
-  PlusOutlined, UploadOutlined, ScanOutlined,
+  PlusOutlined, UploadOutlined, ScanOutlined, DeleteOutlined,
 } from '@ant-design/icons'
+import { ProTable } from '@ant-design/pro-components'
+import type { ProColumns, ActionType } from '@ant-design/pro-components'
 
-import { useVideos, useCreateVideo, useDeleteVideo, useUploadVideo, useScanVideos, useBatchDeleteVideos } from '@/hooks'
-import type { VideoResponse } from '@/types/material'
+import { useCreateVideo, useDeleteVideo, useUploadVideo, useScanVideos, useBatchDeleteVideos } from '@/hooks'
+import type { VideoResponse, VideoListResponse } from '@/types/material'
 import { formatSize, formatDuration } from '@/utils/format'
 import { handleApiError } from '@/utils/error'
-import ListPageLayout from '@/components/ListPageLayout'
+import { api } from '@/services/api'
 import ProductSelect from '@/components/ProductSelect'
-import BatchDeleteButton from '@/components/BatchDeleteButton'
-
-type FileStatusFilter = 'normal' | 'missing'
 
 const { Text } = Typography
 
@@ -27,19 +26,12 @@ interface VideoFormValues {
 }
 
 export default function VideoList() {
-  const [keyword, setKeyword] = useState<string | undefined>(undefined)
-  const [fileStatusFilter, setFileStatusFilter] = useState<FileStatusFilter | undefined>(undefined)
+  const actionRef = useRef<ActionType>()
   const [uploadProductId, setUploadProductId] = useState<number | undefined>(undefined)
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [form] = Form.useForm<VideoFormValues>()
 
-  const { data: rawVideos = [], isLoading } = useVideos({ keyword })
-  const videos = fileStatusFilter === undefined
-    ? rawVideos
-    : rawVideos.filter((v) =>
-        fileStatusFilter === 'normal' ? v.file_exists === true : v.file_exists === false
-      )
   const createVideo = useCreateVideo()
   const deleteVideo = useDeleteVideo()
   const uploadVideo = useUploadVideo()
@@ -53,6 +45,7 @@ export default function VideoList() {
       message.success('添加视频成功')
       setAddModalOpen(false)
       form.resetFields()
+      actionRef.current?.reload()
     } catch (error: unknown) {
       if (error !== null && typeof error === 'object' && 'errorFields' in error) return
       handleApiError(error, '添加视频失败')
@@ -63,6 +56,7 @@ export default function VideoList() {
     try {
       await deleteVideo.mutateAsync(id)
       message.success('删除成功')
+      actionRef.current?.reload()
     } catch (error: unknown) {
       handleApiError(error, '删除视频失败')
     }
@@ -73,6 +67,7 @@ export default function VideoList() {
       const result = await batchDeleteVideos.mutateAsync(selectedIds)
       setSelectedIds([])
       message.success(`已删除 ${result.deleted} 个视频${result.skipped > 0 ? `，${result.skipped} 项被跳过` : ''}`)
+      actionRef.current?.reload()
     } catch (error: unknown) {
       handleApiError(error, '批量删除失败')
     }
@@ -83,6 +78,7 @@ export default function VideoList() {
       await uploadVideo.mutateAsync({ file: options.file as File, productId: uploadProductId })
       message.success('视频上传成功')
       options.onSuccess?.({})
+      actionRef.current?.reload()
     } catch (error: unknown) {
       handleApiError(error, '视频上传失败')
       options.onError?.(new Error('上传失败') as never)
@@ -103,59 +99,78 @@ export default function VideoList() {
           </Space>
         ),
       })
+      actionRef.current?.reload()
     } catch (error: unknown) {
       handleApiError(error, '扫描导入失败')
     }
   }, [scanVideos])
 
-  const columns = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 70, sorter: (a: VideoResponse, b: VideoResponse) => a.id - b.id },
-    { title: '名称', dataIndex: 'name', key: 'name', ellipsis: true },
+  const columns: ProColumns<VideoResponse>[] = [
+    {
+      title: 'ID',
+      dataIndex: 'id',
+      width: 70,
+      sorter: true,
+      hideInSearch: true,
+    },
+    {
+      title: '名称',
+      dataIndex: 'name',
+      ellipsis: true,
+    },
     {
       title: '状态',
       dataIndex: 'file_exists',
-      key: 'file_exists',
-      width: 60,
-      render: (v: boolean) => v === false
-        ? <Tag color="error">缺失</Tag>
-        : <Tag color="success">正常</Tag>,
+      width: 70,
+      valueEnum: {
+        true: { text: '正常', status: 'Success' },
+        false: { text: '缺失', status: 'Error' },
+      },
+      render: (_, record) =>
+        record.file_exists === false
+          ? <Tag color="error">缺失</Tag>
+          : <Tag color="success">正常</Tag>,
     },
     {
       title: '关联商品',
       dataIndex: 'product_name',
-      key: 'product_name',
       width: 120,
-      render: (name: string | null) => name ? <Tag>{name}</Tag> : <Text type="secondary">—</Text>,
+      hideInSearch: true,
+      render: (_, record) =>
+        record.product_name
+          ? <Tag>{record.product_name}</Tag>
+          : <Text type="secondary">—</Text>,
     },
     {
       title: '大小',
       dataIndex: 'file_size',
-      key: 'file_size',
       width: 90,
-      render: (v: number | null) => formatSize(v),
-      sorter: (a: VideoResponse, b: VideoResponse) => (a.file_size ?? 0) - (b.file_size ?? 0),
+      sorter: true,
+      hideInSearch: true,
+      render: (_, record) => formatSize(record.file_size),
     },
     {
       title: '时长',
       dataIndex: 'duration',
-      key: 'duration',
       width: 80,
-      render: (v: number | null) => formatDuration(v),
-      sorter: (a: VideoResponse, b: VideoResponse) => (a.duration ?? 0) - (b.duration ?? 0),
+      sorter: true,
+      hideInSearch: true,
+      render: (_, record) => formatDuration(record.duration),
     },
     {
       title: '创建时间',
       dataIndex: 'created_at',
-      key: 'created_at',
       width: 160,
-      render: (v: string) => new Date(v).toLocaleString('zh-CN'),
-      sorter: (a: VideoResponse, b: VideoResponse) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      sorter: true,
+      hideInSearch: true,
+      render: (_, record) => new Date(record.created_at).toLocaleString('zh-CN'),
     },
     {
       title: '操作',
       key: 'action',
       width: 80,
-      render: (_: unknown, record: VideoResponse) => (
+      hideInSearch: true,
+      render: (_, record) => (
         <Popconfirm title="确定删除？" onConfirm={() => handleDelete(record.id)}>
           <Button type="link" danger size="small">删除</Button>
         </Popconfirm>
@@ -165,72 +180,63 @@ export default function VideoList() {
 
   return (
     <>
-      <ListPageLayout
-        filterBar={
-          <Space>
-            <Input
-              allowClear
-              placeholder="搜索视频名称"
-              style={{ width: 200 }}
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value || undefined)}
-            />
-            <Select<FileStatusFilter>
-              allowClear
-              placeholder="文件状态"
-              style={{ width: 140 }}
-              value={fileStatusFilter}
-              onChange={(v) => setFileStatusFilter(v)}
-              onClear={() => setFileStatusFilter(undefined)}
-              options={[
-                { label: '正常', value: 'normal' },
-                { label: '缺失', value: 'missing' },
-              ]}
-            />
-          </Space>
-        }
-        actionBar={
-          <Space>
-            <ProductSelect
-              allowClear
-              placeholder="上传到商品"
-              style={{ width: 160 }}
-              value={uploadProductId}
-              onChange={setUploadProductId}
-            />
-            <Upload
-              accept="video/mp4,video/quicktime"
-              showUploadList={false}
-              customRequest={handleUpload}
-            >
-              <Button icon={<UploadOutlined />} loading={uploadVideo.isPending}>
-                上传视频
-              </Button>
-            </Upload>
-            <Button icon={<ScanOutlined />} onClick={handleScan} loading={scanVideos.isPending}>
-              扫描导入
+      <ProTable<VideoResponse>
+        actionRef={actionRef}
+        rowKey="id"
+        columns={columns}
+        request={async (params) => {
+          const { data } = await api.get<VideoListResponse>('/videos', {
+            params: params.name ? { keyword: params.name } : undefined,
+          })
+          const fileExists = params.file_exists as string | undefined
+          const items = fileExists === undefined
+            ? data.items
+            : data.items.filter((v) =>
+                fileExists === 'true' ? v.file_exists === true : v.file_exists === false
+              )
+          return { data: items, success: true, total: items.length }
+        }}
+        rowSelection={{
+          selectedRowKeys: selectedIds,
+          onChange: (keys) => setSelectedIds(keys as number[]),
+        }}
+        tableAlertOptionRender={() => (
+          <Popconfirm title={`确定删除 ${selectedIds.length} 项？`} onConfirm={handleBatchDelete}>
+            <Button danger size="small" icon={<DeleteOutlined />} loading={batchDeleteVideos.isPending}>
+              批量删除 ({selectedIds.length})
             </Button>
-            <Button icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
-              手动添加
+          </Popconfirm>
+        )}
+        toolBarRender={() => [
+          <ProductSelect
+            key="product-select"
+            allowClear
+            placeholder="上传到商品"
+            style={{ width: 160 }}
+            value={uploadProductId}
+            onChange={(v) => setUploadProductId(v as number | undefined)}
+          />,
+          <Upload
+            key="upload"
+            accept="video/mp4,video/quicktime"
+            showUploadList={false}
+            customRequest={handleUpload}
+          >
+            <Button icon={<UploadOutlined />} loading={uploadVideo.isPending}>
+              上传视频
             </Button>
-            <BatchDeleteButton
-              count={selectedIds.length}
-              onConfirm={handleBatchDelete}
-              loading={batchDeleteVideos.isPending}
-            />
-          </Space>
-        }
-      >
-        <Table<VideoResponse>
-          dataSource={videos}
-          rowKey="id"
-          columns={columns}
-          loading={isLoading}
-          pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
-          size="small"
-          rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys as number[]) }}
-        />
-      </ListPageLayout>
+          </Upload>,
+          <Button key="scan" icon={<ScanOutlined />} onClick={handleScan} loading={scanVideos.isPending}>
+            扫描导入
+          </Button>,
+          <Button key="add" icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
+            手动添加
+          </Button>,
+        ]}
+        pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
+        size="small"
+        search={{ labelWidth: 'auto' }}
+      />
 
       <Modal
         title="添加视频"

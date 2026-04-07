@@ -80,14 +80,7 @@ export default function LayoutComponent() {
           />
         </Sider>
         <Layout style={{ padding: '24px' }}>
-          <Content
-            style={{
-              background: colorBgContainer,
-              padding: 24,
-              borderRadius: 8,
-              minHeight: 360,
-            }}
-          >
+          <Content style={{ minHeight: 360 }}>
             <Outlet />
           </Content>
         </Layout>

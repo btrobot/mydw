@@ -1,22 +1,23 @@
-import { useState, useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import {
-  Table, Button, Space, message,
-  Popconfirm, Upload, Input,
+  Button, message, Popconfirm, Upload,
 } from 'antd'
 import type { UploadProps } from 'antd'
-import { UploadOutlined } from '@ant-design/icons'
+import { UploadOutlined, DeleteOutlined } from '@ant-design/icons'
+import { ProTable } from '@ant-design/pro-components'
+import type { ProColumns, ActionType } from '@ant-design/pro-components'
+import { useState } from 'react'
 
-import { useAudios, useUploadAudio, useDeleteAudio, useBatchDeleteAudios } from '@/hooks'
+import { useUploadAudio, useDeleteAudio, useBatchDeleteAudios } from '@/hooks'
 import type { AudioResponse } from '@/types/material'
 import { formatSize, formatDuration } from '@/utils/format'
 import { handleApiError } from '@/utils/error'
-import ListPageLayout from '@/components/ListPageLayout'
-import BatchDeleteButton from '@/components/BatchDeleteButton'
+import { api } from '@/services/api'
 
 export default function AudioList() {
+  const actionRef = useRef<ActionType>()
   const [selectedIds, setSelectedIds] = useState<number[]>([])
-  const [keyword, setKeyword] = useState<string>('')
-  const { data: audios = [], isLoading } = useAudios(keyword || undefined)
+
   const uploadAudio = useUploadAudio()
   const deleteAudio = useDeleteAudio()
   const batchDeleteAudios = useBatchDeleteAudios()
@@ -26,6 +27,7 @@ export default function AudioList() {
       await uploadAudio.mutateAsync(options.file as File)
       message.success('音频上传成功')
       options.onSuccess?.({})
+      actionRef.current?.reload()
     } catch (error: unknown) {
       handleApiError(error, '音频上传失败')
       options.onError?.(new Error('上传失败') as never)
@@ -36,6 +38,7 @@ export default function AudioList() {
     try {
       await deleteAudio.mutateAsync(id)
       message.success('删除成功')
+      actionRef.current?.reload()
     } catch (error: unknown) {
       handleApiError(error, '删除音频失败')
     }
@@ -46,43 +49,55 @@ export default function AudioList() {
       const result = await batchDeleteAudios.mutateAsync(selectedIds)
       setSelectedIds([])
       message.success(`已删除 ${result.deleted} 个音频${result.skipped > 0 ? `，${result.skipped} 项被跳过` : ''}`)
+      actionRef.current?.reload()
     } catch (error: unknown) {
       handleApiError(error, '批量删除失败')
     }
   }, [selectedIds, batchDeleteAudios])
 
-  const columns = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 70, sorter: (a: AudioResponse, b: AudioResponse) => a.id - b.id },
-    { title: '名称', dataIndex: 'name', key: 'name', ellipsis: true },
+  const columns: ProColumns<AudioResponse>[] = [
+    {
+      title: 'ID',
+      dataIndex: 'id',
+      width: 70,
+      sorter: true,
+      hideInSearch: true,
+    },
+    {
+      title: '名称',
+      dataIndex: 'name',
+      ellipsis: true,
+    },
     {
       title: '大小',
       dataIndex: 'file_size',
-      key: 'file_size',
       width: 90,
-      render: (v: number | null) => formatSize(v),
-      sorter: (a: AudioResponse, b: AudioResponse) => (a.file_size ?? 0) - (b.file_size ?? 0),
+      sorter: true,
+      hideInSearch: true,
+      render: (_, record) => formatSize(record.file_size),
     },
     {
       title: '时长',
       dataIndex: 'duration',
-      key: 'duration',
       width: 80,
-      render: (v: number | null) => formatDuration(v),
-      sorter: (a: AudioResponse, b: AudioResponse) => (a.duration ?? 0) - (b.duration ?? 0),
+      sorter: true,
+      hideInSearch: true,
+      render: (_, record) => formatDuration(record.duration),
     },
     {
       title: '创建时间',
       dataIndex: 'created_at',
-      key: 'created_at',
       width: 160,
-      render: (v: string) => new Date(v).toLocaleString('zh-CN'),
-      sorter: (a: AudioResponse, b: AudioResponse) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      sorter: true,
+      hideInSearch: true,
+      render: (_, record) => new Date(record.created_at).toLocaleString('zh-CN'),
     },
     {
       title: '操作',
       key: 'action',
       width: 80,
-      render: (_: unknown, record: AudioResponse) => (
+      hideInSearch: true,
+      render: (_, record) => (
         <Popconfirm title="确定删除？" onConfirm={() => handleDelete(record.id)}>
           <Button type="link" danger size="small">删除</Button>
         </Popconfirm>
@@ -91,44 +106,42 @@ export default function AudioList() {
   ]
 
   return (
-    <ListPageLayout
-      filterBar={
-        <Input
-          allowClear
-          style={{ width: 200 }}
-          placeholder="搜索音频名称"
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-        />
-      }
-      actionBar={
-        <Space>
-          <Upload
-            accept="audio/mpeg,audio/mp3,audio/wav,audio/aac,audio/ogg"
-            showUploadList={false}
-            customRequest={handleUpload}
-          >
-            <Button icon={<UploadOutlined />} loading={uploadAudio.isPending}>
-              上传音频
-            </Button>
-          </Upload>
-          <BatchDeleteButton
-            count={selectedIds.length}
-            onConfirm={handleBatchDelete}
-            loading={batchDeleteAudios.isPending}
-          />
-        </Space>
-      }
-    >
-      <Table<AudioResponse>
-        dataSource={audios}
-        rowKey="id"
-        columns={columns}
-        loading={isLoading}
-        pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
-        size="small"
-        rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys as number[]) }}
-      />
-    </ListPageLayout>
+    <ProTable<AudioResponse>
+      actionRef={actionRef}
+      rowKey="id"
+      columns={columns}
+      request={async (params) => {
+        const { data } = await api.get<AudioResponse[]>('/audios', {
+          params: params.name ? { keyword: params.name } : undefined,
+        })
+        return { data, success: true, total: data.length }
+      }}
+      rowSelection={{
+        selectedRowKeys: selectedIds,
+        onChange: (keys) => setSelectedIds(keys as number[]),
+      }}
+      tableAlertOptionRender={() => (
+        <Popconfirm title={`确定删除 ${selectedIds.length} 项？`} onConfirm={handleBatchDelete}>
+          <Button danger size="small" icon={<DeleteOutlined />} loading={batchDeleteAudios.isPending}>
+            批量删除 ({selectedIds.length})
+          </Button>
+        </Popconfirm>
+      )}
+      toolBarRender={() => [
+        <Upload
+          key="upload"
+          accept="audio/mpeg,audio/mp3,audio/wav,audio/aac,audio/ogg"
+          showUploadList={false}
+          customRequest={handleUpload}
+        >
+          <Button icon={<UploadOutlined />} loading={uploadAudio.isPending}>
+            上传音频
+          </Button>
+        </Upload>,
+      ]}
+      pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
+      size="small"
+      search={{ labelWidth: 'auto' }}
+    />
   )
 }
