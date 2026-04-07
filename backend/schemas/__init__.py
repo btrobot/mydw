@@ -285,6 +285,7 @@ class TaskCreate(BaseModel):
     video_id: Optional[int] = None
     copywriting_id: Optional[int] = None
     audio_id: Optional[int] = None
+    cover_id: Optional[int] = None
 
 
 class TaskUpdate(BaseModel):
@@ -305,6 +306,7 @@ class TaskResponse(BaseModel):
     video_id: Optional[int] = None
     copywriting_id: Optional[int] = None
     audio_id: Optional[int] = None
+    cover_id: Optional[int] = None
     topic_ids: List[int] = Field(default_factory=list)
     status: TaskStatus
     publish_time: Optional[datetime] = None

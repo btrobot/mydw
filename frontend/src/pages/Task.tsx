@@ -19,6 +19,7 @@ import {
   useAssembleTasks,
 } from '../hooks'
 import { useVideos } from '../hooks/useVideo'
+import { useCovers } from '../hooks/useCover'
 import type { AccountResponseExtended } from '../hooks/useAccount'
 import type { VideoResponse } from '@/types/material'
 
@@ -56,6 +57,7 @@ export default function Task() {
   const { data: tasksData, isLoading, refetch: refetchTasks } = useTasks()
   const { data: accounts = [] } = useAccounts()
   const { data: videos = [] } = useVideos()
+  const { data: covers = [] } = useCovers()
   const { data: publishStatus = { status: 'idle', current_task_id: null, total_pending: 0, total_success: 0, total_failed: 0 } } = usePublishStatus()
   const { data: stats = { total: 0, pending: 0, running: 0, success: 0, failed: 0, paused: 0, today_success: 0 } } = useTaskStats()
 
@@ -356,6 +358,13 @@ export default function Task() {
                 { value: 'auto_match', label: '自动匹配' },
                 { value: 'manual', label: '手动指定' },
               ]}
+            />
+          </Form.Item>
+          <Form.Item name="cover_id" label="封面（可选）">
+            <Select
+              allowClear
+              placeholder="选择封面"
+              options={covers.map((c) => ({ value: c.id, label: c.file_path.split(/[/\\]/).pop() ?? `封面 #${c.id}` }))}
             />
           </Form.Item>
         </Form>

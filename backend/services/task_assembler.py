@@ -126,6 +126,7 @@ class TaskAssembler:
                 selectinload(Task.video),
                 selectinload(Task.copywriting),
                 selectinload(Task.product),
+                selectinload(Task.cover),
             ).where(Task.id.in_(task_ids))
         )
         created_tasks = list(result.scalars().all())

@@ -98,6 +98,7 @@ class PublishService:
                     selectinload(Task.audio),
                     selectinload(Task.product),
                     selectinload(Task.topics),
+                    selectinload(Task.cover),
                 ).where(Task.id == task.id)
             )
             task = task_result.scalar_one_or_none()
@@ -177,7 +178,7 @@ class PublishService:
                 title=content[:50] if content else "视频标题",
                 content=content,
                 topic=topic,
-                cover_path=task.cover_path,
+                cover_path=task.cover.file_path if task.cover else None,
                 product_link=product_link
             )
 

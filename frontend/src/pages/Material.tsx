@@ -6,12 +6,12 @@ import {
 import type { UploadProps } from 'antd'
 import {
   PlusOutlined, DeleteOutlined, ShopOutlined, UploadOutlined,
-  LinkOutlined, SearchOutlined, GlobalOutlined,
+  LinkOutlined, SearchOutlined, GlobalOutlined, ScanOutlined,
 } from '@ant-design/icons'
 import type { AxiosError } from 'axios'
 
 import { useProductsV2, useCreateProductV2, useDeleteProductV2 } from '@/hooks'
-import { useVideos, useCreateVideo, useDeleteVideo } from '@/hooks'
+import { useVideos, useCreateVideo, useDeleteVideo, useUploadVideo, useScanVideos } from '@/hooks'
 import { useCopywritings, useCreateCopywriting, useDeleteCopywriting } from '@/hooks'
 import { useCovers, useUploadCover, useDeleteCover } from '@/hooks'
 import { useAudios, useUploadAudio, useDeleteAudio } from '@/hooks'
@@ -174,6 +174,7 @@ interface VideoFormValues {
 
 function VideoTab() {
   const [productFilter, setProductFilter] = useState<number | undefined>(undefined)
+  const [uploadProductId, setUploadProductId] = useState<number | undefined>(undefined)
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [form] = Form.useForm<VideoFormValues>()
 
@@ -181,6 +182,8 @@ function VideoTab() {
   const { data: videos = [], isLoading } = useVideos(productFilter)
   const createVideo = useCreateVideo()
   const deleteVideo = useDeleteVideo()
+  const uploadVideo = useUploadVideo()
+  const scanVideos = useScanVideos()
 
   const productOptions = products.map((p: ProductResponse) => ({ label: p.name, value: p.id }))
 
@@ -209,6 +212,36 @@ function VideoTab() {
       handleApiError(error, '删除视频失败')
     }
   }, [deleteVideo])
+
+  const handleUpload = useCallback(async (options: Parameters<NonNullable<UploadProps['customRequest']>>[0]) => {
+    try {
+      await uploadVideo.mutateAsync({ file: options.file as File, productId: uploadProductId })
+      message.success('视频上传成功')
+      options.onSuccess?.({})
+    } catch (error: unknown) {
+      handleApiError(error, '视频上传失败')
+      options.onError?.(new Error('上传失败') as never)
+    }
+  }, [uploadVideo, uploadProductId])
+
+  const handleScan = useCallback(async () => {
+    try {
+      const result = await scanVideos.mutateAsync()
+      Modal.info({
+        title: '扫描导入完成',
+        content: (
+          <Space direction="vertical">
+            <Text>扫描文件: {result.total_scanned}</Text>
+            <Text>新导入: {result.new_imported}</Text>
+            <Text>已跳过: {result.skipped}</Text>
+            {result.failed > 0 && <Text type="danger">失败: {result.failed}</Text>}
+          </Space>
+        ),
+      })
+    } catch (error: unknown) {
+      handleApiError(error, '扫描导入失败')
+    }
+  }, [scanVideos])
 
   const columns = [
     { title: '名称', dataIndex: 'name', key: 'name', ellipsis: true },
@@ -263,8 +296,28 @@ function VideoTab() {
           value={productFilter}
           onChange={setProductFilter}
         />
+        <Select
+          allowClear
+          placeholder="上传到商品"
+          style={{ width: 160 }}
+          options={productOptions}
+          value={uploadProductId}
+          onChange={setUploadProductId}
+        />
+        <Upload
+          accept="video/mp4,video/quicktime"
+          showUploadList={false}
+          customRequest={handleUpload}
+        >
+          <Button icon={<UploadOutlined />} loading={uploadVideo.isPending}>
+            上传视频
+          </Button>
+        </Upload>
+        <Button icon={<ScanOutlined />} onClick={handleScan} loading={scanVideos.isPending}>
+          扫描导入
+        </Button>
         <Button icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
-          添加视频
+          手动添加
         </Button>
       </Space>
 
@@ -440,14 +493,14 @@ function CoverTab() {
   const uploadCover = useUploadCover()
   const deleteCover = useDeleteCover()
 
-  const handleUpload: UploadProps['customRequest'] = useCallback(async ({ file, onSuccess, onError }) => {
+  const handleUpload = useCallback(async (options: Parameters<NonNullable<UploadProps['customRequest']>>[0]) => {
     try {
-      await uploadCover.mutateAsync({ file: file as File, videoId: videoFilter })
+      await uploadCover.mutateAsync({ file: options.file as File, videoId: videoFilter })
       message.success('封面上传成功')
-      onSuccess?.({})
+      options.onSuccess?.({})
     } catch (error: unknown) {
       handleApiError(error, '封面上传失败')
-      onError?.(new Error('上传失败'))
+      options.onError?.(new Error('上传失败') as never)
     }
   }, [uploadCover, videoFilter])
 
@@ -545,14 +598,14 @@ function AudioTab() {
   const uploadAudio = useUploadAudio()
   const deleteAudio = useDeleteAudio()
 
-  const handleUpload: UploadProps['customRequest'] = useCallback(async ({ file, onSuccess, onError }) => {
+  const handleUpload = useCallback(async (options: Parameters<NonNullable<UploadProps['customRequest']>>[0]) => {
     try {
-      await uploadAudio.mutateAsync(file as File)
+      await uploadAudio.mutateAsync(options.file as File)
       message.success('音频上传成功')
-      onSuccess?.({})
+      options.onSuccess?.({})
     } catch (error: unknown) {
       handleApiError(error, '音频上传失败')
-      onError?.(new Error('上传失败'))
+      options.onError?.(new Error('上传失败') as never)
     }
   }, [uploadAudio])
 

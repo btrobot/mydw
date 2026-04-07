@@ -57,6 +57,7 @@ class Task(Base):
     video_id = Column(Integer, ForeignKey("videos.id"), nullable=True, index=True)
     copywriting_id = Column(Integer, ForeignKey("copywritings.id"), nullable=True, index=True)
     audio_id = Column(Integer, ForeignKey("audios.id"), nullable=True, index=True)
+    cover_id = Column(Integer, ForeignKey("covers.id"), nullable=True, index=True)
 
     status = Column(String(32), default="pending", index=True)  # pending, running, success, failed, paused
     publish_time = Column(DateTime, nullable=True, index=True)
@@ -74,6 +75,7 @@ class Task(Base):
     video = relationship("Video")
     copywriting = relationship("Copywriting")
     audio = relationship("Audio")
+    cover = relationship("Cover")
     topics = relationship("Topic", secondary="task_topics", passive_deletes=True)
 
 
@@ -286,6 +288,8 @@ async def init_db():
     await migration_006.run_migration(engine)
     migration_007 = importlib.import_module("migrations.007_task_topic_unique")
     await migration_007.run_migration(engine)
+    migration_008 = importlib.import_module("migrations.008_task_cover_fk")
+    await migration_008.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

@@ -28,6 +28,7 @@ class TaskService:
                 selectinload(Task.video),
                 selectinload(Task.copywriting),
                 selectinload(Task.product),
+                selectinload(Task.cover),
             ).where(Task.id == task.id)
         )
         task = result.scalars().first()
@@ -48,6 +49,7 @@ class TaskService:
                 selectinload(Task.video),
                 selectinload(Task.copywriting),
                 selectinload(Task.product),
+                selectinload(Task.cover),
             ).where(Task.id.in_(task_ids))
         )
         loaded_tasks = result.scalars().all()
