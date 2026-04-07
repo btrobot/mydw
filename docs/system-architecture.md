@@ -148,10 +148,16 @@ backend/
 ```
 Account ──1:N──► Task ──1:N──► PublishLog
                   │
-Product ──1:N────┘
+Product ──1:N────┤
                   │
-Material ──1:N───┘
+Video ──1:N──────┤
+                  │
+Copywriting ─────┤
+                  │
+Audio ───────────┘
 
+Topic (全局话题池)
+Cover (封面资源)
 PublishConfig (单例配置)
 SystemLog (系统日志)
 ```
@@ -159,8 +165,12 @@ SystemLog (系统日志)
 | 模型 | 关键字段 |
 |---|---|
 | `Account` | account_id, account_name, cookie(加密), storage_state(加密), status, phone_encrypted, dewu_nickname, tags(JSON), session_expires_at, last_health_check |
-| `Task` | account_id(FK), product_id(FK), material_id(FK), video_path, content, topic, status, publish_time, priority |
-| `Material` | type(video/text/cover/topic/audio), name, path, content, size, duration |
+| `Task` | account_id(FK), product_id(FK), video_id(FK), copywriting_id(FK), audio_id(FK), status, publish_time, priority |
+| `Video` | name, file_path, product_id(FK), file_size, duration |
+| `Copywriting` | content, product_id(FK), source_type, source_ref |
+| `Cover` | file_path, video_id(FK), file_size |
+| `Audio` | name, file_path, file_size, duration |
+| `Topic` | name, heat, source |
 | `Product` | name, link, description |
 | `PublishLog` | task_id(FK), account_id(FK), status, message |
 | `PublishConfig` | interval_minutes, start_hour, end_hour, max_per_account_per_day, shuffle, auto_start |
@@ -170,11 +180,16 @@ SystemLog (系统日志)
 | 模块 | 前缀 | 核心端点 |
 |---|---|---|
 | 账号管理 | `/api/accounts` | CRUD, connect/send-code/verify (手机验证码登录), SSE stream, health-check, batch-health-check, preview, disconnect, export/import session |
-| 任务管理 | `/api/tasks` | CRUD, publish, batch-create, auto-generate, shuffle, init-from-materials |
-| 素材管理 | `/api/materials` | CRUD, upload, scan, import, content preview |
+| 任务管理 | `/api/tasks` | CRUD, publish, batch-create, assemble, shuffle |
+| 视频 | `/api/videos` | CRUD, product filter |
+| 文案 | `/api/copywritings` | CRUD, product/source filter |
+| 封面 | `/api/covers` | upload, list, delete |
+| 音频 | `/api/audios` | upload, list, delete |
+| 话题 | `/api/topics` | CRUD, search, global topics |
+| 商品 | `/api/products` | CRUD, name search |
 | 发布控制 | `/api/publish` | config (GET/PUT), status, control (start/pause/stop), refresh, shuffle, logs |
 | AI 剪辑 | `/api/ai` | video-info, detect-highlights, smart-clip, add-audio, add-cover, trim, full-pipeline |
-| 系统 | `/api/system` | stats, logs, config, backup, products CRUD |
+| 系统 | `/api/system` | stats, logs, config, backup |
 
 ### 4.4 核心流程
 

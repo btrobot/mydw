@@ -14,7 +14,7 @@ Live docs: `/docs` (Swagger) | `/redoc` | `/openapi.json`
 | Module | Prefix | Count | Key Operations |
 |--------|--------|-------|----------------|
 | Accounts | /api/accounts | 21+7dep | CRUD, connect, health-check, preview, SSE |
-| Tasks | /api/tasks | 10 | CRUD, batch, assemble, shuffle, publish |
+| Tasks | /api/tasks | 11 | CRUD, batch, assemble, shuffle, publish |
 | Publish | /api/publish | 7 | config, control, status, logs |
 | Products | /api/products | 5 | CRUD, name search |
 | Videos | /api/videos | 5 | CRUD, product filter |

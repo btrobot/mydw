@@ -12,7 +12,7 @@ Dewu platform automated video publishing system -- multi-agent collaborative fra
 |-------|-----------|
 | Frontend | Electron 28 + React 18 + TypeScript 5 + Vite 5 + Ant Design 5 + Zustand |
 | Backend | Python FastAPI + SQLAlchemy + aiosqlite |
-| Automation | Playwright (browser automation) |
+| Automation | Patchright (Playwright fork, 反检测) |
 | Media | FFmpeg (video processing) |
 | Security | AES-256-GCM (cookie encryption), PBKDF2HMAC (key derivation) |
 
