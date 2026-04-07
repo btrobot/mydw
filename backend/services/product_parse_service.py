@@ -356,5 +356,3 @@ async def _replace_product_materials(
 
     await db.commit()
     logger.info("商品素材数据库记录更新完成: product_id={}", product_id)
-
-        super().__init__(detail)
