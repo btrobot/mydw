@@ -38,3 +38,17 @@ export const useDeleteProduct = () => {
     },
   })
 }
+
+/** SP7-06: 商品更新 */
+export const useUpdateProduct = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...payload }: { id: number; name?: string; link?: string | null }) => {
+      const { data } = await api.put<ProductResponse>(`/products/${id}`, payload)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products-v2'] })
+    },
+  })
+}

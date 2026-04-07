@@ -11,9 +11,10 @@ from sqlalchemy.orm import selectinload
 from loguru import logger
 from pydantic import BaseModel
 
-from models import Video, Product, get_db
+from models import Video, Product, Task, get_db
 from schemas import VideoCreate, VideoUpdate, VideoResponse, VideoListResponse
 from core.config import settings
+from utils.ffprobe import extract_video_metadata
 
 router = APIRouter(tags=["视频管理"])
 
@@ -115,6 +116,14 @@ async def delete_video(
     if not video:
         raise HTTPException(status_code=404, detail="视频不存在")
 
+    # SP7-04: 删除前引用检查
+    ref_result = await db.execute(
+        select(func.count()).select_from(Task).where(Task.video_id == video_id)
+    )
+    ref_count = ref_result.scalar() or 0
+    if ref_count > 0:
+        raise HTTPException(status_code=409, detail="视频被 {} 个任务引用，无法删除".format(ref_count))
+
     # 删除物理文件 (BUG-02 fix)
     if video.file_path:
         file_path = Path(video.file_path)
@@ -177,6 +186,11 @@ async def upload_video(
         file_size=len(content),
         source_type="upload",
     )
+    # SP7-01: FFprobe 元数据提取
+    meta = await extract_video_metadata(str(file_path))
+    video.duration = meta.duration
+    video.width = meta.width
+    video.height = meta.height
     db.add(video)
     await db.commit()
     video = await _get_video_with_product(db, video.id)
@@ -250,11 +264,15 @@ async def scan_videos(
 
             try:
                 stat = file_path.stat()
+                meta = await extract_video_metadata(str_path)
                 video = Video(
                     name=file_path.name,
                     file_path=str_path,
                     product_id=product.id,
                     file_size=stat.st_size,
+                    duration=meta.duration,
+                    width=meta.width,
+                    height=meta.height,
                     source_type="scan",
                 )
                 db.add(video)
@@ -270,3 +288,29 @@ async def scan_videos(
         result.total_scanned, result.new_imported, result.skipped, result.failed,
     )
     return result
+
+
+# ─── SP7-02: 文件存在性批量校验 ──────────────────────────────────────────────
+
+class ValidateResult(BaseModel):
+    total: int = 0
+    valid: int = 0
+    missing: int = 0
+    missing_ids: List[int] = []
+
+
+@router.post("/validate", response_model=ValidateResult)
+async def validate_videos(
+    db: AsyncSession = Depends(get_db),
+) -> ValidateResult:
+    """批量校验视频文件是否存在"""
+    result_obj = ValidateResult()
+    videos_result = await db.execute(select(Video))
+    for video in videos_result.scalars().all():
+        result_obj.total += 1
+        if Path(video.file_path).exists():
+            result_obj.valid += 1
+        else:
+            result_obj.missing += 1
+            result_obj.missing_ids.append(video.id)
+    return result_obj

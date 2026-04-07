@@ -6,13 +6,13 @@ import {
 import type { UploadProps } from 'antd'
 import {
   PlusOutlined, DeleteOutlined, ShopOutlined, UploadOutlined,
-  LinkOutlined, SearchOutlined, GlobalOutlined, ScanOutlined,
+  LinkOutlined, SearchOutlined, GlobalOutlined, ScanOutlined, EditOutlined, ImportOutlined,
 } from '@ant-design/icons'
 import type { AxiosError } from 'axios'
 
-import { useProductsV2, useCreateProductV2, useDeleteProductV2 } from '@/hooks'
+import { useProductsV2, useCreateProductV2, useDeleteProductV2, useUpdateProductV2 } from '@/hooks'
 import { useVideos, useCreateVideo, useDeleteVideo, useUploadVideo, useScanVideos } from '@/hooks'
-import { useCopywritings, useCreateCopywriting, useDeleteCopywriting } from '@/hooks'
+import { useCopywritings, useCreateCopywriting, useDeleteCopywriting, useUpdateCopywriting, useImportCopywritings } from '@/hooks'
 import { useCovers, useUploadCover, useDeleteCover } from '@/hooks'
 import { useAudios, useUploadAudio, useDeleteAudio } from '@/hooks'
 import { useTopics, useCreateTopic, useDeleteTopic, useSearchTopics, useGlobalTopics, useSetGlobalTopics } from '@/hooks'
@@ -65,18 +65,26 @@ interface ProductFormValues {
 
 function ProductSection() {
   const [modalOpen, setModalOpen] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<ProductResponse | null>(null)
   const [form] = Form.useForm<ProductFormValues>()
 
   const { data: products = [], isLoading } = useProductsV2()
   const createProduct = useCreateProductV2()
   const deleteProduct = useDeleteProductV2()
+  const updateProduct = useUpdateProductV2()
 
   const handleAdd = useCallback(async () => {
     try {
       const values = await form.validateFields()
-      await createProduct.mutateAsync(values)
-      message.success('添加商品成功')
+      if (editingProduct) {
+        await updateProduct.mutateAsync({ id: editingProduct.id, ...values })
+        message.success('更新商品成功')
+      } else {
+        await createProduct.mutateAsync(values)
+        message.success('添加商品成功')
+      }
       setModalOpen(false)
+      setEditingProduct(null)
       form.resetFields()
     } catch (error: unknown) {
       if (
@@ -84,9 +92,15 @@ function ProductSection() {
         typeof error === 'object' &&
         'errorFields' in error
       ) return
-      handleApiError(error, '添加商品失败')
+      handleApiError(error, editingProduct ? '更新商品失败' : '添加商品失败')
     }
-  }, [form, createProduct])
+  }, [form, createProduct, updateProduct, editingProduct])
+
+  const handleEdit = useCallback((p: ProductResponse) => {
+    setEditingProduct(p)
+    form.setFieldsValue({ name: p.name, link: p.link ?? undefined })
+    setModalOpen(true)
+  }, [form])
 
   const handleDelete = useCallback(async (id: number) => {
     try {
@@ -127,11 +141,16 @@ function ProductSection() {
                       {p.link}
                     </Text>
                   )}
-                  <Popconfirm title="确定删除此商品？" onConfirm={() => handleDelete(p.id)}>
-                    <Button type="link" danger size="small" icon={<DeleteOutlined />}>
-                      删除
+                  <Space>
+                    <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(p)}>
+                      编辑
                     </Button>
-                  </Popconfirm>
+                    <Popconfirm title="确定删除此商品？" onConfirm={() => handleDelete(p.id)}>
+                      <Button type="link" danger size="small" icon={<DeleteOutlined />}>
+                        删除
+                      </Button>
+                    </Popconfirm>
+                  </Space>
                 </Space>
               </Card>
             ))}
@@ -140,11 +159,11 @@ function ProductSection() {
       </Card>
 
       <Modal
-        title="添加商品"
+        title={editingProduct ? "编辑商品" : "添加商品"}
         open={modalOpen}
         onOk={handleAdd}
-        confirmLoading={createProduct.isPending}
-        onCancel={() => { setModalOpen(false); form.resetFields() }}
+        confirmLoading={createProduct.isPending || updateProduct.isPending}
+        onCancel={() => { setModalOpen(false); setEditingProduct(null); form.resetFields() }}
         destroyOnClose
       >
         <Form form={form} layout="vertical">
@@ -245,6 +264,15 @@ function VideoTab() {
 
   const columns = [
     { title: '名称', dataIndex: 'name', key: 'name', ellipsis: true },
+    {
+      title: '状态',
+      dataIndex: 'file_exists',
+      key: 'file_exists',
+      width: 60,
+      render: (v: boolean) => v === false
+        ? <Tag color="error">缺失</Tag>
+        : <Tag color="success">正常</Tag>,
+    },
     {
       title: '关联商品',
       dataIndex: 'product_name',
@@ -364,21 +392,31 @@ interface CopywritingFormValues {
 function CopywritingTab() {
   const [productFilter, setProductFilter] = useState<number | undefined>(undefined)
   const [addModalOpen, setAddModalOpen] = useState(false)
+  const [editingCw, setEditingCw] = useState<CopywritingResponse | null>(null)
+  const [importProductId, setImportProductId] = useState<number | undefined>(undefined)
   const [form] = Form.useForm<CopywritingFormValues>()
 
   const { data: products = [] } = useProductsV2()
   const { data: copywritings = [], isLoading } = useCopywritings(productFilter)
   const createCopywriting = useCreateCopywriting()
   const deleteCopywriting = useDeleteCopywriting()
+  const updateCopywriting = useUpdateCopywriting()
+  const importCopywritings = useImportCopywritings()
 
   const productOptions = products.map((p: ProductResponse) => ({ label: p.name, value: p.id }))
 
   const handleAdd = useCallback(async () => {
     try {
       const values = await form.validateFields()
-      await createCopywriting.mutateAsync(values)
-      message.success('添加文案成功')
+      if (editingCw) {
+        await updateCopywriting.mutateAsync({ id: editingCw.id, ...values })
+        message.success('更新文案成功')
+      } else {
+        await createCopywriting.mutateAsync(values)
+        message.success('添加文案成功')
+      }
       setAddModalOpen(false)
+      setEditingCw(null)
       form.resetFields()
     } catch (error: unknown) {
       if (
@@ -386,9 +424,26 @@ function CopywritingTab() {
         typeof error === 'object' &&
         'errorFields' in error
       ) return
-      handleApiError(error, '添加文案失败')
+      handleApiError(error, editingCw ? '更新文案失败' : '添加文案失败')
     }
-  }, [form, createCopywriting])
+  }, [form, createCopywriting, updateCopywriting, editingCw])
+
+  const handleEdit = useCallback((cw: CopywritingResponse) => {
+    setEditingCw(cw)
+    form.setFieldsValue({ content: cw.content, product_id: cw.product_id ?? undefined })
+    setAddModalOpen(true)
+  }, [form])
+
+  const handleImport = useCallback(async (options: Parameters<NonNullable<UploadProps['customRequest']>>[0]) => {
+    try {
+      const result = await importCopywritings.mutateAsync({ file: options.file as File, productId: importProductId })
+      message.success(`导入完成: ${result.imported} 条文案`)
+      options.onSuccess?.({})
+    } catch (error: unknown) {
+      handleApiError(error, '文案导入失败')
+      options.onError?.(new Error('导入失败') as never)
+    }
+  }, [importCopywritings, importProductId])
 
   const handleDelete = useCallback(async (id: number) => {
     try {
@@ -430,11 +485,14 @@ function CopywritingTab() {
     {
       title: '操作',
       key: 'action',
-      width: 80,
+      width: 120,
       render: (_: unknown, record: CopywritingResponse) => (
-        <Popconfirm title="确定删除？" onConfirm={() => handleDelete(record.id)}>
-          <Button type="link" danger size="small">删除</Button>
-        </Popconfirm>
+        <Space>
+          <Button type="link" size="small" onClick={() => handleEdit(record)}>编辑</Button>
+          <Popconfirm title="确定删除？" onConfirm={() => handleDelete(record.id)}>
+            <Button type="link" danger size="small">删除</Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ]
@@ -450,9 +508,22 @@ function CopywritingTab() {
           value={productFilter}
           onChange={setProductFilter}
         />
-        <Button icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
+        <Button icon={<PlusOutlined />} onClick={() => { setEditingCw(null); form.resetFields(); setAddModalOpen(true) }}>
           添加文案
         </Button>
+        <Select
+          allowClear
+          placeholder="导入到商品"
+          style={{ width: 140 }}
+          options={productOptions}
+          value={importProductId}
+          onChange={setImportProductId}
+        />
+        <Upload accept=".txt" showUploadList={false} customRequest={handleImport}>
+          <Button icon={<ImportOutlined />} loading={importCopywritings.isPending}>
+            批量导入
+          </Button>
+        </Upload>
       </Space>
 
       <Table<CopywritingResponse>
@@ -465,7 +536,7 @@ function CopywritingTab() {
       />
 
       <Modal
-        title="添加文案"
+        title={editingCw ? "编辑文案" : "添加文案"}
         open={addModalOpen}
         onOk={handleAdd}
         confirmLoading={createCopywriting.isPending}

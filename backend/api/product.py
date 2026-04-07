@@ -1,5 +1,5 @@
 """
-得物掘金工具 - 商品管理 API (SP1-06)
+得物掘金工具 - 商品管理 API (SP1-06, SP7-04)
 """
 from typing import Optional
 
@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from loguru import logger
 
-from models import Product, get_db
+from models import Product, Video, Copywriting, get_db
 from schemas import ProductCreate, ProductUpdate, ProductResponse, ProductListResponse
 
 router = APIRouter(tags=["商品管理"])
@@ -120,6 +120,19 @@ async def delete_product(
     product = result.scalars().first()
     if not product:
         raise HTTPException(status_code=404, detail="商品不存在")
+
+    # SP7-04: 删除前引用检查
+    video_count = (await db.execute(
+        select(func.count()).select_from(Video).where(Video.product_id == product_id)
+    )).scalar() or 0
+    cw_count = (await db.execute(
+        select(func.count()).select_from(Copywriting).where(Copywriting.product_id == product_id)
+    )).scalar() or 0
+    if video_count + cw_count > 0:
+        raise HTTPException(
+            status_code=409,
+            detail="商品关联 {} 个视频和 {} 个文案，无法删除".format(video_count, cw_count),
+        )
 
     await db.delete(product)
     await db.commit()

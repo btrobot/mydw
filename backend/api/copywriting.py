@@ -1,15 +1,16 @@
 """
-得物掘金工具 - 文案管理 API (SP1-02)
+得物掘金工具 - 文案管理 API (SP1-02, SP7-03, SP7-04)
 """
-from typing import Optional
+from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from loguru import logger
+from pydantic import BaseModel
 
-from models import Copywriting, get_db
+from models import Copywriting, Task, get_db
 from schemas import CopywritingCreate, CopywritingUpdate, CopywritingResponse, CopywritingListResponse
 
 router = APIRouter(tags=["文案管理"])
@@ -115,6 +116,51 @@ async def delete_copywriting(
     if not copywriting:
         raise HTTPException(status_code=404, detail="文案不存在")
 
+    # SP7-04: 删除前引用检查
+    ref_result = await db.execute(
+        select(func.count()).select_from(Task).where(Task.copywriting_id == copywriting_id)
+    )
+    ref_count = ref_result.scalar() or 0
+    if ref_count > 0:
+        raise HTTPException(status_code=409, detail="文案被 {} 个任务引用，无法删除".format(ref_count))
+
     await db.delete(copywriting)
     await db.commit()
     logger.info("文案删除成功: copywriting_id={}", copywriting_id)
+
+
+# ─── SP7-03: 文案批量导入 ────────────────────────────────────────────────────
+
+class ImportResult(BaseModel):
+    total_lines: int = 0
+    imported: int = 0
+    skipped_empty: int = 0
+
+
+@router.post("/import", response_model=ImportResult)
+async def import_copywritings(
+    product_id: Optional[int] = Query(None, description="关联的商品ID"),
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+) -> ImportResult:
+    """从 .txt 文件批量导入文案（一行一条）"""
+    if not file.filename or not file.filename.endswith(".txt"):
+        raise HTTPException(status_code=400, detail="仅支持 .txt 文件")
+
+    content = await file.read()
+    text = content.decode("utf-8", errors="ignore")
+    lines = text.splitlines()
+
+    result = ImportResult(total_lines=len(lines))
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            result.skipped_empty += 1
+            continue
+        cw = Copywriting(content=stripped, product_id=product_id, source_type="import")
+        db.add(cw)
+        result.imported += 1
+
+    await db.commit()
+    logger.info("文案批量导入完成: imported={}, skipped={}", result.imported, result.skipped_empty)
+    return result
