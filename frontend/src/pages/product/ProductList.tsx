@@ -1,23 +1,32 @@
 import { useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Table, Button, Space, Typography, message,
   Modal, Form, Input, Popconfirm,
 } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, LinkOutlined } from '@ant-design/icons'
 
-import { useProductsV2, useCreateProductV2, useDeleteProductV2, useUpdateProductV2 } from '@/hooks'
+import { useProductsV2, useCreateProductV2, useDeleteProductV2, useUpdateProductV2, useVideos, useCopywritings } from '@/hooks'
 import type { ProductResponse } from '@/types/material'
 import { handleApiError } from '@/utils/error'
 import ListPageLayout from '@/components/ListPageLayout'
 
-const { Text } = Typography
+const { Text, Link } = Typography
 
 interface ProductFormValues {
   name: string
   link?: string
 }
 
+function ProductCountCell({ productId, type }: { productId: number; type: 'videos' | 'copywritings' }) {
+  const { data: videos = [] } = useVideos(type === 'videos' ? productId : undefined)
+  const { data: copywritings = [] } = useCopywritings(type === 'copywritings' ? productId : undefined)
+  const count = type === 'videos' ? videos.length : copywritings.length
+  return <Text>{count}</Text>
+}
+
 export default function ProductList() {
+  const navigate = useNavigate()
   const [modalOpen, setModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<ProductResponse | null>(null)
   const [searchText, setSearchText] = useState('')
@@ -72,6 +81,9 @@ export default function ProductList() {
       dataIndex: 'name',
       key: 'name',
       ellipsis: true,
+      render: (v: string, record: ProductResponse) => (
+        <Link onClick={() => navigate(`/product/${record.id}`)}>{v}</Link>
+      ),
     },
     {
       title: '商品链接',
@@ -81,6 +93,22 @@ export default function ProductList() {
       render: (v: string | null) => v
         ? <Text type="secondary" style={{ fontSize: 12 }}>{v}</Text>
         : <Text type="secondary">—</Text>,
+    },
+    {
+      title: '视频数',
+      key: 'video_count',
+      width: 80,
+      render: (_: unknown, record: ProductResponse) => (
+        <ProductCountCell productId={record.id} type="videos" />
+      ),
+    },
+    {
+      title: '文案数',
+      key: 'copywriting_count',
+      width: 80,
+      render: (_: unknown, record: ProductResponse) => (
+        <ProductCountCell productId={record.id} type="copywritings" />
+      ),
     },
     {
       title: '创建时间',

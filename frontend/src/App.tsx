@@ -19,6 +19,7 @@ import CoverList from './pages/material/CoverList'
 import AudioList from './pages/material/AudioList'
 import TopicList from './pages/material/TopicList'
 import ProductList from './pages/product/ProductList'
+import ProductDetail from './pages/product/ProductDetail'
 
 dayjs.locale('zh-cn')
 
@@ -52,6 +53,7 @@ function App() {
 
               {/* 商品管理 */}
               <Route path="product" element={<ProductList />} />
+              <Route path="product/:id" element={<ProductDetail />} />
 
               <Route path="ai-clip" element={<AIClip />} />
               <Route path="settings" element={<Settings />} />
