@@ -5,14 +5,28 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/services/api'
 import type { ProductResponse, ProductListResponse, ProductCreate } from '@/types/material'
 
-export const useProducts = () =>
+export const useProducts = (name?: string) =>
   useQuery<ProductResponse[]>({
-    queryKey: ['products-v2'],
+    queryKey: ['products-v2', name],
     queryFn: async () => {
-      const { data } = await api.get<ProductListResponse>('/products')
+      const { data } = await api.get<ProductListResponse>('/products', {
+        params: name ? { name } : undefined,
+      })
       return data.items
     },
   })
+
+export const useBatchDeleteProducts = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (ids: number[]) => {
+      await Promise.all(ids.map((id) => api.delete(`/products/${id}`)))
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products-v2'] })
+    },
+  })
+}
 
 export const useCreateProduct = () => {
   const queryClient = useQueryClient()

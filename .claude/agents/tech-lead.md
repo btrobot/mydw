@@ -76,6 +76,7 @@ User (Product Owner) — Strategic alignment
 - `qa-lead` for testing
 - `security-expert` for security audits
 - `devops-engineer` for CI/CD and deployment
+- `ui-designer` for page specs and design review
 
 ## Quality Standards
 

@@ -1,12 +1,12 @@
 import { useState, useCallback } from 'react'
 import {
   Table, Button, Space, Typography, message,
-  Popconfirm, Upload, Tag, InputNumber,
+  Popconfirm, Upload, Tag, Select,
 } from 'antd'
 import type { UploadProps } from 'antd'
 import { UploadOutlined } from '@ant-design/icons'
 
-import { useCovers, useUploadCover, useDeleteCover, useBatchDeleteCovers } from '@/hooks'
+import { useCovers, useUploadCover, useDeleteCover, useBatchDeleteCovers, useVideos } from '@/hooks'
 import type { CoverResponse } from '@/types/material'
 import { formatSize } from '@/utils/format'
 import { handleApiError } from '@/utils/error'
@@ -18,6 +18,7 @@ const { Text } = Typography
 export default function CoverList() {
   const [videoFilter, setVideoFilter] = useState<number | undefined>(undefined)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const { data: videos = [] } = useVideos()
   const { data: covers = [], isLoading } = useCovers(videoFilter)
   const uploadCover = useUploadCover()
   const deleteCover = useDeleteCover()
@@ -98,12 +99,13 @@ export default function CoverList() {
   return (
     <ListPageLayout
       filterBar={
-        <InputNumber
-          placeholder="视频ID筛选"
-          style={{ width: 140 }}
-          min={1}
+        <Select
+          placeholder="按视频筛选"
+          style={{ width: 200 }}
+          allowClear
           value={videoFilter}
-          onChange={(v) => setVideoFilter(v ?? undefined)}
+          onChange={(v: number | undefined) => setVideoFilter(v)}
+          options={videos.map((video) => ({ label: video.name, value: video.id }))}
         />
       }
       actionBar={

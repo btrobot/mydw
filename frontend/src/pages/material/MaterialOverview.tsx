@@ -16,6 +16,8 @@ interface MaterialStats {
   audios: number
   topics: number
   coverage_rate: number
+  products: number
+  products_with_video: number
 }
 
 export default function MaterialOverview() {

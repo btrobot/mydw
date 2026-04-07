@@ -87,6 +87,8 @@ User (Product Owner)
 | Conflict escalation | Tech issues -> Tech Lead; Security -> Security Expert; UI -> UI Designer |
 | Cross-domain prohibition | No modifying other domain's code without authorization |
 | Retry limit | Max 2 retries per prompt, then reroute or absorb |
+| Agent delegation | Main session orchestrates all agents; platform agents cannot nest-delegate |
+| Custom agents | ui-designer uses `general-purpose` subagent_type with role prompt injection |
 
 ## Memory System
 

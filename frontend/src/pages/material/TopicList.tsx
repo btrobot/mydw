@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import {
   Table, Button, Space, Typography, message,
-  Modal, Form, Input, Select, Popconfirm, Card, Tag, Empty,
+  Modal, Form, Input, InputNumber, Select, Popconfirm, Card, Tag, Empty,
 } from 'antd'
 import {
   PlusOutlined, SearchOutlined, GlobalOutlined,
@@ -48,9 +48,6 @@ export default function TopicList() {
     setSearchKeyword(searchInput.trim())
   }, [searchInput])
 
-  const handleAddFromSearch = useCallback(async (topic: TopicResponse) => {
-    message.success(`话题「${topic.name}」已在话题库中`)
-  }, [])
 
   const handleOpenGlobalModal = useCallback(() => {
     setSelectedGlobalIds(globalTopicsData?.topic_ids ?? [])
@@ -161,9 +158,7 @@ export default function TopicList() {
                 <Space key={t.id} size={4}>
                   <Tag color="blue">{t.name}</Tag>
                   <Tag color="orange">{t.heat.toLocaleString()}</Tag>
-                  <Button size="small" type="link" onClick={() => handleAddFromSearch(t)}>
-                    添加
-                  </Button>
+                  <Text type="secondary" style={{ fontSize: 12 }}>已自动入库</Text>
                 </Space>
               ))}
             </Space>
@@ -241,7 +236,7 @@ export default function TopicList() {
             <Input placeholder="话题名称" />
           </Form.Item>
           <Form.Item name="heat" label="热度">
-            <Input type="number" placeholder="0" />
+            <InputNumber placeholder="0" style={{ width: '100%' }} min={0} />
           </Form.Item>
         </Form>
       </Modal>

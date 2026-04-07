@@ -5,8 +5,9 @@ import {
   Modal, Form, Input, Popconfirm,
 } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, LinkOutlined } from '@ant-design/icons'
+import BatchDeleteButton from '@/components/BatchDeleteButton'
 
-import { useProductsV2, useCreateProductV2, useDeleteProductV2, useUpdateProductV2, useVideos, useCopywritings } from '@/hooks'
+import { useProductsV2, useCreateProductV2, useDeleteProductV2, useUpdateProductV2, useBatchDeleteProducts, useVideos, useCopywritings } from '@/hooks'
 import type { ProductResponse } from '@/types/material'
 import { handleApiError } from '@/utils/error'
 import ListPageLayout from '@/components/ListPageLayout'
@@ -30,16 +31,14 @@ export default function ProductList() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<ProductResponse | null>(null)
   const [searchText, setSearchText] = useState('')
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [form] = Form.useForm<ProductFormValues>()
 
-  const { data: products = [], isLoading } = useProductsV2()
+  const { data: products = [], isLoading } = useProductsV2(searchText || undefined)
   const createProduct = useCreateProductV2()
   const deleteProduct = useDeleteProductV2()
   const updateProduct = useUpdateProductV2()
-
-  const filtered = products.filter((p: ProductResponse) =>
-    p.name.toLowerCase().includes(searchText.toLowerCase())
-  )
+  const batchDeleteProducts = useBatchDeleteProducts()
 
   const handleAdd = useCallback(async () => {
     try {
@@ -74,6 +73,16 @@ export default function ProductList() {
       handleApiError(error, '删除商品失败')
     }
   }, [deleteProduct])
+
+  const handleBatchDelete = useCallback(async () => {
+    try {
+      await batchDeleteProducts.mutateAsync(selectedIds)
+      setSelectedIds([])
+      message.success(`已删除 ${selectedIds.length} 个商品`)
+    } catch (error: unknown) {
+      handleApiError(error, '批量删除失败')
+    }
+  }, [selectedIds, batchDeleteProducts])
 
   const columns = [
     {
@@ -149,22 +158,30 @@ export default function ProductList() {
           />
         }
         actionBar={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => { setEditingProduct(null); form.resetFields(); setModalOpen(true) }}
-          >
-            添加商品
-          </Button>
+          <Space>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => { setEditingProduct(null); form.resetFields(); setModalOpen(true) }}
+            >
+              添加商品
+            </Button>
+            <BatchDeleteButton
+              count={selectedIds.length}
+              onConfirm={handleBatchDelete}
+              loading={batchDeleteProducts.isPending}
+            />
+          </Space>
         }
       >
         <Table<ProductResponse>
-          dataSource={filtered}
+          dataSource={products}
           rowKey="id"
           columns={columns}
           loading={isLoading}
           pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
           size="small"
+          rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys as number[]) }}
         />
       </ListPageLayout>
 

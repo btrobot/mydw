@@ -1,15 +1,15 @@
 import { useState, useCallback } from 'react'
 import {
   Table, Button, Space, Typography, message,
-  Modal, Form, Input, Select, Popconfirm, Upload, Tag,
+  Modal, Form, Input, Popconfirm, Upload, Tag,
 } from 'antd'
 import type { UploadProps } from 'antd'
 import {
   PlusOutlined, UploadOutlined, ScanOutlined,
 } from '@ant-design/icons'
 
-import { useProductsV2, useVideos, useCreateVideo, useDeleteVideo, useUploadVideo, useScanVideos, useBatchDeleteVideos } from '@/hooks'
-import type { ProductResponse, VideoResponse } from '@/types/material'
+import { useVideos, useCreateVideo, useDeleteVideo, useUploadVideo, useScanVideos, useBatchDeleteVideos } from '@/hooks'
+import type { VideoResponse } from '@/types/material'
 import { formatSize, formatDuration } from '@/utils/format'
 import { handleApiError } from '@/utils/error'
 import ListPageLayout from '@/components/ListPageLayout'
@@ -31,15 +31,12 @@ export default function VideoList() {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [form] = Form.useForm<VideoFormValues>()
 
-  const { data: products = [] } = useProductsV2()
   const { data: videos = [], isLoading } = useVideos(productFilter)
   const createVideo = useCreateVideo()
   const deleteVideo = useDeleteVideo()
   const uploadVideo = useUploadVideo()
   const scanVideos = useScanVideos()
   const batchDeleteVideos = useBatchDeleteVideos()
-
-  const productOptions = products.map((p: ProductResponse) => ({ label: p.name, value: p.id }))
 
   const handleAdd = useCallback(async () => {
     try {
@@ -225,7 +222,7 @@ export default function VideoList() {
             <Input placeholder="本地文件路径" />
           </Form.Item>
           <Form.Item name="product_id" label="关联商品">
-            <Select allowClear placeholder="选择商品" options={productOptions} />
+            <ProductSelect allowClear placeholder="选择商品" />
           </Form.Item>
         </Form>
       </Modal>

@@ -1,16 +1,16 @@
 import { useState, useCallback } from 'react'
 import {
   Table, Button, Space, Typography, message,
-  Modal, Form, Input, Select, Popconfirm, Upload, Tag,
+  Modal, Form, Input, Popconfirm, Upload, Tag,
 } from 'antd'
 import type { UploadProps } from 'antd'
 import { PlusOutlined, ImportOutlined } from '@ant-design/icons'
 
 import {
-  useProductsV2, useCopywritings, useCreateCopywriting, useDeleteCopywriting,
+  useCopywritings, useCreateCopywriting, useDeleteCopywriting,
   useUpdateCopywriting, useImportCopywritings, useBatchDeleteCopywritings,
 } from '@/hooks'
-import type { ProductResponse, CopywritingResponse } from '@/types/material'
+import type { CopywritingResponse } from '@/types/material'
 import { handleApiError } from '@/utils/error'
 import ListPageLayout from '@/components/ListPageLayout'
 import ProductSelect from '@/components/ProductSelect'
@@ -31,15 +31,12 @@ export default function CopywritingList() {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [form] = Form.useForm<CopywritingFormValues>()
 
-  const { data: products = [] } = useProductsV2()
   const { data: copywritings = [], isLoading } = useCopywritings(productFilter)
   const createCopywriting = useCreateCopywriting()
   const deleteCopywriting = useDeleteCopywriting()
   const updateCopywriting = useUpdateCopywriting()
   const importCopywritings = useImportCopywritings()
   const batchDeleteCopywritings = useBatchDeleteCopywritings()
-
-  const productOptions = products.map((p: ProductResponse) => ({ label: p.name, value: p.id }))
 
   const handleAdd = useCallback(async () => {
     try {
@@ -153,12 +150,6 @@ export default function CopywritingList() {
         }
         actionBar={
           <Space>
-            <Button
-              icon={<PlusOutlined />}
-              onClick={() => { setEditingCw(null); form.resetFields(); setAddModalOpen(true) }}
-            >
-              添加文案
-            </Button>
             <ProductSelect
               allowClear
               placeholder="导入到商品"
@@ -171,6 +162,12 @@ export default function CopywritingList() {
                 批量导入
               </Button>
             </Upload>
+            <Button
+              icon={<PlusOutlined />}
+              onClick={() => { setEditingCw(null); form.resetFields(); setAddModalOpen(true) }}
+            >
+              添加文案
+            </Button>
             <BatchDeleteButton
               count={selectedIds.length}
               onConfirm={handleBatchDelete}
@@ -194,7 +191,7 @@ export default function CopywritingList() {
         title={editingCw ? '编辑文案' : '添加文案'}
         open={addModalOpen}
         onOk={handleAdd}
-        confirmLoading={createCopywriting.isPending}
+        confirmLoading={editingCw ? updateCopywriting.isPending : createCopywriting.isPending}
         onCancel={() => { setAddModalOpen(false); form.resetFields() }}
         destroyOnClose
       >
@@ -203,7 +200,7 @@ export default function CopywritingList() {
             <Input.TextArea rows={4} placeholder="请输入文案内容" />
           </Form.Item>
           <Form.Item name="product_id" label="关联商品">
-            <Select allowClear placeholder="选择商品" options={productOptions} />
+            <ProductSelect allowClear placeholder="选择商品" />
           </Form.Item>
         </Form>
       </Modal>

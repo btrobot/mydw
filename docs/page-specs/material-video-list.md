@@ -15,6 +15,8 @@
 
 ### 1.2 ActionBar（右侧）
 
+> 排列原则：上传为主操作的页面，上传目标选择器排首位；添加为主操作的页面，添加按钮排首位。
+
 | # | Element | Type | Icon | Behavior |
 |---|---------|------|------|----------|
 | 1 | 上传到商品 | `ProductSelect`（allowClear, width: 160） | — | 选择商品后，上传的视频自动关联该商品 |
@@ -68,7 +70,7 @@
 |---|-------|-------|---------|----------|-------|
 | 1 | 视频名称 | `name` | `Input` | 是 | "请输入名称" |
 | 2 | 文件路径 | `file_path` | `Input` | 是 | "请输入文件路径" |
-| 3 | 关联商品 | `product_id` | `Select`（allowClear, 商品列表） | 否 | — |
+| 3 | 关联商品 | `product_id` | `ProductSelect`（allowClear） | 否 | — |
 
 ## 6. 交互流程
 
@@ -80,7 +82,7 @@
 2. 点击"上传视频" → 选择本地 mp4/mov 文件 → `POST /api/videos/upload` → 成功提示
 
 ### 6.3 扫描导入
-1. 点击"扫描导入" → `POST /api/videos/scan` → 弹出 Modal.info 显示结果统计
+1. 点击"扫描导入" → `POST /api/videos/scan` → 弹出 Modal.info 显示结果统计（失败数仅在 > 0 时显示）
 
 ### 6.4 手动添加
 1. 点击"手动添加" → 打开 Modal → 填写表单 → 确认 → `POST /api/videos` → 关闭 Modal
@@ -99,6 +101,6 @@
 |------|------|
 | Search conditions | 1 |
 | Table columns | 7（含操作列） |
-| Action buttons (toolbar) | 5（上传到商品选择器 + 上传视频 + 扫描导入 + 手动添加 + 批量删除） |
+| Action buttons (toolbar) | 4 按钮 + 1 选择器（上传到商品选择器 + 上传视频 + 扫描导入 + 手动添加 + 批量删除） |
 | Action buttons (row) | 1（删除） |
 | Modal forms | 1（添加视频，3 字段） |

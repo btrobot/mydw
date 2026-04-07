@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  Button, Descriptions, Tabs, Table, Typography, Space,
+  Button, Descriptions, Tabs, Table, Typography, Space, Flex,
   Modal, Form, Input, message, Spin,
 } from 'antd'
 import { ArrowLeftOutlined, EditOutlined, LinkOutlined } from '@ant-design/icons'
@@ -110,26 +110,24 @@ export default function ProductDetail() {
 
   if (productsLoading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
+      <Flex justify="center" style={{ padding: 48 }}>
         <Spin size="large" />
-      </div>
+      </Flex>
     )
   }
 
   if (!product) {
     return (
-      <div style={{ padding: 24 }}>
+      <Flex vertical gap={24} style={{ padding: 24 }}>
         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>返回</Button>
-        <div style={{ marginTop: 24 }}>
-          <Text type="secondary">商品不存在</Text>
-        </div>
-      </div>
+        <Text type="secondary">商品不存在</Text>
+      </Flex>
     )
   }
 
   return (
-    <div style={{ padding: 24 }}>
-      <Space style={{ marginBottom: 16 }}>
+    <Flex vertical gap={16} style={{ padding: 24 }}>
+      <Space>
         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>返回</Button>
         <Title level={4} style={{ margin: 0 }}>{product.name}</Title>
       </Space>
@@ -137,7 +135,6 @@ export default function ProductDetail() {
       <Descriptions
         bordered
         size="small"
-        style={{ marginBottom: 24 }}
         extra={
           <Button icon={<EditOutlined />} onClick={handleEditOpen}>编辑</Button>
         }
@@ -145,12 +142,30 @@ export default function ProductDetail() {
         <Descriptions.Item label="商品名称">{product.name}</Descriptions.Item>
         <Descriptions.Item label="商品链接">
           {product.link
-            ? <Text type="secondary" style={{ fontSize: 12 }}>{product.link}</Text>
+            ? <Text type="secondary">{product.link}</Text>
             : <Text type="secondary">—</Text>
           }
         </Descriptions.Item>
+        {product.dewu_url && (
+          <Descriptions.Item label="得物链接">
+            <Text type="secondary">{product.dewu_url}</Text>
+          </Descriptions.Item>
+        )}
+        {product.description && (
+          <Descriptions.Item label="商品描述" span={3}>
+            {product.description}
+          </Descriptions.Item>
+        )}
+        {product.image_url && (
+          <Descriptions.Item label="图片链接">
+            <Text type="secondary">{product.image_url}</Text>
+          </Descriptions.Item>
+        )}
         <Descriptions.Item label="创建时间">
           {new Date(product.created_at).toLocaleString('zh-CN')}
+        </Descriptions.Item>
+        <Descriptions.Item label="更新时间">
+          {new Date(product.updated_at).toLocaleString('zh-CN')}
         </Descriptions.Item>
       </Descriptions>
 
@@ -208,6 +223,6 @@ export default function ProductDetail() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </Flex>
   )
 }

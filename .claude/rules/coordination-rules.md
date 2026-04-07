@@ -97,13 +97,18 @@ Multi-Agent collaboration rules ensuring efficient coordination and conflict res
 [What leadership should do]
 ```
 
+## Platform Notes
+
+- Custom agent names (e.g., `ui-designer`) are not built-in subagent_type values. Use `general-purpose` and inject the role definition in the prompt.
+- Subagents cannot spawn other subagents (see https://code.claude.com/docs/en/sub-agents). The main session is always the orchestrator.
+
 ## Agent Handoff Protocol
 
-When delegating work from one agent to another, the caller MUST provide a structured handoff to ensure the receiving agent has sufficient context.
+When delegating work from the main session to an agent, the caller MUST provide a structured handoff.
 
 ### Handoff Format
 
-The main session (or delegating agent) MUST include these fields in the agent prompt:
+The main session MUST include these fields in the agent prompt:
 
 ```markdown
 ## Handoff
