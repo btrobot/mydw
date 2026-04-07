@@ -6,12 +6,20 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from loguru import logger
 
 from models import Video, get_db
 from schemas import VideoCreate, VideoUpdate, VideoResponse, VideoListResponse
 
 router = APIRouter(tags=["视频管理"])
+
+
+async def _get_video_with_product(db: AsyncSession, video_id: int) -> Video | None:
+    result = await db.execute(
+        select(Video).options(selectinload(Video.product)).where(Video.id == video_id)
+    )
+    return result.scalars().first()
 
 
 @router.get("", response_model=VideoListResponse)
@@ -33,7 +41,7 @@ async def list_videos(
     total = total_result.scalar() or 0
 
     result = await db.execute(
-        query.order_by(Video.created_at.desc()).offset(skip).limit(limit)
+        query.options(selectinload(Video.product)).order_by(Video.created_at.desc()).offset(skip).limit(limit)
     )
     items = result.scalars().all()
 
@@ -46,8 +54,7 @@ async def get_video(
     db: AsyncSession = Depends(get_db),
 ) -> VideoResponse:
     """获取单个视频"""
-    result = await db.execute(select(Video).where(Video.id == video_id))
-    video = result.scalars().first()
+    video = await _get_video_with_product(db, video_id)
     if not video:
         raise HTTPException(status_code=404, detail="视频不存在")
     return video
@@ -68,7 +75,7 @@ async def create_video(
     )
     db.add(video)
     await db.commit()
-    await db.refresh(video)
+    video = await _get_video_with_product(db, video.id)
     logger.info("视频创建成功: video_id={}, name={}", video.id, video.name)
     return video
 
@@ -80,8 +87,7 @@ async def update_video(
     db: AsyncSession = Depends(get_db),
 ) -> VideoResponse:
     """更新视频"""
-    result = await db.execute(select(Video).where(Video.id == video_id))
-    video = result.scalars().first()
+    video = await _get_video_with_product(db, video_id)
     if not video:
         raise HTTPException(status_code=404, detail="视频不存在")
 
@@ -91,7 +97,7 @@ async def update_video(
         video.product_id = data.product_id
 
     await db.commit()
-    await db.refresh(video)
+    video = await _get_video_with_product(db, video_id)
     logger.info("视频更新成功: video_id={}", video_id)
     return video
 
@@ -102,8 +108,7 @@ async def delete_video(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     """删除视频"""
-    result = await db.execute(select(Video).where(Video.id == video_id))
-    video = result.scalars().first()
+    video = await _get_video_with_product(db, video_id)
     if not video:
         raise HTTPException(status_code=404, detail="视频不存在")
 

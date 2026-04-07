@@ -6,12 +6,20 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from loguru import logger
 
 from models import Copywriting, get_db
 from schemas import CopywritingCreate, CopywritingUpdate, CopywritingResponse, CopywritingListResponse
 
 router = APIRouter(tags=["文案管理"])
+
+
+async def _get_copywriting_with_product(db: AsyncSession, copywriting_id: int) -> Copywriting | None:
+    result = await db.execute(
+        select(Copywriting).options(selectinload(Copywriting.product)).where(Copywriting.id == copywriting_id)
+    )
+    return result.scalars().first()
 
 
 @router.get("", response_model=CopywritingListResponse)
@@ -37,7 +45,7 @@ async def list_copywritings(
     total = total_result.scalar() or 0
 
     result = await db.execute(
-        query.order_by(Copywriting.created_at.desc()).offset(skip).limit(limit)
+        query.options(selectinload(Copywriting.product)).order_by(Copywriting.created_at.desc()).offset(skip).limit(limit)
     )
     items = result.scalars().all()
 
@@ -50,8 +58,7 @@ async def get_copywriting(
     db: AsyncSession = Depends(get_db),
 ) -> CopywritingResponse:
     """获取单个文案"""
-    result = await db.execute(select(Copywriting).where(Copywriting.id == copywriting_id))
-    copywriting = result.scalars().first()
+    copywriting = await _get_copywriting_with_product(db, copywriting_id)
     if not copywriting:
         raise HTTPException(status_code=404, detail="文案不存在")
     return copywriting
@@ -71,7 +78,7 @@ async def create_copywriting(
     )
     db.add(copywriting)
     await db.commit()
-    await db.refresh(copywriting)
+    copywriting = await _get_copywriting_with_product(db, copywriting.id)
     logger.info("文案创建成功: copywriting_id={}", copywriting.id)
     return copywriting
 
@@ -83,8 +90,7 @@ async def update_copywriting(
     db: AsyncSession = Depends(get_db),
 ) -> CopywritingResponse:
     """更新文案"""
-    result = await db.execute(select(Copywriting).where(Copywriting.id == copywriting_id))
-    copywriting = result.scalars().first()
+    copywriting = await _get_copywriting_with_product(db, copywriting_id)
     if not copywriting:
         raise HTTPException(status_code=404, detail="文案不存在")
 
@@ -93,7 +99,7 @@ async def update_copywriting(
         setattr(copywriting, field, value)
 
     await db.commit()
-    await db.refresh(copywriting)
+    copywriting = await _get_copywriting_with_product(db, copywriting_id)
     logger.info("文案更新成功: copywriting_id={}", copywriting_id)
     return copywriting
 
