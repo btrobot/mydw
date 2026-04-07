@@ -45,3 +45,20 @@ export const useDeleteCover = () => {
     },
   })
 }
+
+/** SP8-02: 封面自动提取 */
+export const useExtractCover = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ videoId, timestamp }: { videoId: number; timestamp?: number }) => {
+      const { data } = await api.post<CoverResponse>('/covers/extract', {
+        video_id: videoId,
+        timestamp: timestamp ?? 1.0,
+      })
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['covers'] })
+    },
+  })
+}

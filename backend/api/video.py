@@ -15,6 +15,7 @@ from models import Video, Product, Task, get_db
 from schemas import VideoCreate, VideoUpdate, VideoResponse, VideoListResponse
 from core.config import settings
 from utils.ffprobe import extract_video_metadata
+from utils.hash import compute_file_hash
 
 router = APIRouter(tags=["视频管理"])
 
@@ -29,17 +30,21 @@ async def _get_video_with_product(db: AsyncSession, video_id: int) -> Video | No
 @router.get("", response_model=VideoListResponse)
 async def list_videos(
     product_id: Optional[int] = Query(None, description="按商品ID过滤"),
+    keyword: Optional[str] = Query(None, description="按名称搜索"),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
 ) -> VideoListResponse:
-    """获取视频列表（支持分页和商品过滤）"""
+    """获取视频列表（支持分页、商品过滤、关键词搜索）"""
     query = select(Video)
     count_query = select(func.count()).select_from(Video)
 
     if product_id is not None:
         query = query.where(Video.product_id == product_id)
         count_query = count_query.where(Video.product_id == product_id)
+    if keyword:
+        query = query.where(Video.name.contains(keyword))
+        count_query = count_query.where(Video.name.contains(keyword))
 
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
@@ -191,6 +196,13 @@ async def upload_video(
     video.duration = meta.duration
     video.width = meta.width
     video.height = meta.height
+    # SP8-01: file_hash 去重
+    file_hash = await compute_file_hash(str(file_path))
+    if file_hash:
+        dup = await db.execute(select(Video).where(Video.file_hash == file_hash))
+        if dup.scalars().first():
+            logger.info("视频重复: hash={}, filename={}", file_hash[:16], safe_name)
+    video.file_hash = file_hash
     db.add(video)
     await db.commit()
     video = await _get_video_with_product(db, video.id)
@@ -265,6 +277,7 @@ async def scan_videos(
             try:
                 stat = file_path.stat()
                 meta = await extract_video_metadata(str_path)
+                file_hash = await compute_file_hash(str_path)
                 video = Video(
                     name=file_path.name,
                     file_path=str_path,
@@ -273,6 +286,7 @@ async def scan_videos(
                     duration=meta.duration,
                     width=meta.width,
                     height=meta.height,
+                    file_hash=file_hash,
                     source_type="scan",
                 )
                 db.add(video)

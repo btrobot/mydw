@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import {
   Table, Button, Space, Tabs, Card, Typography, message,
-  Modal, Form, Input, Select, Popconfirm, Upload, Tag, Empty,
+  Modal, Form, Input, Select, Popconfirm, Upload, Tag, Empty, Statistic, Row, Col,
 } from 'antd'
 import type { UploadProps } from 'antd'
 import {
@@ -16,6 +17,7 @@ import { useCopywritings, useCreateCopywriting, useDeleteCopywriting, useUpdateC
 import { useCovers, useUploadCover, useDeleteCover } from '@/hooks'
 import { useAudios, useUploadAudio, useDeleteAudio } from '@/hooks'
 import { useTopics, useCreateTopic, useDeleteTopic, useSearchTopics, useGlobalTopics, useSetGlobalTopics } from '@/hooks'
+import { api } from '@/services/api'
 
 import type {
   ProductResponse,
@@ -1007,8 +1009,23 @@ const tabItems = [
 ]
 
 export default function Material() {
+  const { data: stats } = useQuery<Record<string, number>>({
+    queryKey: ['material-stats'],
+    queryFn: async () => (await api.get('/system/material-stats')).data,
+  })
+
   return (
     <>
+      {stats && (
+        <Row gutter={16} style={{ marginBottom: 16 }}>
+          <Col span={4}><Card size="small"><Statistic title="视频" value={stats.videos} /></Card></Col>
+          <Col span={4}><Card size="small"><Statistic title="文案" value={stats.copywritings} /></Card></Col>
+          <Col span={4}><Card size="small"><Statistic title="封面" value={stats.covers} /></Card></Col>
+          <Col span={4}><Card size="small"><Statistic title="音频" value={stats.audios} /></Card></Col>
+          <Col span={4}><Card size="small"><Statistic title="话题" value={stats.topics} /></Card></Col>
+          <Col span={4}><Card size="small"><Statistic title="商品覆盖率" value={stats.coverage_rate * 100} suffix="%" precision={0} /></Card></Col>
+        </Row>
+      )}
       <ProductSection />
       <Tabs defaultActiveKey="video" items={tabItems} />
     </>

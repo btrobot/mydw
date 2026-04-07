@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from loguru import logger
 
-from models import Account, Task, Product, SystemLog, PublishConfig
+from models import Account, Task, Product, SystemLog, PublishConfig, Video, Copywriting, Cover, Audio, Topic
 from models import get_db
 from schemas import (
     SystemStats, SystemLogResponse, SystemLogListResponse,
@@ -143,4 +143,32 @@ async def backup_data(request: BackupRequest, db: AsyncSession = Depends(get_db)
     return {
         "success": True,
         "backup_file": str(backup_file)
+    }
+
+
+# ─── SP8-05: 素材统计 ────────────────────────────────────────────────────────
+
+@router.get("/material-stats")
+async def material_stats(db: AsyncSession = Depends(get_db)):
+    """素材统计：各类数量、商品覆盖率"""
+    video_count = (await db.execute(select(func.count()).select_from(Video))).scalar() or 0
+    copywriting_count = (await db.execute(select(func.count()).select_from(Copywriting))).scalar() or 0
+    cover_count = (await db.execute(select(func.count()).select_from(Cover))).scalar() or 0
+    audio_count = (await db.execute(select(func.count()).select_from(Audio))).scalar() or 0
+    topic_count = (await db.execute(select(func.count()).select_from(Topic))).scalar() or 0
+    product_count = (await db.execute(select(func.count()).select_from(Product))).scalar() or 0
+
+    products_with_video = (await db.execute(
+        select(func.count(func.distinct(Video.product_id))).where(Video.product_id.isnot(None))
+    )).scalar() or 0
+
+    return {
+        "videos": video_count,
+        "copywritings": copywriting_count,
+        "covers": cover_count,
+        "audios": audio_count,
+        "topics": topic_count,
+        "products": product_count,
+        "products_with_video": products_with_video,
+        "coverage_rate": round(products_with_video / product_count, 2) if product_count else 0,
     }

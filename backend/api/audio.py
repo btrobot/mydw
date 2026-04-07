@@ -1,5 +1,5 @@
 """
-得物掘金工具 - 音频管理 API (SP1-04)
+得物掘金工具 - 音频管理 API (SP1-04, SP8-03)
 """
 from pathlib import Path
 
@@ -11,6 +11,7 @@ from loguru import logger
 from models import Audio, get_db
 from schemas import AudioResponse
 from core.config import settings
+from utils.ffprobe import extract_video_metadata
 
 router = APIRouter(tags=["音频管理"])
 
@@ -48,6 +49,9 @@ async def upload_audio(
         file_path=str(file_path),
         file_size=len(content),
     )
+    # SP8-03: FFprobe 提取音频时长
+    meta = await extract_video_metadata(str(file_path))
+    audio.duration = meta.duration
     db.add(audio)
     await db.commit()
     await db.refresh(audio)

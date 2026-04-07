@@ -1,6 +1,7 @@
 """
-得物掘金工具 - 封面管理 API (SP1-03)
+得物掘金工具 - 封面管理 API (SP1-03, SP8-02)
 """
+import asyncio
 from typing import Optional
 from pathlib import Path
 
@@ -8,8 +9,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from loguru import logger
+from pydantic import BaseModel
 
-from models import Cover, get_db
+from models import Cover, Video, get_db
 from schemas import CoverResponse
 from core.config import settings
 
@@ -99,3 +101,48 @@ async def delete_cover(
     await db.delete(cover)
     await db.commit()
     logger.info("封面删除成功: cover_id={}", cover_id)
+
+
+# ─── SP8-02: 封面自动提取 ────────────────────────────────────────────────────
+
+class ExtractCoverRequest(BaseModel):
+    video_id: int
+    timestamp: float = 1.0  # 秒
+
+
+@router.post("/extract", response_model=CoverResponse, status_code=201)
+async def extract_cover(
+    data: ExtractCoverRequest,
+    db: AsyncSession = Depends(get_db),
+) -> CoverResponse:
+    """从视频指定时间点截取封面"""
+    result = await db.execute(select(Video).where(Video.id == data.video_id))
+    video = result.scalars().first()
+    if not video:
+        raise HTTPException(status_code=404, detail="视频不存在")
+    if not Path(video.file_path).exists():
+        raise HTTPException(status_code=400, detail="视频文件不存在")
+
+    out_dir = Path(settings.MATERIAL_BASE_PATH) / "cover"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_name = "{}_{:.0f}s.jpg".format(Path(video.file_path).stem, data.timestamp)
+    out_path = out_dir / out_name
+
+    proc = await asyncio.create_subprocess_exec(
+        "ffmpeg", "-y", "-ss", str(data.timestamp),
+        "-i", video.file_path, "-frames:v", "1", "-q:v", "2",
+        str(out_path),
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+    )
+    _, stderr = await asyncio.wait_for(proc.communicate(), timeout=15)
+    if proc.returncode != 0 or not out_path.exists():
+        logger.error("封面提取失败: video_id={}, stderr={}", data.video_id, stderr.decode()[:200])
+        raise HTTPException(status_code=500, detail="封面提取失败")
+
+    stat = out_path.stat()
+    cover = Cover(video_id=data.video_id, file_path=str(out_path), file_size=stat.st_size)
+    db.add(cover)
+    await db.commit()
+    await db.refresh(cover)
+    logger.info("封面提取成功: cover_id={}, video_id={}", cover.id, data.video_id)
+    return cover

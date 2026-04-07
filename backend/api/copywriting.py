@@ -27,6 +27,7 @@ async def _get_copywriting_with_product(db: AsyncSession, copywriting_id: int) -
 async def list_copywritings(
     product_id: Optional[int] = Query(None, description="按商品ID过滤"),
     source_type: Optional[str] = Query(None, description="按来源类型过滤"),
+    keyword: Optional[str] = Query(None, description="按内容搜索"),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
@@ -41,6 +42,9 @@ async def list_copywritings(
     if source_type is not None:
         query = query.where(Copywriting.source_type == source_type)
         count_query = count_query.where(Copywriting.source_type == source_type)
+    if keyword:
+        query = query.where(Copywriting.content.contains(keyword))
+        count_query = count_query.where(Copywriting.content.contains(keyword))
 
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0

@@ -83,7 +83,7 @@ export { useVideos, useCreateVideo, useDeleteVideo, useUploadVideo, useScanVideo
 export { useCopywritings, useCreateCopywriting, useDeleteCopywriting, useUpdateCopywriting, useImportCopywritings } from './useCopywriting'
 
 // Cover Hooks
-export { useCovers, useUploadCover, useDeleteCover } from './useCover'
+export { useCovers, useUploadCover, useDeleteCover, useExtractCover } from './useCover'
 
 // Audio Hooks
 export { useAudios, useUploadAudio, useDeleteAudio } from './useAudio'
