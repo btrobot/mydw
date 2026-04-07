@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, func
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, func, UniqueConstraint
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -54,6 +54,7 @@ class Task(Base):
     product_id = Column(Integer, ForeignKey("products.id"), nullable=True)
     material_id = Column(Integer, ForeignKey("materials.id"), nullable=True)
 
+    # DEPRECATED: Sprint 7 移除，使用 video_id FK 替代
     video_path = Column(String(512), nullable=True)
     content = Column(Text, nullable=True)  # 文案
     topic = Column(String(256), nullable=True)  # 话题
@@ -218,6 +219,8 @@ class TaskTopic(Base):
     task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
     topic_id = Column(Integer, ForeignKey("topics.id"), nullable=False, index=True)
 
+    __table_args__ = (UniqueConstraint('task_id', 'topic_id'),)
+
 
 class PublishLog(Base):
     """发布日志表"""
@@ -311,6 +314,8 @@ async def init_db():
     await migration_005.run_migration(engine)
     migration_006 = importlib.import_module("migrations.006_global_topics")
     await migration_006.run_migration(engine)
+    migration_007 = importlib.import_module("migrations.007_task_topic_unique")
+    await migration_007.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

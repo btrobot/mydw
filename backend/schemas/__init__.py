@@ -302,6 +302,13 @@ class TaskCreate(TaskBase):
     copywriting_id: Optional[int] = None
     audio_id: Optional[int] = None
 
+    @field_validator('video_path')
+    @classmethod
+    def validate_path(cls, v: Optional[str]) -> Optional[str]:
+        if v and '..' in v:
+            raise ValueError('路径不能包含 ..')
+        return v
+
 
 class TaskUpdate(BaseModel):
     """更新任务"""
@@ -492,6 +499,13 @@ class VideoCreate(BaseModel):
     product_id: Optional[int] = None
     file_size: Optional[int] = None
     duration: Optional[int] = None
+
+    @field_validator('file_path')
+    @classmethod
+    def validate_path(cls, v: str) -> str:
+        if '..' in v:
+            raise ValueError('路径不能包含 ..')
+        return v
 
 
 class VideoUpdate(BaseModel):

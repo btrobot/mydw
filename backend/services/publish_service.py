@@ -4,6 +4,7 @@
 import asyncio
 from typing import Optional, List
 from datetime import datetime, time
+from zoneinfo import ZoneInfo
 from loguru import logger
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,13 +44,13 @@ class PublishService:
         """获取下一个待发布任务"""
         # 检查是否在允许的时间范围内
         config = await self.get_config()
-        now = datetime.utcnow().time()
+        now = datetime.now(ZoneInfo("Asia/Shanghai")).time()
 
         start_time = time(config.start_hour)
         end_time = time(config.end_hour)
 
         if not (start_time <= now <= end_time):
-            logger.info(f"当前时间 {now} 不在发布时段 {start_time}-{end_time} 内")
+            logger.info("当前时间 {} 不在发布时段 {}-{} 内", now, start_time, end_time)
             return None
 
         # 获取待发布任务
@@ -73,7 +74,7 @@ class PublishService:
             published_today = len(result.scalars().all())
 
             if published_today >= config.max_per_account_per_day:
-                logger.info(f"账号 {task.account_id} 今日发布数已达上限")
+                logger.info("账号 {} 今日发布数已达上限", task.account_id)
                 task.status = "paused"
                 await self.db.commit()
                 return None
@@ -190,7 +191,7 @@ class PublishService:
                 log.message = "发布成功"
                 await self.db.commit()
 
-                logger.info(f"任务 {task.id} 发布成功")
+                logger.info("任务 {} 发布成功", task.id)
                 return True, "发布成功"
             else:
                 task.status = "failed"
@@ -200,11 +201,11 @@ class PublishService:
                 log.message = msg
                 await self.db.commit()
 
-                logger.error(f"任务 {task.id} 发布失败: {msg}")
+                logger.error("任务 {} 发布失败: {}", task.id, msg)
                 return False, msg
 
         except Exception as e:
-            logger.error(f"发布任务 {task.id} 异常: {e}")
+            logger.error("发布任务 {} 异常: {}", task.id, e)
             task.status = "failed"
             task.error_msg = str(e)
             await self.db.commit()
@@ -244,13 +245,13 @@ class PublishService:
 
                 # 等待间隔
                 interval = config.interval_minutes * 60
-                logger.info(f"等待 {config.interval_minutes} 分钟后继续...")
+                logger.info("等待 {} 分钟后继续...", config.interval_minutes)
                 await asyncio.sleep(interval)
 
         except asyncio.CancelledError:
             logger.info("发布服务已取消")
         except Exception as e:
-            logger.error(f"发布服务异常: {e}")
+            logger.error("发布服务异常: {}", e)
         finally:
             self.is_running = False
             logger.info("发布服务停止")

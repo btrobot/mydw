@@ -46,19 +46,23 @@ class TaskDistributor:
         assembler = TaskAssembler(self.db)
         tasks: List[Task] = []
 
-        for i, video_id in enumerate(video_ids):
-            account_id = account_ids[i % len(account_ids)]
+        # 按 account_id 分组，批量调用 assembler 减少 N+1
+        groups: dict[int, List[int]] = {}
+        for i, vid in enumerate(video_ids):
+            acct = account_ids[i % len(account_ids)]
+            groups.setdefault(acct, []).append(vid)
+
+        for acct_id, vids in groups.items():
             result = await assembler.assemble(
-                video_ids=[video_id],
-                account_id=account_id,
+                video_ids=vids,
+                account_id=acct_id,
                 copywriting_mode=copywriting_mode,
             )
             tasks.extend(result)
             logger.info(
-                "TaskDistributor: video_id={} -> account_id={} (index={})",
-                video_id,
-                account_id,
-                i,
+                "TaskDistributor: account_id={} <- {} 个视频",
+                acct_id,
+                len(vids),
             )
 
         logger.info(
