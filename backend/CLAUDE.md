@@ -45,7 +45,7 @@ backend/
 │   ├── system.py     # 系统
 │   └── ai.py         # AI 剪辑
 ├── core/             # 核心模块
-│   ├── browser.py    # Playwright 浏览器管理
+│   ├── browser.py    # Patchright 浏览器管理
 │   ├── dewu_client.py # 得物客户端
 │   └── config.py     # 配置
 ├── models/           # SQLAlchemy 模型
@@ -93,7 +93,7 @@ backend/
 - 路径: `backend/data/dewugojin.db`
 - 初始化: 启动时自动创建
 
-## Playwright
+## Patchright (via Playwright CLI)
 
 ```powershell
 # 安装浏览器
