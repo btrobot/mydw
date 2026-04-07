@@ -54,7 +54,12 @@ async def list_videos(
     )
     items = result.scalars().all()
 
-    return VideoListResponse(total=total, items=list(items))
+    # 批量检查文件存在性，避免在 Pydantic validator 中做逐条 I/O
+    responses = [VideoResponse.model_validate(item) for item in items]
+    for resp in responses:
+        resp.file_exists = Path(resp.file_path).exists()
+
+    return VideoListResponse(total=total, items=responses)
 
 
 @router.get("/{video_id}", response_model=VideoResponse)
@@ -143,6 +148,56 @@ async def delete_video(
     logger.info("视频删除成功: video_id={}", video_id)
 
 
+# ─── 批量删除 ────────────────────────────────────────────────────────────────
+
+class BatchDeleteRequest(BaseModel):
+    ids: List[int]
+
+
+class BatchDeleteResponse(BaseModel):
+    deleted: int
+    skipped: int
+    skipped_ids: List[int]
+
+
+@router.post("/batch-delete", response_model=BatchDeleteResponse)
+async def batch_delete_videos(
+    data: BatchDeleteRequest,
+    db: AsyncSession = Depends(get_db),
+) -> BatchDeleteResponse:
+    """批量删除视频（跳过被任务引用的，清理物理文件）"""
+    deleted = 0
+    skipped_ids: List[int] = []
+
+    for video_id in data.ids:
+        video = await _get_video_with_product(db, video_id)
+        if not video:
+            skipped_ids.append(video_id)
+            continue
+
+        ref_result = await db.execute(
+            select(func.count()).select_from(Task).where(Task.video_id == video_id)
+        )
+        if (ref_result.scalar() or 0) > 0:
+            skipped_ids.append(video_id)
+            continue
+
+        if video.file_path:
+            file_path = Path(video.file_path)
+            if file_path.exists():
+                try:
+                    file_path.unlink()
+                except Exception as e:
+                    logger.warning("批量删除视频文件失败: video_id={}, error={}", video_id, str(e))
+
+        await db.delete(video)
+        deleted += 1
+
+    await db.commit()
+    logger.info("视频批量删除完成: deleted={}, skipped={}", deleted, len(skipped_ids))
+    return BatchDeleteResponse(deleted=deleted, skipped=len(skipped_ids), skipped_ids=skipped_ids)
+
+
 # ─── SP6-02: 视频文件上传 ────────────────────────────────────────────────────
 
 ALLOWED_VIDEO_TYPES = {"video/mp4", "video/quicktime"}
@@ -159,10 +214,6 @@ async def upload_video(
     if file.content_type not in ALLOWED_VIDEO_TYPES:
         raise HTTPException(status_code=400, detail="不支持的文件类型，仅支持 MP4/MOV")
 
-    content = await file.read()
-    if len(content) > MAX_VIDEO_SIZE:
-        raise HTTPException(status_code=400, detail="文件过大，最大支持 500MB")
-
     # 确定存储目录
     base = Path(settings.MATERIAL_BASE_PATH)
     if product_id:
@@ -178,17 +229,32 @@ async def upload_video(
     safe_name = Path(file.filename).name.replace("..", "")
     file_path = dest_dir / safe_name
 
+    # 流式写入，避免将整个文件读入内存
     try:
-        file_path.write_bytes(content)
+        with file_path.open("wb") as f:
+            while True:
+                chunk = await file.read(1024 * 1024)  # 1MB chunks
+                if not chunk:
+                    break
+                f.write(chunk)
     except Exception as e:
         logger.error("视频文件写入失败: filename={}, error={}", safe_name, str(e))
         raise HTTPException(status_code=500, detail="文件保存失败")
+
+    # 写入后检查文件大小
+    file_size = file_path.stat().st_size
+    if file_size > MAX_VIDEO_SIZE:
+        try:
+            file_path.unlink()
+        except Exception:
+            pass
+        raise HTTPException(status_code=400, detail="文件过大，最大支持 500MB")
 
     video = Video(
         name=safe_name,
         file_path=str(file_path),
         product_id=product_id,
-        file_size=len(content),
+        file_size=file_size,
         source_type="upload",
     )
     # SP7-01: FFprobe 元数据提取
@@ -236,6 +302,7 @@ class ScanResult(BaseModel):
 
 @router.post("/scan", response_model=ScanResult)
 async def scan_videos(
+    skip_metadata: bool = Query(False, description="跳过 FFprobe 和 hash 计算，仅快速入库"),
     db: AsyncSession = Depends(get_db),
 ) -> ScanResult:
     """扫描 MATERIAL_BASE_PATH 下子目录，按商品名批量导入视频"""
@@ -286,19 +353,28 @@ async def scan_videos(
 
             try:
                 stat = file_path.stat()
-                meta = await extract_video_metadata(str_path)
-                file_hash = await compute_file_hash(str_path)
-                video = Video(
-                    name=file_path.name,
-                    file_path=str_path,
-                    product_id=product.id,
-                    file_size=stat.st_size,
-                    duration=meta.duration,
-                    width=meta.width,
-                    height=meta.height,
-                    file_hash=file_hash,
-                    source_type="scan",
-                )
+                if skip_metadata:
+                    video = Video(
+                        name=file_path.name,
+                        file_path=str_path,
+                        product_id=product.id,
+                        file_size=stat.st_size,
+                        source_type="scan",
+                    )
+                else:
+                    meta = await extract_video_metadata(str_path)
+                    file_hash = await compute_file_hash(str_path)
+                    video = Video(
+                        name=file_path.name,
+                        file_path=str_path,
+                        product_id=product.id,
+                        file_size=stat.st_size,
+                        duration=meta.duration,
+                        width=meta.width,
+                        height=meta.height,
+                        file_hash=file_hash,
+                        source_type="scan",
+                    )
                 db.add(video)
                 result.new_imported += 1
             except Exception as e:

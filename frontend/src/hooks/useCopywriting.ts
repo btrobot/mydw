@@ -3,7 +3,7 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/services/api'
-import type { CopywritingResponse, CopywritingListResponse, CopywritingCreate } from '@/types/material'
+import type { CopywritingResponse, CopywritingListResponse, CopywritingCreate, BatchDeleteResponse } from '@/types/material'
 
 export const useCopywritings = (productId?: number) =>
   useQuery<CopywritingResponse[]>({
@@ -72,6 +72,19 @@ export const useImportCopywritings = () => {
         params,
         headers: { 'Content-Type': 'multipart/form-data' },
       })
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['copywritings'] })
+    },
+  })
+}
+
+export const useBatchDeleteCopywritings = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (ids: number[]) => {
+      const { data } = await api.post<BatchDeleteResponse>('/copywritings/batch-delete', { ids })
       return data
     },
     onSuccess: () => {

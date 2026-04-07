@@ -2,11 +2,13 @@
 得物掘金工具 - 音频管理 API (SP1-04, SP8-03)
 """
 from pathlib import Path
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from loguru import logger
+from pydantic import BaseModel
 
 from models import Audio, get_db
 from schemas import AudioResponse
@@ -94,3 +96,47 @@ async def delete_audio(
     await db.delete(audio)
     await db.commit()
     logger.info("音频删除成功: audio_id={}", audio_id)
+
+
+# ─── 批量删除 ────────────────────────────────────────────────────────────────
+
+class BatchDeleteRequest(BaseModel):
+    ids: List[int]
+
+
+class BatchDeleteResponse(BaseModel):
+    deleted: int
+    skipped: int
+    skipped_ids: List[int]
+
+
+@router.post("/batch-delete", response_model=BatchDeleteResponse)
+async def batch_delete_audios(
+    data: BatchDeleteRequest,
+    db: AsyncSession = Depends(get_db),
+) -> BatchDeleteResponse:
+    """批量删除音频（清理物理文件）"""
+    deleted = 0
+    skipped_ids: List[int] = []
+
+    for audio_id in data.ids:
+        result = await db.execute(select(Audio).where(Audio.id == audio_id))
+        audio = result.scalars().first()
+        if not audio:
+            skipped_ids.append(audio_id)
+            continue
+
+        if audio.file_path:
+            file_path = Path(audio.file_path)
+            if file_path.exists():
+                try:
+                    file_path.unlink()
+                except Exception as e:
+                    logger.warning("批量删除音频文件失败: audio_id={}, error={}", audio_id, str(e))
+
+        await db.delete(audio)
+        deleted += 1
+
+    await db.commit()
+    logger.info("音频批量删除完成: deleted={}, skipped={}", deleted, len(skipped_ids))
+    return BatchDeleteResponse(deleted=deleted, skipped=len(skipped_ids), skipped_ids=skipped_ids)

@@ -133,6 +133,49 @@ async def delete_copywriting(
     logger.info("文案删除成功: copywriting_id={}", copywriting_id)
 
 
+# ─── 批量删除 ────────────────────────────────────────────────────────────────
+
+class BatchDeleteRequest(BaseModel):
+    ids: List[int]
+
+
+class BatchDeleteResponse(BaseModel):
+    deleted: int
+    skipped: int
+    skipped_ids: List[int]
+
+
+@router.post("/batch-delete", response_model=BatchDeleteResponse)
+async def batch_delete_copywritings(
+    data: BatchDeleteRequest,
+    db: AsyncSession = Depends(get_db),
+) -> BatchDeleteResponse:
+    """批量删除文案（跳过被任务引用的）"""
+    deleted = 0
+    skipped_ids: List[int] = []
+
+    for cw_id in data.ids:
+        result = await db.execute(select(Copywriting).where(Copywriting.id == cw_id))
+        copywriting = result.scalars().first()
+        if not copywriting:
+            skipped_ids.append(cw_id)
+            continue
+
+        ref_result = await db.execute(
+            select(func.count()).select_from(Task).where(Task.copywriting_id == cw_id)
+        )
+        if (ref_result.scalar() or 0) > 0:
+            skipped_ids.append(cw_id)
+            continue
+
+        await db.delete(copywriting)
+        deleted += 1
+
+    await db.commit()
+    logger.info("文案批量删除完成: deleted={}, skipped={}", deleted, len(skipped_ids))
+    return BatchDeleteResponse(deleted=deleted, skipped=len(skipped_ids), skipped_ids=skipped_ids)
+
+
 # ─── SP7-03: 文案批量导入 ────────────────────────────────────────────────────
 
 class ImportResult(BaseModel):

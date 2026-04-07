@@ -12,11 +12,11 @@ import {
 import type { AxiosError } from 'axios'
 
 import { useProductsV2, useCreateProductV2, useDeleteProductV2, useUpdateProductV2 } from '@/hooks'
-import { useVideos, useCreateVideo, useDeleteVideo, useUploadVideo, useScanVideos } from '@/hooks'
-import { useCopywritings, useCreateCopywriting, useDeleteCopywriting, useUpdateCopywriting, useImportCopywritings } from '@/hooks'
-import { useCovers, useUploadCover, useDeleteCover } from '@/hooks'
-import { useAudios, useUploadAudio, useDeleteAudio } from '@/hooks'
-import { useTopics, useCreateTopic, useDeleteTopic, useSearchTopics, useGlobalTopics, useSetGlobalTopics } from '@/hooks'
+import { useVideos, useCreateVideo, useDeleteVideo, useUploadVideo, useScanVideos, useBatchDeleteVideos } from '@/hooks'
+import { useCopywritings, useCreateCopywriting, useDeleteCopywriting, useUpdateCopywriting, useImportCopywritings, useBatchDeleteCopywritings } from '@/hooks'
+import { useCovers, useUploadCover, useDeleteCover, useBatchDeleteCovers } from '@/hooks'
+import { useAudios, useUploadAudio, useDeleteAudio, useBatchDeleteAudios } from '@/hooks'
+import { useTopics, useCreateTopic, useDeleteTopic, useSearchTopics, useGlobalTopics, useSetGlobalTopics, useBatchDeleteTopics } from '@/hooks'
 import { api } from '@/services/api'
 
 import type {
@@ -235,13 +235,13 @@ function VideoTab() {
     }
   }, [deleteVideo])
 
+  const batchDeleteVideos = useBatchDeleteVideos()
+
   const handleBatchDelete = useCallback(async () => {
-    for (const id of selectedIds) {
-      try { await deleteVideo.mutateAsync(id) } catch { /* skip */ }
-    }
+    const result = await batchDeleteVideos.mutateAsync(selectedIds)
     setSelectedIds([])
-    message.success(`已删除 ${selectedIds.length} 个视频`)
-  }, [selectedIds, deleteVideo])
+    message.success(`已删除 ${result.deleted} 个视频${result.skipped > 0 ? `，${result.skipped} 项被跳过` : ''}`)
+  }, [selectedIds, batchDeleteVideos])
 
   const handleUpload = useCallback(async (options: Parameters<NonNullable<UploadProps['customRequest']>>[0]) => {
     try {
@@ -472,13 +472,13 @@ function CopywritingTab() {
     }
   }, [deleteCopywriting])
 
+  const batchDeleteCopywritings = useBatchDeleteCopywritings()
+
   const handleBatchDelete = useCallback(async () => {
-    for (const id of selectedIds) {
-      try { await deleteCopywriting.mutateAsync(id) } catch { /* skip */ }
-    }
+    const result = await batchDeleteCopywritings.mutateAsync(selectedIds)
     setSelectedIds([])
-    message.success(`已删除 ${selectedIds.length} 个文案`)
-  }, [selectedIds, deleteCopywriting])
+    message.success(`已删除 ${result.deleted} 个文案${result.skipped > 0 ? `，${result.skipped} 项被跳过` : ''}`)
+  }, [selectedIds, batchDeleteCopywritings])
 
   const columns = [
     {
@@ -617,13 +617,13 @@ function CoverTab() {
     }
   }, [deleteCover])
 
+  const batchDeleteCovers = useBatchDeleteCovers()
+
   const handleBatchDelete = useCallback(async () => {
-    for (const id of selectedIds) {
-      try { await deleteCover.mutateAsync(id) } catch { /* skip */ }
-    }
+    const result = await batchDeleteCovers.mutateAsync(selectedIds)
     setSelectedIds([])
-    message.success(`已删除 ${selectedIds.length} 个封面`)
-  }, [selectedIds, deleteCover])
+    message.success(`已删除 ${result.deleted} 个封面${result.skipped > 0 ? `，${result.skipped} 项被跳过` : ''}`)
+  }, [selectedIds, batchDeleteCovers])
 
   const columns = [
     { title: '文件路径', dataIndex: 'file_path', key: 'file_path', ellipsis: true },
@@ -737,13 +737,13 @@ function AudioTab() {
     }
   }, [deleteAudio])
 
+  const batchDeleteAudios = useBatchDeleteAudios()
+
   const handleBatchDelete = useCallback(async () => {
-    for (const id of selectedIds) {
-      try { await deleteAudio.mutateAsync(id) } catch { /* skip */ }
-    }
+    const result = await batchDeleteAudios.mutateAsync(selectedIds)
     setSelectedIds([])
-    message.success(`已删除 ${selectedIds.length} 个音频`)
-  }, [selectedIds, deleteAudio])
+    message.success(`已删除 ${result.deleted} 个音频${result.skipped > 0 ? `，${result.skipped} 项被跳过` : ''}`)
+  }, [selectedIds, batchDeleteAudios])
 
   const columns = [
     { title: '名称', dataIndex: 'name', key: 'name', ellipsis: true },
@@ -889,13 +889,13 @@ function TopicTab() {
     }
   }, [deleteTopic])
 
+  const batchDeleteTopics = useBatchDeleteTopics()
+
   const handleBatchDelete = useCallback(async () => {
-    for (const id of selectedIds) {
-      try { await deleteTopic.mutateAsync(id) } catch { /* skip */ }
-    }
+    const result = await batchDeleteTopics.mutateAsync(selectedIds)
     setSelectedIds([])
-    message.success(`已删除 ${selectedIds.length} 个话题`)
-  }, [selectedIds, deleteTopic])
+    message.success(`已删除 ${result.deleted} 个话题${result.skipped > 0 ? `，${result.skipped} 项被跳过` : ''}`)
+  }, [selectedIds, batchDeleteTopics])
 
   const topicOptions = topics.map((t: TopicResponse) => ({ label: t.name, value: t.id }))
 

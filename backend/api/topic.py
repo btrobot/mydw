@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from loguru import logger
+from pydantic import BaseModel
 
 from models import Topic, PublishConfig, get_db
 from schemas import TopicCreate, TopicResponse, TopicListResponse, GlobalTopicRequest, GlobalTopicResponse
@@ -175,3 +176,39 @@ async def delete_topic(
     await db.delete(topic)
     await db.commit()
     logger.info("话题删除成功: topic_id={}", topic_id)
+
+
+# ─── 批量删除 ────────────────────────────────────────────────────────────────
+
+class BatchDeleteRequest(BaseModel):
+    ids: List[int]
+
+
+class BatchDeleteResponse(BaseModel):
+    deleted: int
+    skipped: int
+    skipped_ids: List[int]
+
+
+@router.post("/batch-delete", response_model=BatchDeleteResponse)
+async def batch_delete_topics(
+    data: BatchDeleteRequest,
+    db: AsyncSession = Depends(get_db),
+) -> BatchDeleteResponse:
+    """批量删除话题"""
+    deleted = 0
+    skipped_ids: List[int] = []
+
+    for topic_id in data.ids:
+        result = await db.execute(select(Topic).where(Topic.id == topic_id))
+        topic = result.scalars().first()
+        if not topic:
+            skipped_ids.append(topic_id)
+            continue
+
+        await db.delete(topic)
+        deleted += 1
+
+    await db.commit()
+    logger.info("话题批量删除完成: deleted={}, skipped={}", deleted, len(skipped_ids))
+    return BatchDeleteResponse(deleted=deleted, skipped=len(skipped_ids), skipped_ids=skipped_ids)

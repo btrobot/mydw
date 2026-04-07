@@ -3,7 +3,7 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/services/api'
-import type { VideoResponse, VideoListResponse, VideoCreate } from '@/types/material'
+import type { VideoResponse, VideoListResponse, VideoCreate, BatchDeleteResponse } from '@/types/material'
 
 export const useVideos = (productId?: number) =>
   useQuery<VideoResponse[]>({
@@ -52,6 +52,19 @@ export const useUploadVideo = () => {
         params,
         headers: { 'Content-Type': 'multipart/form-data' },
       })
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['videos'] })
+    },
+  })
+}
+
+export const useBatchDeleteVideos = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (ids: number[]) => {
+      const { data } = await api.post<BatchDeleteResponse>('/videos/batch-delete', { ids })
       return data
     },
     onSuccess: () => {

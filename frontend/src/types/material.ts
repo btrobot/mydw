@@ -2,6 +2,14 @@
  * Material domain types — aligned with backend schemas (SP2-01)
  */
 
+// ============ Batch Delete ============
+
+export interface BatchDeleteResponse {
+  deleted: number
+  skipped: number
+  skipped_ids: number[]
+}
+
 // ============ Product ============
 
 export interface ProductResponse {

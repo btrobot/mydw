@@ -449,15 +449,10 @@ class VideoResponse(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def _resolve_product_name(cls, data: Any) -> Any:
-        """从 ORM 关系中读取 product.name 填充 product_name，检查文件存在性。"""
-        from pathlib import Path as _Path
+        """从 ORM 关系中读取 product.name 填充 product_name。"""
         product = (
             data.get("product") if isinstance(data, dict)
             else getattr(data, "product", None)
-        )
-        file_path = (
-            data.get("file_path") if isinstance(data, dict)
-            else getattr(data, "file_path", None)
         )
         if not isinstance(data, dict):
             data = {
@@ -466,8 +461,6 @@ class VideoResponse(BaseModel):
             }
         if product and hasattr(product, "name"):
             data["product_name"] = product.name
-        if file_path:
-            data["file_exists"] = _Path(file_path).exists()
         return data
 
 

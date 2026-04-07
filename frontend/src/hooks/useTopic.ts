@@ -9,6 +9,7 @@ import type {
   TopicCreate,
   GlobalTopicsResponse,
   SetGlobalTopicsRequest,
+  BatchDeleteResponse,
 } from '@/types/material'
 
 export const useTopics = (sort?: string) =>
@@ -74,6 +75,19 @@ export const useSetGlobalTopics = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['topics', 'global'] })
+    },
+  })
+}
+
+export const useBatchDeleteTopics = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (ids: number[]) => {
+      const { data } = await api.post<BatchDeleteResponse>('/topics/batch-delete', { ids })
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['topics'] })
     },
   })
 }

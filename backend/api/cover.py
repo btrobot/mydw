@@ -2,14 +2,14 @@
 得物掘金工具 - 封面管理 API (SP1-03, SP8-02)
 """
 import asyncio
-from typing import Optional
+from typing import Optional, List
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from models import Cover, Video, get_db
 from schemas import CoverResponse
@@ -103,11 +103,55 @@ async def delete_cover(
     logger.info("封面删除成功: cover_id={}", cover_id)
 
 
+# ─── 批量删除 ────────────────────────────────────────────────────────────────
+
+class BatchDeleteRequest(BaseModel):
+    ids: List[int]
+
+
+class BatchDeleteResponse(BaseModel):
+    deleted: int
+    skipped: int
+    skipped_ids: List[int]
+
+
+@router.post("/batch-delete", response_model=BatchDeleteResponse)
+async def batch_delete_covers(
+    data: BatchDeleteRequest,
+    db: AsyncSession = Depends(get_db),
+) -> BatchDeleteResponse:
+    """批量删除封面（清理物理文件）"""
+    deleted = 0
+    skipped_ids: List[int] = []
+
+    for cover_id in data.ids:
+        result = await db.execute(select(Cover).where(Cover.id == cover_id))
+        cover = result.scalars().first()
+        if not cover:
+            skipped_ids.append(cover_id)
+            continue
+
+        if cover.file_path:
+            file_path = Path(cover.file_path)
+            if file_path.exists():
+                try:
+                    file_path.unlink()
+                except Exception as e:
+                    logger.warning("批量删除封面文件失败: cover_id={}, error={}", cover_id, str(e))
+
+        await db.delete(cover)
+        deleted += 1
+
+    await db.commit()
+    logger.info("封面批量删除完成: deleted={}, skipped={}", deleted, len(skipped_ids))
+    return BatchDeleteResponse(deleted=deleted, skipped=len(skipped_ids), skipped_ids=skipped_ids)
+
+
 # ─── SP8-02: 封面自动提取 ────────────────────────────────────────────────────
 
 class ExtractCoverRequest(BaseModel):
     video_id: int
-    timestamp: float = 1.0  # 秒
+    timestamp: float = Field(1.0, ge=0, description="截取时间点（秒）")
 
 
 @router.post("/extract", response_model=CoverResponse, status_code=201)
@@ -120,6 +164,8 @@ async def extract_cover(
     video = result.scalars().first()
     if not video:
         raise HTTPException(status_code=404, detail="视频不存在")
+    if video.duration and data.timestamp > video.duration:
+        raise HTTPException(status_code=400, detail="timestamp 超出视频时长 {:.1f}s".format(video.duration))
     if not Path(video.file_path).exists():
         raise HTTPException(status_code=400, detail="视频文件不存在")
 

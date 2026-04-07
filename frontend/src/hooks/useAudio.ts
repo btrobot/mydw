@@ -3,7 +3,7 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/services/api'
-import type { AudioResponse } from '@/types/material'
+import type { AudioResponse, BatchDeleteResponse } from '@/types/material'
 
 export const useAudios = () =>
   useQuery<AudioResponse[]>({
@@ -36,6 +36,19 @@ export const useDeleteAudio = () => {
   return useMutation({
     mutationFn: async (audioId: number) => {
       await api.delete(`/audios/${audioId}`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['audios'] })
+    },
+  })
+}
+
+export const useBatchDeleteAudios = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (ids: number[]) => {
+      const { data } = await api.post<BatchDeleteResponse>('/audios/batch-delete', { ids })
+      return data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['audios'] })

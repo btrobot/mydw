@@ -3,7 +3,7 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/services/api'
-import type { CoverResponse } from '@/types/material'
+import type { CoverResponse, BatchDeleteResponse } from '@/types/material'
 
 export const useCovers = (videoId?: number) =>
   useQuery<CoverResponse[]>({
@@ -55,6 +55,19 @@ export const useExtractCover = () => {
         video_id: videoId,
         timestamp: timestamp ?? 1.0,
       })
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['covers'] })
+    },
+  })
+}
+
+export const useBatchDeleteCovers = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (ids: number[]) => {
+      const { data } = await api.post<BatchDeleteResponse>('/covers/batch-delete', { ids })
       return data
     },
     onSuccess: () => {

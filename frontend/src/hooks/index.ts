@@ -77,16 +77,16 @@ export {
 export { useProducts as useProductsV2, useCreateProduct as useCreateProductV2, useDeleteProduct as useDeleteProductV2, useUpdateProduct as useUpdateProductV2 } from './useProduct'
 
 // Video Hooks
-export { useVideos, useCreateVideo, useDeleteVideo, useUploadVideo, useScanVideos } from './useVideo'
+export { useVideos, useCreateVideo, useDeleteVideo, useUploadVideo, useScanVideos, useBatchDeleteVideos } from './useVideo'
 
 // Copywriting Hooks
-export { useCopywritings, useCreateCopywriting, useDeleteCopywriting, useUpdateCopywriting, useImportCopywritings } from './useCopywriting'
+export { useCopywritings, useCreateCopywriting, useDeleteCopywriting, useUpdateCopywriting, useImportCopywritings, useBatchDeleteCopywritings } from './useCopywriting'
 
 // Cover Hooks
-export { useCovers, useUploadCover, useDeleteCover, useExtractCover } from './useCover'
+export { useCovers, useUploadCover, useDeleteCover, useExtractCover, useBatchDeleteCovers } from './useCover'
 
 // Audio Hooks
-export { useAudios, useUploadAudio, useDeleteAudio } from './useAudio'
+export { useAudios, useUploadAudio, useDeleteAudio, useBatchDeleteAudios } from './useAudio'
 
 // Topic Hooks
-export { useTopics, useCreateTopic, useDeleteTopic, useSearchTopics, useGlobalTopics, useSetGlobalTopics } from './useTopic'
+export { useTopics, useCreateTopic, useDeleteTopic, useSearchTopics, useGlobalTopics, useSetGlobalTopics, useBatchDeleteTopics } from './useTopic'
