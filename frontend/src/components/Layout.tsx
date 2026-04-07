@@ -8,7 +8,6 @@ import {
   FolderOutlined,
   ScissorOutlined,
   SettingOutlined,
-  ShopOutlined,
 } from '@ant-design/icons'
 
 const { Header, Sider, Content } = Layout
@@ -29,9 +28,9 @@ const items = [
       { key: '/material/cover', label: '封面管理' },
       { key: '/material/audio', label: '音频管理' },
       { key: '/material/topic', label: '话题管理' },
+      { key: '/material/product', label: '商品管理' },
     ],
   },
-  { key: '/product', icon: <ShopOutlined />, label: '商品管理' },
   { key: '/ai-clip', icon: <ScissorOutlined />, label: 'AI 剪辑' },
   { key: '/settings', icon: <SettingOutlined />, label: '系统设置' },
 ]
@@ -43,6 +42,7 @@ const materialKeys = [
   '/material/cover',
   '/material/audio',
   '/material/topic',
+  '/material/product',
 ]
 
 export default function LayoutComponent() {

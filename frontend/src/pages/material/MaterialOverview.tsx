@@ -58,7 +58,7 @@ export default function MaterialOverview() {
           </Card>
         </Col>
         <Col span={4}>
-          <Card size="small" style={{ cursor: 'pointer' }} onClick={() => navigate('/product')}>
+          <Card size="small" style={{ cursor: 'pointer' }} onClick={() => navigate('/material/product')}>
             <Statistic
               title="商品覆盖率"
               value={(stats?.coverage_rate ?? 0) * 100}
@@ -77,7 +77,7 @@ export default function MaterialOverview() {
           <Button onClick={() => navigate('/material/cover')}>封面管理</Button>
           <Button onClick={() => navigate('/material/audio')}>音频管理</Button>
           <Button onClick={() => navigate('/material/topic')}>话题管理</Button>
-          <Button onClick={() => navigate('/product')}>商品管理</Button>
+          <Button onClick={() => navigate('/material/product')}>商品管理</Button>
         </Space>
       </Card>
     </>

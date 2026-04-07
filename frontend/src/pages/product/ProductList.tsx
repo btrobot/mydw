@@ -101,7 +101,7 @@ export default function ProductList() {
       dataIndex: 'name',
       ellipsis: true,
       render: (_, record) => (
-        <Link onClick={() => navigate(`/product/${record.id}`)}>{record.name}</Link>
+        <Link onClick={() => navigate(`/material/product/${record.id}`)}>{record.name}</Link>
       ),
     },
     {

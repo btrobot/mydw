@@ -58,8 +58,8 @@ function App() {
               <Route path="material/topic" element={<TopicList />} />
 
               {/* 商品管理 */}
-              <Route path="product" element={<ProductList />} />
-              <Route path="product/:id" element={<ProductDetail />} />
+              <Route path="material/product" element={<ProductList />} />
+              <Route path="material/product/:id" element={<ProductDetail />} />
 
               <Route path="ai-clip" element={<AIClip />} />
               <Route path="settings" element={<Settings />} />
