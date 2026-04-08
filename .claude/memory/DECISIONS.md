@@ -103,6 +103,29 @@ Renderer → IPC → Main Process (窗口控制、文件对话框)
 
 ---
 
+## ADR-006: 任务管理领域模型重构
+
+**状态**: Accepted (with changes)
+**日期**: 2026-04-09
+**审查者**: Tech Lead (Architecture Review)
+
+**关键结论**: 任务管理从"直接上传"重构为"素材编排→视频合成→调度上传"三阶段流水线
+
+**核心实体**:
+- Task（任务，贯穿全流程，7 状态: draft→composing→ready→uploading→uploaded/failed/cancelled）
+- PublishProfile（合成配置档，跟任务走: 合成方式+话题+重试）
+- ScheduleConfig（调度配置，跟系统走: 时间窗口+间隔+限额，复用现有 PublishConfig）
+- CompositionJob（合成任务，独立生命周期，存 Coze execute_id）
+
+**审查要求的修改**:
+1. Task 新增 `failed_at_status` 字段，记录失败前状态，用于快速重试
+2. 调度器改为单循环或加乐观锁，防止重复选取任务
+3. 重试合成时创建新 CompositionJob，旧的保留作为历史
+
+**设计文档**: `docs/task-management-domain-model.md` (v2)
+
+---
+
 ## 决策模板
 
 新增决策时:
