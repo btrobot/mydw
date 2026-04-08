@@ -79,7 +79,6 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        'patchright',
         'playwright',
         'tkinter',
         'matplotlib',
