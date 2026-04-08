@@ -1,24 +1,34 @@
 import { useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  Button, Descriptions, Tabs, Table, Typography, Space, Flex,
-  Modal, Form, Input, message, Spin,
+  Button, Tabs, Image, Tag, Space, message, Spin, Flex, Typography,
 } from 'antd'
-import { ArrowLeftOutlined, EditOutlined, LinkOutlined } from '@ant-design/icons'
+import { EditOutlined, SyncOutlined } from '@ant-design/icons'
+import {
+  PageContainer,
+  ProDescriptions,
+  ProTable,
+  ModalForm,
+  ProFormText,
+} from '@ant-design/pro-components'
+import type { ProColumns } from '@ant-design/pro-components'
 
 import {
-  useProductsV2, useUpdateProductV2,
+  useProduct, useProductCovers, useProductTopics,
+  useUpdateProductV2,
   useVideos, useCopywritings,
 } from '@/hooks'
 import type { VideoResponse, CopywritingResponse } from '@/types/material'
+import type { ParseMaterialsResponse } from '@/types/material'
 import { formatSize, formatDuration } from '@/utils/format'
 import { handleApiError } from '@/utils/error'
+import { api } from '@/services/api'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 interface EditFormValues {
   name: string
-  link?: string
+  dewu_url?: string
 }
 
 export default function ProductDetail() {
@@ -27,88 +37,61 @@ export default function ProductDetail() {
   const productId = id ? parseInt(id, 10) : undefined
 
   const [editOpen, setEditOpen] = useState(false)
-  const [form] = Form.useForm<EditFormValues>()
+  const [parsing, setParsing] = useState(false)
 
-  const { data: products = [], isLoading: productsLoading } = useProductsV2()
-  const product = products.find((p) => p.id === productId)
-
+  const { data: product, isLoading: productLoading } = useProduct(productId)
+  const { data: covers = [], isLoading: coversLoading } = useProductCovers(productId)
+  const { data: topics = [], isLoading: topicsLoading } = useProductTopics(productId)
   const { data: videos = [], isLoading: videosLoading } = useVideos({ productId })
   const { data: copywritings = [], isLoading: copywritingsLoading } = useCopywritings({ productId })
 
   const updateProduct = useUpdateProductV2()
 
-  const handleEditOpen = useCallback(() => {
-    if (!product) return
-    form.setFieldsValue({ name: product.name, link: product.link ?? undefined })
-    setEditOpen(true)
-  }, [product, form])
-
-  const handleEditSave = useCallback(async () => {
+  const handleEditSubmit = useCallback(async (values: EditFormValues) => {
+    if (!productId) return false
     try {
-      const values = await form.validateFields()
-      if (!productId) return
-      await updateProduct.mutateAsync({ id: productId, ...values })
+      await updateProduct.mutateAsync({ id: productId, name: values.name, dewu_url: values.dewu_url })
       message.success('更新商品成功')
-      setEditOpen(false)
+      return true
     } catch (error: unknown) {
-      if (error !== null && typeof error === 'object' && 'errorFields' in error) return
       handleApiError(error, '更新商品失败')
+      return false
     }
-  }, [form, productId, updateProduct])
+  }, [productId, updateProduct])
 
-  const videoColumns = [
+  const handleParse = useCallback(async () => {
+    if (!productId) return
+    setParsing(true)
+    try {
+      const { data } = await api.post<ParseMaterialsResponse>(`/products/${productId}/parse-materials`)
+      message.success(`解析完成: ${data.videos_downloaded} 个视频, ${data.covers_downloaded} 张封面, ${data.topics.length} 个话题`)
+    } catch (error: unknown) {
+      handleApiError(error, '解析素材失败')
+    } finally {
+      setParsing(false)
+    }
+  }, [productId])
+
+  const videoColumns: ProColumns<VideoResponse>[] = [
+    { title: '视频名称', dataIndex: 'name', ellipsis: true },
+    { title: '大小', dataIndex: 'file_size', width: 100, render: (_, r) => formatSize(r.file_size) },
+    { title: '时长', dataIndex: 'duration', width: 80, render: (_, r) => formatDuration(r.duration) },
     {
-      title: '视频名称',
-      dataIndex: 'name',
-      key: 'name',
-      ellipsis: true,
-    },
-    {
-      title: '大小',
-      dataIndex: 'file_size',
-      key: 'file_size',
-      width: 100,
-      render: (v: number | null) => formatSize(v),
-    },
-    {
-      title: '时长',
-      dataIndex: 'duration',
-      key: 'duration',
-      width: 80,
-      render: (v: number | null) => formatDuration(v),
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      width: 160,
-      render: (v: string) => new Date(v).toLocaleString('zh-CN'),
+      title: '创建时间', dataIndex: 'created_at', width: 160,
+      render: (_, r) => new Date(r.created_at).toLocaleString('zh-CN'),
     },
   ]
 
-  const copywritingColumns = [
+  const copywritingColumns: ProColumns<CopywritingResponse>[] = [
+    { title: '文案内容', dataIndex: 'content', ellipsis: true },
+    { title: '来源', dataIndex: 'source_type', width: 100 },
     {
-      title: '文案内容',
-      dataIndex: 'content',
-      key: 'content',
-      ellipsis: true,
-    },
-    {
-      title: '来源',
-      dataIndex: 'source_type',
-      key: 'source_type',
-      width: 100,
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      width: 160,
-      render: (v: string) => new Date(v).toLocaleString('zh-CN'),
+      title: '创建时间', dataIndex: 'created_at', width: 160,
+      render: (_, r) => new Date(r.created_at).toLocaleString('zh-CN'),
     },
   ]
 
-  if (productsLoading) {
+  if (productLoading) {
     return (
       <Flex justify="center" style={{ padding: 48 }}>
         <Spin size="large" />
@@ -118,111 +101,165 @@ export default function ProductDetail() {
 
   if (!product) {
     return (
-      <Flex vertical gap={24} style={{ padding: 24 }}>
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>返回</Button>
-        <Text type="secondary">商品不存在</Text>
-      </Flex>
+      <PageContainer title="商品不存在" onBack={() => navigate(-1)}>
+        <Text type="secondary">商品不存在或已被删除</Text>
+      </PageContainer>
     )
   }
 
   return (
-    <Flex vertical gap={16} style={{ padding: 24 }}>
-      <Space>
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>返回</Button>
-        <Title level={4} style={{ margin: 0 }}>{product.name}</Title>
-      </Space>
-
-      <Descriptions
+    <PageContainer
+      title={product.name}
+      onBack={() => navigate(-1)}
+      extra={[
+        <Button
+          key="parse"
+          icon={<SyncOutlined />}
+          loading={parsing}
+          onClick={handleParse}
+        >
+          解析素材
+        </Button>,
+        <Button
+          key="edit"
+          type="primary"
+          icon={<EditOutlined />}
+          onClick={() => setEditOpen(true)}
+        >
+          编辑
+        </Button>,
+      ]}
+    >
+      <ProDescriptions<typeof product>
+        dataSource={product}
         bordered
         size="small"
-        extra={
-          <Button icon={<EditOutlined />} onClick={handleEditOpen}>编辑</Button>
-        }
-      >
-        <Descriptions.Item label="商品名称">{product.name}</Descriptions.Item>
-        <Descriptions.Item label="商品链接">
-          {product.link
-            ? <Text type="secondary">{product.link}</Text>
-            : <Text type="secondary">—</Text>
-          }
-        </Descriptions.Item>
-        {product.dewu_url && (
-          <Descriptions.Item label="得物链接">
-            <Text type="secondary">{product.dewu_url}</Text>
-          </Descriptions.Item>
-        )}
-        {product.description && (
-          <Descriptions.Item label="商品描述" span={3}>
-            {product.description}
-          </Descriptions.Item>
-        )}
-        {product.image_url && (
-          <Descriptions.Item label="图片链接">
-            <Text type="secondary">{product.image_url}</Text>
-          </Descriptions.Item>
-        )}
-        <Descriptions.Item label="创建时间">
-          {new Date(product.created_at).toLocaleString('zh-CN')}
-        </Descriptions.Item>
-        <Descriptions.Item label="更新时间">
-          {new Date(product.updated_at).toLocaleString('zh-CN')}
-        </Descriptions.Item>
-      </Descriptions>
-
-      <Tabs
-        items={[
+        column={2}
+        columns={[
+          { title: '商品名称', dataIndex: 'name' },
           {
-            key: 'videos',
-            label: `关联视频 (${videos.length})`,
-            children: (
-              <Table<VideoResponse>
-                dataSource={videos}
-                rowKey="id"
-                columns={videoColumns}
-                loading={videosLoading}
-                pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
-                size="small"
-              />
-            ),
+            title: '得物链接',
+            dataIndex: 'dewu_url',
+            render: (_, r) => r.dewu_url ? <Text type="secondary">{r.dewu_url}</Text> : <Text type="secondary">—</Text>,
           },
           {
-            key: 'copywritings',
-            label: `关联文案 (${copywritings.length})`,
-            children: (
-              <Table<CopywritingResponse>
-                dataSource={copywritings}
-                rowKey="id"
-                columns={copywritingColumns}
-                loading={copywritingsLoading}
-                pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
-                size="small"
-              />
-            ),
+            title: '商品描述',
+            dataIndex: 'description',
+            span: 2,
+            render: (_, r) => r.description ?? <Text type="secondary">—</Text>,
+          },
+          {
+            title: '创建时间',
+            dataIndex: 'created_at',
+            render: (_, r) => new Date(r.created_at).toLocaleString('zh-CN'),
           },
         ]}
       />
 
-      <Modal
+      <div style={{ marginTop: 16 }}>
+        <Tabs
+          items={[
+            {
+              key: 'videos',
+              label: `视频 (${videos.length})`,
+              children: (
+                <ProTable<VideoResponse>
+                  dataSource={videos}
+                  rowKey="id"
+                  columns={videoColumns}
+                  loading={videosLoading}
+                  search={false}
+                  pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
+                  size="small"
+                  toolBarRender={false}
+                />
+              ),
+            },
+            {
+              key: 'covers',
+              label: `封面 (${covers.length})`,
+              children: coversLoading ? (
+                <Flex justify="center" style={{ padding: 24 }}><Spin /></Flex>
+              ) : covers.length === 0 ? (
+                <Flex justify="center" style={{ padding: 24 }}>
+                  <Text type="secondary">暂无封面</Text>
+                </Flex>
+              ) : (
+                <Image.PreviewGroup>
+                  <Space wrap style={{ padding: 8 }}>
+                    {covers.map((cover) => (
+                      <Image
+                        key={cover.id}
+                        src={cover.file_path}
+                        width={120}
+                        height={80}
+                        style={{ objectFit: 'cover', borderRadius: 4 }}
+                        fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+                      />
+                    ))}
+                  </Space>
+                </Image.PreviewGroup>
+              ),
+            },
+            {
+              key: 'copywritings',
+              label: `文案 (${copywritings.length})`,
+              children: (
+                <ProTable<CopywritingResponse>
+                  dataSource={copywritings}
+                  rowKey="id"
+                  columns={copywritingColumns}
+                  loading={copywritingsLoading}
+                  search={false}
+                  pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
+                  size="small"
+                  toolBarRender={false}
+                />
+              ),
+            },
+            {
+              key: 'topics',
+              label: `话题 (${topics.length})`,
+              children: topicsLoading ? (
+                <Flex justify="center" style={{ padding: 24 }}><Spin /></Flex>
+              ) : topics.length === 0 ? (
+                <Flex justify="center" style={{ padding: 24 }}>
+                  <Text type="secondary">暂无话题</Text>
+                </Flex>
+              ) : (
+                <Space wrap style={{ padding: 8 }}>
+                  {topics.map((topic) => (
+                    <Tag key={topic.id} color="blue">
+                      {topic.name}
+                    </Tag>
+                  ))}
+                </Space>
+              ),
+            },
+          ]}
+        />
+      </div>
+
+      <ModalForm<EditFormValues>
         title="编辑商品"
         open={editOpen}
-        onOk={handleEditSave}
-        confirmLoading={updateProduct.isPending}
-        onCancel={() => setEditOpen(false)}
-        destroyOnHidden
+        onOpenChange={setEditOpen}
+        onFinish={handleEditSubmit}
+        initialValues={{ name: product.name, dewu_url: product.dewu_url ?? undefined }}
+        modalProps={{ destroyOnHidden: true }}
       >
-        <Form form={form} layout="vertical">
-          <Form.Item
-            name="name"
-            label="商品名称"
-            rules={[{ required: true, message: '请输入商品名称' }]}
-          >
-            <Input placeholder="请输入商品名称" />
-          </Form.Item>
-          <Form.Item name="link" label="商品链接">
-            <Input placeholder="请输入得物商品链接" prefix={<LinkOutlined />} />
-          </Form.Item>
-        </Form>
-      </Modal>
-    </Flex>
+        <ProFormText
+          name="name"
+          label="商品名称"
+          rules={[{ required: true, message: '请输入商品名称' }]}
+          placeholder="请输入商品名称"
+        />
+        <ProFormText
+          name="dewu_url"
+          label="得物商品页"
+          placeholder="得物商品页链接"
+        />
+      </ModalForm>
+    </PageContainer>
   )
 }

@@ -8,8 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update
 from loguru import logger
 
-from models import Product, Video, Copywriting, get_db
-from schemas import ProductCreate, ProductUpdate, ProductResponse, ProductListResponse, ParseMaterialsResponse
+from models import Product, Video, Cover, Topic, ProductTopic, get_db
+from schemas import (
+    ProductCreate, ProductUpdate, ProductResponse, ProductListResponse,
+    ParseMaterialsResponse, CoverResponse, TopicResponse,
+)
 from services.product_parse_service import parse_and_create_materials
 from utils.url_parser import extract_dewu_url
 
@@ -154,3 +157,45 @@ async def parse_product_materials(
         raise HTTPException(status_code=500, detail="素材解析失败，请稍后重试")
 
     return ParseMaterialsResponse(**data)
+
+
+@router.get("/{product_id}/covers", response_model=list[CoverResponse])
+async def get_product_covers(
+    product_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> list[CoverResponse]:
+    """获取商品关联的所有封面（product → videos → covers）"""
+    product_result = await db.execute(select(Product).where(Product.id == product_id))
+    if not product_result.scalars().first():
+        raise HTTPException(status_code=404, detail="商品不存在")
+
+    video_ids_result = await db.execute(
+        select(Video.id).where(Video.product_id == product_id)
+    )
+    video_ids = video_ids_result.scalars().all()
+
+    if not video_ids:
+        return []
+
+    covers_result = await db.execute(
+        select(Cover).where(Cover.video_id.in_(video_ids))
+    )
+    return covers_result.scalars().all()
+
+
+@router.get("/{product_id}/topics", response_model=list[TopicResponse])
+async def get_product_topics(
+    product_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> list[TopicResponse]:
+    """获取商品关联的话题（通过 product_topics 表）"""
+    product_result = await db.execute(select(Product).where(Product.id == product_id))
+    if not product_result.scalars().first():
+        raise HTTPException(status_code=404, detail="商品不存在")
+
+    topics_result = await db.execute(
+        select(Topic)
+        .join(ProductTopic, ProductTopic.topic_id == Topic.id)
+        .where(ProductTopic.product_id == product_id)
+    )
+    return topics_result.scalars().all()

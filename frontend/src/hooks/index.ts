@@ -74,7 +74,7 @@ export {
 } from './useAIClip'
 
 // Product Hooks (new domain API)
-export { useProducts as useProductsV2, useCreateProduct as useCreateProductV2, useDeleteProduct as useDeleteProductV2, useUpdateProduct as useUpdateProductV2, useBatchDeleteProducts } from './useProduct'
+export { useProducts as useProductsV2, useCreateProduct as useCreateProductV2, useDeleteProduct as useDeleteProductV2, useUpdateProduct as useUpdateProductV2, useBatchDeleteProducts, useProduct, useProductCovers, useProductTopics } from './useProduct'
 
 // Video Hooks
 export { useVideos, useCreateVideo, useDeleteVideo, useUploadVideo, useScanVideos, useBatchDeleteVideos } from './useVideo'
