@@ -9,7 +9,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-import httpx
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
@@ -17,6 +16,7 @@ from sqlalchemy import select, delete
 from core.browser import browser_manager
 from core.config import settings
 from models import Product, Video, Cover, Copywriting, Topic, ProductTopic
+from services.media_storage_service import MediaStorageService
 
 
 # ============ 数据结构 ============
@@ -28,18 +28,6 @@ class MaterialPack:
     video_url: Optional[str]
     title: str
     topics: list[str]
-
-
-# ============ HTTP 请求头（用于文件下载）============
-
-_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    ),
-    "Accept": "*/*",
-}
 
 
 # ============ 页面解析 ============
@@ -250,36 +238,6 @@ def _extract_topics(html: str) -> list[str]:
     return topics[:20]
 
 
-# ============ 文件下载 ============
-
-async def download_file(url: str, save_dir: str, filename: str) -> str:
-    """
-    用 httpx 下载媒体文件到本地，返回保存的绝对路径。
-    """
-    save_path = Path(save_dir) / filename
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-
-    logger.info("开始下载文件: filename={}", filename)
-
-    async with httpx.AsyncClient(headers=_HEADERS, timeout=60.0, follow_redirects=True) as client:
-        try:
-            async with client.stream("GET", url) as response:
-                response.raise_for_status()
-                with open(save_path, "wb") as f:
-                    async for chunk in response.aiter_bytes(chunk_size=8192):
-                        f.write(chunk)
-        except httpx.HTTPStatusError as e:
-            logger.warning("文件下载失败: filename={}, status={}", filename, e.response.status_code)
-            raise ValueError(f"文件下载失败: HTTP {e.response.status_code}")
-        except httpx.RequestError as e:
-            logger.error("文件下载网络错误: filename={}, error_type={}", filename, type(e).__name__)
-            raise ValueError("文件下载网络请求失败")
-
-    file_size = save_path.stat().st_size
-    logger.info("文件下载完成: filename={}, size={}", filename, file_size)
-    return str(save_path.resolve())
-
-
 # ============ 完整流程编排 ============
 
 async def parse_and_create_materials(
@@ -289,7 +247,7 @@ async def parse_and_create_materials(
     """
     完整素材解析流程：
     1. 解析商品页获取 MaterialPack
-    2. 下载封面图和视频到本地
+    2. 通过 MediaStorageService 下载封面图和视频到内容寻址存储
     3. 覆盖更新数据库素材记录（删旧建新）
     4. 部分失败不阻塞整体
 
@@ -299,7 +257,7 @@ async def parse_and_create_materials(
         raise ValueError("商品未配置得物商品页 URL")
 
     product_id = product.id
-    timestamp = int(datetime.utcnow().timestamp())
+    media_storage = MediaStorageService()
 
     # Step 1: 解析页面
     try:
@@ -307,43 +265,35 @@ async def parse_and_create_materials(
     except ValueError:
         raise
 
-    # Step 2: 准备存储目录
-    video_dir = "data/materials/videos"
-    cover_dir = "data/materials/covers"
-    Path(video_dir).mkdir(parents=True, exist_ok=True)
-    Path(cover_dir).mkdir(parents=True, exist_ok=True)
-
-    downloaded_videos: list[str] = []
-    downloaded_covers: list[str] = []
+    downloaded_videos: list[tuple[str, str, int]] = []
+    downloaded_covers: list[tuple[str, str, int]] = []
     errors: list[str] = []
 
-    # Step 3: 下载视频（部分失败不阻塞）
+    # Step 2: 下载视频（部分失败不阻塞）
     if pack.video_url:
-        video_filename = f"{product_id}_{timestamp}.mp4"
         try:
-            path = await download_file(pack.video_url, video_dir, video_filename)
-            downloaded_videos.append(path)
-        except ValueError as e:
-            logger.warning("视频下载失败，跳过: product_id={}, error={}", product_id, str(e))
-            errors.append(f"视频下载失败: {e}")
+            result = await media_storage.store_from_url(pack.video_url, "videos")
+            downloaded_videos.append(result)
+        except Exception as e:
+            logger.warning("视频下载失败，跳过: product_id={}, error_type={}", product_id, type(e).__name__)
+            errors.append(f"视频下载失败: {type(e).__name__}")
 
-    # Step 4: 下载封面图（部分失败不阻塞）
+    # Step 3: 下载封面图（部分失败不阻塞）
     for idx, cover_url in enumerate(pack.cover_urls):
-        cover_filename = f"{product_id}_{timestamp}_{idx}.jpg"
         try:
-            path = await download_file(cover_url, cover_dir, cover_filename)
-            downloaded_covers.append(path)
-        except ValueError as e:
-            logger.warning("封面下载失败，跳过: product_id={}, idx={}, error={}", product_id, idx, str(e))
-            errors.append(f"封面[{idx}]下载失败: {e}")
+            result = await media_storage.store_from_url(cover_url, "covers")
+            downloaded_covers.append(result)
+        except Exception as e:
+            logger.warning("封面下载失败，跳过: product_id={}, idx={}, error_type={}", product_id, idx, type(e).__name__)
+            errors.append(f"封面[{idx}]下载失败: {type(e).__name__}")
 
-    # Step 5: 覆盖更新数据库 — 删除旧素材记录，创建新的
+    # Step 4: 覆盖更新数据库 — 删除旧素材记录，创建新的
     await _replace_product_materials(
         db=db,
         product=product,
         pack=pack,
-        video_paths=downloaded_videos,
-        cover_paths=downloaded_covers,
+        video_results=downloaded_videos,
+        cover_results=downloaded_covers,
     )
 
     logger.info(
@@ -362,12 +312,13 @@ async def parse_and_create_materials(
     }
 
 
+
 async def _replace_product_materials(
     db: AsyncSession,
     product: Product,
     pack: MaterialPack,
-    video_paths: list[str],
-    cover_paths: list[str],
+    video_results: list[tuple[str, str, int]],
+    cover_results: list[tuple[str, str, int]],
 ) -> None:
     """删除商品旧素材记录，写入新记录。"""
     product_id = product.id
@@ -396,12 +347,12 @@ async def _replace_product_materials(
 
     # 写入新视频记录
     new_video_orm: list[Video] = []
-    for path in video_paths:
-        file_size = Path(path).stat().st_size if Path(path).exists() else None
+    for file_path, file_hash, file_size in video_results:
         v = Video(
             product_id=product_id,
             name=f"{product.name}_视频",
-            file_path=path,
+            file_path=file_path,
+            file_hash=file_hash,
             file_size=file_size,
             source_type="dewu_parse",
         )
@@ -412,11 +363,11 @@ async def _replace_product_materials(
 
     # 写入新封面记录（关联第一个视频，若有）
     first_video_id = new_video_orm[0].id if new_video_orm else None
-    for path in cover_paths:
-        file_size = Path(path).stat().st_size if Path(path).exists() else None
+    for file_path, file_hash, file_size in cover_results:
         c = Cover(
             video_id=first_video_id,
-            file_path=path,
+            file_path=file_path,
+            file_hash=file_hash,
             file_size=file_size,
         )
         db.add(c)

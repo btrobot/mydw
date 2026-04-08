@@ -151,6 +151,7 @@ class Cover(Base):
     file_size = Column(Integer, nullable=True)
     width = Column(Integer, nullable=True)
     height = Column(Integer, nullable=True)
+    file_hash = Column(String(64), index=True, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -167,6 +168,7 @@ class Audio(Base):
     file_path = Column(String(512), nullable=False)
     file_size = Column(Integer, nullable=True)
     duration = Column(Integer, nullable=True)  # 秒
+    file_hash = Column(String(64), index=True, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -306,6 +308,8 @@ async def init_db():
     await migration_009.run_migration(engine)
     migration_010 = importlib.import_module("migrations.010_dewu_url_unique")
     await migration_010.run_migration(engine)
+    migration_011 = importlib.import_module("migrations.011_media_file_hash")
+    await migration_011.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

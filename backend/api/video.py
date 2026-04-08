@@ -16,6 +16,7 @@ from schemas import VideoCreate, VideoUpdate, VideoResponse, VideoListResponse
 from core.config import settings
 from utils.ffprobe import extract_video_metadata
 from utils.hash import compute_file_hash
+from services.media_storage_service import MediaStorageService
 
 router = APIRouter(tags=["视频管理"])
 
@@ -134,17 +135,22 @@ async def delete_video(
     if ref_count > 0:
         raise HTTPException(status_code=409, detail="视频被 {} 个任务引用，无法删除".format(ref_count))
 
-    # 删除物理文件 (BUG-02 fix)
-    if video.file_path:
-        file_path = Path(video.file_path)
-        if file_path.exists():
-            try:
-                file_path.unlink()
-            except Exception as e:
-                logger.warning("视频文件删除失败: video_id={}, error={}", video_id, str(e))
+    # 保存文件信息，用于删除 DB 记录后的引用计数检查
+    file_path = video.file_path
+    file_hash = video.file_hash
 
     await db.delete(video)
     await db.commit()
+
+    # 引用计数安全删除：仅当无其他记录引用同一 file_hash 时才删物理文件
+    if file_path and file_hash:
+        await MediaStorageService().safe_delete_async(file_path, file_hash, "videos", db)
+    elif file_path:
+        try:
+            Path(file_path).unlink(missing_ok=True)
+        except Exception as e:
+            logger.warning("视频文件删除失败: video_id={}, error={}", video_id, str(e))
+
     logger.info("视频删除成功: video_id={}", video_id)
 
 

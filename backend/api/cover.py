@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from models import Cover, Video, get_db
 from schemas import CoverResponse
 from core.config import settings
+from services.media_storage_service import MediaStorageService
 
 router = APIRouter(tags=["封面管理"])
 
@@ -90,16 +91,22 @@ async def delete_cover(
     if not cover:
         raise HTTPException(status_code=404, detail="封面不存在")
 
-    if cover.file_path:
-        file_path = Path(cover.file_path)
-        if file_path.exists():
-            try:
-                file_path.unlink()
-            except Exception as e:
-                logger.warning("封面文件删除失败: cover_id={}, error={}", cover_id, str(e))
+    # 保存文件信息，用于删除 DB 记录后的引用计数检查
+    file_path = cover.file_path
+    file_hash = getattr(cover, "file_hash", None)
 
     await db.delete(cover)
     await db.commit()
+
+    # 引用计数安全删除：仅当无其他记录引用同一 file_hash 时才删物理文件
+    if file_path and file_hash:
+        await MediaStorageService().safe_delete_async(file_path, file_hash, "covers", db)
+    elif file_path:
+        try:
+            Path(file_path).unlink(missing_ok=True)
+        except Exception as e:
+            logger.warning("封面文件删除失败: cover_id={}, error={}", cover_id, str(e))
+
     logger.info("封面删除成功: cover_id={}", cover_id)
 
 

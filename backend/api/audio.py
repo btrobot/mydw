@@ -14,6 +14,7 @@ from models import Audio, get_db
 from schemas import AudioResponse
 from core.config import settings
 from utils.ffprobe import extract_video_metadata
+from services.media_storage_service import MediaStorageService
 
 router = APIRouter(tags=["音频管理"])
 
@@ -87,16 +88,22 @@ async def delete_audio(
     if not audio:
         raise HTTPException(status_code=404, detail="音频不存在")
 
-    if audio.file_path:
-        file_path = Path(audio.file_path)
-        if file_path.exists():
-            try:
-                file_path.unlink()
-            except Exception as e:
-                logger.warning("音频文件删除失败: audio_id={}, error={}", audio_id, str(e))
+    # 保存文件信息，用于删除 DB 记录后的引用计数检查
+    file_path = audio.file_path
+    file_hash = getattr(audio, "file_hash", None)
 
     await db.delete(audio)
     await db.commit()
+
+    # 引用计数安全删除：仅当无其他记录引用同一 file_hash 时才删物理文件
+    if file_path and file_hash:
+        await MediaStorageService().safe_delete_async(file_path, file_hash, "audios", db)
+    elif file_path:
+        try:
+            Path(file_path).unlink(missing_ok=True)
+        except Exception as e:
+            logger.warning("音频文件删除失败: audio_id={}, error={}", audio_id, str(e))
+
     logger.info("音频删除成功: audio_id={}", audio_id)
 
 
