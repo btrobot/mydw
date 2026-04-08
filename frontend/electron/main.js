@@ -1,0 +1,274 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+/**
+ * 得物掘金工具 - Electron 主进程
+ */
+const electron_1 = require("electron");
+const path_1 = __importDefault(require("path"));
+const child_process_1 = require("child_process");
+// 禁用硬件加速
+electron_1.app.disableHardwareAcceleration();
+let mainWindow = null;
+let tray = null;
+let backendProcess = null;
+let isQuitting = false;
+const isDev = !electron_1.app.isPackaged;
+// 开发环境 URL
+const VITE_DEV_SERVER_URL = 'http://localhost:5173';
+// 创建主窗口
+function createWindow() {
+    mainWindow = new electron_1.BrowserWindow({
+        width: 1400,
+        height: 900,
+        minWidth: 1200,
+        minHeight: 700,
+        title: '得物掘金工具',
+        webPreferences: {
+            preload: path_1.default.join(__dirname, 'preload.js'),
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: false,
+        },
+        show: false,
+    });
+    // 窗口准备好后显示
+    mainWindow.once('ready-to-show', () => {
+        mainWindow?.show();
+    });
+    // 加载页面
+    if (isDev) {
+        mainWindow.loadURL(VITE_DEV_SERVER_URL);
+        mainWindow.webContents.openDevTools();
+    }
+    else {
+        mainWindow.loadFile(path_1.default.join(__dirname, '../dist/index.html'));
+    }
+    // 窗口关闭时最小化到托盘
+    mainWindow.on('close', (event) => {
+        if (tray && !isQuitting) {
+            event.preventDefault();
+            mainWindow?.hide();
+        }
+    });
+    mainWindow.on('closed', () => {
+        mainWindow = null;
+    });
+    // 创建菜单
+    createMenu();
+}
+// 创建系统菜单
+function createMenu() {
+    const template = [
+        {
+            label: '文件',
+            submenu: [
+                {
+                    label: '退出',
+                    accelerator: 'CmdOrCtrl+Q',
+                    click: () => {
+                        isQuitting = true;
+                        electron_1.app.quit();
+                    }
+                }
+            ]
+        },
+        {
+            label: '编辑',
+            submenu: [
+                { role: 'undo' },
+                { role: 'redo' },
+                { type: 'separator' },
+                { role: 'cut' },
+                { role: 'copy' },
+                { role: 'paste' },
+                { role: 'selectAll' }
+            ]
+        },
+        {
+            label: '视图',
+            submenu: [
+                { role: 'reload' },
+                { role: 'forceReload' },
+                { role: 'toggleDevTools' },
+                { type: 'separator' },
+                { role: 'resetZoom' },
+                { role: 'zoomIn' },
+                { role: 'zoomOut' },
+                { type: 'separator' },
+                { role: 'togglefullscreen' }
+            ]
+        },
+        {
+            label: '帮助',
+            submenu: [
+                {
+                    label: '关于',
+                    click: () => {
+                        const { dialog } = require('electron');
+                        dialog.showMessageBox({
+                            type: 'info',
+                            title: '关于得物掘金工具',
+                            message: '得物掘金工具 v0.1.0',
+                            detail: '得物平台自动化发布系统\n基于 Electron + React + FastAPI'
+                        });
+                    }
+                }
+            ]
+        }
+    ];
+    const menu = electron_1.Menu.buildFromTemplate(template);
+    electron_1.Menu.setApplicationMenu(menu);
+}
+// 创建系统托盘
+function createTray() {
+    // 创建简单的托盘图标
+    const iconPath = isDev
+        ? path_1.default.join(__dirname, '../public/icon.png')
+        : path_1.default.join(__dirname, '../dist/icon.png');
+    try {
+        const icon = electron_1.nativeImage.createFromPath(iconPath);
+        tray = new electron_1.Tray(icon.isEmpty() ? electron_1.nativeImage.createEmpty() : icon);
+    }
+    catch {
+        tray = new electron_1.Tray(electron_1.nativeImage.createEmpty());
+    }
+    const contextMenu = electron_1.Menu.buildFromTemplate([
+        {
+            label: '显示窗口',
+            click: () => {
+                mainWindow?.show();
+            }
+        },
+        {
+            label: '开始发布',
+            click: () => {
+                mainWindow?.webContents.send('publish-action', 'start');
+            }
+        },
+        {
+            label: '暂停发布',
+            click: () => {
+                mainWindow?.webContents.send('publish-action', 'pause');
+            }
+        },
+        { type: 'separator' },
+        {
+            label: '退出',
+            click: () => {
+                isQuitting = true;
+                electron_1.app.quit();
+            }
+        }
+    ]);
+    tray.setToolTip('得物掘金工具');
+    tray.setContextMenu(contextMenu);
+    tray.on('double-click', () => {
+        mainWindow?.show();
+    });
+}
+// 启动后端服务
+function startBackend() {
+    const backendPath = isDev
+        ? path_1.default.join(__dirname, '../../backend')
+        : path_1.default.join(__dirname, '../app.asar.unpacked/backend');
+    const pythonPath = isDev
+        ? path_1.default.join(__dirname, '../../backend/venv/Scripts/python.exe')
+        : 'python';
+    console.log('[Main] 启动后端服务...');
+    backendProcess = (0, child_process_1.spawn)(pythonPath, ['-m', 'uvicorn', 'main:app', '--port', '8000', '--host', '127.0.0.1'], {
+        cwd: path_1.default.join(__dirname, '../../backend'),
+        stdio: ['pipe', 'pipe', 'pipe'],
+        shell: true,
+        detached: false
+    });
+    backendProcess.stdout?.on('data', (data) => {
+        console.log('[Backend]', data.toString());
+    });
+    backendProcess.stderr?.on('data', (data) => {
+        console.error('[Backend Error]', data.toString());
+    });
+    backendProcess.on('error', (err) => {
+        console.error('[Backend Error]', err);
+    });
+    backendProcess.on('exit', (code) => {
+        console.log('[Backend] 进程退出, code:', code);
+    });
+}
+// 停止后端服务
+function stopBackend() {
+    if (backendProcess) {
+        console.log('[Main] 停止后端服务...');
+        backendProcess.kill();
+        backendProcess = null;
+    }
+}
+// IPC 处理器
+function setupIpcHandlers() {
+    // 获取版本
+    electron_1.ipcMain.handle('get-version', () => {
+        return electron_1.app.getVersion();
+    });
+    // 获取平台
+    electron_1.ipcMain.handle('get-platform', () => {
+        return process.platform;
+    });
+    // 打开外部链接
+    electron_1.ipcMain.handle('open-external', async (_, url) => {
+        await electron_1.shell.openExternal(url);
+    });
+    // 打开文件夹
+    electron_1.ipcMain.handle('open-path', async (_, filePath) => {
+        electron_1.shell.showItemInFolder(filePath);
+    });
+    // 窗口控制
+    electron_1.ipcMain.on('window-minimize', () => {
+        mainWindow?.minimize();
+    });
+    electron_1.ipcMain.on('window-maximize', () => {
+        if (mainWindow?.isMaximized()) {
+            mainWindow.unmaximize();
+        }
+        else {
+            mainWindow?.maximize();
+        }
+    });
+    electron_1.ipcMain.on('window-close', () => {
+        mainWindow?.close();
+    });
+}
+// 应用就绪
+electron_1.app.whenReady().then(() => {
+    console.log('[Main] 应用启动...');
+    // 设置 IPC 处理器
+    setupIpcHandlers();
+    // 创建窗口
+    createWindow();
+    // 创建托盘
+    createTray();
+    // 启动后端
+    startBackend();
+    // macOS 激活时重新创建窗口
+    electron_1.app.on('activate', () => {
+        if (electron_1.BrowserWindow.getAllWindows().length === 0) {
+            createWindow();
+        }
+    });
+});
+// 所有窗口关闭
+electron_1.app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+        electron_1.app.quit();
+    }
+});
+// 退出前清理
+electron_1.app.on('before-quit', () => {
+    console.log('[Main] 应用退出...');
+    stopBackend();
+});
+electron_1.app.on('quit', () => {
+    console.log('[Main] 应用已退出');
+});
+//# sourceMappingURL=main.js.map

@@ -11,6 +11,7 @@ app.disableHardwareAcceleration()
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let backendProcess: ChildProcess | null = null
+let isQuitting = false
 
 const isDev = !app.isPackaged
 
@@ -49,7 +50,7 @@ function createWindow() {
 
   // 窗口关闭时最小化到托盘
   mainWindow.on('close', (event) => {
-    if (tray && !app.isQuitting) {
+    if (tray && !isQuitting) {
       event.preventDefault()
       mainWindow?.hide()
     }
@@ -73,7 +74,7 @@ function createMenu() {
           label: '退出',
           accelerator: 'CmdOrCtrl+Q',
           click: () => {
-            app.isQuitting = true
+            isQuitting = true
             app.quit()
           }
         }
@@ -165,7 +166,7 @@ function createTray() {
     {
       label: '退出',
       click: () => {
-        app.isQuitting = true
+        isQuitting = true
         app.quit()
       }
     }
@@ -262,13 +263,6 @@ function setupIpcHandlers() {
   ipcMain.on('window-close', () => {
     mainWindow?.close()
   })
-}
-
-// 扩展 Electron.App 接口
-declare module 'electron' {
-  interface App {
-    isQuitting?: boolean
-  }
 }
 
 // 应用就绪

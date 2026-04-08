@@ -56,7 +56,7 @@
     "appId": "com.dewugojin.tool",
     "productName": "得物掘金工具",
     "directories": {
-      "output": "release"
+      "output": "dist-electron"
     },
     "files": [
       "dist/**/*",
@@ -67,7 +67,12 @@
         "from": "../backend",
         "to": "backend",
         "filter": [
-          "**/*"
+          "**/*",
+          "!venv/**",
+          "!__pycache__/**",
+          "!*.pyc",
+          "!.pytest_cache/**",
+          "!.mypy_cache/**"
         ]
       }
     ],
