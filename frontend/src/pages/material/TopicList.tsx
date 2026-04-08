@@ -231,7 +231,7 @@ export default function TopicList() {
         open={searchModalOpen}
         onCancel={() => { setSearchModalOpen(false); setSearchKeyword(''); setSearchInput('') }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
         width={560}
       >
         <Space style={{ marginBottom: 12 }}>
@@ -274,7 +274,7 @@ export default function TopicList() {
         onOk={handleAdd}
         confirmLoading={createTopic.isPending}
         onCancel={() => { setAddModalOpen(false); form.resetFields() }}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical">
           <Form.Item name="name" label="话题名称" rules={[{ required: true, message: '请输入话题名称' }]}>
@@ -293,7 +293,7 @@ export default function TopicList() {
         onOk={handleSaveGlobalTopics}
         confirmLoading={setGlobalTopics.isPending}
         onCancel={() => setGlobalModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width={520}
       >
         <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>

@@ -621,7 +621,7 @@ export default function Account() {
         onOk={handleSubmit}
         confirmLoading={createAccount.isPending}
         onCancel={() => { setModalVisible(false); form.resetFields() }}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical">
           <Form.Item

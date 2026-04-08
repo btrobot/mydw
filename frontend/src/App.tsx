@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { ConfigProvider } from 'antd'
+import { ConfigProvider, App as AntApp } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import dayjs from 'dayjs'
 
@@ -39,7 +39,8 @@ const theme = {
 function App() {
   return (
     <ConfigProvider theme={theme} locale={zhCN}>
-      <QueryProvider>
+      <AntApp>
+        <QueryProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Layout />}>
@@ -67,6 +68,7 @@ function App() {
           </Routes>
         </BrowserRouter>
       </QueryProvider>
+      </AntApp>
     </ConfigProvider>
   )
 }

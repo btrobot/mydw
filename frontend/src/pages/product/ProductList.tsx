@@ -234,7 +234,7 @@ export default function ProductList() {
         onOk={handleAdd}
         confirmLoading={createProduct.isPending || updateProduct.isPending}
         onCancel={() => { setModalOpen(false); setEditingProduct(null); form.resetFields() }}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical">
           <Form.Item

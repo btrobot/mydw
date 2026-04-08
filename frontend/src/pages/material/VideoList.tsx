@@ -244,7 +244,7 @@ export default function VideoList() {
         onOk={handleAdd}
         confirmLoading={createVideo.isPending}
         onCancel={() => { setAddModalOpen(false); form.resetFields() }}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical">
           <Form.Item name="name" label="视频名称" rules={[{ required: true, message: '请输入名称' }]}>

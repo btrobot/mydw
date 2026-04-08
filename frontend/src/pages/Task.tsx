@@ -317,7 +317,7 @@ export default function Task() {
         onCancel={() => setAssembleVisible(false)}
         confirmLoading={assembleTasks.isPending}
         width={520}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={assembleForm} layout="vertical" initialValues={{ strategy: 'round_robin', copywriting_mode: 'auto_match' }}>
           <Form.Item

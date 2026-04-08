@@ -32,8 +32,8 @@ export default function ProductDetail() {
   const { data: products = [], isLoading: productsLoading } = useProductsV2()
   const product = products.find((p) => p.id === productId)
 
-  const { data: videos = [], isLoading: videosLoading } = useVideos(productId)
-  const { data: copywritings = [], isLoading: copywritingsLoading } = useCopywritings(productId)
+  const { data: videos = [], isLoading: videosLoading } = useVideos({ productId })
+  const { data: copywritings = [], isLoading: copywritingsLoading } = useCopywritings({ productId })
 
   const updateProduct = useUpdateProductV2()
 
@@ -208,7 +208,7 @@ export default function ProductDetail() {
         onOk={handleEditSave}
         confirmLoading={updateProduct.isPending}
         onCancel={() => setEditOpen(false)}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical">
           <Form.Item

@@ -217,7 +217,7 @@ export default function CopywritingList() {
         onOk={handleAdd}
         confirmLoading={editingCw ? updateCopywriting.isPending : createCopywriting.isPending}
         onCancel={() => { setAddModalOpen(false); setEditingCw(null); form.resetFields() }}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical">
           <Form.Item name="content" label="文案内容" rules={[{ required: true, message: '请输入文案内容' }]}>

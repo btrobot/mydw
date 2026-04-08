@@ -292,7 +292,7 @@ export default function ConnectionModal({
       open={open}
       onCancel={onCancel}
       footer={null}
-      destroyOnClose
+      destroyOnHidden
       maskClosable={!loading}
       closable={!loading}
     >
