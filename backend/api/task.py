@@ -1,23 +1,27 @@
 """
 任务管理 API
 """
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from loguru import logger
 
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
-from models import Task, Account
+from models import Task, Account, CompositionJob
 from models import get_db
 from schemas import (
     TaskCreate, TaskUpdate, TaskResponse, TaskListResponse,
-    TaskPublishRequest, TaskBatchCreateRequest, AssembleTasksRequest
+    TaskPublishRequest, TaskBatchCreateRequest, AssembleTasksRequest,
+    CompositionJobResponse,
 )
 from services.task_service import TaskService
 from services.task_distributor import TaskDistributor
 from services.scheduler import scheduler
+from services.composition_service import CompositionService
 
 router = APIRouter()
 
@@ -34,6 +38,10 @@ class TaskStatsResponse(BaseModel):
     failed: int
     cancelled: int
     today_uploaded: int
+
+
+class BatchSubmitCompositionRequest(BaseModel):
+    task_ids: List[int] = Field(..., min_length=1, description="任务ID列表")
 
 
 # ============ API 端点 ============
@@ -250,3 +258,102 @@ async def assemble_tasks(
         request.strategy,
     )
     return tasks
+
+
+# ============ 合成端点 (BE-TM-13) ============
+
+@router.post("/{task_id}/submit-composition", response_model=CompositionJobResponse, status_code=201)
+async def submit_composition(
+    task_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> CompositionJobResponse:
+    """提交单个任务合成（draft → composing）"""
+    service = CompositionService(db)
+    try:
+        job = await service.submit_composition(task_id)
+        logger.info("合成提交成功: task_id={}, job_id={}", task_id, job.id)
+        return job
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error("合成提交失败: task_id={}, error_type={}", task_id, type(e).__name__)
+        raise HTTPException(status_code=500, detail="服务器内部错误")
+
+
+@router.post("/batch-submit-composition")
+async def batch_submit_composition(
+    request: BatchSubmitCompositionRequest,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """批量提交合成任务"""
+    service = CompositionService(db)
+    result = await service.batch_submit(request.task_ids)
+    logger.info(
+        "批量合成提交: total={}, success={}, failed={}",
+        len(request.task_ids),
+        result["success_count"],
+        result["failed_count"],
+    )
+    return result
+
+
+@router.post("/{task_id}/cancel-composition", response_model=CompositionJobResponse)
+async def cancel_composition(
+    task_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> CompositionJobResponse:
+    """取消合成（composing → draft，CompositionJob 标记 cancelled）"""
+    result = await db.execute(select(Task).where(Task.id == task_id))
+    task = result.scalars().first()
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    if task.status != "composing":
+        raise HTTPException(status_code=400, detail=f"任务当前状态为 {task.status}，只有 composing 状态可取消合成")
+
+    if not task.composition_job_id:
+        raise HTTPException(status_code=400, detail="任务没有关联的合成任务")
+
+    job_result = await db.execute(
+        select(CompositionJob).where(CompositionJob.id == task.composition_job_id)
+    )
+    job = job_result.scalars().first()
+    if not job:
+        raise HTTPException(status_code=404, detail="合成任务不存在")
+
+    job.status = "cancelled"
+    job.completed_at = datetime.utcnow()
+    job.updated_at = datetime.utcnow()
+
+    task.status = "draft"
+    task.updated_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(job)
+
+    logger.info("合成已取消: task_id={}, job_id={}", task_id, job.id)
+    return job
+
+
+@router.get("/{task_id}/composition-status", response_model=CompositionJobResponse)
+async def get_composition_status(
+    task_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> CompositionJobResponse:
+    """查询任务合成状态"""
+    result = await db.execute(select(Task).where(Task.id == task_id))
+    task = result.scalars().first()
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    if not task.composition_job_id:
+        raise HTTPException(status_code=404, detail="任务没有关联的合成任务")
+
+    job_result = await db.execute(
+        select(CompositionJob).where(CompositionJob.id == task.composition_job_id)
+    )
+    job = job_result.scalars().first()
+    if not job:
+        raise HTTPException(status_code=404, detail="合成任务不存在")
+
+    return job

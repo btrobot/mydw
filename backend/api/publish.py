@@ -107,14 +107,14 @@ async def control_publish(
             raise HTTPException(status_code=400, detail="发布已在运行中")
 
         _publish_status["status"] = "running"
-        result = await scheduler.start_publishing(db)
+        result = await scheduler.start_publishing()
         logger.info("开始发布任务")
 
         return {"success": True, "action": action, **result}
 
     elif action == "pause":
         _publish_status["status"] = "paused"
-        result = await scheduler.pause_publishing(db)
+        result = await scheduler.pause_publishing()
         logger.info("暂停发布任务")
 
         return {"success": True, "action": action, **result}
@@ -122,7 +122,7 @@ async def control_publish(
     elif action == "stop":
         _publish_status["status"] = "idle"
         _publish_status["current_task_id"] = None
-        result = await scheduler.stop_publishing(db)
+        result = await scheduler.stop_publishing()
         logger.info("停止发布任务")
 
         return {"success": True, "action": action, **result}
