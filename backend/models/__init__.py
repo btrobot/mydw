@@ -137,6 +137,7 @@ class Copywriting(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=True, index=True)
+    name = Column(String(256), nullable=False, server_default="")
     content = Column(Text, nullable=False)
     source_type = Column(String(32), default="manual")
     source_ref = Column(String(256), nullable=True)
@@ -324,6 +325,8 @@ async def init_db():
     await migration_012.run_migration(engine)
     migration_013 = importlib.import_module("migrations.013_cover_name")
     await migration_013.run_migration(engine)
+    migration_014 = importlib.import_module("migrations.014_copywriting_name")
+    await migration_014.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

@@ -475,6 +475,7 @@ class VideoListResponse(BaseModel):
 
 class CopywritingCreate(BaseModel):
     """创建文案"""
+    name: Optional[str] = Field(None, max_length=256, description="文案名称，为空则取 content 前 50 字")
     content: str = Field(..., min_length=1)
     product_id: Optional[int] = None
     source_type: str = Field(default="manual", max_length=32)
@@ -483,6 +484,7 @@ class CopywritingCreate(BaseModel):
 
 class CopywritingUpdate(BaseModel):
     """更新文案"""
+    name: Optional[str] = Field(None, max_length=256)
     content: Optional[str] = None
     product_id: Optional[int] = None
     source_type: Optional[str] = None
@@ -496,6 +498,7 @@ class CopywritingResponse(BaseModel):
     id: int
     product_id: Optional[int] = None
     product_name: Optional[str] = None
+    name: str = ""
     content: str
     source_type: str
     source_ref: Optional[str] = None

@@ -81,6 +81,7 @@ export interface CopywritingResponse {
   id: number
   product_id: number | null
   product_name: string | null
+  name: string
   content: string
   source_type: string
   source_ref: string | null

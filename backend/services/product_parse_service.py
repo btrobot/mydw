@@ -387,6 +387,7 @@ async def _replace_product_materials(
     if pack.title and pack.title != "未知商品":
         cw = Copywriting(
             product_id=product_id,
+            name=pack.title[:50],
             content=pack.title,
             source_type="dewu_parse",
             source_ref=product.dewu_url,

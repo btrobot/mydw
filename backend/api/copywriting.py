@@ -75,7 +75,9 @@ async def create_copywriting(
     db: AsyncSession = Depends(get_db),
 ) -> CopywritingResponse:
     """创建文案"""
+    name = (data.name or "").strip() or data.content[:50]
     copywriting = Copywriting(
+        name=name,
         content=data.content,
         product_id=data.product_id,
         source_type=data.source_type,
@@ -204,7 +206,7 @@ async def import_copywritings(
         if not stripped:
             result.skipped_empty += 1
             continue
-        cw = Copywriting(content=stripped, product_id=product_id, source_type="import")
+        cw = Copywriting(name=stripped[:50], content=stripped, product_id=product_id, source_type="import")
         db.add(cw)
         result.imported += 1
 

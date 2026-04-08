@@ -26,6 +26,7 @@ const SOURCE_TYPE_VALUE_ENUM = {
 const { Text } = Typography
 
 interface CopywritingFormValues {
+  name?: string
   content: string
   product_id?: number
 }
@@ -66,7 +67,7 @@ export default function CopywritingList() {
 
   const handleEdit = useCallback((cw: CopywritingResponse) => {
     setEditingCw(cw)
-    form.setFieldsValue({ content: cw.content, product_id: cw.product_id ?? undefined })
+    form.setFieldsValue({ name: cw.name, content: cw.content, product_id: cw.product_id ?? undefined })
     setAddModalOpen(true)
   }, [form])
 
@@ -110,6 +111,15 @@ export default function CopywritingList() {
       width: 70,
       sorter: true,
       hideInSearch: true,
+    },
+    {
+      title: '名称',
+      dataIndex: 'name',
+      width: 150,
+      hideInSearch: true,
+      render: (_, record) => record.name
+        ? <Text>{record.name}</Text>
+        : <Text type="secondary">—</Text>,
     },
     {
       title: '内容',
@@ -220,6 +230,9 @@ export default function CopywritingList() {
         destroyOnHidden
       >
         <Form form={form} layout="vertical">
+          <Form.Item name="name" label="名称">
+            <Input placeholder="可选，文案名称" />
+          </Form.Item>
           <Form.Item name="content" label="文案内容" rules={[{ required: true, message: '请输入文案内容' }]}>
             <Input.TextArea rows={4} placeholder="请输入文案内容" />
           </Form.Item>
