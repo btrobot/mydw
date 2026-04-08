@@ -1,6 +1,7 @@
 """
 得物掘金工具 - 商品素材解析服务
 """
+import json
 import re
 import asyncio
 from dataclasses import dataclass, field
@@ -71,6 +72,13 @@ async def parse_product_page(dewu_url: str) -> MaterialPack:
 
         html = await page.content()
         logger.info("商品页渲染完成: url={}, html_len={}", dewu_url, len(html))
+
+        # 保存渲染后的 HTML 用于调试
+        debug_dir = Path("data/debug")
+        debug_dir.mkdir(parents=True, exist_ok=True)
+        debug_path = debug_dir / f"parse_{int(datetime.utcnow().timestamp())}.html"
+        debug_path.write_text(html, encoding="utf-8")
+        logger.info("渲染 HTML 已保存: path={}", debug_path)
     except Exception as e:
         logger.error("商品页浏览器渲染失败: url={}, error_type={}", dewu_url, type(e).__name__)
         raise ValueError(f"商品页渲染失败: {type(e).__name__}")
@@ -103,6 +111,18 @@ def _extract_material_pack(html: str, dewu_url: str) -> MaterialPack:
     )
 
 
+def _extract_next_data(html: str) -> Optional[dict]:
+    """从 <script id="__NEXT_DATA__"> 提取并解析 JSON。"""
+    m = re.search(r'<script[^>]+id=["\']__NEXT_DATA__["\'][^>]*>(.*?)</script>', html, re.DOTALL)
+    if not m:
+        return None
+    try:
+        return json.loads(m.group(1))
+    except (ValueError, TypeError):
+        logger.debug("__NEXT_DATA__ JSON 解析失败")
+        return None
+
+
 def _extract_title(html: str) -> Optional[str]:
     """提取标题: div.pc_title__ > 文本"""
     m = re.search(r'<div\s+class="pc_title__[^"]*"[^>]*>([^<]+)</div>', html)
@@ -116,18 +136,26 @@ def _extract_title(html: str) -> Optional[str]:
 
 
 def _extract_cover_urls(html: str) -> list[str]:
-    """提取封面图: video[poster] + img.Products_item-pic__"""
+    """提取封面图: 优先从 __NEXT_DATA__ JSON，fallback 到 DOM 正则"""
+    next_data = _extract_next_data(html)
+    if next_data is not None:
+        try:
+            media_list = next_data["props"]["pageProps"]["metaOGInfo"]["data"][0]["content"]["media"]["list"]
+            urls = [item["url"] for item in media_list if item.get("mediaType") == "img" and item.get("url")]
+            if urls:
+                return urls
+        except (KeyError, TypeError, IndexError):
+            pass
+
+    # fallback: DOM 正则
     urls: list[str] = []
-    # 1. video poster (高优先级，通常是视频封面)
     m = re.search(r'<video[^>]+poster=["\']([^"\']+)["\']', html)
     if m:
         urls.append(m.group(1))
-    # 2. 商品推荐图片
     for m in re.finditer(r'<img[^>]+class="Products_item-pic__[^"]*"[^>]+src=["\']([^"\']+)["\']', html):
         url = m.group(1)
         if url not in urls:
             urls.append(url)
-    # 3. fallback: og:image
     if not urls:
         for m in re.finditer(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', html):
             urls.append(m.group(1))
@@ -135,7 +163,18 @@ def _extract_cover_urls(html: str) -> list[str]:
 
 
 def _extract_video_url(html: str) -> Optional[str]:
-    """提取视频: video[src] 或 video > source[src]"""
+    """提取视频: 优先从 __NEXT_DATA__ JSON，fallback 到 DOM 正则"""
+    next_data = _extract_next_data(html)
+    if next_data is not None:
+        try:
+            media_list = next_data["props"]["pageProps"]["metaOGInfo"]["data"][0]["content"]["media"]["list"]
+            for item in media_list:
+                if item.get("mediaType") == "video" and item.get("url"):
+                    return item["url"]
+        except (KeyError, TypeError, IndexError):
+            pass
+
+    # fallback: DOM 正则
     m = re.search(r'<video[^>]+src=["\']([^"\']+\.mp4[^"\']*)["\']', html)
     if m:
         return m.group(1)
@@ -144,9 +183,27 @@ def _extract_video_url(html: str) -> Optional[str]:
 
 
 def _extract_topics(html: str) -> list[str]:
-    """提取话题: div.pc_content__ 下 span[data-id] 的文本"""
+    """提取话题: 优先从 __NEXT_DATA__ JSON content 字段解析 #tag，fallback 到 DOM 正则"""
+    next_data = _extract_next_data(html)
+    if next_data is not None:
+        try:
+            content_text = next_data["props"]["pageProps"]["metaOGInfo"]["data"][0]["content"]["content"]
+            if content_text:
+                topics = [
+                    token.lstrip('#').strip()
+                    for token in content_text.split()
+                    if token.startswith('#') and len(token) > 1
+                ]
+                # deduplicate while preserving order
+                seen: set[str] = set()
+                unique = [t for t in topics if not (t in seen or seen.add(t))]  # type: ignore[func-returns-value]
+                if unique:
+                    return unique[:20]
+        except (KeyError, TypeError, IndexError):
+            pass
+
+    # fallback: DOM 正则
     topics: list[str] = []
-    # 先定位 pc_content__ 区域
     content_m = re.search(r'<div\s+class="pc_content__[^"]*"[^>]*>(.*?)</div>', html, re.DOTALL)
     if content_m:
         content_html = content_m.group(1)
@@ -154,7 +211,6 @@ def _extract_topics(html: str) -> list[str]:
             name = m.group(1).strip().lstrip('#').strip()
             if name and name not in topics:
                 topics.append(name)
-    # fallback: 全局搜索带 # 的 span
     if not topics:
         for m in re.finditer(r'onclick="window\.DEWU\.onClickTag[^"]*"[^>]*>\s*#([^<]+)</span>', html):
             name = m.group(1).strip()
