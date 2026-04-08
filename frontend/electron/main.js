@@ -174,16 +174,28 @@ function startBackend() {
     const backendPath = isDev
         ? path_1.default.join(__dirname, '../../backend')
         : path_1.default.join(process.resourcesPath, 'backend');
-    const pythonPath = isDev
+    const pythonCmd = isDev
         ? path_1.default.join(__dirname, '../../backend/venv/Scripts/python.exe')
-        : 'python';
-    console.log('[Main] 启动后端服务...', { backendPath, pythonPath });
-    backendProcess = (0, child_process_1.spawn)(pythonPath, ['-m', 'uvicorn', 'main:app', '--port', '8000', '--host', '127.0.0.1'], {
-        cwd: backendPath,
-        stdio: ['pipe', 'pipe', 'pipe'],
-        shell: true,
-        detached: false
-    });
+        : null;
+    console.log('[Main] 启动后端服务...', { backendPath, isDev });
+    if (isDev) {
+        // 开发模式：用 python + uvicorn
+        backendProcess = (0, child_process_1.spawn)(pythonCmd, ['-m', 'uvicorn', 'main:app', '--port', '8000', '--host', '127.0.0.1'], {
+            cwd: backendPath,
+            stdio: ['pipe', 'pipe', 'pipe'],
+            shell: true,
+            detached: false
+        });
+    }
+    else {
+        // 生产模式：用 PyInstaller 打包的 exe
+        const backendExe = path_1.default.join(backendPath, 'backend.exe');
+        backendProcess = (0, child_process_1.spawn)(backendExe, [], {
+            cwd: backendPath,
+            stdio: ['pipe', 'pipe', 'pipe'],
+            detached: false
+        });
+    }
     backendProcess.stdout?.on('data', (data) => {
         console.log('[Backend]', data.toString());
     });

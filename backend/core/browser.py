@@ -4,7 +4,6 @@
 import asyncio
 import json
 from typing import Optional, Dict
-from patchright.async_api import async_playwright
 from loguru import logger
 
 from core.config import settings
@@ -22,6 +21,7 @@ class BrowserManager:
 
     async def init(self):
         """初始化 Patchright 浏览器"""
+        from patchright.async_api import async_playwright
         if not self.playwright:
             self.playwright = await async_playwright().start()
             self.browser = await self.playwright.chromium.launch(
@@ -158,6 +158,7 @@ class PreviewBrowserManager:
 
             # 启动 headed 浏览器
             if not self.playwright:
+                from patchright.async_api import async_playwright
                 self.playwright = await async_playwright().start()
             if not self.browser:
                 self.browser = await self.playwright.chromium.launch(headless=False)

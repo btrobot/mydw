@@ -65,15 +65,10 @@
     ],
     "extraResources": [
       {
-        "from": "../backend",
+        "from": "../backend/dist/backend",
         "to": "backend",
         "filter": [
-          "**/*",
-          "!venv/**",
-          "!__pycache__/**",
-          "!*.pyc",
-          "!.pytest_cache/**",
-          "!.mypy_cache/**"
+          "**/*"
         ]
       }
     ],

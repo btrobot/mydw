@@ -5,7 +5,6 @@ import re
 import asyncio
 from typing import List, Dict
 
-from patchright.async_api import async_playwright
 from loguru import logger
 
 
@@ -74,6 +73,7 @@ class TopicSearchService:
         """
         logger.info("开始搜索话题: keyword={}", keyword)
 
+        from patchright.async_api import async_playwright
         async with async_playwright() as pw:
             browser = await pw.chromium.launch(headless=True)
             try:

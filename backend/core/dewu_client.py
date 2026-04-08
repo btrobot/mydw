@@ -3,10 +3,17 @@
 """
 import asyncio
 from typing import Optional, Tuple, Dict, Any, List
-from playwright.async_api import Page, TimeoutError as PlaywrightTimeout
 from loguru import logger
 
 from core.browser import browser_manager
+
+# Lazy import: playwright types loaded at runtime when browser features are used
+# This allows the app to start without playwright installed (e.g. PyInstaller build)
+try:
+    from playwright.async_api import Page, TimeoutError as PlaywrightTimeout
+except ImportError:
+    Page = Any  # type: ignore
+    PlaywrightTimeout = TimeoutError  # fallback
 
 
 # 登录页面元素选择器（已验证 Patchright）
