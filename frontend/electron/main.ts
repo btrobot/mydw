@@ -184,16 +184,16 @@ function createTray() {
 function startBackend() {
   const backendPath = isDev
     ? path.join(__dirname, '../../backend')
-    : path.join(__dirname, '../app.asar.unpacked/backend')
+    : path.join(process.resourcesPath, 'backend')
 
   const pythonPath = isDev
     ? path.join(__dirname, '../../backend/venv/Scripts/python.exe')
     : 'python'
 
-  console.log('[Main] 启动后端服务...')
+  console.log('[Main] 启动后端服务...', { backendPath, pythonPath })
 
   backendProcess = spawn(pythonPath, ['-m', 'uvicorn', 'main:app', '--port', '8000', '--host', '127.0.0.1'], {
-    cwd: path.join(__dirname, '../../backend'),
+    cwd: backendPath,
     stdio: ['pipe', 'pipe', 'pipe'],
     shell: true,
     detached: false
