@@ -121,13 +121,9 @@ export default function VideoList() {
       dataIndex: 'name',
       ellipsis: true,
       render: (_, record) => (
-        <Space>
-          <PlayCircleOutlined
-            style={{ cursor: 'pointer', color: '#1890ff' }}
-            onClick={() => setPlayingVideo(record)}
-          />
-          <span>{record.name}</span>
-        </Space>
+        <Typography.Link onClick={() => navigate(`/material/video/${record.id}`)}>
+          {record.name}
+        </Typography.Link>
       ),
     },
     {
@@ -187,12 +183,22 @@ export default function VideoList() {
     {
       title: '操作',
       key: 'action',
-      width: 80,
+      width: 120,
       hideInSearch: true,
       render: (_, record) => (
-        <Popconfirm title="确定删除？" onConfirm={() => handleDelete(record.id)}>
-          <Button type="link" danger size="small">删除</Button>
-        </Popconfirm>
+        <Space>
+          <Button
+            type="link"
+            size="small"
+            icon={<PlayCircleOutlined />}
+            onClick={() => setPlayingVideo(record)}
+          >
+            播放
+          </Button>
+          <Popconfirm title="确定删除？" onConfirm={() => handleDelete(record.id)}>
+            <Button type="link" danger size="small">删除</Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ]
