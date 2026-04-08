@@ -625,6 +625,67 @@ frontend/src/
 - MUST NOT use class components
 - MUST NOT create functions inside render JSX
 - MUST NOT use `innerHTML` — use `textContent`
+- MUST NOT use relative API paths (`/api/...`) — use `API_BASE` or `api` instance
+- MUST NOT use `BrowserRouter` — use `HashRouter` (Electron `file://` compatibility)
+
+---
+
+## 11. Electron Compatibility
+
+This app runs in Electron with `file://` protocol. These rules prevent common breakage:
+
+### API Requests
+
+All HTTP requests MUST use absolute URLs via `API_BASE` or the `api` axios instance.
+
+- `api` axios instance (from `@/services/api`) has `baseURL` configured — use for standard requests
+- `API_BASE` constant (from `@/services/api`) — use for non-axios calls (EventSource, raw fetch)
+
+**Correct**:
+
+```typescript
+import { api, API_BASE } from '@/services/api'
+
+// axios — uses baseURL automatically
+const { data } = await api.get('/accounts')
+
+// EventSource — must use API_BASE
+const es = new EventSource(`${API_BASE}/accounts/connect/${id}/stream`)
+
+// Raw fetch — must use API_BASE
+const res = await fetch(`${API_BASE}/system/health`)
+```
+
+**Incorrect**:
+
+```typescript
+// VIOLATION: relative path resolves to file:///E:/api/... in Electron
+const es = new EventSource(`/api/accounts/connect/${id}/stream`)
+await axios.post(`/api/accounts/connect/${id}/send-code`, body)
+await fetch('/api/system/health')
+```
+
+### Routing
+
+MUST use `HashRouter` (not `BrowserRouter`). `BrowserRouter` requires server-side routing which doesn't work under `file://` protocol.
+
+**Correct**:
+
+```typescript
+import { HashRouter } from 'react-router-dom'
+// URLs: file:///path/index.html#/dashboard
+```
+
+**Incorrect**:
+
+```typescript
+// VIOLATION: causes white screen in Electron production build
+import { BrowserRouter } from 'react-router-dom'
+```
+
+### Vite Base Path
+
+Production builds for Electron MUST use relative base path (`./`). Set via `ELECTRON_BUILD=true` env variable which triggers `base: './'` in `vite.config.ts`.
 
 ---
 
