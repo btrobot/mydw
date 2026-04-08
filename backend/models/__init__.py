@@ -155,6 +155,7 @@ class Cover(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     video_id = Column(Integer, ForeignKey("videos.id"), nullable=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=True, index=True)
+    name = Column(String(256), nullable=False, server_default="")
     file_path = Column(String(512), nullable=False)
     file_size = Column(Integer, nullable=True)
     width = Column(Integer, nullable=True)
@@ -321,6 +322,8 @@ async def init_db():
     await migration_011.run_migration(engine)
     migration_012 = importlib.import_module("migrations.012_product_redesign")
     await migration_012.run_migration(engine)
+    migration_013 = importlib.import_module("migrations.013_cover_name")
+    await migration_013.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

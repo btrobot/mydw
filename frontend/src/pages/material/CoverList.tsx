@@ -1,12 +1,13 @@
 import { useState, useCallback, useRef } from 'react'
 import {
   Button, Typography, message,
-  Popconfirm, Upload, Tag,
+  Popconfirm, Upload, Image,
 } from 'antd'
 import type { UploadProps } from 'antd'
-import { UploadOutlined, DeleteOutlined } from '@ant-design/icons'
+import { UploadOutlined, DeleteOutlined, VideoCameraOutlined } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns, ActionType } from '@ant-design/pro-components'
+import { useNavigate } from 'react-router-dom'
 
 import { useUploadCover, useDeleteCover, useBatchDeleteCovers, useVideos } from '@/hooks'
 import type { CoverResponse } from '@/types/material'
@@ -19,6 +20,7 @@ const { Text } = Typography
 export default function CoverList() {
   const actionRef = useRef<ActionType>()
   const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const navigate = useNavigate()
 
   const { data: videos = [] } = useVideos()
   const uploadCover = useUploadCover()
@@ -67,15 +69,25 @@ export default function CoverList() {
       hideInSearch: true,
     },
     {
-      title: '文件路径',
-      dataIndex: 'file_path',
+      title: '名称',
+      dataIndex: 'name',
       ellipsis: true,
       hideInSearch: true,
+      render: (_, record) => (
+        <Image
+          width={48}
+          height={48}
+          src={`http://127.0.0.1:8000/api/covers/${record.id}/image`}
+          preview={{ src: `http://127.0.0.1:8000/api/covers/${record.id}/image` }}
+          style={{ objectFit: 'cover', cursor: 'pointer' }}
+          alt={record.name}
+        />
+      ),
     },
     {
       title: '关联视频',
       dataIndex: 'video_id',
-      width: 160,
+      width: 120,
       valueType: 'select',
       fieldProps: {
         placeholder: '按视频筛选',
@@ -83,9 +95,16 @@ export default function CoverList() {
         options: videos.map((v) => ({ label: v.name, value: v.id })),
       },
       render: (_, record) =>
-        record.video_id
-          ? <Tag>视频 #{record.video_id}</Tag>
-          : <Text type="secondary">—</Text>,
+        record.video_id ? (
+          <Button
+            type="link"
+            size="small"
+            icon={<VideoCameraOutlined />}
+            onClick={() => navigate('/material/video')}
+          />
+        ) : (
+          <Text type="secondary">—</Text>
+        ),
     },
     {
       title: '大小',

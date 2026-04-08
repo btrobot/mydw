@@ -546,6 +546,7 @@ class CoverResponse(BaseModel):
     id: int
     video_id: Optional[int] = None
     product_id: Optional[int] = None
+    name: str = ""
     file_path: str
     file_size: Optional[int] = None
     width: Optional[int] = None

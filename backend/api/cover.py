@@ -6,6 +6,7 @@ from typing import Optional, List
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from loguru import logger
@@ -51,6 +52,7 @@ async def upload_cover(
 
     cover = Cover(
         video_id=video_id,
+        name=Path(file.filename).stem,
         file_path=str(file_path),
         file_size=len(content),
     )
@@ -199,3 +201,34 @@ async def extract_cover(
     await db.refresh(cover)
     logger.info("封面提取成功: cover_id={}, video_id={}", cover.id, data.video_id)
     return cover
+
+
+# ─── 封面图片流 ───────────────────────────────────────────────────────────────
+
+@router.get("/{cover_id}/image")
+async def get_cover_image(
+    cover_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> FileResponse:
+    """返回封面图片文件（FileResponse）"""
+    result = await db.execute(select(Cover).where(Cover.id == cover_id))
+    cover = result.scalars().first()
+    if not cover:
+        raise HTTPException(status_code=404, detail="封面不存在")
+
+    file_path = Path(cover.file_path)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="封面文件不存在")
+
+    # 根据扩展名推断 media_type
+    suffix = file_path.suffix.lower()
+    media_type_map = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+    }
+    media_type = media_type_map.get(suffix, "application/octet-stream")
+
+    logger.info("封面图片请求: cover_id={}", cover_id)
+    return FileResponse(path=str(file_path), media_type=media_type, filename=file_path.name)

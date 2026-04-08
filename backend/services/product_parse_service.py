@@ -375,6 +375,7 @@ async def _replace_product_materials(
         c = Cover(
             video_id=first_video_id,
             product_id=product_id,
+            name=pack.title,
             file_path=file_path,
             file_hash=file_hash,
             file_size=file_size,

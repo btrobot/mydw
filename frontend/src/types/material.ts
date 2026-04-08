@@ -106,6 +106,7 @@ export interface CoverResponse {
   id: number
   product_id: number | null
   video_id: number | null
+  name: string
   file_path: string
   file_size: number | null
   width: number | null
