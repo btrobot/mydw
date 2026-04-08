@@ -89,4 +89,4 @@ export { useCovers, useUploadCover, useDeleteCover, useExtractCover, useBatchDel
 export { useAudios, useUploadAudio, useDeleteAudio, useBatchDeleteAudios } from './useAudio'
 
 // Topic Hooks
-export { useTopics, useCreateTopic, useDeleteTopic, useSearchTopics, useGlobalTopics, useSetGlobalTopics, useBatchDeleteTopics } from './useTopic'
+export { useTopics, useCreateTopic, useDeleteTopic, useSearchTopics, useGlobalTopics, useSetGlobalTopics, useBatchDeleteTopics, useTopicGroups, useCreateTopicGroup, useUpdateTopicGroup, useDeleteTopicGroup } from './useTopic'

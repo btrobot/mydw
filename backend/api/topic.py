@@ -10,8 +10,13 @@ from sqlalchemy import select, func
 from loguru import logger
 from pydantic import BaseModel
 
-from models import Topic, PublishConfig, get_db
-from schemas import TopicCreate, TopicResponse, TopicListResponse, GlobalTopicRequest, GlobalTopicResponse, BatchDeleteRequest, BatchDeleteResponse
+from models import Topic, PublishConfig, TopicGroup, get_db
+from schemas import (
+    TopicCreate, TopicResponse, TopicListResponse,
+    GlobalTopicRequest, GlobalTopicResponse,
+    BatchDeleteRequest, BatchDeleteResponse,
+    TopicGroupCreate, TopicGroupUpdate, TopicGroupResponse, TopicGroupListResponse,
+)
 
 router = APIRouter(tags=["话题管理"])
 
@@ -211,3 +216,129 @@ async def batch_delete_topics(
     await db.commit()
     logger.info("话题批量删除完成: deleted={}, skipped={}", deleted, len(skipped_ids))
     return BatchDeleteResponse(deleted=deleted, skipped=len(skipped_ids), skipped_ids=skipped_ids)
+
+
+# ─── 话题组 CRUD ──────────────────────────────────────────────────────────────
+
+@router.get("/groups", response_model=TopicGroupListResponse)
+async def list_topic_groups(
+    db: AsyncSession = Depends(get_db),
+) -> TopicGroupListResponse:
+    """获取所有话题组"""
+    result = await db.execute(select(TopicGroup).order_by(TopicGroup.created_at.desc()))
+    groups = result.scalars().all()
+    return TopicGroupListResponse(total=len(groups), items=list(groups))
+
+
+@router.post("/groups", response_model=TopicGroupResponse, status_code=201)
+async def create_topic_group(
+    data: TopicGroupCreate,
+    db: AsyncSession = Depends(get_db),
+) -> TopicGroupResponse:
+    """创建话题组"""
+    existing = await db.execute(select(TopicGroup).where(TopicGroup.name == data.name))
+    if existing.scalars().first():
+        raise HTTPException(status_code=400, detail="话题组名称已存在")
+
+    if data.topic_ids:
+        found = await db.execute(select(Topic).where(Topic.id.in_(data.topic_ids)))
+        found_ids = {t.id for t in found.scalars().all()}
+        missing = set(data.topic_ids) - found_ids
+        if missing:
+            raise HTTPException(status_code=400, detail=f"话题不存在: {sorted(missing)}")
+
+    group = TopicGroup(
+        name=data.name,
+        topic_ids=json.dumps(data.topic_ids),
+    )
+    db.add(group)
+    await db.commit()
+    await db.refresh(group)
+    logger.info("话题组创建成功: group_id={}, name={}", group.id, group.name)
+    return await _build_group_response(group, db)
+
+
+@router.get("/groups/{group_id}", response_model=TopicGroupResponse)
+async def get_topic_group(
+    group_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> TopicGroupResponse:
+    """获取话题组详情（含展开的话题列表）"""
+    result = await db.execute(select(TopicGroup).where(TopicGroup.id == group_id))
+    group = result.scalars().first()
+    if not group:
+        raise HTTPException(status_code=404, detail="话题组不存在")
+    return await _build_group_response(group, db)
+
+
+@router.put("/groups/{group_id}", response_model=TopicGroupResponse)
+async def update_topic_group(
+    group_id: int,
+    data: TopicGroupUpdate,
+    db: AsyncSession = Depends(get_db),
+) -> TopicGroupResponse:
+    """更新话题组"""
+    result = await db.execute(select(TopicGroup).where(TopicGroup.id == group_id))
+    group = result.scalars().first()
+    if not group:
+        raise HTTPException(status_code=404, detail="话题组不存在")
+
+    if data.name is not None and data.name != group.name:
+        dup = await db.execute(select(TopicGroup).where(TopicGroup.name == data.name))
+        if dup.scalars().first():
+            raise HTTPException(status_code=400, detail="话题组名称已存在")
+        group.name = data.name
+
+    if data.topic_ids is not None:
+        if data.topic_ids:
+            found = await db.execute(select(Topic).where(Topic.id.in_(data.topic_ids)))
+            found_ids = {t.id for t in found.scalars().all()}
+            missing = set(data.topic_ids) - found_ids
+            if missing:
+                raise HTTPException(status_code=400, detail=f"话题不存在: {sorted(missing)}")
+        group.topic_ids = json.dumps(data.topic_ids)
+
+    await db.commit()
+    await db.refresh(group)
+    logger.info("话题组更新成功: group_id={}", group_id)
+    return await _build_group_response(group, db)
+
+
+@router.delete("/groups/{group_id}", status_code=204)
+async def delete_topic_group(
+    group_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """删除话题组"""
+    result = await db.execute(select(TopicGroup).where(TopicGroup.id == group_id))
+    group = result.scalars().first()
+    if not group:
+        raise HTTPException(status_code=404, detail="话题组不存在")
+
+    await db.delete(group)
+    await db.commit()
+    logger.info("话题组删除成功: group_id={}", group_id)
+
+
+# ─── 内部辅助 ─────────────────────────────────────────────────────────────────
+
+async def _build_group_response(group: TopicGroup, db: AsyncSession) -> TopicGroupResponse:
+    """将 ORM TopicGroup 转换为 TopicGroupResponse（含展开话题）。"""
+    try:
+        topic_ids: List[int] = [tid for tid in json.loads(group.topic_ids) if isinstance(tid, int)]
+    except (ValueError, TypeError):
+        topic_ids = []
+
+    topics: List[Topic] = []
+    if topic_ids:
+        res = await db.execute(select(Topic).where(Topic.id.in_(topic_ids)))
+        topics = list(res.scalars().all())
+
+    return TopicGroupResponse(
+        id=group.id,
+        name=group.name,
+        topic_ids=topic_ids,
+        topics=topics,
+        created_at=group.created_at,
+        updated_at=group.updated_at,
+    )

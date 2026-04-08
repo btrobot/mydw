@@ -1,19 +1,20 @@
 import { useState, useCallback, useRef } from 'react'
 import {
   Button, Space, Typography, message,
-  Modal, Form, Input, InputNumber, Select, Popconfirm, Card, Tag, Empty,
+  Modal, Form, Input, InputNumber, Select, Popconfirm, Tag, Empty, Drawer,
 } from 'antd'
 import {
-  PlusOutlined, SearchOutlined, GlobalOutlined, DeleteOutlined,
+  PlusOutlined, SearchOutlined, DeleteOutlined, AppstoreOutlined, EditOutlined,
 } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns, ActionType } from '@ant-design/pro-components'
 
 import {
   useCreateTopic, useDeleteTopic, useSearchTopics,
-  useGlobalTopics, useSetGlobalTopics, useBatchDeleteTopics,
+  useTopics, useBatchDeleteTopics,
+  useTopicGroups, useCreateTopicGroup, useUpdateTopicGroup, useDeleteTopicGroup,
 } from '@/hooks'
-import type { TopicResponse, TopicListResponse } from '@/types/material'
+import type { TopicResponse, TopicListResponse, TopicGroupResponse } from '@/types/material'
 import { handleApiError } from '@/utils/error'
 import { api } from '@/services/api'
 
@@ -24,45 +25,50 @@ interface TopicFormValues {
   heat?: number
 }
 
+interface GroupFormValues {
+  name: string
+  topic_ids: number[]
+}
+
 export default function TopicList() {
   const actionRef = useRef<ActionType>()
+
+  // topic add modal
   const [addModalOpen, setAddModalOpen] = useState(false)
-  const [globalModalOpen, setGlobalModalOpen] = useState(false)
+  const [form] = Form.useForm<TopicFormValues>()
+
+  // search modal
   const [searchModalOpen, setSearchModalOpen] = useState(false)
   const [searchKeyword, setSearchKeyword] = useState<string>('')
   const [searchInput, setSearchInput] = useState<string>('')
-  const [selectedGlobalIds, setSelectedGlobalIds] = useState<number[]>([])
+
+  // batch selection
   const [selectedIds, setSelectedIds] = useState<number[]>([])
-  const [form] = Form.useForm<TopicFormValues>()
+
+  // topic group drawer + form
+  const [groupDrawerOpen, setGroupDrawerOpen] = useState(false)
+  const [groupModalOpen, setGroupModalOpen] = useState(false)
+  const [editingGroup, setEditingGroup] = useState<TopicGroupResponse | null>(null)
+  const [groupForm] = Form.useForm<GroupFormValues>()
 
   const { data: searchResults = [], isFetching: isSearching } = useSearchTopics(searchKeyword)
-  const { data: globalTopicsData } = useGlobalTopics()
+  const { data: allTopics = [] } = useTopics()
   const createTopic = useCreateTopic()
   const deleteTopic = useDeleteTopic()
-  const setGlobalTopics = useSetGlobalTopics()
   const batchDeleteTopics = useBatchDeleteTopics()
 
-  const globalTopics = globalTopicsData?.topics ?? []
-  const topicOptions = (globalTopicsData?.topics ?? []).map((t: TopicResponse) => ({ label: t.name, value: t.id }))
+  const { data: topicGroups = [], isFetching: isGroupsFetching } = useTopicGroups()
+  const createTopicGroup = useCreateTopicGroup()
+  const updateTopicGroup = useUpdateTopicGroup()
+  const deleteTopicGroup = useDeleteTopicGroup()
+
+  const topicOptions = allTopics.map((t: TopicResponse) => ({ label: t.name, value: t.id }))
+
+  // ---- topic handlers ----
 
   const handleSearch = useCallback(() => {
     setSearchKeyword(searchInput.trim())
   }, [searchInput])
-
-  const handleOpenGlobalModal = useCallback(() => {
-    setSelectedGlobalIds(globalTopicsData?.topic_ids ?? [])
-    setGlobalModalOpen(true)
-  }, [globalTopicsData])
-
-  const handleSaveGlobalTopics = useCallback(async () => {
-    try {
-      await setGlobalTopics.mutateAsync({ topic_ids: selectedGlobalIds })
-      message.success('全局话题设置成功')
-      setGlobalModalOpen(false)
-    } catch (error: unknown) {
-      handleApiError(error, '设置全局话题失败')
-    }
-  }, [setGlobalTopics, selectedGlobalIds])
 
   const handleAdd = useCallback(async () => {
     try {
@@ -98,6 +104,50 @@ export default function TopicList() {
       handleApiError(error, '批量删除失败')
     }
   }, [selectedIds, batchDeleteTopics])
+
+  // ---- topic group handlers ----
+
+  const handleOpenCreateGroup = useCallback(() => {
+    setEditingGroup(null)
+    groupForm.resetFields()
+    setGroupModalOpen(true)
+  }, [groupForm])
+
+  const handleOpenEditGroup = useCallback((group: TopicGroupResponse) => {
+    setEditingGroup(group)
+    groupForm.setFieldsValue({ name: group.name, topic_ids: group.topic_ids })
+    setGroupModalOpen(true)
+  }, [groupForm])
+
+  const handleSaveGroup = useCallback(async () => {
+    try {
+      const values = await groupForm.validateFields()
+      if (editingGroup) {
+        await updateTopicGroup.mutateAsync({ id: editingGroup.id, payload: values })
+        message.success('话题组更新成功')
+      } else {
+        await createTopicGroup.mutateAsync(values)
+        message.success('话题组创建成功')
+      }
+      setGroupModalOpen(false)
+      groupForm.resetFields()
+      setEditingGroup(null)
+    } catch (error: unknown) {
+      if (error !== null && typeof error === 'object' && 'errorFields' in error) return
+      handleApiError(error, editingGroup ? '更新话题组失败' : '创建话题组失败')
+    }
+  }, [groupForm, editingGroup, createTopicGroup, updateTopicGroup])
+
+  const handleDeleteGroup = useCallback(async (id: number) => {
+    try {
+      await deleteTopicGroup.mutateAsync(id)
+      message.success('删除成功')
+    } catch (error: unknown) {
+      handleApiError(error, '删除话题组失败')
+    }
+  }, [deleteTopicGroup])
+
+  // ---- columns ----
 
   const columns: ProColumns<TopicResponse>[] = [
     {
@@ -150,29 +200,62 @@ export default function TopicList() {
     },
   ]
 
-  return (
-    <>
-      <Card
-        size="small"
-        style={{ marginBottom: 12 }}
-        title={<><GlobalOutlined /> 全局话题</>}
-        extra={
-          <Button size="small" icon={<GlobalOutlined />} onClick={handleOpenGlobalModal}>
-            设置全局话题
-          </Button>
-        }
-      >
-        {globalTopics.length === 0 ? (
-          <Empty description="暂未设置全局话题" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+  const groupColumns: ProColumns<TopicGroupResponse>[] = [
+    {
+      title: 'ID',
+      dataIndex: 'id',
+      width: 60,
+      hideInSearch: true,
+    },
+    {
+      title: '组名',
+      dataIndex: 'name',
+      ellipsis: true,
+    },
+    {
+      title: '话题',
+      dataIndex: 'topics',
+      hideInSearch: true,
+      render: (_, record) =>
+        record.topics.length === 0 ? (
+          <Text type="secondary">暂无话题</Text>
         ) : (
-          <Space wrap>
-            {globalTopics.map((t: TopicResponse) => (
-              <Tag key={t.id} color="geekblue">{t.name}</Tag>
+          <Space wrap size={4}>
+            {record.topics.map((t) => (
+              <Tag key={t.id} color="blue">{t.name}</Tag>
             ))}
           </Space>
-        )}
-      </Card>
+        ),
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 120,
+      hideInSearch: true,
+      render: (_, record) => (
+        <Space>
+          <Button
+            type="link"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleOpenEditGroup(record)}
+          >
+            编辑
+          </Button>
+          <Popconfirm title="确定删除该话题组？" onConfirm={() => handleDeleteGroup(record.id)}>
+            <Button type="link" danger size="small" icon={<DeleteOutlined />}>
+              删除
+            </Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ]
 
+  const isSavingGroup = createTopicGroup.isPending || updateTopicGroup.isPending
+
+  return (
+    <>
       <ProTable<TopicResponse>
         actionRef={actionRef}
         rowKey="id"
@@ -213,11 +296,11 @@ export default function TopicList() {
             搜索得物话题
           </Button>,
           <Button
-            key="global"
-            icon={<GlobalOutlined />}
-            onClick={handleOpenGlobalModal}
+            key="groups"
+            icon={<AppstoreOutlined />}
+            onClick={() => setGroupDrawerOpen(true)}
           >
-            设置全局话题
+            话题组管理
           </Button>,
         ]}
         pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
@@ -286,30 +369,65 @@ export default function TopicList() {
         </Form>
       </Modal>
 
-      {/* 设置全局话题 Modal */}
+      {/* 话题组管理 Drawer */}
+      <Drawer
+        title={<><AppstoreOutlined /> 话题组管理</>}
+        open={groupDrawerOpen}
+        onClose={() => setGroupDrawerOpen(false)}
+        width={720}
+        destroyOnHidden
+        extra={
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleOpenCreateGroup}>
+            新建话题组
+          </Button>
+        }
+      >
+        <ProTable<TopicGroupResponse>
+          rowKey="id"
+          columns={groupColumns}
+          dataSource={topicGroups}
+          loading={isGroupsFetching}
+          search={false}
+          toolBarRender={false}
+          pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
+          size="small"
+        />
+      </Drawer>
+
+      {/* 创建/编辑话题组 Modal */}
       <Modal
-        title="设置全局话题"
-        open={globalModalOpen}
-        onOk={handleSaveGlobalTopics}
-        confirmLoading={setGlobalTopics.isPending}
-        onCancel={() => setGlobalModalOpen(false)}
+        title={editingGroup ? '编辑话题组' : '新建话题组'}
+        open={groupModalOpen}
+        onOk={handleSaveGroup}
+        confirmLoading={isSavingGroup}
+        onCancel={() => { setGroupModalOpen(false); groupForm.resetFields(); setEditingGroup(null) }}
         destroyOnHidden
         width={520}
       >
-        <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-          从话题库中选择话题作为全局默认话题，发布时自动附加。
-        </Text>
-        <Select
-          mode="multiple"
-          style={{ width: '100%' }}
-          placeholder="选择话题（可多选）"
-          options={topicOptions}
-          value={selectedGlobalIds}
-          onChange={setSelectedGlobalIds}
-          filterOption={(input, option) =>
-            (option?.label as string ?? '').toLowerCase().includes(input.toLowerCase())
-          }
-        />
+        <Form form={groupForm} layout="vertical">
+          <Form.Item
+            name="name"
+            label="组名"
+            rules={[{ required: true, message: '请输入话题组名称' }]}
+          >
+            <Input placeholder="话题组名称" />
+          </Form.Item>
+          <Form.Item
+            name="topic_ids"
+            label="选择话题"
+            rules={[{ required: true, message: '请至少选择一个话题' }]}
+          >
+            <Select
+              mode="multiple"
+              placeholder="从话题库中选择话题（可多选）"
+              options={topicOptions}
+              filterOption={(input, option) =>
+                (option?.label as string ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+        </Form>
       </Modal>
     </>
   )

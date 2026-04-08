@@ -254,6 +254,18 @@ class PublishConfig(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class TopicGroup(Base):
+    """话题组表 (话题模板)"""
+    __tablename__ = "topic_groups"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(128), unique=True, nullable=False, index=True)
+    topic_ids = Column(Text, nullable=False, default='[]')  # JSON array of topic IDs
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class SystemLog(Base):
     """系统日志表"""
     __tablename__ = "system_logs"
@@ -327,6 +339,8 @@ async def init_db():
     await migration_013.run_migration(engine)
     migration_014 = importlib.import_module("migrations.014_copywriting_name")
     await migration_014.run_migration(engine)
+    migration_015 = importlib.import_module("migrations.015_topic_groups")
+    await migration_015.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

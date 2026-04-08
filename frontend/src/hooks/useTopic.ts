@@ -10,6 +10,10 @@ import type {
   GlobalTopicsResponse,
   SetGlobalTopicsRequest,
   BatchDeleteResponse,
+  TopicGroupResponse,
+  TopicGroupListResponse,
+  TopicGroupCreate,
+  TopicGroupUpdate,
 } from '@/types/material'
 
 export const useTopics = (params?: { keyword?: string; source?: string }) =>
@@ -87,6 +91,53 @@ export const useBatchDeleteTopics = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['topics'] })
+    },
+  })
+}
+
+export const useTopicGroups = () =>
+  useQuery<TopicGroupResponse[]>({
+    queryKey: ['topic-groups'],
+    queryFn: async () => {
+      const { data } = await api.get<TopicGroupListResponse>('/topic-groups')
+      return data.items
+    },
+  })
+
+export const useCreateTopicGroup = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload: TopicGroupCreate) => {
+      const { data } = await api.post<TopicGroupResponse>('/topic-groups', payload)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['topic-groups'] })
+    },
+  })
+}
+
+export const useUpdateTopicGroup = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, payload }: { id: number; payload: TopicGroupUpdate }) => {
+      const { data } = await api.put<TopicGroupResponse>(`/topic-groups/${id}`, payload)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['topic-groups'] })
+    },
+  })
+}
+
+export const useDeleteTopicGroup = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await api.delete(`/topic-groups/${id}`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['topic-groups'] })
     },
   })
 }

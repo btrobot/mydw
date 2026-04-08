@@ -168,3 +168,29 @@ export interface GlobalTopicsResponse {
 export interface SetGlobalTopicsRequest {
   topic_ids: number[]
 }
+
+// ============ Topic Group ============
+
+export interface TopicGroupResponse {
+  id: number
+  name: string
+  topic_ids: number[]
+  topics: TopicResponse[]
+  created_at: string
+  updated_at: string
+}
+
+export interface TopicGroupListResponse {
+  total: number
+  items: TopicGroupResponse[]
+}
+
+export interface TopicGroupCreate {
+  name: string
+  topic_ids: number[]
+}
+
+export interface TopicGroupUpdate {
+  name?: string
+  topic_ids?: number[]
+}

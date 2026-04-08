@@ -695,6 +695,55 @@ class PreviewStatusResponse(BaseModel):
     account_id: Optional[int] = None
 
 
+# ============ 话题组 Schema ============
+
+class TopicGroupCreate(BaseModel):
+    """创建话题组"""
+    name: str = Field(..., min_length=1, max_length=128)
+    topic_ids: List[int] = Field(default_factory=list, description="话题ID列表")
+
+
+class TopicGroupUpdate(BaseModel):
+    """更新话题组"""
+    name: Optional[str] = Field(None, min_length=1, max_length=128)
+    topic_ids: Optional[List[int]] = Field(None, description="话题ID列表")
+
+
+class TopicGroupResponse(BaseModel):
+    """话题组响应"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    topic_ids: List[int]
+    topics: List["TopicResponse"] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def _parse_topic_ids(cls, data: Any) -> Any:
+        """将数据库中的 JSON 字符串解析为 List[int]。"""
+        raw = data.get("topic_ids") if isinstance(data, dict) else getattr(data, "topic_ids", None)
+        if isinstance(raw, str):
+            try:
+                parsed = json.loads(raw)
+            except (ValueError, TypeError):
+                parsed = []
+            if isinstance(data, dict):
+                data["topic_ids"] = parsed
+            else:
+                data = {c.key: getattr(data, c.key) for c in data.__class__.__table__.columns}
+                data["topic_ids"] = parsed
+        return data
+
+
+class TopicGroupListResponse(BaseModel):
+    """话题组列表响应"""
+    total: int
+    items: List[TopicGroupResponse]
+
+
 # ============ 全局话题 Schema (SP4-03) ============
 
 class GlobalTopicRequest(BaseModel):
