@@ -28,6 +28,16 @@ async def run_migration(engine: AsyncEngine) -> None:
             logger.info("迁移 007 完成")
             return
 
+        # 检查 task_topics 表是否存在
+        table_info = (
+            await conn.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='task_topics'"
+            )
+        ).fetchone()
+        if not table_info:
+            logger.info("迁移 007: task_topics 表不存在，跳过")
+            return
+
         # 先去重：保留每组 (task_id, topic_id) 中 id 最小的行
         await conn.exec_driver_sql(
             """

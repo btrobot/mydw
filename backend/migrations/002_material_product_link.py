@@ -22,6 +22,14 @@ _TABLE = "materials"
 async def run_migration(engine: AsyncEngine) -> None:
     """幂等地为 materials 表添加 product_id 列。"""
     async with engine.begin() as conn:
+        # 检查 materials 表是否存在
+        result = await conn.exec_driver_sql(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='materials'"
+        )
+        if not result.fetchone():
+            logger.info("迁移 002: materials 表不存在，跳过")
+            return
+
         # 获取现有列
         rows = await conn.exec_driver_sql(f"PRAGMA table_info({_TABLE})")
         existing = {r[1] for r in rows}

@@ -23,6 +23,14 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 async def run_migration(engine: AsyncEngine) -> None:
     """执行迁移，幂等（目标表已有相同记录则跳过）。"""
     async with engine.begin() as conn:
+        # 检查 materials 表是否存在
+        result = await conn.exec_driver_sql(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='materials'"
+        )
+        if not result.fetchone():
+            logger.info("迁移 004: materials 表不存在，跳过")
+            return
+
         rows = (await conn.exec_driver_sql("SELECT * FROM materials")).fetchall()
 
     if not rows:
