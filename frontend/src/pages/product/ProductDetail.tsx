@@ -13,13 +13,12 @@ import {
 } from '@ant-design/pro-components'
 import type { ProColumns } from '@ant-design/pro-components'
 
+import { useQueryClient } from '@tanstack/react-query'
 import {
-  useProduct, useProductCovers, useProductTopics,
+  useProduct,
   useUpdateProductV2,
-  useVideos, useCopywritings,
 } from '@/hooks'
-import type { VideoResponse, CopywritingResponse } from '@/types/material'
-import type { ParseMaterialsResponse } from '@/types/material'
+import type { VideoResponse, CopywritingResponse, ParseMaterialsResponse } from '@/types/material'
 import { formatSize, formatDuration } from '@/utils/format'
 import { handleApiError } from '@/utils/error'
 import { api } from '@/services/api'
@@ -39,11 +38,13 @@ export default function ProductDetail() {
   const [editOpen, setEditOpen] = useState(false)
   const [parsing, setParsing] = useState(false)
 
+  const queryClient = useQueryClient()
   const { data: product, isLoading: productLoading } = useProduct(productId)
-  const { data: covers = [], isLoading: coversLoading } = useProductCovers(productId)
-  const { data: topics = [], isLoading: topicsLoading } = useProductTopics(productId)
-  const { data: videos = [], isLoading: videosLoading } = useVideos({ productId })
-  const { data: copywritings = [], isLoading: copywritingsLoading } = useCopywritings({ productId })
+
+  const videos = product?.videos ?? []
+  const covers = product?.covers ?? []
+  const copywritings = product?.copywritings ?? []
+  const topics = product?.topics ?? []
 
   const updateProduct = useUpdateProductV2()
 
@@ -65,12 +66,13 @@ export default function ProductDetail() {
     try {
       const { data } = await api.post<ParseMaterialsResponse>(`/products/${productId}/parse-materials`)
       message.success(`解析完成: ${data.videos_downloaded} 个视频, ${data.covers_downloaded} 张封面, ${data.topics.length} 个话题`)
+      queryClient.invalidateQueries({ queryKey: ['product', productId] })
     } catch (error: unknown) {
       handleApiError(error, '解析素材失败')
     } finally {
       setParsing(false)
     }
-  }, [productId])
+  }, [productId, queryClient])
 
   const videoColumns: ProColumns<VideoResponse>[] = [
     { title: '视频名称', dataIndex: 'name', ellipsis: true },
@@ -167,7 +169,6 @@ export default function ProductDetail() {
                   dataSource={videos}
                   rowKey="id"
                   columns={videoColumns}
-                  loading={videosLoading}
                   search={false}
                   pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
                   size="small"
@@ -178,9 +179,7 @@ export default function ProductDetail() {
             {
               key: 'covers',
               label: `封面 (${covers.length})`,
-              children: coversLoading ? (
-                <Flex justify="center" style={{ padding: 24 }}><Spin /></Flex>
-              ) : covers.length === 0 ? (
+              children: covers.length === 0 ? (
                 <Flex justify="center" style={{ padding: 24 }}>
                   <Text type="secondary">暂无封面</Text>
                 </Flex>
@@ -209,7 +208,6 @@ export default function ProductDetail() {
                   dataSource={copywritings}
                   rowKey="id"
                   columns={copywritingColumns}
-                  loading={copywritingsLoading}
                   search={false}
                   pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
                   size="small"
@@ -220,9 +218,7 @@ export default function ProductDetail() {
             {
               key: 'topics',
               label: `话题 (${topics.length})`,
-              children: topicsLoading ? (
-                <Flex justify="center" style={{ padding: 24 }}><Spin /></Flex>
-              ) : topics.length === 0 ? (
+              children: topics.length === 0 ? (
                 <Flex justify="center" style={{ padding: 24 }}>
                   <Text type="secondary">暂无话题</Text>
                 </Flex>

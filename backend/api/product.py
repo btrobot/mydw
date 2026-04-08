@@ -6,12 +6,14 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update
+from sqlalchemy.orm import selectinload
 from loguru import logger
 
-from models import Product, Video, Cover, Topic, ProductTopic, get_db
+from models import Product, Video, Cover, Copywriting, Topic, ProductTopic, get_db
 from schemas import (
     ProductCreate, ProductUpdate, ProductResponse, ProductListResponse,
-    ParseMaterialsResponse, CoverResponse, TopicResponse,
+    ProductDetailResponse, CoverResponse, TopicResponse,
+    VideoResponse, CopywritingResponse,
 )
 from services.product_parse_service import parse_and_create_materials
 from utils.url_parser import extract_dewu_url
@@ -45,17 +47,42 @@ async def list_products(
     return ProductListResponse(total=total, items=list(items))
 
 
-@router.get("/{product_id}", response_model=ProductResponse)
+@router.get("/{product_id}", response_model=ProductDetailResponse)
 async def get_product(
     product_id: int,
     db: AsyncSession = Depends(get_db),
-) -> ProductResponse:
-    """获取单个商品"""
-    result = await db.execute(select(Product).where(Product.id == product_id))
+) -> ProductDetailResponse:
+    """获取单个商品及其全部关联素材（videos、covers、copywritings、topics）"""
+    result = await db.execute(
+        select(Product)
+        .where(Product.id == product_id)
+        .options(
+            selectinload(Product.videos).selectinload(Video.covers),
+            selectinload(Product.copywritings),
+            selectinload(Product.topics),
+        )
+    )
     product = result.scalars().first()
     if not product:
         raise HTTPException(status_code=404, detail="商品不存在")
-    return product
+
+    videos = list(product.videos)
+    covers = [cover for video in videos for cover in video.covers]
+
+    return ProductDetailResponse(
+        id=product.id,
+        name=product.name,
+        link=product.link,
+        description=product.description,
+        dewu_url=product.dewu_url,
+        image_url=product.image_url,
+        created_at=product.created_at,
+        updated_at=product.updated_at,
+        videos=[VideoResponse.model_validate(v) for v in videos],
+        covers=[CoverResponse.model_validate(c) for c in covers],
+        copywritings=[CopywritingResponse.model_validate(cw) for cw in product.copywritings],
+        topics=[TopicResponse.model_validate(t) for t in product.topics],
+    )
 
 
 @router.post("", response_model=ProductResponse, status_code=201)
@@ -134,12 +161,12 @@ async def delete_product(
     logger.info("商品删除成功: product_id={}", product_id)
 
 
-@router.post("/{product_id}/parse-materials", response_model=ParseMaterialsResponse)
+@router.post("/{product_id}/parse-materials", response_model=ProductDetailResponse)
 async def parse_product_materials(
     product_id: int,
     db: AsyncSession = Depends(get_db),
-) -> ParseMaterialsResponse:
-    """解析商品得物页面素材（封面、视频、标题、话题），覆盖更新已有素材记录"""
+) -> ProductDetailResponse:
+    """解析商品得物页面素材（封面、视频、标题、话题），覆盖更新已有素材记录，返回完整商品详情"""
     result = await db.execute(select(Product).where(Product.id == product_id))
     product = result.scalars().first()
     if not product:
@@ -149,14 +176,41 @@ async def parse_product_materials(
 
     logger.info("触发商品素材解析: product_id={}", product_id)
     try:
-        data = await parse_and_create_materials(db=db, product=product)
+        await parse_and_create_materials(db=db, product=product)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         logger.error("商品素材解析异常: product_id={}, error_type={}", product_id, type(e).__name__)
         raise HTTPException(status_code=500, detail="素材解析失败，请稍后重试")
 
-    return ParseMaterialsResponse(**data)
+    # 重新查询，eager load 全部关联素材
+    detail_result = await db.execute(
+        select(Product)
+        .where(Product.id == product_id)
+        .options(
+            selectinload(Product.videos).selectinload(Video.covers),
+            selectinload(Product.copywritings),
+            selectinload(Product.topics),
+        )
+    )
+    product = detail_result.scalars().first()
+    videos = list(product.videos)
+    covers = [cover for video in videos for cover in video.covers]
+
+    return ProductDetailResponse(
+        id=product.id,
+        name=product.name,
+        link=product.link,
+        description=product.description,
+        dewu_url=product.dewu_url,
+        image_url=product.image_url,
+        created_at=product.created_at,
+        updated_at=product.updated_at,
+        videos=[VideoResponse.model_validate(v) for v in videos],
+        covers=[CoverResponse.model_validate(c) for c in covers],
+        copywritings=[CopywritingResponse.model_validate(cw) for cw in product.copywritings],
+        topics=[TopicResponse.model_validate(t) for t in product.topics],
+    )
 
 
 @router.get("/{product_id}/covers", response_model=list[CoverResponse])

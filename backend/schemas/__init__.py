@@ -401,6 +401,14 @@ class ProductListResponse(BaseModel):
     items: List[ProductResponse]
 
 
+class ProductDetailResponse(ProductResponse):
+    """商品详情响应（含全部关联素材）"""
+    videos: List["VideoResponse"] = []
+    covers: List["CoverResponse"] = []
+    copywritings: List["CopywritingResponse"] = []
+    topics: List["TopicResponse"] = []
+
+
 # ============ Video Schema (SP1-01) ============
 
 class VideoCreate(BaseModel):

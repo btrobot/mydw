@@ -28,6 +28,13 @@ export interface ProductListResponse {
   items: ProductResponse[]
 }
 
+export interface ProductDetailResponse extends ProductResponse {
+  videos: VideoResponse[]
+  covers: CoverResponse[]
+  copywritings: CopywritingResponse[]
+  topics: TopicResponse[]
+}
+
 export interface ProductCreate {
   share_text: string
 }
