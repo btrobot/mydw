@@ -6,10 +6,13 @@ import sys
 import os
 from pathlib import Path
 
-# When frozen by PyInstaller, set CWD to exe directory
-# so relative paths (data/, logs/) resolve correctly
 if getattr(sys, 'frozen', False):
     os.chdir(Path(sys.executable).parent)
+    # Point patchright to globally installed browsers (%LOCALAPPDATA%/ms-playwright)
+    if 'PLAYWRIGHT_BROWSERS_PATH' not in os.environ:
+        global_browsers = Path(os.environ.get('LOCALAPPDATA', '')) / 'ms-playwright'
+        if global_browsers.exists():
+            os.environ['PLAYWRIGHT_BROWSERS_PATH'] = str(global_browsers)
 
 from main import app  # noqa: E402
 import uvicorn  # noqa: E402
