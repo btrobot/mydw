@@ -7,6 +7,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { Modal, Form, Input, Button, Space, message, Progress, Alert, Switch } from 'antd'
 import axios from 'axios'
 import { useQueryClient } from '@tanstack/react-query'
+import { API_BASE } from '@/services/api'
 
 interface ConnectionModalProps {
   accountId: number
@@ -109,7 +110,7 @@ export default function ConnectionModal({
     setProgress(0)
 
     // 创建 SSE 连接
-    const eventSource = new EventSource(`/api/accounts/connect/${accountId}/stream`)
+    const eventSource = new EventSource(`${API_BASE}/accounts/connect/${accountId}/stream`)
     eventSourceRef.current = eventSource
 
     // 监听状态更新事件
@@ -215,7 +216,7 @@ export default function ConnectionModal({
         ? {}
         : { phone: form.getFieldValue('phone') as string }
 
-      await axios.post(`/api/accounts/connect/${accountId}/send-code`, body)
+      await axios.post(`${API_BASE}/accounts/connect/${accountId}/send-code`, body)
 
       message.success('验证码已发送')
       setCountdown(COUNTDOWN_SECONDS)
@@ -243,7 +244,7 @@ export default function ConnectionModal({
     try {
       const body: VerifyCodeRequest = { code: values.code }
       const response = await axios.post<VerifyCodeResponse>(
-        `/api/accounts/connect/${accountId}/verify`,
+        `${API_BASE}/accounts/connect/${accountId}/verify`,
         body
       )
 
