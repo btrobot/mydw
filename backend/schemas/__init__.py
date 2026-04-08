@@ -708,6 +708,20 @@ class GlobalTopicResponse(BaseModel):
     topics: List[TopicResponse]
 
 
+# ============ 批量删除 Schema ============
+
+class BatchDeleteRequest(BaseModel):
+    """批量删除请求"""
+    ids: List[int]
+
+
+class BatchDeleteResponse(BaseModel):
+    """批量删除响应"""
+    deleted: int
+    skipped: int
+    skipped_ids: List[int]
+
+
 # ============ 通用响应 ============
 
 class ApiResponse(BaseModel):

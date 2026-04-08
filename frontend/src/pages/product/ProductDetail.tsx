@@ -21,7 +21,7 @@ import {
 import type { VideoResponse, CopywritingResponse, ParseMaterialsResponse } from '@/types/material'
 import { formatSize, formatDuration } from '@/utils/format'
 import { handleApiError } from '@/utils/error'
-import { api } from '@/services/api'
+import { api, API_BASE } from '@/services/api'
 
 const { Text } = Typography
 
@@ -191,7 +191,7 @@ export default function ProductDetail() {
                     {covers.map((cover) => (
                       <Image
                         key={cover.id}
-                        src={`http://127.0.0.1:8000/api/covers/${cover.id}/image`}
+                        src={`${API_BASE}/covers/${cover.id}/image`}
                         width={120}
                         height={80}
                         style={{ objectFit: 'cover', borderRadius: 4 }}

@@ -13,7 +13,7 @@ import { useUploadCover, useDeleteCover, useBatchDeleteCovers, useVideos } from 
 import type { CoverResponse } from '@/types/material'
 import { formatSize } from '@/utils/format'
 import { handleApiError } from '@/utils/error'
-import { api } from '@/services/api'
+import { api, API_BASE } from '@/services/api'
 
 const { Text } = Typography
 
@@ -102,7 +102,7 @@ export default function CoverList() {
       ellipsis: true,
       hideInSearch: true,
       render: (_, record) => {
-        const previewSrc = `http://127.0.0.1:8000/api/covers/${record.id}/image`
+        const previewSrc = `${API_BASE}/covers/${record.id}/image`
         return (
           <NameCell name={record.name} previewSrc={previewSrc} />
         )

@@ -8,10 +8,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from loguru import logger
-from pydantic import BaseModel
 
 from models import Audio, get_db
-from schemas import AudioResponse
+from schemas import AudioResponse, BatchDeleteRequest, BatchDeleteResponse
 from core.config import settings
 from utils.ffprobe import extract_video_metadata
 from services.media_storage_service import MediaStorageService
@@ -33,24 +32,35 @@ async def upload_audio(
     if file.content_type not in ALLOWED_AUDIO_TYPES:
         raise HTTPException(status_code=400, detail="不支持的文件类型，仅支持 MP3/WAV/AAC/OGG")
 
-    content = await file.read()
-    if len(content) > MAX_AUDIO_SIZE:
-        raise HTTPException(status_code=400, detail="文件过大，最大支持 100MB")
-
     AUDIO_DIR.mkdir(parents=True, exist_ok=True)
     safe_name = Path(file.filename).name.replace("..", "")
     file_path = AUDIO_DIR / safe_name
 
+    # 流式写入，避免将整个文件读入内存
     try:
-        file_path.write_bytes(content)
+        with file_path.open("wb") as f:
+            while True:
+                chunk = await file.read(1024 * 1024)  # 1MB chunks
+                if not chunk:
+                    break
+                f.write(chunk)
     except Exception as e:
         logger.error("音频文件写入失败: filename={}, error={}", safe_name, str(e))
         raise HTTPException(status_code=500, detail="文件保存失败")
 
+    # 写入后检查文件大小
+    file_size = file_path.stat().st_size
+    if file_size > MAX_AUDIO_SIZE:
+        try:
+            file_path.unlink()
+        except Exception:
+            pass
+        raise HTTPException(status_code=400, detail="文件过大，最大支持 100MB")
+
     audio = Audio(
         name=safe_name,
         file_path=str(file_path),
-        file_size=len(content),
+        file_size=file_size,
     )
     # SP8-03: FFprobe 提取音频时长
     meta = await extract_video_metadata(str(file_path))
@@ -109,16 +119,6 @@ async def delete_audio(
 
 # ─── 批量删除 ────────────────────────────────────────────────────────────────
 
-class BatchDeleteRequest(BaseModel):
-    ids: List[int]
-
-
-class BatchDeleteResponse(BaseModel):
-    deleted: int
-    skipped: int
-    skipped_ids: List[int]
-
-
 @router.post("/batch-delete", response_model=BatchDeleteResponse)
 async def batch_delete_audios(
     data: BatchDeleteRequest,
@@ -135,17 +135,21 @@ async def batch_delete_audios(
             skipped_ids.append(audio_id)
             continue
 
-        if audio.file_path:
-            file_path = Path(audio.file_path)
-            if file_path.exists():
-                try:
-                    file_path.unlink()
-                except Exception as e:
-                    logger.warning("批量删除音频文件失败: audio_id={}, error={}", audio_id, str(e))
+        file_path = audio.file_path
+        file_hash = getattr(audio, "file_hash", None)
 
         await db.delete(audio)
+        await db.commit()
+
+        if file_path and file_hash:
+            await MediaStorageService().safe_delete_async(file_path, file_hash, "audios", db)
+        elif file_path:
+            try:
+                Path(file_path).unlink(missing_ok=True)
+            except Exception as e:
+                logger.warning("批量删除音频文件失败: audio_id={}, error={}", audio_id, str(e))
+
         deleted += 1
 
-    await db.commit()
     logger.info("音频批量删除完成: deleted={}, skipped={}", deleted, len(skipped_ids))
     return BatchDeleteResponse(deleted=deleted, skipped=len(skipped_ids), skipped_ids=skipped_ids)

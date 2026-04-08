@@ -11,7 +11,7 @@ from loguru import logger
 from pydantic import BaseModel
 
 from models import Topic, PublishConfig, get_db
-from schemas import TopicCreate, TopicResponse, TopicListResponse, GlobalTopicRequest, GlobalTopicResponse
+from schemas import TopicCreate, TopicResponse, TopicListResponse, GlobalTopicRequest, GlobalTopicResponse, BatchDeleteRequest, BatchDeleteResponse
 
 router = APIRouter(tags=["话题管理"])
 
@@ -188,16 +188,6 @@ async def delete_topic(
 
 
 # ─── 批量删除 ────────────────────────────────────────────────────────────────
-
-class BatchDeleteRequest(BaseModel):
-    ids: List[int]
-
-
-class BatchDeleteResponse(BaseModel):
-    deleted: int
-    skipped: int
-    skipped_ids: List[int]
-
 
 @router.post("/batch-delete", response_model=BatchDeleteResponse)
 async def batch_delete_topics(

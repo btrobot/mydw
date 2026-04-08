@@ -13,7 +13,7 @@ from loguru import logger
 from pydantic import BaseModel
 
 from models import Video, Product, Task, get_db
-from schemas import VideoCreate, VideoUpdate, VideoResponse, VideoListResponse
+from schemas import VideoCreate, VideoUpdate, VideoResponse, VideoListResponse, BatchDeleteRequest, BatchDeleteResponse
 from core.config import settings
 from utils.ffprobe import extract_video_metadata
 from utils.hash import compute_file_hash
@@ -156,16 +156,6 @@ async def delete_video(
 
 
 # ─── 批量删除 ────────────────────────────────────────────────────────────────
-
-class BatchDeleteRequest(BaseModel):
-    ids: List[int]
-
-
-class BatchDeleteResponse(BaseModel):
-    deleted: int
-    skipped: int
-    skipped_ids: List[int]
-
 
 @router.post("/batch-delete", response_model=BatchDeleteResponse)
 async def batch_delete_videos(

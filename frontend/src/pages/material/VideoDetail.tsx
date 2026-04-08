@@ -3,6 +3,7 @@ import { Flex, Spin, Typography } from 'antd'
 import { PageContainer, ProDescriptions } from '@ant-design/pro-components'
 
 import { useVideo } from '@/hooks'
+import { API_BASE } from '@/services/api'
 import { formatSize, formatDuration } from '@/utils/format'
 
 const { Text } = Typography
@@ -34,7 +35,7 @@ export default function VideoDetail() {
     <PageContainer title={video.name} onBack={() => navigate(-1)}>
       <video
         controls
-        src={`http://127.0.0.1:8000/api/videos/${videoId}/stream`}
+        src={`${API_BASE}/videos/${videoId}/stream`}
         style={{ width: '100%', maxHeight: 500, display: 'block', marginBottom: 24 }}
       />
 

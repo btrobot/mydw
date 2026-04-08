@@ -13,7 +13,7 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 from models import Cover, Video, get_db
-from schemas import CoverResponse
+from schemas import CoverResponse, BatchDeleteRequest, BatchDeleteResponse
 from core.config import settings
 from services.media_storage_service import MediaStorageService
 
@@ -113,16 +113,6 @@ async def delete_cover(
 
 
 # ─── 批量删除 ────────────────────────────────────────────────────────────────
-
-class BatchDeleteRequest(BaseModel):
-    ids: List[int]
-
-
-class BatchDeleteResponse(BaseModel):
-    deleted: int
-    skipped: int
-    skipped_ids: List[int]
-
 
 @router.post("/batch-delete", response_model=BatchDeleteResponse)
 async def batch_delete_covers(

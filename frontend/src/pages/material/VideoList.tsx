@@ -15,7 +15,7 @@ import { useCreateVideo, useDeleteVideo, useUploadVideo, useScanVideos, useBatch
 import type { VideoResponse, VideoListResponse } from '@/types/material'
 import { formatSize, formatDuration } from '@/utils/format'
 import { handleApiError } from '@/utils/error'
-import { api } from '@/services/api'
+import { api, API_BASE } from '@/services/api'
 import ProductSelect from '@/components/ProductSelect'
 
 const { Text } = Typography
@@ -274,7 +274,7 @@ export default function VideoList() {
         {playingVideo && (
           <video
             controls
-            src={`http://127.0.0.1:8000/api/videos/${playingVideo.id}/stream`}
+            src={`${API_BASE}/videos/${playingVideo.id}/stream`}
             style={{ width: '100%' }}
           />
         )}
