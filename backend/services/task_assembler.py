@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from models import Copywriting, PublishConfig, PublishProfile, Task, TaskTopic, Topic, Video
+from models import Copywriting, PublishProfile, Task, TaskTopic, Topic, Video
 
 
 class TaskAssembler:
@@ -67,13 +67,25 @@ class TaskAssembler:
             for cw in cw_result.scalars().all():
                 copywritings_by_product.setdefault(cw.product_id, []).append(cw)
 
-        # 3. 读取全局话题配置
-        cfg_result = await self.db.execute(select(PublishConfig).limit(1))
-        config = cfg_result.scalars().first()
+        # 3. 读取全局话题配置（从 PublishProfile）
         global_topic_ids: List[int] = []
-        if config and config.global_topic_ids:
+        profile_for_topics: Optional[PublishProfile] = None
+
+        if profile_id:
+            pt_result = await self.db.execute(
+                select(PublishProfile).where(PublishProfile.id == profile_id)
+            )
+            profile_for_topics = pt_result.scalars().first()
+
+        if profile_for_topics is None:
+            pt_result = await self.db.execute(
+                select(PublishProfile).where(PublishProfile.is_default.is_(True)).limit(1)
+            )
+            profile_for_topics = pt_result.scalars().first()
+
+        if profile_for_topics and profile_for_topics.global_topic_ids:
             try:
-                global_topic_ids = json.loads(config.global_topic_ids)
+                global_topic_ids = json.loads(profile_for_topics.global_topic_ids)
             except (ValueError, TypeError):
                 global_topic_ids = []
 

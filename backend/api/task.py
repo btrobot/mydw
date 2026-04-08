@@ -240,6 +240,7 @@ async def assemble_tasks(
         account_ids=request.account_ids,
         strategy=request.strategy,
         copywriting_mode=request.copywriting_mode,
+        profile_id=request.profile_id,
     )
     logger.info(
         "组装任务完成: video_count={}, account_count={}, task_count={}, strategy={}",

@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 from loguru import logger
 
-from api import account, task, publish, system, ai, product, video, copywriting, cover, audio, topic
+from api import account, task, publish, system, ai, product, video, copywriting, cover, audio, topic, profile
 from api.topic import group_router as topic_group_router
 from models import init_db, async_session, PublishProfile
 from core.config import settings
@@ -57,6 +57,7 @@ app.include_router(cover.router, prefix="/api/covers", tags=["封面管理"])
 app.include_router(audio.router, prefix="/api/audios", tags=["音频管理"])
 app.include_router(topic.router, prefix="/api/topics", tags=["话题管理"])
 app.include_router(topic_group_router, prefix="/api/topic-groups", tags=["话题组管理"])
+app.include_router(profile.router, prefix="/api/profiles", tags=["配置档管理"])
 
 
 @app.on_event("startup")

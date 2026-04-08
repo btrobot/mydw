@@ -415,6 +415,7 @@ class AssembleTasksRequest(BaseModel):
     account_ids: List[int] = Field(..., min_length=1)
     strategy: str = Field(default="round_robin", pattern="^(round_robin|manual)$")
     copywriting_mode: str = Field(default="auto_match", pattern="^(auto_match|manual)$")
+    profile_id: Optional[int] = None
 
 
 # ============ 商品 Schema ============

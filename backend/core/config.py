@@ -61,6 +61,13 @@ class Settings(BaseSettings):
     BATCH_HEALTH_CHECK_TIMEOUT: int = 30
     BATCH_HEALTH_CHECK_MAX_ACCOUNTS: int = 100
 
+    # 扣子（Coze）集成
+    COZE_API_TOKEN: str = ""
+    COZE_API_BASE: str = "https://api.coze.cn"
+    COZE_POLL_INTERVAL: int = 10
+    COZE_MAX_RETRY: int = 3
+    COZE_UPLOAD_TIMEOUT: int = 300
+
 
 # 创建配置实例
 settings = Settings()
