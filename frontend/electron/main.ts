@@ -45,10 +45,7 @@ function createWindow() {
     mainWindow.loadURL(VITE_DEV_SERVER_URL)
     mainWindow.webContents.openDevTools()
   } else {
-    // 打包后使用 file:// 协议
-    const indexPath = path.join(__dirname, '..', 'dist', 'index.html')
-    mainWindow.loadURL(`file://${indexPath}`)
-    mainWindow.webContents.openDevTools()
+    mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'))
   }
 
   // 窗口关闭时最小化到托盘

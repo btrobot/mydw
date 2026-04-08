@@ -44,10 +44,7 @@ function createWindow() {
         mainWindow.webContents.openDevTools();
     }
     else {
-        // 打包后使用 file:// 协议
-        const indexPath = path_1.default.join(__dirname, '..', 'dist', 'index.html');
-        mainWindow.loadURL(`file://${indexPath}`);
-        mainWindow.webContents.openDevTools();
+        mainWindow.loadFile(path_1.default.join(__dirname, '..', 'dist', 'index.html'));
     }
     // 窗口关闭时最小化到托盘
     mainWindow.on('close', (event) => {
