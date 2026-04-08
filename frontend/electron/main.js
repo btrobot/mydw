@@ -44,7 +44,10 @@ function createWindow() {
         mainWindow.webContents.openDevTools();
     }
     else {
-        mainWindow.loadFile(path_1.default.join(__dirname, '../dist/index.html'));
+        // 打包后：__dirname = resources/app.asar/electron
+        // dist 在 resources/app.asar/dist
+        const indexPath = path_1.default.join(__dirname, '..', 'dist', 'index.html');
+        mainWindow.loadFile(indexPath);
     }
     // 窗口关闭时最小化到托盘
     mainWindow.on('close', (event) => {
