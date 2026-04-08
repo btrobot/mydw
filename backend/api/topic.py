@@ -19,6 +19,7 @@ from schemas import (
 )
 
 router = APIRouter(tags=["话题管理"])
+group_router = APIRouter(tags=["话题组管理"])
 
 
 @router.get("", response_model=TopicListResponse)
@@ -220,7 +221,7 @@ async def batch_delete_topics(
 
 # ─── 话题组 CRUD ──────────────────────────────────────────────────────────────
 
-@router.get("/groups", response_model=TopicGroupListResponse)
+@group_router.get("", response_model=TopicGroupListResponse)
 async def list_topic_groups(
     db: AsyncSession = Depends(get_db),
 ) -> TopicGroupListResponse:
@@ -230,7 +231,7 @@ async def list_topic_groups(
     return TopicGroupListResponse(total=len(groups), items=list(groups))
 
 
-@router.post("/groups", response_model=TopicGroupResponse, status_code=201)
+@group_router.post("", response_model=TopicGroupResponse, status_code=201)
 async def create_topic_group(
     data: TopicGroupCreate,
     db: AsyncSession = Depends(get_db),
@@ -258,7 +259,7 @@ async def create_topic_group(
     return await _build_group_response(group, db)
 
 
-@router.get("/groups/{group_id}", response_model=TopicGroupResponse)
+@group_router.get("/{group_id}", response_model=TopicGroupResponse)
 async def get_topic_group(
     group_id: int,
     db: AsyncSession = Depends(get_db),
@@ -271,7 +272,7 @@ async def get_topic_group(
     return await _build_group_response(group, db)
 
 
-@router.put("/groups/{group_id}", response_model=TopicGroupResponse)
+@group_router.put("/{group_id}", response_model=TopicGroupResponse)
 async def update_topic_group(
     group_id: int,
     data: TopicGroupUpdate,
@@ -304,7 +305,7 @@ async def update_topic_group(
     return await _build_group_response(group, db)
 
 
-@router.delete("/groups/{group_id}", status_code=204)
+@group_router.delete("/{group_id}", status_code=204)
 async def delete_topic_group(
     group_id: int,
     db: AsyncSession = Depends(get_db),

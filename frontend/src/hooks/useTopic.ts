@@ -104,6 +104,16 @@ export const useTopicGroups = () =>
     },
   })
 
+export const useTopicGroup = (id: number) =>
+  useQuery<TopicGroupResponse>({
+    queryKey: ['topic-groups', id],
+    queryFn: async () => {
+      const { data } = await api.get<TopicGroupResponse>(`/topic-groups/${id}`)
+      return data
+    },
+    enabled: !!id,
+  })
+
 export const useCreateTopicGroup = () => {
   const queryClient = useQueryClient()
   return useMutation({

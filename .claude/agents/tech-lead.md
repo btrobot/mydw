@@ -76,7 +76,7 @@ User (Product Owner) — Strategic alignment
 - `qa-lead` for testing
 - `security-expert` for security audits
 - `devops-engineer` for CI/CD and deployment
-- `ui-designer` for page specs and design review
+- `ui-designer` for page specs and design review (use `subagent_type: "general-purpose"` with role injection from `.claude/agents/ui-designer.md`)
 
 ## Quality Standards
 

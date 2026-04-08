@@ -18,6 +18,8 @@ import CopywritingList from './pages/material/CopywritingList'
 import CoverList from './pages/material/CoverList'
 import AudioList from './pages/material/AudioList'
 import TopicList from './pages/material/TopicList'
+import TopicGroupList from './pages/material/TopicGroupList'
+import TopicGroupDetail from './pages/material/TopicGroupDetail'
 import ProductList from './pages/product/ProductList'
 import ProductDetail from './pages/product/ProductDetail'
 import VideoDetail from './pages/material/VideoDetail'
@@ -58,6 +60,8 @@ function App() {
               <Route path="material/copywriting" element={<CopywritingList />} />
               <Route path="material/cover" element={<CoverList />} />
               <Route path="material/audio" element={<AudioList />} />
+              <Route path="material/topic-group" element={<TopicGroupList />} />
+              <Route path="material/topic-group/:id" element={<TopicGroupDetail />} />
               <Route path="material/topic" element={<TopicList />} />
 
               {/* 商品管理 */}

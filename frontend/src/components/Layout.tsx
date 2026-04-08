@@ -22,12 +22,15 @@ const items = [
     icon: <FolderOutlined />,
     label: '素材中心',
     children: [
+      { key: '/material/overview', label: '素材总览' },
       { key: '/material/video', label: '视频管理' },
       { key: '/material/copywriting', label: '文案管理' },
       { key: '/material/cover', label: '封面管理' },
       { key: '/material/audio', label: '音频管理' },
       { key: '/material/topic', label: '话题管理' },
+      { type: 'divider' },
       { key: '/material/product', label: '商品管理' },
+      { key: '/material/topic-group', label: '话题组管理' },
     ],
   },
   { key: '/ai-clip', icon: <ScissorOutlined />, label: 'AI 剪辑' },
@@ -35,12 +38,14 @@ const items = [
 ]
 
 const materialKeys = [
+  '/material/overview',
   '/material/video',
   '/material/copywriting',
   '/material/cover',
   '/material/audio',
   '/material/topic',
   '/material/product',
+  '/material/topic-group',
 ]
 
 export default function LayoutComponent() {

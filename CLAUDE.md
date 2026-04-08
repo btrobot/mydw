@@ -143,6 +143,7 @@ Compress at ~60-70% context usage. Read `active.md` to recover after compression
 
 | Skill | Command | Primary User |
 |-------|---------|-------------|
+| UI Workflow | `/ui-workflow` | Orchestrates ui-designer → frontend-lead (design → implement → review) |
 | Code Review | `/code-review` | tech-lead, frontend-lead, backend-lead |
 | Security Scan | `/security-scan` | security-expert |
 | Architecture Review | `/architecture-review` | tech-lead |
