@@ -191,7 +191,7 @@ export default function ProductDetail() {
                     {covers.map((cover) => (
                       <Image
                         key={cover.id}
-                        src={cover.file_path}
+                        src={`http://127.0.0.1:8000/api/covers/${cover.id}/image`}
                         width={120}
                         height={80}
                         style={{ objectFit: 'cover', borderRadius: 4 }}

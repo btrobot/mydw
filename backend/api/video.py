@@ -189,18 +189,21 @@ async def batch_delete_videos(
             skipped_ids.append(video_id)
             continue
 
-        if video.file_path:
-            file_path = Path(video.file_path)
-            if file_path.exists():
-                try:
-                    file_path.unlink()
-                except Exception as e:
-                    logger.warning("批量删除视频文件失败: video_id={}, error={}", video_id, str(e))
+        file_path = video.file_path
+        file_hash = video.file_hash
 
         await db.delete(video)
-        deleted += 1
+        await db.commit()
 
-    await db.commit()
+        if file_path and file_hash:
+            await MediaStorageService().safe_delete_async(file_path, file_hash, "videos", db)
+        elif file_path:
+            try:
+                Path(file_path).unlink(missing_ok=True)
+            except Exception as e:
+                logger.warning("批量删除视频文件失败: video_id={}, error={}", video_id, str(e))
+
+        deleted += 1
     logger.info("视频批量删除完成: deleted={}, skipped={}", deleted, len(skipped_ids))
     return BatchDeleteResponse(deleted=deleted, skipped=len(skipped_ids), skipped_ids=skipped_ids)
 

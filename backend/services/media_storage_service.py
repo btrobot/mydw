@@ -133,40 +133,6 @@ class MediaStorageService:
         )
         return target, file_hash, file_size
 
-    def safe_delete(
-        self,
-        file_path: str,
-        file_hash: str,
-        media_type: MediaType,
-        db: AsyncSession,
-    ) -> bool:
-        """
-        检查引用计数，无引用才删除物理文件。
-        返回 True 表示文件已删除，False 表示仍有引用。
-
-        注意: 此方法为同步接口（按规格要求），调用方需在 async 上下文中
-        通过 asyncio.to_thread 或在同步路径中调用。
-        引用计数查询需要在调用前由调用方完成，或使用 async 版本
-        safe_delete_async。
-        """
-        # 同步版本：直接检查文件是否存在并删除（不做 DB 引用计数）
-        # 完整引用计数版本请使用 safe_delete_async
-        if not os.path.exists(file_path):
-            logger.warning("safe_delete: 文件不存在: path={}", file_path)
-            return False
-
-        try:
-            os.unlink(file_path)
-            logger.info(
-                "物理文件已删除: media_type={}, hash={}", media_type, file_hash[:16]
-            )
-            return True
-        except OSError as e:
-            logger.error(
-                "物理文件删除失败: path={}, error_type={}", file_path, type(e).__name__
-            )
-            return False
-
     async def safe_delete_async(
         self,
         file_path: str,

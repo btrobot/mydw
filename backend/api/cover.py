@@ -140,18 +140,21 @@ async def batch_delete_covers(
             skipped_ids.append(cover_id)
             continue
 
-        if cover.file_path:
-            file_path = Path(cover.file_path)
-            if file_path.exists():
-                try:
-                    file_path.unlink()
-                except Exception as e:
-                    logger.warning("批量删除封面文件失败: cover_id={}, error={}", cover_id, str(e))
+        file_path = cover.file_path
+        file_hash = getattr(cover, "file_hash", None)
 
         await db.delete(cover)
-        deleted += 1
+        await db.commit()
 
-    await db.commit()
+        if file_path and file_hash:
+            await MediaStorageService().safe_delete_async(file_path, file_hash, "covers", db)
+        elif file_path:
+            try:
+                Path(file_path).unlink(missing_ok=True)
+            except Exception as e:
+                logger.warning("批量删除封面文件失败: cover_id={}, error={}", cover_id, str(e))
+
+        deleted += 1
     logger.info("封面批量删除完成: deleted={}, skipped={}", deleted, len(skipped_ids))
     return BatchDeleteResponse(deleted=deleted, skipped=len(skipped_ids), skipped_ids=skipped_ids)
 
