@@ -13,6 +13,7 @@ from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
+from core.browser import browser_manager
 from core.config import settings
 from models import Product, Video, Cover, Copywriting, Topic, ProductTopic
 
@@ -28,7 +29,7 @@ class MaterialPack:
     topics: list[str]
 
 
-# ============ HTTP 请求头 ============
+# ============ HTTP 请求头（用于文件下载）============
 
 _HEADERS = {
     "User-Agent": (
@@ -36,38 +37,47 @@ _HEADERS = {
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/120.0.0.0 Safari/537.36"
     ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "zh-CN,zh;q=0.9",
+    "Accept": "*/*",
 }
-
-_REQUEST_TIMEOUT = 30.0
 
 
 # ============ 页面解析 ============
 
 async def parse_product_page(dewu_url: str) -> MaterialPack:
     """
-    用 httpx 请求得物商品页 HTML，解析素材信息。
+    用 Patchright 浏览器渲染得物商品页 HTML，解析素材信息。
 
-    注意：非登录方式，直接 GET 请求，不使用 Patchright 浏览器。
-
-    TODO: 得物商品页 DOM 结构未知，以下选择器为占位实现，
-          需根据实际页面 HTML 调整正则表达式。
+    得物为 CSR（客户端渲染），必须通过浏览器执行 JS 后才能获取完整 DOM。
+    使用匿名 context（公开页面无需登录）。
     """
     logger.info("开始解析得物商品页: url={}", dewu_url)
 
-    async with httpx.AsyncClient(headers=_HEADERS, timeout=_REQUEST_TIMEOUT, follow_redirects=True) as client:
-        try:
-            response = await client.get(dewu_url)
-            response.raise_for_status()
-        except httpx.HTTPStatusError as e:
-            logger.warning("商品页请求失败: url={}, status={}", dewu_url, e.response.status_code)
-            raise ValueError(f"商品页请求失败: HTTP {e.response.status_code}")
-        except httpx.RequestError as e:
-            logger.error("商品页网络错误: url={}, error_type={}", dewu_url, type(e).__name__)
-            raise ValueError("商品页网络请求失败")
+    await browser_manager.init()
 
-    html = response.text
+    context = await browser_manager.browser.new_context(
+        viewport={"width": 1920, "height": 1080},
+        locale="zh-CN",
+        timezone_id="Asia/Shanghai",
+    )
+    page = await context.new_page()
+
+    try:
+        await page.goto(dewu_url, timeout=15000)
+        try:
+            await page.wait_for_selector('div[class*="pc_title__"]', timeout=15000)
+        except Exception:
+            # 选择器未出现时降级等待 networkidle
+            await page.wait_for_load_state("networkidle", timeout=15000)
+
+        html = await page.content()
+        logger.info("商品页渲染完成: url={}, html_len={}", dewu_url, len(html))
+    except Exception as e:
+        logger.error("商品页浏览器渲染失败: url={}, error_type={}", dewu_url, type(e).__name__)
+        raise ValueError(f"商品页渲染失败: {type(e).__name__}")
+    finally:
+        await page.close()
+        await context.close()
+
     return _extract_material_pack(html, dewu_url)
 
 

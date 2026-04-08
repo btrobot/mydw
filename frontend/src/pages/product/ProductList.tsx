@@ -18,6 +18,7 @@ const { Text, Link } = Typography
 interface ProductFormValues {
   name: string
   link?: string
+  dewu_url?: string
 }
 
 function ProductCountCell({ productId, type }: { productId: number; type: 'videos' | 'copywritings' }) {
@@ -64,7 +65,7 @@ export default function ProductList() {
 
   const handleEdit = useCallback((p: ProductResponse) => {
     setEditingProduct(p)
-    form.setFieldsValue({ name: p.name, link: p.link ?? undefined })
+    form.setFieldsValue({ name: p.name, link: p.link ?? undefined, dewu_url: p.dewu_url ?? undefined })
     setModalOpen(true)
   }, [form])
 
@@ -93,11 +94,7 @@ export default function ProductList() {
     setParsingIds((prev) => new Set(prev).add(id))
     try {
       const { data } = await api.post<ParseMaterialsResponse>(`/products/${id}/parse-materials`)
-      const videoCount = data.video ? 1 : 0
-      const coverCount = data.covers.length
-      const copywritingCount = data.copywriting ? 1 : 0
-      const topicCount = data.topics.length
-      message.success(`解析完成：视频 ${videoCount} 个，封面 ${coverCount} 张，文案 ${copywritingCount} 条，话题 ${topicCount} 个`)
+      message.success(`解析完成: ${data.videos_downloaded} 个视频, ${data.covers_downloaded} 张封面, ${data.topics.length} 个话题`)
       actionRef.current?.reload()
     } catch (error: unknown) {
       handleApiError(error, '解析素材失败')
@@ -246,6 +243,9 @@ export default function ProductList() {
           </Form.Item>
           <Form.Item name="link" label="商品链接">
             <Input placeholder="请输入得物商品链接" prefix={<LinkOutlined />} />
+          </Form.Item>
+          <Form.Item name="dewu_url" label="得物商品页">
+            <Input placeholder="得物商品页链接" prefix={<LinkOutlined />} />
           </Form.Item>
         </Form>
       </Modal>

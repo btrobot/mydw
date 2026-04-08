@@ -121,10 +121,10 @@ export interface AudioResponse {
 export interface ParseMaterialsResponse {
   success: boolean
   product_id: number
-  video: { id: number; name: string } | null
-  covers: { id: number; file_path: string }[]
-  copywriting: { id: number; content: string } | null
-  topics: { id: number; name: string }[]
+  title: string
+  topics: string[]
+  videos_downloaded: number
+  covers_downloaded: number
   errors: string[]
 }
 
