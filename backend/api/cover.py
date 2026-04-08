@@ -36,16 +36,29 @@ async def upload_cover(
     if file.content_type not in ALLOWED_COVER_TYPES:
         raise HTTPException(status_code=400, detail="不支持的文件类型，仅支持 JPEG/PNG/WebP")
 
-    content = await file.read()
-    if len(content) > MAX_COVER_SIZE:
-        raise HTTPException(status_code=400, detail="文件过大，最大支持 20MB")
-
     COVER_DIR.mkdir(parents=True, exist_ok=True)
     safe_name = Path(file.filename).name.replace("..", "")
     file_path = COVER_DIR / safe_name
 
+    # 流式写入，累计大小，超限立即中断
     try:
-        file_path.write_bytes(content)
+        total_size = 0
+        with file_path.open("wb") as f:
+            while True:
+                chunk = await file.read(1024 * 256)  # 256KB chunks
+                if not chunk:
+                    break
+                total_size += len(chunk)
+                if total_size > MAX_COVER_SIZE:
+                    f.close()
+                    try:
+                        file_path.unlink(missing_ok=True)
+                    except Exception:
+                        pass
+                    raise HTTPException(status_code=400, detail="文件过大，最大支持 20MB")
+                f.write(chunk)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("封面文件写入失败: filename={}, error={}", safe_name, str(e))
         raise HTTPException(status_code=500, detail="文件保存失败")
@@ -54,7 +67,7 @@ async def upload_cover(
         video_id=video_id,
         name=Path(file.filename).stem,
         file_path=str(file_path),
-        file_size=len(content),
+        file_size=total_size,
     )
     db.add(cover)
     await db.commit()
@@ -123,6 +136,9 @@ async def batch_delete_covers(
     deleted = 0
     skipped_ids: List[int] = []
 
+    # 收集待删文件信息，统一 commit 后再清理物理文件
+    files_to_delete: List[tuple] = []
+
     for cover_id in data.ids:
         result = await db.execute(select(Cover).where(Cover.id == cover_id))
         cover = result.scalars().first()
@@ -130,12 +146,13 @@ async def batch_delete_covers(
             skipped_ids.append(cover_id)
             continue
 
-        file_path = cover.file_path
-        file_hash = getattr(cover, "file_hash", None)
-
+        files_to_delete.append((cover_id, cover.file_path, getattr(cover, "file_hash", None)))
         await db.delete(cover)
-        await db.commit()
+        deleted += 1
 
+    await db.commit()
+
+    for cover_id, file_path, file_hash in files_to_delete:
         if file_path and file_hash:
             await MediaStorageService().safe_delete_async(file_path, file_hash, "covers", db)
         elif file_path:
@@ -144,7 +161,6 @@ async def batch_delete_covers(
             except Exception as e:
                 logger.warning("批量删除封面文件失败: cover_id={}, error={}", cover_id, str(e))
 
-        deleted += 1
     logger.info("封面批量删除完成: deleted={}, skipped={}", deleted, len(skipped_ids))
     return BatchDeleteResponse(deleted=deleted, skipped=len(skipped_ids), skipped_ids=skipped_ids)
 

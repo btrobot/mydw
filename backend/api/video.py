@@ -45,8 +45,8 @@ async def list_videos(
         query = query.where(Video.product_id == product_id)
         count_query = count_query.where(Video.product_id == product_id)
     if keyword:
-        query = query.where(Video.name.contains(keyword))
-        count_query = count_query.where(Video.name.contains(keyword))
+        query = query.where(Video.name.ilike(f"%{keyword}%"))
+        count_query = count_query.where(Video.name.ilike(f"%{keyword}%"))
 
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
@@ -166,6 +166,9 @@ async def batch_delete_videos(
     deleted = 0
     skipped_ids: List[int] = []
 
+    # 收集待删文件信息，统一 commit 后再清理物理文件
+    files_to_delete: List[tuple] = []
+
     for video_id in data.ids:
         video = await _get_video_with_product(db, video_id)
         if not video:
@@ -179,12 +182,13 @@ async def batch_delete_videos(
             skipped_ids.append(video_id)
             continue
 
-        file_path = video.file_path
-        file_hash = video.file_hash
-
+        files_to_delete.append((video_id, video.file_path, video.file_hash))
         await db.delete(video)
-        await db.commit()
+        deleted += 1
 
+    await db.commit()
+
+    for video_id, file_path, file_hash in files_to_delete:
         if file_path and file_hash:
             await MediaStorageService().safe_delete_async(file_path, file_hash, "videos", db)
         elif file_path:
@@ -193,7 +197,6 @@ async def batch_delete_videos(
             except Exception as e:
                 logger.warning("批量删除视频文件失败: video_id={}, error={}", video_id, str(e))
 
-        deleted += 1
     logger.info("视频批量删除完成: deleted={}, skipped={}", deleted, len(skipped_ids))
     return BatchDeleteResponse(deleted=deleted, skipped=len(skipped_ids), skipped_ids=skipped_ids)
 
@@ -229,26 +232,30 @@ async def upload_video(
     safe_name = Path(file.filename).name.replace("..", "")
     file_path = dest_dir / safe_name
 
-    # 流式写入，避免将整个文件读入内存
+    # 流式写入，累计大小，超限立即中断
     try:
+        total_size = 0
         with file_path.open("wb") as f:
             while True:
                 chunk = await file.read(1024 * 1024)  # 1MB chunks
                 if not chunk:
                     break
+                total_size += len(chunk)
+                if total_size > MAX_VIDEO_SIZE:
+                    f.close()
+                    try:
+                        file_path.unlink(missing_ok=True)
+                    except Exception:
+                        pass
+                    raise HTTPException(status_code=400, detail="文件过大，最大支持 500MB")
                 f.write(chunk)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("视频文件写入失败: filename={}, error={}", safe_name, str(e))
         raise HTTPException(status_code=500, detail="文件保存失败")
 
-    # 写入后检查文件大小
-    file_size = file_path.stat().st_size
-    if file_size > MAX_VIDEO_SIZE:
-        try:
-            file_path.unlink()
-        except Exception:
-            pass
-        raise HTTPException(status_code=400, detail="文件过大，最大支持 500MB")
+    file_size = total_size
 
     video = Video(
         name=safe_name,

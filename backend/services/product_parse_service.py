@@ -61,12 +61,13 @@ async def parse_product_page(dewu_url: str) -> MaterialPack:
         html = await page.content()
         logger.info("商品页渲染完成: url={}, html_len={}", dewu_url, len(html))
 
-        # 保存渲染后的 HTML 用于调试
-        debug_dir = Path("data/debug")
-        debug_dir.mkdir(parents=True, exist_ok=True)
-        debug_path = debug_dir / f"parse_{int(datetime.utcnow().timestamp())}.html"
-        debug_path.write_text(html, encoding="utf-8")
-        logger.info("渲染 HTML 已保存: path={}", debug_path)
+        # 保存渲染后的 HTML 用于调试（仅 DEBUG 模式）
+        if settings.DEBUG:
+            debug_dir = Path("data/debug")
+            debug_dir.mkdir(parents=True, exist_ok=True)
+            debug_path = debug_dir / f"parse_{int(datetime.now(datetime.UTC).timestamp())}.html"
+            debug_path.write_text(html, encoding="utf-8")
+            logger.info("渲染 HTML 已保存: path={}", debug_path)
     except Exception as e:
         logger.error("商品页浏览器渲染失败: url={}, error_type={}", dewu_url, type(e).__name__)
         raise ValueError(f"商品页渲染失败: {type(e).__name__}")
@@ -315,6 +316,107 @@ async def parse_and_create_materials(
 
 
 
+async def _delete_old_materials(db: AsyncSession, product_id: int) -> None:
+    """删除商品的全部旧素材记录（视频、封面、文案、话题关联）。"""
+    old_videos_result = await db.execute(
+        select(Video).where(Video.product_id == product_id)
+    )
+    for v in old_videos_result.scalars().all():
+        await db.execute(delete(Cover).where(Cover.video_id == v.id))
+    await db.execute(delete(Video).where(Video.product_id == product_id))
+    await db.execute(delete(Cover).where(Cover.product_id == product_id))
+    await db.execute(
+        delete(Copywriting).where(
+            Copywriting.product_id == product_id,
+            Copywriting.source_type == "dewu_parse",
+        )
+    )
+    await db.execute(delete(ProductTopic).where(ProductTopic.product_id == product_id))
+
+
+async def _insert_new_videos(
+    db: AsyncSession,
+    product_id: int,
+    pack: MaterialPack,
+    product_name: str,
+    video_results: list[tuple[str, str, int]],
+) -> list[Video]:
+    """写入新视频记录，flush 以获取 id，返回 ORM 列表。"""
+    new_video_orm: list[Video] = []
+    for file_path, file_hash, file_size in video_results:
+        v = Video(
+            product_id=product_id,
+            name=f"{pack.title}_视频" if pack.title != "未知商品" else f"{product_name}_视频",
+            file_path=file_path,
+            file_hash=file_hash,
+            file_size=file_size,
+            source_type="dewu_parse",
+        )
+        db.add(v)
+        new_video_orm.append(v)
+    await db.flush()
+    return new_video_orm
+
+
+def _insert_new_covers(
+    db: AsyncSession,
+    product_id: int,
+    first_video_id: Optional[int],
+    pack: MaterialPack,
+    cover_results: list[tuple[str, str, int]],
+) -> None:
+    """写入新封面记录。"""
+    for file_path, file_hash, file_size in cover_results:
+        c = Cover(
+            video_id=first_video_id,
+            product_id=product_id,
+            name=pack.title,
+            file_path=file_path,
+            file_hash=file_hash,
+            file_size=file_size,
+        )
+        db.add(c)
+
+
+def _insert_copywriting(
+    db: AsyncSession,
+    product: Product,
+    pack: MaterialPack,
+) -> int:
+    """写入标题文案，更新 product.name，返回写入数量（0 或 1）。"""
+    if not pack.title or pack.title == "未知商品":
+        return 0
+    cw = Copywriting(
+        product_id=product.id,
+        name=pack.title[:50],
+        content=pack.title,
+        source_type="dewu_parse",
+        source_ref=product.dewu_url,
+    )
+    db.add(cw)
+    product.name = pack.title
+    return 1
+
+
+async def _insert_topics(
+    db: AsyncSession,
+    product_id: int,
+    topic_names: list[str],
+) -> int:
+    """Upsert 话题并写入 product_topics 关联，返回关联数量。"""
+    count = 0
+    for topic_name in topic_names:
+        topic_result = await db.execute(select(Topic).where(Topic.name == topic_name))
+        topic = topic_result.scalars().first()
+        if not topic:
+            topic = Topic(name=topic_name, source="dewu_parse")
+            db.add(topic)
+            await db.flush()
+        db.add(ProductTopic(product_id=product_id, topic_id=topic.id))
+        count += 1
+    return count
+
+
 async def _replace_product_materials(
     db: AsyncSession,
     product: Product,
@@ -328,91 +430,17 @@ async def _replace_product_materials(
     """
     product_id = product.id
 
-    # 删除旧视频（及其关联封面）
-    old_videos_result = await db.execute(
-        select(Video).where(Video.product_id == product_id)
-    )
-    old_videos = old_videos_result.scalars().all()
-    for v in old_videos:
-        await db.execute(delete(Cover).where(Cover.video_id == v.id))
-    await db.execute(delete(Video).where(Video.product_id == product_id))
+    await _delete_old_materials(db, product_id)
 
-    # 删除直接关联的旧封面（product_id FK）
-    await db.execute(delete(Cover).where(Cover.product_id == product_id))
+    new_video_orm = await _insert_new_videos(db, product_id, pack, product.name, video_results)
 
-    # 删除旧文案（来源 dewu_parse）
-    await db.execute(
-        delete(Copywriting).where(
-            Copywriting.product_id == product_id,
-            Copywriting.source_type == "dewu_parse",
-        )
-    )
-
-    # 删除旧话题关联
-    await db.execute(
-        delete(ProductTopic).where(ProductTopic.product_id == product_id)
-    )
-
-    # 写入新视频记录
-    new_video_orm: list[Video] = []
-    for file_path, file_hash, file_size in video_results:
-        v = Video(
-            product_id=product_id,
-            name=f"{pack.title}_视频" if pack.title != "未知商品" else f"{product.name}_视频",
-            file_path=file_path,
-            file_hash=file_hash,
-            file_size=file_size,
-            source_type="dewu_parse",
-        )
-        db.add(v)
-        new_video_orm.append(v)
-
-    await db.flush()  # 获取 video.id
-
-    # 写入新封面记录（同时关联 product_id 和第一个视频）
     first_video_id = new_video_orm[0].id if new_video_orm else None
-    for file_path, file_hash, file_size in cover_results:
-        c = Cover(
-            video_id=first_video_id,
-            product_id=product_id,
-            name=pack.title,
-            file_path=file_path,
-            file_hash=file_hash,
-            file_size=file_size,
-        )
-        db.add(c)
+    _insert_new_covers(db, product_id, first_video_id, pack, cover_results)
 
-    # 写入文案（标题作为文案）
-    copywriting_count = 0
-    if pack.title and pack.title != "未知商品":
-        cw = Copywriting(
-            product_id=product_id,
-            name=pack.title[:50],
-            content=pack.title,
-            source_type="dewu_parse",
-            source_ref=product.dewu_url,
-        )
-        db.add(cw)
-        copywriting_count = 1
-        product.name = pack.title
+    copywriting_count = _insert_copywriting(db, product, pack)
 
-    # 写入话题关联（upsert topic by name）
-    topic_count = 0
-    for topic_name in pack.topics:
-        topic_result = await db.execute(
-            select(Topic).where(Topic.name == topic_name)
-        )
-        topic = topic_result.scalars().first()
-        if not topic:
-            topic = Topic(name=topic_name, source="dewu_parse")
-            db.add(topic)
-            await db.flush()
+    topic_count = await _insert_topics(db, product_id, pack.topics)
 
-        pt = ProductTopic(product_id=product_id, topic_id=topic.id)
-        db.add(pt)
-        topic_count += 1
-
-    # 更新反范式计数和 parse_status
     video_count = len(new_video_orm)
     cover_count = len(cover_results)
     product.video_count = video_count

@@ -43,8 +43,8 @@ async def list_copywritings(
         query = query.where(Copywriting.source_type == source_type)
         count_query = count_query.where(Copywriting.source_type == source_type)
     if keyword:
-        query = query.where(Copywriting.content.contains(keyword))
-        count_query = count_query.where(Copywriting.content.contains(keyword))
+        query = query.where(Copywriting.content.ilike(f"%{keyword}%"))
+        count_query = count_query.where(Copywriting.content.ilike(f"%{keyword}%"))
 
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0

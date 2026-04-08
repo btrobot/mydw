@@ -145,13 +145,13 @@ async def search_topics(
         topic = existing.scalars().first()
         if topic:
             topic.heat = item["heat"]
-            topic.last_synced = datetime.utcnow()
+            topic.last_synced = datetime.now(datetime.UTC)
         else:
             topic = Topic(
                 name=item["name"],
                 heat=item["heat"],
                 source="search",
-                last_synced=datetime.utcnow(),
+                last_synced=datetime.now(datetime.UTC),
             )
             db.add(topic)
 

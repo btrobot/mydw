@@ -80,8 +80,8 @@ async def list_products(
     count_query = select(func.count()).select_from(Product)
 
     if name:
-        query = query.where(Product.name.contains(name))
-        count_query = count_query.where(Product.name.contains(name))
+        query = query.where(Product.name.ilike(f"%{name}%"))
+        count_query = count_query.where(Product.name.ilike(f"%{name}%"))
 
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
@@ -137,9 +137,12 @@ async def create_product(
 
     try:
         await parse_and_create_materials(db=db, product=product)
+    except ValueError as e:
+        logger.warning("商品素材解析参数错误: product_id={}, error={}", product.id, str(e))
+        product.parse_status = "error"
+        await db.commit()
     except Exception as e:
         logger.error("商品素材解析失败: product_id={}, error_type={}", product.id, type(e).__name__)
-        # 解析失败：标记 error，保留商品供用户重试
         product.parse_status = "error"
         await db.commit()
 

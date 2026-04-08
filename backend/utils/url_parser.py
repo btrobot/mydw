@@ -23,5 +23,9 @@ def extract_dewu_url(text: str) -> Optional[str]:
     """
     match = _DEWU_URL_PATTERN.search(text)
     if match:
-        return match.group(0).rstrip(")")
+        url = match.group(0)
+        # 仅当括号不平衡时才去掉末尾的 )，避免误截合法 URL
+        if url.endswith(")") and url.count("(") < url.count(")"):
+            url = url[:-1]
+        return url
     return None
