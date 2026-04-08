@@ -5,6 +5,7 @@ from typing import Optional, List
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from starlette.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
@@ -420,3 +421,18 @@ async def validate_videos(
             result_obj.missing += 1
             result_obj.missing_ids.append(video.id)
     return result_obj
+
+
+# ─── 视频流 ───────────────────────────────────────────────────────────────────
+
+@router.get("/{video_id}/stream")
+async def stream_video(
+    video_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> FileResponse:
+    """流式返回视频文件"""
+    result = await db.execute(select(Video).where(Video.id == video_id))
+    video = result.scalars().first()
+    if not video or not video.file_path or not Path(video.file_path).exists():
+        raise HTTPException(status_code=404, detail="视频文件不存在")
+    return FileResponse(video.file_path, media_type="video/mp4")

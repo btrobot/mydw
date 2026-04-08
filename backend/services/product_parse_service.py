@@ -358,7 +358,7 @@ async def _replace_product_materials(
     for file_path, file_hash, file_size in video_results:
         v = Video(
             product_id=product_id,
-            name=f"{product.name}_视频",
+            name=f"{pack.title}_视频" if pack.title != "未知商品" else f"{product.name}_视频",
             file_path=file_path,
             file_hash=file_hash,
             file_size=file_size,

@@ -1,11 +1,12 @@
 import { useState, useCallback, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Button, Space, Typography, message,
   Modal, Form, Input, Popconfirm, Upload, Tag,
 } from 'antd'
 import type { UploadProps } from 'antd'
 import {
-  PlusOutlined, UploadOutlined, ScanOutlined, DeleteOutlined,
+  PlusOutlined, UploadOutlined, ScanOutlined, DeleteOutlined, PlayCircleOutlined,
 } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns, ActionType } from '@ant-design/pro-components'
@@ -26,10 +27,12 @@ interface VideoFormValues {
 }
 
 export default function VideoList() {
+  const navigate = useNavigate()
   const actionRef = useRef<ActionType>()
   const [uploadProductId, setUploadProductId] = useState<number | undefined>(undefined)
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [playingVideo, setPlayingVideo] = useState<VideoResponse | null>(null)
   const [form] = Form.useForm<VideoFormValues>()
 
   const createVideo = useCreateVideo()
@@ -117,6 +120,15 @@ export default function VideoList() {
       title: '名称',
       dataIndex: 'name',
       ellipsis: true,
+      render: (_, record) => (
+        <Space>
+          <PlayCircleOutlined
+            style={{ cursor: 'pointer', color: '#1890ff' }}
+            onClick={() => setPlayingVideo(record)}
+          />
+          <span>{record.name}</span>
+        </Space>
+      ),
     },
     {
       title: '状态',
@@ -133,12 +145,19 @@ export default function VideoList() {
     },
     {
       title: '关联商品',
-      dataIndex: 'product_name',
+      dataIndex: 'product_id',
       width: 120,
       hideInSearch: true,
       render: (_, record) =>
-        record.product_name
-          ? <Tag>{record.product_name}</Tag>
+        record.product_id != null
+          ? (
+            <Tag
+              style={{ cursor: 'pointer' }}
+              onClick={() => navigate(`/material/product/${record.product_id}`)}
+            >
+              {record.product_id}
+            </Tag>
+          )
           : <Text type="secondary">—</Text>,
     },
     {
@@ -237,6 +256,23 @@ export default function VideoList() {
         size="small"
         search={{ labelWidth: 'auto' }}
       />
+
+      <Modal
+        title={playingVideo?.name ?? '播放视频'}
+        open={playingVideo !== null}
+        onCancel={() => setPlayingVideo(null)}
+        footer={null}
+        destroyOnHidden
+        width={720}
+      >
+        {playingVideo && (
+          <video
+            controls
+            src={`http://127.0.0.1:8000/api/videos/${playingVideo.id}/stream`}
+            style={{ width: '100%' }}
+          />
+        )}
+      </Modal>
 
       <Modal
         title="添加视频"
