@@ -381,11 +381,11 @@ async def _replace_product_materials(
         await db.execute(delete(Cover).where(Cover.video_id == v.id))
     await db.execute(delete(Video).where(Video.product_id == product_id))
 
-    # 删除旧文案（来源 parsed）
+    # 删除旧文案（来源 dewu_parse）
     await db.execute(
         delete(Copywriting).where(
             Copywriting.product_id == product_id,
-            Copywriting.source_type == "parsed",
+            Copywriting.source_type == "dewu_parse",
         )
     )
 
@@ -403,7 +403,7 @@ async def _replace_product_materials(
             name=f"{product.name}_视频",
             file_path=path,
             file_size=file_size,
-            source_type="parsed",
+            source_type="dewu_parse",
         )
         db.add(v)
         new_video_orm.append(v)
@@ -426,10 +426,12 @@ async def _replace_product_materials(
         cw = Copywriting(
             product_id=product_id,
             content=pack.title,
-            source_type="parsed",
+            source_type="dewu_parse",
             source_ref=product.dewu_url,
         )
         db.add(cw)
+        product.name = pack.title
+        db.add(product)
 
     # 写入话题关联（upsert topic by name）
     for topic_name in pack.topics:
@@ -438,7 +440,7 @@ async def _replace_product_materials(
         )
         topic = topic_result.scalars().first()
         if not topic:
-            topic = Topic(name=topic_name, source="parsed")
+            topic = Topic(name=topic_name, source="dewu_parse")
             db.add(topic)
             await db.flush()
 
