@@ -4,7 +4,7 @@ import {
   Button, Space, Typography, message,
   Modal, Form, Input, Popconfirm,
 } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, LinkOutlined, SyncOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, SyncOutlined } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns, ActionType } from '@ant-design/pro-components'
 
@@ -15,9 +15,12 @@ import { api } from '@/services/api'
 
 const { Text, Link } = Typography
 
-interface ProductFormValues {
+interface ProductCreateValues {
+  share_text: string
+}
+
+interface ProductEditValues {
   name: string
-  link?: string
   dewu_url?: string
 }
 
@@ -34,7 +37,7 @@ export default function ProductList() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<ProductResponse | null>(null)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
-  const [form] = Form.useForm<ProductFormValues>()
+  const [form] = Form.useForm<ProductCreateValues | ProductEditValues>()
 
   const [parsingIds, setParsingIds] = useState<Set<number>>(new Set())
 
@@ -45,12 +48,13 @@ export default function ProductList() {
 
   const handleAdd = useCallback(async () => {
     try {
-      const values = await form.validateFields()
       if (editingProduct) {
-        await updateProduct.mutateAsync({ id: editingProduct.id, ...values })
+        const values = await form.validateFields() as ProductEditValues
+        await updateProduct.mutateAsync({ id: editingProduct.id, name: values.name, dewu_url: values.dewu_url })
         message.success('更新商品成功')
       } else {
-        await createProduct.mutateAsync(values)
+        const values = await form.validateFields() as ProductCreateValues
+        await createProduct.mutateAsync({ share_text: values.share_text })
         message.success('添加商品成功')
       }
       setModalOpen(false)
@@ -65,7 +69,7 @@ export default function ProductList() {
 
   const handleEdit = useCallback((p: ProductResponse) => {
     setEditingProduct(p)
-    form.setFieldsValue({ name: p.name, link: p.link ?? undefined, dewu_url: p.dewu_url ?? undefined })
+    form.setFieldsValue({ name: p.name, dewu_url: p.dewu_url ?? undefined })
     setModalOpen(true)
   }, [form])
 
@@ -122,15 +126,6 @@ export default function ProductList() {
       render: (_, record) => (
         <Link onClick={() => navigate(`/material/product/${record.id}`)}>{record.name}</Link>
       ),
-    },
-    {
-      title: '商品链接',
-      dataIndex: 'link',
-      ellipsis: true,
-      hideInSearch: true,
-      render: (_, record) => record.link
-        ? <Text type="secondary" style={{ fontSize: 12 }}>{record.link}</Text>
-        : <Text type="secondary">—</Text>,
     },
     {
       title: '视频数',
@@ -234,19 +229,28 @@ export default function ProductList() {
         destroyOnHidden
       >
         <Form form={form} layout="vertical">
-          <Form.Item
-            name="name"
-            label="商品名称"
-            rules={[{ required: true, message: '请输入商品名称' }]}
-          >
-            <Input placeholder="请输入商品名称" />
-          </Form.Item>
-          <Form.Item name="link" label="商品链接">
-            <Input placeholder="请输入得物商品链接" prefix={<LinkOutlined />} />
-          </Form.Item>
-          <Form.Item name="dewu_url" label="得物商品页">
-            <Input placeholder="得物商品页链接" prefix={<LinkOutlined />} />
-          </Form.Item>
+          {editingProduct ? (
+            <>
+              <Form.Item
+                name="name"
+                label="商品名称"
+                rules={[{ required: true, message: '请输入商品名称' }]}
+              >
+                <Input placeholder="请输入商品名称" />
+              </Form.Item>
+              <Form.Item name="dewu_url" label="得物商品页">
+                <Input placeholder="得物商品页链接" />
+              </Form.Item>
+            </>
+          ) : (
+            <Form.Item
+              name="share_text"
+              label="分享文本"
+              rules={[{ required: true, message: '请输入分享文本' }]}
+            >
+              <Input.TextArea placeholder="粘贴得物分享文本或链接" rows={3} />
+            </Form.Item>
+          )}
         </Form>
       </Modal>
     </>

@@ -29,11 +29,7 @@ export interface ProductListResponse {
 }
 
 export interface ProductCreate {
-  name: string
-  link?: string | null
-  description?: string | null
-  dewu_url?: string | null
-  image_url?: string | null
+  share_text: string
 }
 
 // ============ Video ============

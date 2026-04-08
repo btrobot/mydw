@@ -369,11 +369,9 @@ class ProductBase(BaseModel):
     link: Optional[str] = None
 
 
-class ProductCreate(ProductBase):
-    """创建商品"""
-    description: Optional[str] = None
-    dewu_url: Optional[str] = None
-    image_url: Optional[str] = None
+class ProductCreate(BaseModel):
+    """创建商品 — 仅接受分享文本，后端解析 dewu_url"""
+    share_text: str = Field(..., min_length=1, max_length=2048)
 
 
 class ProductUpdate(BaseModel):

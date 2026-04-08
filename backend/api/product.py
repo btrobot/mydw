@@ -11,6 +11,7 @@ from loguru import logger
 from models import Product, Video, Copywriting, get_db
 from schemas import ProductCreate, ProductUpdate, ProductResponse, ProductListResponse, ParseMaterialsResponse
 from services.product_parse_service import parse_and_create_materials
+from utils.url_parser import extract_dewu_url
 
 router = APIRouter(tags=["商品管理"])
 
@@ -59,22 +60,20 @@ async def create_product(
     data: ProductCreate,
     db: AsyncSession = Depends(get_db),
 ) -> ProductResponse:
-    """创建商品"""
-    existing = await db.execute(select(Product).where(Product.name == data.name))
-    if existing.scalars().first():
-        raise HTTPException(status_code=400, detail="商品名称已存在")
+    """创建商品 — 从分享文本解析得物链接，以 dewu_url 查重"""
+    dewu_url = extract_dewu_url(data.share_text)
+    if not dewu_url:
+        raise HTTPException(status_code=422, detail="未找到有效的得物链接")
 
-    product = Product(
-        name=data.name,
-        link=data.link,
-        description=data.description,
-        dewu_url=data.dewu_url,
-        image_url=data.image_url,
-    )
+    existing = await db.execute(select(Product).where(Product.dewu_url == dewu_url))
+    if existing.scalars().first():
+        raise HTTPException(status_code=409, detail="该得物链接已存在")
+
+    product = Product(name=dewu_url, dewu_url=dewu_url)
     db.add(product)
     await db.commit()
     await db.refresh(product)
-    logger.info("商品创建成功: product_id={}, name={}", product.id, product.name)
+    logger.info("商品创建成功: product_id={}, dewu_url={}", product.id, dewu_url)
     return product
 
 
@@ -90,10 +89,7 @@ async def update_product(
     if not product:
         raise HTTPException(status_code=404, detail="商品不存在")
 
-    if data.name is not None and data.name != product.name:
-        dup = await db.execute(select(Product).where(Product.name == data.name))
-        if dup.scalars().first():
-            raise HTTPException(status_code=400, detail="商品名称已存在")
+    if data.name is not None:
         product.name = data.name
 
     if data.link is not None:

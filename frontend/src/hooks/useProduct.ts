@@ -57,7 +57,7 @@ export const useDeleteProduct = () => {
 export const useUpdateProduct = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, ...payload }: { id: number; name?: string; link?: string | null }) => {
+    mutationFn: async ({ id, ...payload }: { id: number; name?: string; dewu_url?: string }) => {
       const { data } = await api.put<ProductResponse>(`/products/${id}`, payload)
       return data
     },

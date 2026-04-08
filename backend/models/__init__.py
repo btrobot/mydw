@@ -304,6 +304,8 @@ async def init_db():
     await migration_008.run_migration(engine)
     migration_009 = importlib.import_module("migrations.009_product_topics")
     await migration_009.run_migration(engine)
+    migration_010 = importlib.import_module("migrations.010_dewu_url_unique")
+    await migration_010.run_migration(engine)
 
     logger.info("数据库初始化完成")
 
