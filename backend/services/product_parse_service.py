@@ -65,7 +65,7 @@ async def parse_product_page(dewu_url: str) -> MaterialPack:
         if settings.DEBUG:
             debug_dir = Path("data/debug")
             debug_dir.mkdir(parents=True, exist_ok=True)
-            debug_path = debug_dir / f"parse_{int(datetime.now(datetime.UTC).timestamp())}.html"
+            debug_path = debug_dir / f"parse_{int(datetime.now().timestamp())}.html"
             debug_path.write_text(html, encoding="utf-8")
             logger.info("渲染 HTML 已保存: path={}", debug_path)
     except Exception as e:
