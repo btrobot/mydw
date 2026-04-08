@@ -124,7 +124,17 @@ def _extract_next_data(html: str) -> Optional[dict]:
 
 
 def _extract_title(html: str) -> Optional[str]:
-    """提取标题: div.pc_title__ > 文本"""
+    """提取标题: 优先从 __NEXT_DATA__ content.title，fallback 到 DOM 正则"""
+    next_data = _extract_next_data(html)
+    if next_data is not None:
+        try:
+            title = next_data["props"]["pageProps"]["metaOGInfo"]["data"][0]["content"]["title"]
+            if title:
+                return str(title).strip()
+        except (KeyError, TypeError, IndexError):
+            pass
+
+    # fallback: DOM 正则
     m = re.search(r'<div\s+class="pc_title__[^"]*"[^>]*>([^<]+)</div>', html)
     if m:
         return m.group(1).strip()
@@ -136,19 +146,33 @@ def _extract_title(html: str) -> Optional[str]:
 
 
 def _extract_cover_urls(html: str) -> list[str]:
-    """提取封面图: 优先从 __NEXT_DATA__ JSON，fallback 到 DOM 正则"""
+    """提取封面图: 优先从 __NEXT_DATA__ content.cover.url + media.list[img]，fallback 到 DOM 正则"""
     next_data = _extract_next_data(html)
     if next_data is not None:
         try:
-            media_list = next_data["props"]["pageProps"]["metaOGInfo"]["data"][0]["content"]["media"]["list"]
-            urls = [item["url"] for item in media_list if item.get("mediaType") == "img" and item.get("url")]
+            content = next_data["props"]["pageProps"]["metaOGInfo"]["data"][0]["content"]
+            seen: set[str] = set()
+            urls: list[str] = []
+
+            # 主封面优先
+            cover_url = content.get("cover", {}).get("url")
+            if cover_url:
+                seen.add(cover_url)
+                urls.append(cover_url)
+
+            # 补充 media.list[mediaType=img]，跳过 blur，去重
+            for item in content.get("media", {}).get("list", []):
+                if item.get("mediaType") == "img" and item.get("url") and item["url"] not in seen:
+                    seen.add(item["url"])
+                    urls.append(item["url"])
+
             if urls:
                 return urls
         except (KeyError, TypeError, IndexError):
             pass
 
     # fallback: DOM 正则
-    urls: list[str] = []
+    urls = []
     m = re.search(r'<video[^>]+poster=["\']([^"\']+)["\']', html)
     if m:
         urls.append(m.group(1))
@@ -163,14 +187,21 @@ def _extract_cover_urls(html: str) -> list[str]:
 
 
 def _extract_video_url(html: str) -> Optional[str]:
-    """提取视频: 优先从 __NEXT_DATA__ JSON，fallback 到 DOM 正则"""
+    """提取视频: 优先从 __NEXT_DATA__ media.list[video]，备选 videoShareUrl，fallback 到 DOM 正则"""
     next_data = _extract_next_data(html)
     if next_data is not None:
         try:
-            media_list = next_data["props"]["pageProps"]["metaOGInfo"]["data"][0]["content"]["media"]["list"]
-            for item in media_list:
+            content = next_data["props"]["pageProps"]["metaOGInfo"]["data"][0]["content"]
+
+            # 无水印版优先
+            for item in content.get("media", {}).get("list", []):
                 if item.get("mediaType") == "video" and item.get("url"):
                     return item["url"]
+
+            # 带水印备选
+            share_url = content.get("videoShareUrl")
+            if share_url:
+                return share_url
         except (KeyError, TypeError, IndexError):
             pass
 
