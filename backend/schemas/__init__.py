@@ -364,33 +364,28 @@ class AssembleTasksRequest(BaseModel):
 
 # ============ 商品 Schema ============
 
-class ProductBase(BaseModel):
-    name: str = Field(..., min_length=1, max_length=256)
-    link: Optional[str] = None
-
-
 class ProductCreate(BaseModel):
     """创建商品 — 仅接受分享文本，后端解析 dewu_url"""
     share_text: str = Field(..., min_length=1, max_length=2048)
 
 
 class ProductUpdate(BaseModel):
-    """更新商品"""
-    name: Optional[str] = None
-    link: Optional[str] = None
-    description: Optional[str] = None
-    dewu_url: Optional[str] = None
-    image_url: Optional[str] = None
+    """更新商品 — 仅允许修改名称"""
+    name: Optional[str] = Field(None, min_length=1, max_length=256)
 
 
-class ProductResponse(ProductBase):
+class ProductResponse(BaseModel):
     """商品响应"""
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    description: Optional[str] = None
+    name: str
     dewu_url: Optional[str] = None
-    image_url: Optional[str] = None
+    parse_status: str
+    video_count: int = 0
+    copywriting_count: int = 0
+    cover_count: int = 0
+    topic_count: int = 0
     created_at: datetime
     updated_at: datetime
 
@@ -550,6 +545,7 @@ class CoverResponse(BaseModel):
 
     id: int
     video_id: Optional[int] = None
+    product_id: Optional[int] = None
     file_path: str
     file_size: Optional[int] = None
     width: Optional[int] = None

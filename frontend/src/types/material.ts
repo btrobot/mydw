@@ -12,13 +12,17 @@ export interface BatchDeleteResponse {
 
 // ============ Product ============
 
+export type ParseStatus = 'pending' | 'parsing' | 'parsed' | 'error'
+
 export interface ProductResponse {
   id: number
   name: string
-  link: string | null
-  description: string | null
   dewu_url: string | null
-  image_url: string | null
+  parse_status: ParseStatus
+  video_count: number
+  copywriting_count: number
+  cover_count: number
+  topic_count: number
   created_at: string
   updated_at: string
 }
@@ -100,6 +104,7 @@ export interface CopywritingCreate {
 
 export interface CoverResponse {
   id: number
+  product_id: number | null
   video_id: number | null
   file_path: string
   file_size: number | null

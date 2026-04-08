@@ -249,7 +249,8 @@ async def parse_and_create_materials(
     1. 解析商品页获取 MaterialPack
     2. 通过 MediaStorageService 下载封面图和视频到内容寻址存储
     3. 覆盖更新数据库素材记录（删旧建新）
-    4. 部分失败不阻塞整体
+    4. 更新 product 的反范式计数字段和 parse_status
+    5. 部分失败不阻塞整体
 
     返回 ParseMaterialsResponse 兼容的 dict。
     """
@@ -288,7 +289,7 @@ async def parse_and_create_materials(
             errors.append(f"封面[{idx}]下载失败: {type(e).__name__}")
 
     # Step 4: 覆盖更新数据库 — 删除旧素材记录，创建新的
-    await _replace_product_materials(
+    counts = await _replace_product_materials(
         db=db,
         product=product,
         pack=pack,
@@ -309,6 +310,7 @@ async def parse_and_create_materials(
         "videos_downloaded": len(downloaded_videos),
         "covers_downloaded": len(downloaded_covers),
         "errors": errors,
+        **counts,
     }
 
 
@@ -319,8 +321,11 @@ async def _replace_product_materials(
     pack: MaterialPack,
     video_results: list[tuple[str, str, int]],
     cover_results: list[tuple[str, str, int]],
-) -> None:
-    """删除商品旧素材记录，写入新记录。"""
+) -> dict[str, int]:
+    """删除商品旧素材记录，写入新记录，更新反范式计数和 parse_status。
+
+    返回包含各计数字段的 dict。
+    """
     product_id = product.id
 
     # 删除旧视频（及其关联封面）
@@ -331,6 +336,9 @@ async def _replace_product_materials(
     for v in old_videos:
         await db.execute(delete(Cover).where(Cover.video_id == v.id))
     await db.execute(delete(Video).where(Video.product_id == product_id))
+
+    # 删除直接关联的旧封面（product_id FK）
+    await db.execute(delete(Cover).where(Cover.product_id == product_id))
 
     # 删除旧文案（来源 dewu_parse）
     await db.execute(
@@ -361,11 +369,12 @@ async def _replace_product_materials(
 
     await db.flush()  # 获取 video.id
 
-    # 写入新封面记录（关联第一个视频，若有）
+    # 写入新封面记录（同时关联 product_id 和第一个视频）
     first_video_id = new_video_orm[0].id if new_video_orm else None
     for file_path, file_hash, file_size in cover_results:
         c = Cover(
             video_id=first_video_id,
+            product_id=product_id,
             file_path=file_path,
             file_hash=file_hash,
             file_size=file_size,
@@ -373,6 +382,7 @@ async def _replace_product_materials(
         db.add(c)
 
     # 写入文案（标题作为文案）
+    copywriting_count = 0
     if pack.title and pack.title != "未知商品":
         cw = Copywriting(
             product_id=product_id,
@@ -381,10 +391,11 @@ async def _replace_product_materials(
             source_ref=product.dewu_url,
         )
         db.add(cw)
+        copywriting_count = 1
         product.name = pack.title
-        db.add(product)
 
     # 写入话题关联（upsert topic by name）
+    topic_count = 0
     for topic_name in pack.topics:
         topic_result = await db.execute(
             select(Topic).where(Topic.name == topic_name)
@@ -397,6 +408,27 @@ async def _replace_product_materials(
 
         pt = ProductTopic(product_id=product_id, topic_id=topic.id)
         db.add(pt)
+        topic_count += 1
+
+    # 更新反范式计数和 parse_status
+    video_count = len(new_video_orm)
+    cover_count = len(cover_results)
+    product.video_count = video_count
+    product.cover_count = cover_count
+    product.copywriting_count = copywriting_count
+    product.topic_count = topic_count
+    product.parse_status = "parsed"
+    db.add(product)
 
     await db.commit()
-    logger.info("商品素材数据库记录更新完成: product_id={}", product_id)
+    logger.info(
+        "商品素材数据库记录更新完成: product_id={}, videos={}, covers={}, copywritings={}, topics={}",
+        product_id, video_count, cover_count, copywriting_count, topic_count,
+    )
+
+    return {
+        "video_count": video_count,
+        "cover_count": cover_count,
+        "copywriting_count": copywriting_count,
+        "topic_count": topic_count,
+    }

@@ -8,12 +8,12 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, SyncOutlined } from '@ant-d
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns, ActionType } from '@ant-design/pro-components'
 
-import { useCreateProductV2, useDeleteProductV2, useUpdateProductV2, useBatchDeleteProducts, useVideos, useCopywritings } from '@/hooks'
-import type { ProductResponse, ProductListResponse, ParseMaterialsResponse } from '@/types/material'
+import { useCreateProductV2, useDeleteProductV2, useUpdateProductV2, useBatchDeleteProducts } from '@/hooks'
+import type { ProductResponse, ProductListResponse, ParseMaterialsResponse, ParseStatus } from '@/types/material'
 import { handleApiError } from '@/utils/error'
 import { api } from '@/services/api'
 
-const { Text, Link } = Typography
+const { Link } = Typography
 
 interface ProductCreateValues {
   share_text: string
@@ -21,15 +21,8 @@ interface ProductCreateValues {
 
 interface ProductEditValues {
   name: string
-  dewu_url?: string
 }
 
-function ProductCountCell({ productId, type }: { productId: number; type: 'videos' | 'copywritings' }) {
-  const { data: videos = [] } = useVideos(type === 'videos' ? { productId } : undefined)
-  const { data: copywritings = [] } = useCopywritings(type === 'copywritings' ? { productId } : undefined)
-  const count = type === 'videos' ? videos.length : copywritings.length
-  return <Text>{count}</Text>
-}
 
 export default function ProductList() {
   const navigate = useNavigate()
@@ -50,7 +43,7 @@ export default function ProductList() {
     try {
       if (editingProduct) {
         const values = await form.validateFields() as ProductEditValues
-        await updateProduct.mutateAsync({ id: editingProduct.id, name: values.name, dewu_url: values.dewu_url })
+        await updateProduct.mutateAsync({ id: editingProduct.id, name: values.name })
         message.success('更新商品成功')
       } else {
         const values = await form.validateFields() as ProductCreateValues
@@ -69,7 +62,7 @@ export default function ProductList() {
 
   const handleEdit = useCallback((p: ProductResponse) => {
     setEditingProduct(p)
-    form.setFieldsValue({ name: p.name, dewu_url: p.dewu_url ?? undefined })
+    form.setFieldsValue({ name: p.name })
     setModalOpen(true)
   }, [form])
 
@@ -128,22 +121,28 @@ export default function ProductList() {
       ),
     },
     {
+      title: '解析状态',
+      dataIndex: 'parse_status',
+      width: 100,
+      hideInSearch: true,
+      valueEnum: {
+        pending: { text: '待解析', status: 'Default' },
+        parsing: { text: '解析中', status: 'Processing' },
+        parsed: { text: '已解析', status: 'Success' },
+        error: { text: '解析失败', status: 'Error' },
+      } satisfies Record<ParseStatus, { text: string; status: string }>,
+    },
+    {
       title: '视频数',
-      key: 'video_count',
+      dataIndex: 'video_count',
       width: 80,
       hideInSearch: true,
-      render: (_, record) => (
-        <ProductCountCell productId={record.id} type="videos" />
-      ),
     },
     {
       title: '文案数',
-      key: 'copywriting_count',
+      dataIndex: 'copywriting_count',
       width: 80,
       hideInSearch: true,
-      render: (_, record) => (
-        <ProductCountCell productId={record.id} type="copywritings" />
-      ),
     },
     {
       title: '创建时间',
@@ -160,15 +159,17 @@ export default function ProductList() {
       hideInSearch: true,
       render: (_, record) => (
         <Space>
-          <Button
-            type="link"
-            size="small"
-            icon={<SyncOutlined />}
-            loading={parsingIds.has(record.id)}
-            onClick={() => handleParse(record.id)}
-          >
-            解析
-          </Button>
+          {record.parse_status === 'error' && (
+            <Button
+              type="link"
+              size="small"
+              icon={<SyncOutlined />}
+              loading={parsingIds.has(record.id)}
+              onClick={() => handleParse(record.id)}
+            >
+              重新解析
+            </Button>
+          )}
           <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
             编辑
           </Button>
@@ -230,18 +231,13 @@ export default function ProductList() {
       >
         <Form form={form} layout="vertical">
           {editingProduct ? (
-            <>
-              <Form.Item
-                name="name"
-                label="商品名称"
-                rules={[{ required: true, message: '请输入商品名称' }]}
-              >
-                <Input placeholder="请输入商品名称" />
-              </Form.Item>
-              <Form.Item name="dewu_url" label="得物商品页">
-                <Input placeholder="得物商品页链接" />
-              </Form.Item>
-            </>
+            <Form.Item
+              name="name"
+              label="商品名称"
+              rules={[{ required: true, message: '请输入商品名称' }]}
+            >
+              <Input placeholder="请输入商品名称" />
+            </Form.Item>
           ) : (
             <Form.Item
               name="share_text"

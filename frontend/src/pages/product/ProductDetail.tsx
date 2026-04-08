@@ -27,7 +27,6 @@ const { Text } = Typography
 
 interface EditFormValues {
   name: string
-  dewu_url?: string
 }
 
 export default function ProductDetail() {
@@ -51,7 +50,7 @@ export default function ProductDetail() {
   const handleEditSubmit = useCallback(async (values: EditFormValues) => {
     if (!productId) return false
     try {
-      await updateProduct.mutateAsync({ id: productId, name: values.name, dewu_url: values.dewu_url })
+      await updateProduct.mutateAsync({ id: productId, name: values.name })
       message.success('更新商品成功')
       return true
     } catch (error: unknown) {
@@ -140,15 +139,18 @@ export default function ProductDetail() {
         columns={[
           { title: '商品名称', dataIndex: 'name' },
           {
-            title: '得物链接',
-            dataIndex: 'dewu_url',
-            render: (_, r) => r.dewu_url ? <Text type="secondary">{r.dewu_url}</Text> : <Text type="secondary">—</Text>,
-          },
-          {
-            title: '商品描述',
-            dataIndex: 'description',
-            span: 2,
-            render: (_, r) => r.description ?? <Text type="secondary">—</Text>,
+            title: '解析状态',
+            dataIndex: 'parse_status',
+            render: (_, r) => {
+              const map: Record<string, { label: string; color: string }> = {
+                pending: { label: '待解析', color: 'default' },
+                parsing: { label: '解析中', color: 'processing' },
+                parsed: { label: '已解析', color: 'success' },
+                error: { label: '解析失败', color: 'error' },
+              }
+              const entry = map[r.parse_status] ?? { label: r.parse_status, color: 'default' }
+              return <Tag color={entry.color}>{entry.label}</Tag>
+            },
           },
           {
             title: '创建时间',
@@ -241,7 +243,7 @@ export default function ProductDetail() {
         open={editOpen}
         onOpenChange={setEditOpen}
         onFinish={handleEditSubmit}
-        initialValues={{ name: product.name, dewu_url: product.dewu_url ?? undefined }}
+        initialValues={{ name: product.name }}
         modalProps={{ destroyOnHidden: true }}
       >
         <ProFormText
@@ -249,11 +251,6 @@ export default function ProductDetail() {
           label="商品名称"
           rules={[{ required: true, message: '请输入商品名称' }]}
           placeholder="请输入商品名称"
-        />
-        <ProFormText
-          name="dewu_url"
-          label="得物商品页"
-          placeholder="得物商品页链接"
         />
       </ModalForm>
     </PageContainer>

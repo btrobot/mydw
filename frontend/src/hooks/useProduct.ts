@@ -53,12 +53,12 @@ export const useDeleteProduct = () => {
   })
 }
 
-/** SP7-06: 商品更新 */
+/** SP7-06: 商品更新 (name only after backend refactor) */
 export const useUpdateProduct = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, ...payload }: { id: number; name?: string; dewu_url?: string }) => {
-      const { data } = await api.put<ProductResponse>(`/products/${id}`, payload)
+    mutationFn: async ({ id, name }: { id: number; name: string }) => {
+      const { data } = await api.put<ProductResponse>(`/products/${id}`, { name })
       return data
     },
     onSuccess: () => {

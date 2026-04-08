@@ -86,10 +86,16 @@ class Product(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(256), unique=True, nullable=False, index=True)
-    link = Column(String(512), nullable=True)
-    description = Column(Text, nullable=True)
     dewu_url = Column(String(512), nullable=True)   # 得物商品页 URL (SP1-06)
-    image_url = Column(String(512), nullable=True)  # 商品图片 (SP1-06)
+
+    # 解析状态: pending | parsing | parsed | error
+    parse_status = Column(String(20), default="pending", nullable=False)
+
+    # 反范式计数（消除列表页 N+1 查询）
+    video_count = Column(Integer, default=0, nullable=False)
+    copywriting_count = Column(Integer, default=0, nullable=False)
+    cover_count = Column(Integer, default=0, nullable=False)
+    topic_count = Column(Integer, default=0, nullable=False)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -98,6 +104,7 @@ class Product(Base):
     tasks = relationship("Task", back_populates="product")
     videos = relationship("Video", back_populates="product")
     copywritings = relationship("Copywriting", back_populates="product")
+    covers = relationship("Cover", back_populates="product")
     topics = relationship("Topic", secondary="product_topics")
 
 
@@ -147,6 +154,7 @@ class Cover(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     video_id = Column(Integer, ForeignKey("videos.id"), nullable=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=True, index=True)
     file_path = Column(String(512), nullable=False)
     file_size = Column(Integer, nullable=True)
     width = Column(Integer, nullable=True)
@@ -157,6 +165,7 @@ class Cover(Base):
 
     # 关系
     video = relationship("Video", back_populates="covers")
+    product = relationship("Product", back_populates="covers")
 
 
 class Audio(Base):
@@ -310,6 +319,8 @@ async def init_db():
     await migration_010.run_migration(engine)
     migration_011 = importlib.import_module("migrations.011_media_file_hash")
     await migration_011.run_migration(engine)
+    migration_012 = importlib.import_module("migrations.012_product_redesign")
+    await migration_012.run_migration(engine)
 
     logger.info("数据库初始化完成")
 
