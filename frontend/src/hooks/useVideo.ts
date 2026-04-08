@@ -10,6 +10,16 @@ interface UseVideosOptions {
   productId?: number
 }
 
+export const useVideo = (id: number | undefined) =>
+  useQuery<VideoResponse>({
+    queryKey: ['video', id],
+    queryFn: async () => {
+      const { data } = await api.get<VideoResponse>(`/videos/${id}`)
+      return data
+    },
+    enabled: id !== undefined,
+  })
+
 export const useVideos = (options?: UseVideosOptions) =>
   useQuery<VideoResponse[]>({
     queryKey: ['videos', options],

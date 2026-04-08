@@ -1,10 +1,10 @@
 import { useState, useCallback, useRef } from 'react'
 import {
   Button, Typography, message,
-  Popconfirm, Upload, Image,
+  Popconfirm, Upload, Image, Space,
 } from 'antd'
 import type { UploadProps } from 'antd'
-import { UploadOutlined, DeleteOutlined, VideoCameraOutlined } from '@ant-design/icons'
+import { UploadOutlined, DeleteOutlined, VideoCameraOutlined, EyeOutlined } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns, ActionType } from '@ant-design/pro-components'
 import { useNavigate } from 'react-router-dom'
@@ -16,6 +16,34 @@ import { handleApiError } from '@/utils/error'
 import { api } from '@/services/api'
 
 const { Text } = Typography
+
+interface NameCellProps {
+  name: string
+  previewSrc: string
+}
+
+function NameCell({ name, previewSrc }: NameCellProps) {
+  const [visible, setVisible] = useState(false)
+  return (
+    <Space>
+      <Text>{name}</Text>
+      <EyeOutlined
+        style={{ cursor: 'pointer', color: '#1677ff' }}
+        onClick={() => setVisible(true)}
+      />
+      <Image
+        width={0}
+        src={previewSrc}
+        style={{ display: 'none' }}
+        preview={{
+          visible,
+          src: previewSrc,
+          onVisibleChange: (v) => setVisible(v),
+        }}
+      />
+    </Space>
+  )
+}
 
 export default function CoverList() {
   const actionRef = useRef<ActionType>()
@@ -73,16 +101,12 @@ export default function CoverList() {
       dataIndex: 'name',
       ellipsis: true,
       hideInSearch: true,
-      render: (_, record) => (
-        <Image
-          width={48}
-          height={48}
-          src={`http://127.0.0.1:8000/api/covers/${record.id}/image`}
-          preview={{ src: `http://127.0.0.1:8000/api/covers/${record.id}/image` }}
-          style={{ objectFit: 'cover', cursor: 'pointer' }}
-          alt={record.name}
-        />
-      ),
+      render: (_, record) => {
+        const previewSrc = `http://127.0.0.1:8000/api/covers/${record.id}/image`
+        return (
+          <NameCell name={record.name} previewSrc={previewSrc} />
+        )
+      },
     },
     {
       title: '关联视频',
@@ -100,7 +124,7 @@ export default function CoverList() {
             type="link"
             size="small"
             icon={<VideoCameraOutlined />}
-            onClick={() => navigate('/material/video')}
+            onClick={() => navigate(`/material/video/${record.video_id}`)}
           />
         ) : (
           <Text type="secondary">—</Text>

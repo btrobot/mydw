@@ -20,6 +20,7 @@ import AudioList from './pages/material/AudioList'
 import TopicList from './pages/material/TopicList'
 import ProductList from './pages/product/ProductList'
 import ProductDetail from './pages/product/ProductDetail'
+import VideoDetail from './pages/material/VideoDetail'
 
 dayjs.locale('zh-cn')
 
@@ -53,6 +54,7 @@ function App() {
               <Route path="material" element={<Navigate to="/material/overview" replace />} />
               <Route path="material/overview" element={<MaterialOverview />} />
               <Route path="material/video" element={<VideoList />} />
+              <Route path="material/video/:id" element={<VideoDetail />} />
               <Route path="material/copywriting" element={<CopywritingList />} />
               <Route path="material/cover" element={<CoverList />} />
               <Route path="material/audio" element={<AudioList />} />

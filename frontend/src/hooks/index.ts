@@ -77,7 +77,7 @@ export {
 export { useProducts as useProductsV2, useCreateProduct as useCreateProductV2, useDeleteProduct as useDeleteProductV2, useUpdateProduct as useUpdateProductV2, useBatchDeleteProducts, useProduct } from './useProduct'
 
 // Video Hooks
-export { useVideos, useCreateVideo, useDeleteVideo, useUploadVideo, useScanVideos, useBatchDeleteVideos } from './useVideo'
+export { useVideo, useVideos, useCreateVideo, useDeleteVideo, useUploadVideo, useScanVideos, useBatchDeleteVideos } from './useVideo'
 
 // Copywriting Hooks
 export { useCopywritings, useCreateCopywriting, useDeleteCopywriting, useUpdateCopywriting, useImportCopywritings, useBatchDeleteCopywritings } from './useCopywriting'
