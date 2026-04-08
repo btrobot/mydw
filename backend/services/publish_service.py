@@ -1,82 +1,65 @@
 """
 任务发布服务
 """
-import asyncio
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 from loguru import logger
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from models import Task, Account, PublishLog, PublishConfig, Product
+from models import Task, Account, ScheduleConfig, Product
 from core.browser import browser_manager
 from core.dewu_client import get_dewu_client
+from services.task_service import TaskService
 
 
 class PublishService:
     """发布服务"""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession) -> None:
         self.db = db
-        self.is_running = False
-        self.is_paused = False
         self.current_task_id: Optional[int] = None
 
-    async def get_config(self) -> PublishConfig:
-        """获取发布配置"""
+    async def _get_schedule_config(self) -> Optional[ScheduleConfig]:
+        """从 schedule_config 表读取 name=default 配置"""
         result = await self.db.execute(
-            select(PublishConfig).where(PublishConfig.name == "default")
+            select(ScheduleConfig).where(ScheduleConfig.name == "default")
         )
-        config = result.scalar_one_or_none()
-
-        if not config:
-            config = PublishConfig(name="default")
-            self.db.add(config)
-            await self.db.commit()
-            await self.db.refresh(config)
-
-        return config
+        return result.scalar_one_or_none()
 
     async def get_next_task(self) -> Optional[Task]:
-        """获取下一个待发布任务"""
-        # 检查是否在允许的时间范围内
-        config = await self.get_config()
+        """获取下一个 ready 状态任务（含时段和日限额检查）"""
+        config = await self._get_schedule_config()
         now = datetime.now(ZoneInfo("Asia/Shanghai")).time()
 
-        start_time = time(config.start_hour)
-        end_time = time(config.end_hour)
+        if config:
+            start_time = time(config.start_hour)
+            end_time = time(config.end_hour)
+            if not (start_time <= now <= end_time):
+                logger.info("当前时间 {} 不在发布时段 {}-{} 内", now, start_time, end_time)
+                return None
 
-        if not (start_time <= now <= end_time):
-            logger.info("当前时间 {} 不在发布时段 {}-{} 内", now, start_time, end_time)
-            return None
-
-        # 获取待发布任务
-        query = select(Task).where(Task.status == "pending")
-        query = query.order_by(Task.priority.desc(), Task.created_at)
-        query = query.limit(1)
-
+        # 查询 status=ready 的任务
+        query = (
+            select(Task)
+            .where(Task.status == "ready")
+            .order_by(Task.priority.desc(), Task.created_at)
+            .limit(1)
+        )
         result = await self.db.execute(query)
         task = result.scalar_one_or_none()
 
-        if task:
-            # 检查账号当日发布数
-            today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-            result = await self.db.execute(
-                select(Task).where(
-                    Task.account_id == task.account_id,
-                    Task.status == "success",
-                    Task.updated_at >= today_start
-                )
+        if task and config:
+            # 检查账号当日 uploaded 数量
+            task_svc = TaskService(self.db)
+            limit_reached = await task_svc.check_account_daily_limit(
+                task.account_id, config.max_per_account_per_day
             )
-            published_today = len(result.scalars().all())
-
-            if published_today >= config.max_per_account_per_day:
+            if limit_reached:
                 logger.info("账号 {} 今日发布数已达上限", task.account_id)
-                task.status = "paused"
-                await self.db.commit()
                 return None
 
         return task
@@ -84,13 +67,13 @@ class PublishService:
     async def publish_task(self, task: Task) -> tuple[bool, str]:
         """发布单个任务"""
         self.current_task_id = task.id
+        task_svc = TaskService(self.db)
 
         try:
-            # 更新任务状态
-            task.status = "running"
-            await self.db.commit()
+            # 标记为上传中
+            await task_svc.mark_task_uploading(task.id)
 
-            # 重新查询 task，预加载所有关系（传入的 task 可能未加载关系）
+            # 重新查询并预加载所有关系
             task_result = await self.db.execute(
                 select(Task).options(
                     selectinload(Task.video),
@@ -112,20 +95,8 @@ class PublishService:
             account = result.scalar_one_or_none()
 
             if not account or account.status != "active":
-                task.status = "failed"
-                task.error_msg = "账号无效或未登录"
-                await self.db.commit()
+                await task_svc.mark_task_failed(task.id, "账号无效或未登录")
                 return False, "账号无效"
-
-            # 创建发布日志
-            log = PublishLog(
-                task_id=task.id,
-                account_id=account.id,
-                status="started",
-                message="开始发布"
-            )
-            self.db.add(log)
-            await self.db.commit()
 
             # 获取得物客户端
             client = await get_dewu_client(account.id)
@@ -144,12 +115,10 @@ class PublishService:
             # 检查登录状态
             is_logged_in, msg = await client.check_login_status()
             if not is_logged_in:
-                task.status = "failed"
-                task.error_msg = "登录已过期"
-                await self.db.commit()
+                await task_svc.mark_task_failed(task.id, "登录已过期")
                 return False, "登录已过期"
 
-            # 读取素材字段（FK关系）
+            # 读取素材字段
             video_path: Optional[str] = (
                 task.video.file_path if task.video else None
             )
@@ -183,95 +152,21 @@ class PublishService:
             )
 
             if success:
-                task.status = "success"
-                task.publish_time = datetime.utcnow()
-                task.error_msg = None
-
-                # 更新日志
-                log.status = "success"
-                log.message = "发布成功"
-                await self.db.commit()
-
+                await task_svc.mark_task_uploaded(task.id)
                 logger.info("任务 {} 发布成功", task.id)
                 return True, "发布成功"
             else:
-                task.status = "failed"
-                task.error_msg = msg
-
-                log.status = "failed"
-                log.message = msg
-                await self.db.commit()
-
+                await task_svc.mark_task_failed(task.id, msg)
                 logger.error("任务 {} 发布失败: {}", task.id, msg)
                 return False, msg
 
         except Exception as e:
             logger.error("发布任务 {} 异常: {}", task.id, e)
-            task.status = "failed"
-            task.error_msg = str(e)
-            await self.db.commit()
+            await task_svc.mark_task_failed(task.id, str(e))
             return False, str(e)
 
         finally:
             self.current_task_id = None
-
-    async def run(self):
-        """运行发布循环"""
-        if self.is_running:
-            logger.warning("发布服务已在运行")
-            return
-
-        self.is_running = True
-        self.is_paused = False
-        logger.info("发布服务启动")
-
-        try:
-            config = await self.get_config()
-
-            while self.is_running:
-                if self.is_paused:
-                    await asyncio.sleep(1)
-                    continue
-
-                # 获取下一个任务
-                task = await self.get_next_task()
-
-                if not task:
-                    # 没有待发布任务，等待后重试
-                    await asyncio.sleep(10)
-                    continue
-
-                # 发布任务
-                await self.publish_task(task)
-
-                # 等待间隔
-                interval = config.interval_minutes * 60
-                logger.info("等待 {} 分钟后继续...", config.interval_minutes)
-                await asyncio.sleep(interval)
-
-        except asyncio.CancelledError:
-            logger.info("发布服务已取消")
-        except Exception as e:
-            logger.error("发布服务异常: {}", e)
-        finally:
-            self.is_running = False
-            logger.info("发布服务停止")
-
-    def pause(self):
-        """暂停发布"""
-        self.is_paused = True
-        logger.info("发布已暂停")
-
-    def resume(self):
-        """继续发布"""
-        self.is_paused = False
-        logger.info("发布已继续")
-
-    def stop(self):
-        """停止发布"""
-        self.is_running = False
-        self.is_paused = False
-        logger.info("发布已停止")
 
 
 def get_publish_service(db: AsyncSession) -> PublishService:

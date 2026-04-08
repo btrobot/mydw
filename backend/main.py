@@ -9,11 +9,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import select
 from loguru import logger
 
 from api import account, task, publish, system, ai, product, video, copywriting, cover, audio, topic
 from api.topic import group_router as topic_group_router
-from models import init_db
+from models import init_db, async_session, PublishProfile
 from core.config import settings
 
 # 配置日志
@@ -64,6 +65,22 @@ async def startup():
     logger.info("得物掘金工具后端服务启动中...")
     await init_db()
     logger.info("数据库初始化完成")
+    await _seed_default_publish_profile()
+
+
+async def _seed_default_publish_profile() -> None:
+    """系统启动时确保存在默认合成配置档（幂等）。"""
+    async with async_session() as session:
+        result = await session.execute(select(PublishProfile))
+        if result.scalars().first() is None:
+            default_profile = PublishProfile(
+                name="默认配置",
+                is_default=True,
+                composition_mode="none",
+            )
+            session.add(default_profile)
+            await session.commit()
+            logger.info("已创建默认合成配置档: name=默认配置")
 
 
 @app.on_event("shutdown")

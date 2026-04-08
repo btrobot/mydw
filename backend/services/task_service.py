@@ -1,14 +1,34 @@
 """
 任务服务
 """
-from typing import List, Optional, Tuple
-from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
+from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, update
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from loguru import logger
 
-from models import Task, Account, PublishLog, PublishConfig
+from models import Task, Account, PublishLog, PublishConfig, PublishProfile
+
+
+# 合法状态转换表
+VALID_TRANSITIONS: Dict[str, List[str]] = {
+    "draft":      ["composing", "ready", "cancelled"],
+    "composing":  ["ready", "failed", "cancelled"],
+    "ready":      ["uploading", "cancelled"],
+    "uploading":  ["uploaded", "failed", "cancelled"],
+    "uploaded":   [],
+    "failed":     ["ready", "cancelled"],
+    "cancelled":  [],
+}
+
+# 终态集合（不可再转换）
+TERMINAL_STATUSES = {"uploaded", "cancelled"}
+
+
+def validate_transition(current: str, target: str) -> bool:
+    """校验状态转换是否合法"""
+    return target in VALID_TRANSITIONS.get(current, [])
 
 
 class TaskService:
@@ -16,6 +36,25 @@ class TaskService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    async def resolve_profile(self, task: Task) -> Optional[PublishProfile]:
+        """
+        解析任务关联的 PublishProfile。
+        优先使用 task.profile_id，无则查 is_default=True 的档案。
+        """
+        if task.profile_id:
+            result = await self.db.execute(
+                select(PublishProfile).where(PublishProfile.id == task.profile_id)
+            )
+            profile = result.scalars().first()
+            if profile:
+                return profile
+            logger.warning("任务 {} 关联的 profile_id={} 不存在，回退到默认档案", task.id, task.profile_id)
+
+        result = await self.db.execute(
+            select(PublishProfile).where(PublishProfile.is_default.is_(True)).limit(1)
+        )
+        return result.scalars().first()
 
     async def create_task(self, task_data: dict) -> Task:
         """创建单个任务"""
@@ -138,9 +177,9 @@ class TaskService:
         logger.info("删除任务: {} 个", count)
         return count
 
-    async def get_next_pending_task(self, account_id: Optional[int] = None) -> Optional[Task]:
-        """获取下一个待发布任务"""
-        query = select(Task).where(Task.status == "pending")
+    async def get_next_ready_task(self, account_id: Optional[int] = None) -> Optional[Task]:
+        """获取下一个待上传任务（ready 状态）"""
+        query = select(Task).where(Task.status == "ready")
 
         if account_id:
             query = query.where(Task.account_id == account_id)
@@ -151,25 +190,24 @@ class TaskService:
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
-    async def mark_task_running(self, task_id: int) -> Optional[Task]:
-        """标记任务为运行中"""
-        return await self.update_task(task_id, {"status": "running"})
+    async def mark_task_uploading(self, task_id: int) -> Optional[Task]:
+        """标记任务为上传中"""
+        return await self.update_task(task_id, {"status": "uploading"})
 
-    async def mark_task_success(self, task_id: int) -> Optional[Task]:
-        """标记任务为成功"""
+    async def mark_task_uploaded(self, task_id: int) -> Optional[Task]:
+        """标记任务为已上传"""
         task = await self.update_task(task_id, {
-            "status": "success",
+            "status": "uploaded",
             "publish_time": datetime.utcnow(),
-            "error_msg": None
+            "error_msg": None,
         })
 
         if task:
-            # 创建发布日志
             log = PublishLog(
                 task_id=task.id,
                 account_id=task.account_id,
-                status="success",
-                message="发布成功"
+                status="uploaded",
+                message="发布成功",
             )
             self.db.add(log)
             await self.db.commit()
@@ -177,51 +215,111 @@ class TaskService:
         return task
 
     async def mark_task_failed(self, task_id: int, error_msg: str) -> Optional[Task]:
-        """标记任务为失败"""
+        """标记任务为失败，记录失败时所处状态"""
+        task = await self.get_task(task_id)
+        if not task:
+            return None
+
+        failed_at_status = task.status
         task = await self.update_task(task_id, {
             "status": "failed",
-            "error_msg": error_msg
+            "error_msg": error_msg,
+            "failed_at_status": failed_at_status,
         })
 
         if task:
-            # 创建发布日志
             log = PublishLog(
                 task_id=task.id,
                 account_id=task.account_id,
                 status="failed",
-                message=error_msg
+                message=error_msg,
             )
             self.db.add(log)
             await self.db.commit()
 
         return task
 
-    async def get_task_stats(self) -> dict:
-        """获取任务统计"""
-        stats = {}
+    async def cancel_task(self, task_id: int) -> Optional[Task]:
+        """取消任务：非终态 → cancelled"""
+        task = await self.get_task(task_id)
+        if not task:
+            return None
 
-        # 各状态数量
-        for status in ['pending', 'running', 'success', 'failed', 'paused']:
+        if task.status in TERMINAL_STATUSES:
+            logger.warning("任务 {} 已处于终态 {}，无法取消", task_id, task.status)
+            return None
+
+        task = await self.update_task(task_id, {"status": "cancelled"})
+        logger.info("任务 {} 已取消，原状态={}", task_id, task.status if task else "unknown")
+        return task
+
+    async def get_task_stats(self) -> dict:
+        """获取任务统计（7 状态）"""
+        stats: dict = {}
+
+        for status in ["draft", "composing", "ready", "uploading", "uploaded", "failed", "cancelled"]:
             result = await self.db.execute(
                 select(func.count(Task.id)).where(Task.status == status)
             )
             stats[status] = result.scalar() or 0
 
-        # 总数
         result = await self.db.execute(select(func.count(Task.id)))
-        stats['total'] = result.scalar() or 0
+        stats["total"] = result.scalar() or 0
 
-        # 今日发布
         today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         result = await self.db.execute(
             select(func.count(Task.id)).where(
-                Task.status == "success",
-                Task.publish_time >= today_start
+                Task.status == "uploaded",
+                Task.publish_time >= today_start,
             )
         )
-        stats['today_success'] = result.scalar() or 0
+        stats["today_uploaded"] = result.scalar() or 0
 
         return stats
+
+    async def quick_retry(self, task_id: int) -> Optional[Task]:
+        """快速重试：failed → failed_at_status 对应状态，retry_count += 1，清空 failed_at_status 和 error_msg"""
+        task = await self.get_task(task_id)
+        if not task:
+            return None
+
+        if task.status != "failed":
+            raise ValueError(f"任务当前状态为 {task.status}，不是 failed，无法快速重试")
+
+        if not task.failed_at_status:
+            raise ValueError("任务缺少 failed_at_status，无法快速重试")
+
+        profile = await self.resolve_profile(task)
+        max_retry = profile.max_retry_count if profile else 3
+        if task.retry_count >= max_retry:
+            raise ValueError(f"已达最大重试次数 {max_retry}，无法继续重试")
+
+        target_status = task.failed_at_status
+        task = await self.update_task(task_id, {
+            "status": target_status,
+            "retry_count": task.retry_count + 1,
+            "failed_at_status": None,
+            "error_msg": None,
+        })
+        logger.info("任务 {} 快速重试: 恢复至 {}，retry_count={}", task_id, target_status, task.retry_count if task else "?")
+        return task
+
+    async def edit_retry(self, task_id: int) -> Optional[Task]:
+        """编辑重试：failed → draft，清空 failed_at_status 和 error_msg"""
+        task = await self.get_task(task_id)
+        if not task:
+            return None
+
+        if task.status != "failed":
+            raise ValueError(f"任务当前状态为 {task.status}，不是 failed，无法编辑重试")
+
+        task = await self.update_task(task_id, {
+            "status": "draft",
+            "failed_at_status": None,
+            "error_msg": None,
+        })
+        logger.info("任务 {} 编辑重试: 已重置为 draft", task_id)
+        return task
 
     async def check_account_daily_limit(self, account_id: int, limit: int = 5) -> bool:
         """检查账号当日发布数是否达到上限"""
@@ -230,8 +328,8 @@ class TaskService:
         result = await self.db.execute(
             select(func.count(Task.id)).where(
                 Task.account_id == account_id,
-                Task.status == "success",
-                Task.publish_time >= today_start
+                Task.status == "uploaded",
+                Task.publish_time >= today_start,
             )
         )
         count = result.scalar() or 0

@@ -40,11 +40,21 @@ LoginStatus = ConnectionStatus
 
 
 class TaskStatus(str, Enum):
-    PENDING = "pending"
-    RUNNING = "running"
-    SUCCESS = "success"
+    DRAFT = "draft"
+    COMPOSING = "composing"
+    READY = "ready"
+    UPLOADING = "uploading"
+    UPLOADED = "uploaded"
     FAILED = "failed"
-    PAUSED = "paused"
+    CANCELLED = "cancelled"
+
+
+class CompositionJobStatus(str, Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 class PublishStatus(str, Enum):
@@ -286,6 +296,7 @@ class TaskCreate(BaseModel):
     copywriting_id: Optional[int] = None
     audio_id: Optional[int] = None
     cover_id: Optional[int] = None
+    profile_id: Optional[int] = None
 
 
 class TaskUpdate(BaseModel):
@@ -294,6 +305,8 @@ class TaskUpdate(BaseModel):
     product_id: Optional[int] = None
     status: Optional[TaskStatus] = None
     priority: Optional[int] = None
+    profile_id: Optional[int] = None
+    failed_at_status: Optional[str] = Field(None, max_length=32)
 
 
 class TaskResponse(BaseModel):
@@ -312,6 +325,26 @@ class TaskResponse(BaseModel):
     publish_time: Optional[datetime] = None
     error_msg: Optional[str] = None
     priority: int
+
+    # 合成相关字段（migration 016）
+    name: Optional[str] = None
+    source_video_ids: Optional[str] = None
+    composition_template: Optional[str] = None
+    composition_params: Optional[str] = None
+    composition_job_id: Optional[int] = None
+    final_video_path: Optional[str] = None
+    final_video_duration: Optional[int] = None
+    final_video_size: Optional[int] = None
+    scheduled_time: Optional[datetime] = None
+    retry_count: int = 0
+    dewu_video_id: Optional[str] = None
+    dewu_video_url: Optional[str] = None
+
+    # 发布档案关联字段（migration 020）
+    profile_id: Optional[int] = None
+    batch_id: Optional[str] = None
+    failed_at_status: Optional[str] = None
+
     created_at: datetime
     updated_at: datetime
 
@@ -342,6 +375,28 @@ class TaskListResponse(BaseModel):
     """任务列表响应"""
     total: int
     items: List[TaskResponse]
+
+
+# ============ CompositionJob Schema (BE-TM-02) ============
+
+class CompositionJobResponse(BaseModel):
+    """合成任务响应"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    task_id: int
+    workflow_type: Optional[str] = None
+    workflow_id: Optional[str] = None
+    external_job_id: Optional[str] = None
+    status: CompositionJobStatus
+    progress: int
+    output_video_path: Optional[str] = None
+    output_video_url: Optional[str] = None
+    error_msg: Optional[str] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
 
 
 class TaskPublishRequest(BaseModel):
@@ -632,6 +687,42 @@ class PublishConfigResponse(BaseModel):
     auto_start: bool
 
 
+# ============ 调度配置 Schema (替代 PublishConfig) ============
+
+class ScheduleConfigRequest(BaseModel):
+    """调度配置请求"""
+    start_hour: int = Field(default=9, ge=0, le=23, description="开始小时（0-23）")
+    end_hour: int = Field(default=22, ge=0, le=23, description="结束小时（0-23）")
+    interval_minutes: int = Field(default=30, ge=1, le=1440, description="上传间隔（分钟）")
+    max_per_account_per_day: int = Field(default=5, ge=1, le=100, description="每账号每日最大上传数")
+    shuffle: bool = Field(default=False, description="是否随机打乱任务顺序")
+    auto_start: bool = Field(default=False, description="是否自动启动调度")
+
+    @field_validator("end_hour")
+    @classmethod
+    def end_hour_after_start(cls, v: int, info: Any) -> int:
+        start = info.data.get("start_hour")
+        if start is not None and v <= start:
+            raise ValueError("end_hour 必须大于 start_hour")
+        return v
+
+
+class ScheduleConfigResponse(BaseModel):
+    """调度配置响应"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    start_hour: int
+    end_hour: int
+    interval_minutes: int
+    max_per_account_per_day: int
+    shuffle: bool
+    auto_start: bool
+    created_at: datetime
+    updated_at: datetime
+
+
 class PublishControlRequest(BaseModel):
     """发布控制请求"""
     action: str = Field(..., description="start, pause, stop")
@@ -693,6 +784,101 @@ class PreviewStatusResponse(BaseModel):
     """预览状态响应"""
     is_open: bool
     account_id: Optional[int] = None
+
+
+# ============ PublishProfile Schema ============
+
+class CompositionMode(str, Enum):
+    NONE = "none"
+    COZE = "coze"
+    LOCAL_FFMPEG = "local_ffmpeg"
+
+
+class PublishProfileCreate(BaseModel):
+    """创建合成配置档"""
+    name: str = Field(..., min_length=1, max_length=128)
+    is_default: bool = False
+    composition_mode: CompositionMode = CompositionMode.NONE
+    coze_workflow_id: Optional[str] = Field(None, max_length=128)
+    composition_params: Optional[str] = Field(None, description="JSON 字符串")
+    global_topic_ids: List[int] = Field(default_factory=list)
+    auto_retry: bool = True
+    max_retry_count: int = Field(default=3, ge=0, le=10)
+
+    @field_validator("composition_params")
+    @classmethod
+    def validate_composition_params(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            try:
+                json.loads(v)
+            except (ValueError, TypeError):
+                raise ValueError("composition_params 必须是合法的 JSON 字符串")
+        return v
+
+
+class PublishProfileUpdate(BaseModel):
+    """更新合成配置档"""
+    name: Optional[str] = Field(None, min_length=1, max_length=128)
+    is_default: Optional[bool] = None
+    composition_mode: Optional[CompositionMode] = None
+    coze_workflow_id: Optional[str] = Field(None, max_length=128)
+    composition_params: Optional[str] = Field(None, description="JSON 字符串")
+    global_topic_ids: Optional[List[int]] = None
+    auto_retry: Optional[bool] = None
+    max_retry_count: Optional[int] = Field(None, ge=0, le=10)
+
+    @field_validator("composition_params")
+    @classmethod
+    def validate_composition_params(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            try:
+                json.loads(v)
+            except (ValueError, TypeError):
+                raise ValueError("composition_params 必须是合法的 JSON 字符串")
+        return v
+
+
+class PublishProfileResponse(BaseModel):
+    """合成配置档响应"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    is_default: bool
+    composition_mode: CompositionMode
+    coze_workflow_id: Optional[str] = None
+    composition_params: Optional[str] = None
+    global_topic_ids: List[int] = Field(default_factory=list)
+    auto_retry: bool
+    max_retry_count: int
+    created_at: datetime
+    updated_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def _parse_global_topic_ids(cls, data: Any) -> Any:
+        """将数据库中的 JSON 字符串解析为 List[int]。"""
+        raw = (
+            data.get("global_topic_ids") if isinstance(data, dict)
+            else getattr(data, "global_topic_ids", None)
+        )
+        if isinstance(raw, str):
+            try:
+                parsed = json.loads(raw)
+            except (ValueError, TypeError):
+                parsed = []
+            if isinstance(data, dict):
+                data["global_topic_ids"] = parsed
+            else:
+                data = {c.key: getattr(data, c.key) for c in data.__class__.__table__.columns}
+                data["global_topic_ids"] = parsed
+        return data
+
+
+class PublishProfileListResponse(BaseModel):
+    """合成配置档列表响应"""
+    total: int
+    items: List[PublishProfileResponse]
 
 
 # ============ 话题组 Schema ============

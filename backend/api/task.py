@@ -26,12 +26,14 @@ router = APIRouter()
 
 class TaskStatsResponse(BaseModel):
     total: int
-    pending: int
-    running: int
-    success: int
+    draft: int
+    composing: int
+    ready: int
+    uploading: int
+    uploaded: int
     failed: int
-    paused: int
-    today_success: int
+    cancelled: int
+    today_uploaded: int
 
 
 # ============ API 端点 ============
@@ -143,6 +145,44 @@ async def delete_all_tasks(
     service = TaskService(db)
     await service.delete_all_tasks(status)
     return None
+
+
+@router.post("/{task_id}/cancel", response_model=TaskResponse)
+async def cancel_task(task_id: int, db: AsyncSession = Depends(get_db)):
+    """取消任务（非终态 → cancelled）"""
+    service = TaskService(db)
+    task = await service.cancel_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在或已处于终态")
+    return task
+
+
+@router.post("/{task_id}/retry", response_model=TaskResponse)
+async def quick_retry_task(task_id: int, db: AsyncSession = Depends(get_db)):
+    """快速重试：failed → failed_at_status 对应状态"""
+    service = TaskService(db)
+    task = await service.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    try:
+        result = await service.quick_retry(task_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return result
+
+
+@router.post("/{task_id}/edit-retry", response_model=TaskResponse)
+async def edit_retry_task(task_id: int, db: AsyncSession = Depends(get_db)):
+    """编辑重试：failed → draft"""
+    service = TaskService(db)
+    task = await service.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    try:
+        result = await service.edit_retry(task_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return result
 
 
 @router.post("/{task_id}/publish")

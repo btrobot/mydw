@@ -65,6 +65,26 @@ class Task(Base):
 
     priority = Column(Integer, default=0)  # 优先级，数字越大优先级越高
 
+    # 合成相关字段（migration 016）
+    name = Column(String(256), nullable=True)
+    description = Column(String, nullable=True)
+    source_video_ids = Column(String, nullable=True)          # JSON array
+    composition_template = Column(String(64), nullable=True)
+    composition_params = Column(String, nullable=True)        # JSON
+    composition_job_id = Column(Integer, nullable=True, index=True)
+    final_video_path = Column(String(512), nullable=True)
+    final_video_duration = Column(Integer, nullable=True)
+    final_video_size = Column(Integer, nullable=True)
+    scheduled_time = Column(DateTime, nullable=True, index=True)
+    retry_count = Column(Integer, default=0)
+    dewu_video_id = Column(String(128), nullable=True)
+    dewu_video_url = Column(String(512), nullable=True)
+
+    # 发布档案关联字段（migration 020）
+    profile_id = Column(Integer, ForeignKey("publish_profiles.id"), nullable=True, index=True)
+    batch_id = Column(String(64), nullable=True, index=True)
+    failed_at_status = Column(String(32), nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -77,6 +97,8 @@ class Task(Base):
     audio = relationship("Audio")
     cover = relationship("Cover")
     topics = relationship("Topic", secondary="task_topics", passive_deletes=True)
+    composition_jobs = relationship("CompositionJob", back_populates="task", order_by="CompositionJob.id")
+    profile = relationship("PublishProfile", foreign_keys=[profile_id])
 
 
 
@@ -219,6 +241,29 @@ class ProductTopic(Base):
     __table_args__ = (UniqueConstraint('product_id', 'topic_id'),)
 
 
+class CompositionJob(Base):
+    """合成任务表 (BE-TM-02)"""
+    __tablename__ = "composition_jobs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
+    workflow_type = Column(String(32), nullable=True)       # 'coze' / 'local_ffmpeg'
+    workflow_id = Column(String(128), nullable=True)        # Coze workflow_id
+    external_job_id = Column(String(128), nullable=True)    # Coze execute_id
+    status = Column(String(32), default="pending", index=True)
+    progress = Column(Integer, default=0)
+    output_video_path = Column(String(512), nullable=True)
+    output_video_url = Column(String(512), nullable=True)
+    error_msg = Column(Text, nullable=True)
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # 关系
+    task = relationship("Task", back_populates="composition_jobs")
+
+
 class PublishLog(Base):
     """发布日志表"""
     __tablename__ = "publish_logs"
@@ -249,6 +294,47 @@ class PublishConfig(Base):
     shuffle = Column(Boolean, default=False)
     auto_start = Column(Boolean, default=False)
     global_topic_ids = Column(Text, default='[]')  # JSON数组存储全局话题ID
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class PublishProfile(Base):
+    """合成配置档表"""
+    __tablename__ = "publish_profiles"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(128), unique=True, nullable=False, index=True)
+    is_default = Column(Boolean, default=False)
+
+    # 合成配置
+    composition_mode = Column(String(32), default="none")   # 'none' / 'coze' / 'local_ffmpeg'
+    coze_workflow_id = Column(String(128), nullable=True)
+    composition_params = Column(Text, nullable=True)        # JSON
+
+    # 话题配置
+    global_topic_ids = Column(Text, default="[]")           # JSON array
+
+    # 重试配置
+    auto_retry = Column(Boolean, default=True)
+    max_retry_count = Column(Integer, default=3)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ScheduleConfig(Base):
+    """调度配置表（全局单例，替代 publish_config）"""
+    __tablename__ = "schedule_config"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(64), default="default")
+    start_hour = Column(Integer, default=9)
+    end_hour = Column(Integer, default=22)
+    interval_minutes = Column(Integer, default=30)
+    max_per_account_per_day = Column(Integer, default=5)
+    shuffle = Column(Boolean, default=False)
+    auto_start = Column(Boolean, default=False)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -341,6 +427,14 @@ async def init_db():
     await migration_014.run_migration(engine)
     migration_015 = importlib.import_module("migrations.015_topic_groups")
     await migration_015.run_migration(engine)
+    migration_017 = importlib.import_module("migrations.017_publish_profiles")
+    await migration_017.run_migration(engine)
+    migration_018 = importlib.import_module("migrations.018_composition_jobs")
+    await migration_018.run_migration(engine)
+    migration_019 = importlib.import_module("migrations.019_schedule_config")
+    await migration_019.run_migration(engine)
+    migration_020 = importlib.import_module("migrations.020_task_new_fields")
+    await migration_020.run_migration(engine)
 
     logger.info("数据库初始化完成")
 
