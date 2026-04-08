@@ -51,7 +51,7 @@ function App() {
               <Route path="task" element={<Task />} />
 
               {/* 素材中心 */}
-              <Route path="material" element={<Navigate to="/material/overview" replace />} />
+              <Route path="material" element={<MaterialOverview />} />
               <Route path="material/overview" element={<MaterialOverview />} />
               <Route path="material/video" element={<VideoList />} />
               <Route path="material/video/:id" element={<VideoDetail />} />

@@ -22,7 +22,6 @@ const items = [
     icon: <FolderOutlined />,
     label: '素材中心',
     children: [
-      { key: '/material/overview', label: '素材总览' },
       { key: '/material/video', label: '视频管理' },
       { key: '/material/copywriting', label: '文案管理' },
       { key: '/material/cover', label: '封面管理' },
@@ -36,7 +35,6 @@ const items = [
 ]
 
 const materialKeys = [
-  '/material/overview',
   '/material/video',
   '/material/copywriting',
   '/material/cover',
@@ -56,7 +54,7 @@ export default function LayoutComponent() {
   const [openKeys, setOpenKeys] = useState<string[]>(isMaterialRoute ? ['material-group'] : [])
 
   const selectedKey = materialKeys.find((k) => location.pathname === k)
-    ?? (location.pathname.startsWith('/material') ? '/material/overview' : location.pathname)
+    ?? location.pathname
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
