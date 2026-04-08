@@ -72,35 +72,14 @@ async def parse_product_page(dewu_url: str) -> MaterialPack:
 
 
 def _extract_material_pack(html: str, dewu_url: str) -> MaterialPack:
-    """
-    从 HTML 中提取素材信息。
-
-    TODO: 以下正则为占位实现，返回 mock 数据。
-          需根据实际得物商品页 HTML 结构调整：
-          - 封面图：查找 og:image 或商品主图 <img> 标签
-          - 视频：查找 <video src="..."> 或 JSON-LD 中的 video 字段
-          - 标题：查找 og:title 或 <h1> 商品名
-          - 话题：查找商品标签/分类区域
-    """
-    # --- 标题：优先 og:title，其次 <title> ---
-    title = _extract_og_title(html) or _extract_page_title(html) or "未知商品"
-
-    # --- 封面图：og:image ---
-    cover_urls = _extract_og_images(html)
-
-    # --- 视频：<video> 标签或 JSON 字段 ---
+    """从得物社区动态页 HTML 中提取素材信息。"""
+    title = _extract_title(html) or "未知商品"
+    cover_urls = _extract_cover_urls(html)
     video_url = _extract_video_url(html)
-
-    # --- 话题：商品标签 ---
     topics = _extract_topics(html)
 
-    # TODO: 如果以上均未解析到有效数据，说明页面结构与预期不符，
-    #       需要打印 html[:2000] 到日志（debug 级别）辅助调试。
     if not cover_urls and not video_url:
-        logger.debug("商品页未解析到媒体资源，可能需要调整选择器: url={}", dewu_url)
-        # mock 数据，保证流程可跑通
-        cover_urls = []
-        video_url = None
+        logger.debug("商品页未解析到媒体资源: url={}", dewu_url)
 
     logger.info(
         "商品页解析完成: title={}, covers={}, has_video={}, topics={}",
@@ -114,49 +93,64 @@ def _extract_material_pack(html: str, dewu_url: str) -> MaterialPack:
     )
 
 
-def _extract_og_title(html: str) -> Optional[str]:
-    # TODO: 根据实际页面调整
+def _extract_title(html: str) -> Optional[str]:
+    """提取标题: div.pc_title__ > 文本"""
+    m = re.search(r'<div\s+class="pc_title__[^"]*"[^>]*>([^<]+)</div>', html)
+    if m:
+        return m.group(1).strip()
+    # fallback: og:title
     m = re.search(r'<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)["\']', html)
     if not m:
         m = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:title["\']', html)
     return m.group(1).strip() if m else None
 
 
-def _extract_page_title(html: str) -> Optional[str]:
-    m = re.search(r'<title[^>]*>([^<]+)</title>', html)
-    return m.group(1).strip() if m else None
-
-
-def _extract_og_images(html: str) -> list[str]:
-    # TODO: 根据实际页面调整，得物商品图可能在 JSON-LD 或自定义属性中
+def _extract_cover_urls(html: str) -> list[str]:
+    """提取封面图: video[poster] + img.Products_item-pic__"""
     urls: list[str] = []
-    for m in re.finditer(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', html):
+    # 1. video poster (高优先级，通常是视频封面)
+    m = re.search(r'<video[^>]+poster=["\']([^"\']+)["\']', html)
+    if m:
         urls.append(m.group(1))
-    for m in re.finditer(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', html):
+    # 2. 商品推荐图片
+    for m in re.finditer(r'<img[^>]+class="Products_item-pic__[^"]*"[^>]+src=["\']([^"\']+)["\']', html):
         url = m.group(1)
         if url not in urls:
             urls.append(url)
+    # 3. fallback: og:image
+    if not urls:
+        for m in re.finditer(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', html):
+            urls.append(m.group(1))
     return urls
 
 
 def _extract_video_url(html: str) -> Optional[str]:
-    # TODO: 根据实际页面调整
-    m = re.search(r'<video[^>]+src=["\']([^"\']+)["\']', html)
+    """提取视频: video[src] 或 video > source[src]"""
+    m = re.search(r'<video[^>]+src=["\']([^"\']+\.mp4[^"\']*)["\']', html)
     if m:
         return m.group(1)
-    # JSON 字段 "videoUrl":"..."
-    m = re.search(r'"videoUrl"\s*:\s*"([^"]+)"', html)
+    m = re.search(r'<source[^>]+src=["\']([^"\']+\.mp4[^"\']*)["\']', html)
     return m.group(1) if m else None
 
 
 def _extract_topics(html: str) -> list[str]:
-    # TODO: 根据实际页面调整，得物话题可能在标签/分类区域
+    """提取话题: div.pc_content__ 下 span[data-id] 的文本"""
     topics: list[str] = []
-    for m in re.finditer(r'"tag(?:Name)?"\s*:\s*"([^"]+)"', html):
-        name = m.group(1).strip()
-        if name and name not in topics:
-            topics.append(name)
-    return topics[:10]  # 最多取 10 个
+    # 先定位 pc_content__ 区域
+    content_m = re.search(r'<div\s+class="pc_content__[^"]*"[^>]*>(.*?)</div>', html, re.DOTALL)
+    if content_m:
+        content_html = content_m.group(1)
+        for m in re.finditer(r'<span[^>]+data-id="[^"]*"[^>]*>\s*#?([^<]+)</span>', content_html):
+            name = m.group(1).strip().lstrip('#').strip()
+            if name and name not in topics:
+                topics.append(name)
+    # fallback: 全局搜索带 # 的 span
+    if not topics:
+        for m in re.finditer(r'onclick="window\.DEWU\.onClickTag[^"]*"[^>]*>\s*#([^<]+)</span>', html):
+            name = m.group(1).strip()
+            if name and name not in topics:
+                topics.append(name)
+    return topics[:20]
 
 
 # ============ 文件下载 ============
