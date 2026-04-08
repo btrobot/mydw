@@ -5,7 +5,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from loguru import logger
 
 from models import Product, Video, Copywriting, get_db
@@ -122,19 +122,14 @@ async def delete_product(
     if not product:
         raise HTTPException(status_code=404, detail="商品不存在")
 
-    # SP7-04: 删除前引用检查
-    video_count = (await db.execute(
-        select(func.count()).select_from(Video).where(Video.product_id == product_id)
-    )).scalar() or 0
-    cw_count = (await db.execute(
-        select(func.count()).select_from(Copywriting).where(Copywriting.product_id == product_id)
-    )).scalar() or 0
-    if video_count + cw_count > 0:
-        raise HTTPException(
-            status_code=409,
-            detail="商品关联 {} 个视频和 {} 个文案，无法删除".format(video_count, cw_count),
-        )
-
+    # D-4: 解除关联素材（保留素材记录，将 product_id 置 NULL）
+    await db.execute(
+        update(Video).where(Video.product_id == product_id).values(product_id=None)
+    )
+    await db.execute(
+        update(Copywriting).where(Copywriting.product_id == product_id).values(product_id=None)
+    )
+    # product_topics 由 FK ondelete=CASCADE 自动清理
     await db.delete(product)
     await db.commit()
     logger.info("商品删除成功: product_id={}", product_id)
