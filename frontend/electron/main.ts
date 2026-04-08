@@ -45,10 +45,10 @@ function createWindow() {
     mainWindow.loadURL(VITE_DEV_SERVER_URL)
     mainWindow.webContents.openDevTools()
   } else {
-    // 打包后：__dirname = resources/app.asar/electron
-    // dist 在 resources/app.asar/dist
+    // 打包后使用 file:// 协议
     const indexPath = path.join(__dirname, '..', 'dist', 'index.html')
-    mainWindow.loadFile(indexPath)
+    mainWindow.loadURL(`file://${indexPath}`)
+    mainWindow.webContents.openDevTools()
   }
 
   // 窗口关闭时最小化到托盘
