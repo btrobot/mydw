@@ -5,9 +5,10 @@ import re
 from typing import Optional
 
 
-# 得物商品页 URL 正则：匹配 m.dewu.com 或 dewu.com 商品链接
+# 得物商品页 URL 正则：匹配 dw4.co 短链或 dewu.com 商品链接
+# 只匹配 URL 合法字符，遇到中文或其他非法字符立即停止
 _DEWU_URL_PATTERN = re.compile(
-    r"https?://(?:m\.)?dewu\.com/[^\s\"'<>]+"
+    r'(https?://(?:dw4\.co|(?:www\.)?dewu\.com)[A-Za-z0-9/\-_.?=&#%+~:]*)'
 )
 
 
