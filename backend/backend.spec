@@ -20,6 +20,7 @@ a = Analysis(
     binaries=[],
     datas=[
         ('migrations', 'migrations'),
+        ('venv/Lib/site-packages/patchright/driver', 'patchright/driver'),
     ],
     hiddenimports=[
         # migrations (dynamic imports)
