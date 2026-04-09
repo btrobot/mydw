@@ -9,7 +9,7 @@ import { QueryProvider } from '@/providers/QueryProvider'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Account from './pages/Account'
-import Task from './pages/Task'
+import TaskList from './pages/TaskList'
 import AIClip from './pages/AIClip'
 import Settings from './pages/Settings'
 import ScheduleConfig from './pages/ScheduleConfig'
@@ -25,6 +25,7 @@ import TopicGroupDetail from './pages/material/TopicGroupDetail'
 import ProductList from './pages/product/ProductList'
 import ProductDetail from './pages/product/ProductDetail'
 import VideoDetail from './pages/material/VideoDetail'
+import TaskDetail from './pages/task/TaskDetail'
 
 dayjs.locale('zh-cn')
 
@@ -52,7 +53,8 @@ function App() {
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="account" element={<Account />} />
-              <Route path="task" element={<Task />} />
+              <Route path="task" element={<TaskList />} />
+              <Route path="task/:id" element={<TaskDetail />} />
 
               {/* 素材中心 */}
               <Route path="material" element={<MaterialOverview />} />

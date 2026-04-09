@@ -1,15 +1,14 @@
 import { useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Table, Tag, Button, Space, Modal, Form, Select,
   message, Popconfirm, Row, Col, Card, Statistic, Tooltip,
-  Descriptions, Progress, Alert, Typography, Spin,
+  Typography,
 } from 'antd'
 import {
   PlayCircleOutlined, PauseCircleOutlined,
   ReloadOutlined, SwapOutlined, AppstoreAddOutlined,
-  StopOutlined,
 } from '@ant-design/icons'
-import axios from 'axios'
 import {
   useTasks,
   useAccounts,
@@ -20,23 +19,15 @@ import {
   useDeleteTask,
   useDeleteAllTasks,
   useAssembleTasks,
-  useRetryTask,
-  useEditRetryTask,
-  useCancelTask,
-  useSubmitComposition,
-  useCompositionStatus,
-  useCancelComposition,
 } from '../hooks'
 import { useVideos } from '../hooks/useVideo'
 import { useCovers } from '../hooks/useCover'
-import { useAudios } from '../hooks/useAudio'
-import { useCopywritings } from '../hooks/useCopywriting'
 import { useProfiles } from '../hooks/useProfile'
 import type { PublishProfileResponse } from '../hooks/useProfile'
 import type { AccountResponseExtended } from '../hooks/useAccount'
-import type { VideoResponse, CopywritingResponse, AudioResponse, CoverResponse } from '@/types/material'
+import type { VideoResponse } from '@/types/material'
 
-const { Text, Link } = Typography
+const { Text } = Typography
 
 // 7-state enum aligned with backend TaskStatus
 type TaskStatus =
@@ -47,13 +38,6 @@ type TaskStatus =
   | 'uploaded'
   | 'failed'
   | 'cancelled'
-
-// Terminal states — no further transitions expected
-const TERMINAL_STATES: ReadonlySet<TaskStatus> = new Set<TaskStatus>([
-  'uploaded',
-  'failed',
-  'cancelled',
-])
 
 interface Task {
   id: number
@@ -108,7 +92,8 @@ const COMPOSITION_MODE_LABEL: Record<string, string> = {
   local_ffmpeg: '本地 FFmpeg 合成',
 }
 
-export default function Task() {
+export default function TaskList() {
+  const navigate = useNavigate()
   const [assembleVisible, setAssembleVisible] = useState(false)
   const [assembleForm] = Form.useForm<AssembleFormValues>()
   const [selectedCompositionMode, setSelectedCompositionMode] = useState<string | null>(null)
@@ -126,25 +111,23 @@ export default function Task() {
   const deleteTask = useDeleteTask()
   const deleteAllTasks = useDeleteAllTasks()
   const assembleTasks = useAssembleTasks()
-  const retryTask = useRetryTask()
-  const editRetryTask = useEditRetryTask()
-  const cancelTask = useCancelTask()
 
   // Cast stats to new shape; fall back to zeros while API types are regenerated
   const typedStats = stats as unknown as TaskStats | undefined
   const safeStats: TaskStats = {
-    total:     typedStats?.total     ?? 0,
-    draft:     typedStats?.draft     ?? 0,
-    composing: typedStats?.composing ?? 0,
-    ready:     typedStats?.ready     ?? 0,
-    uploading: typedStats?.uploading ?? 0,
-    uploaded:  typedStats?.uploaded  ?? 0,
-    failed:    typedStats?.failed    ?? 0,
-    cancelled: typedStats?.cancelled ?? 0,
+    total:         typedStats?.total         ?? 0,
+    draft:         typedStats?.draft         ?? 0,
+    composing:     typedStats?.composing     ?? 0,
+    ready:         typedStats?.ready         ?? 0,
+    uploading:     typedStats?.uploading     ?? 0,
+    uploaded:      typedStats?.uploaded      ?? 0,
+    failed:        typedStats?.failed        ?? 0,
+    cancelled:     typedStats?.cancelled     ?? 0,
     today_success: typedStats?.today_success ?? 0,
   }
 
   const tasks = tasksData?.items as unknown as Task[] ?? []
+  const profiles = profilesData?.items ?? []
 
   const handlePublish = useCallback(async (action: 'start' | 'pause' | 'stop') => {
     try {
@@ -201,47 +184,6 @@ export default function Task() {
       }
     }
   }, [deleteAllTasks])
-
-  const handleRetry = useCallback(async (id: number) => {
-    try {
-      await retryTask.mutateAsync(id)
-      message.success('已重新加入队列')
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        message.error(error.message)
-      } else {
-        message.error('重试失败')
-      }
-    }
-  }, [retryTask])
-
-  const handleEditRetry = useCallback(async (id: number) => {
-    try {
-      await editRetryTask.mutateAsync(id)
-      message.success('已重置为草稿')
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        message.error(error.message)
-      } else {
-        message.error('编辑重试失败')
-      }
-    }
-  }, [editRetryTask])
-
-  const handleCancel = useCallback(async (id: number) => {
-    try {
-      await cancelTask.mutateAsync(id)
-      message.success('任务已取消')
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        message.error(error.message)
-      } else {
-        message.error('取消失败')
-      }
-    }
-  }, [cancelTask])
-
-  const profiles = profilesData?.items ?? []
 
   const handleAssembleOpen = useCallback(() => {
     const defaultProfile = profiles.find((p: PublishProfileResponse) => p.is_default)
@@ -345,55 +287,14 @@ export default function Task() {
     {
       title: '操作',
       key: 'action',
-      width: 180,
-      render: (_: unknown, record: Task) => {
-        const isFailed = record.status === 'failed'
-        const isTerminal = TERMINAL_STATES.has(record.status)
-        return (
-          <Space size={4}>
-            {isFailed && (
-              <Tooltip title="重新加入上传队列">
-                <Button
-                  type="link"
-                  size="small"
-                  icon={<ReloadOutlined />}
-                  onClick={() => handleRetry(record.id)}
-                  loading={retryTask.isPending}
-                >
-                  重试
-                </Button>
-              </Tooltip>
-            )}
-            {isFailed && (
-              <Tooltip title="重置为草稿重新编辑">
-                <Button
-                  type="link"
-                  size="small"
-                  onClick={() => handleEditRetry(record.id)}
-                  loading={editRetryTask.isPending}
-                >
-                  编辑重试
-                </Button>
-              </Tooltip>
-            )}
-            {!isTerminal && (
-              <Popconfirm title="确定取消该任务？" onConfirm={() => handleCancel(record.id)}>
-                <Button
-                  type="link"
-                  size="small"
-                  icon={<StopOutlined />}
-                  loading={cancelTask.isPending}
-                >
-                  取消
-                </Button>
-              </Popconfirm>
-            )}
-            <Button type="link" size="small" danger onClick={() => handleDelete(record.id)}>
-              删除
-            </Button>
-          </Space>
-        )
-      },
+      width: 80,
+      render: (_: unknown, record: Task) => (
+        <Popconfirm title="确定删除该任务？" onConfirm={() => handleDelete(record.id)}>
+          <Button type="link" size="small" danger loading={deleteTask.isPending}>
+            删除
+          </Button>
+        </Popconfirm>
+      ),
     },
   ]
 
@@ -487,6 +388,10 @@ export default function Task() {
         pagination={{ pageSize: 15 }}
         size="small"
         scroll={{ x: 1000 }}
+        onRow={(record) => ({
+          onClick: () => navigate(`/task/${record.id}`),
+          style: { cursor: 'pointer' },
+        })}
       />
 
       {/* 组装任务 Modal */}
