@@ -16,7 +16,17 @@ const { Title } = Typography
 const items = [
   { key: '/dashboard', icon: <DashboardOutlined />, label: '数据看板' },
   { key: '/account', icon: <UserOutlined />, label: '账号管理' },
-  { key: '/task', icon: <FileTextOutlined />, label: '任务管理' },
+  {
+    key: 'task-group',
+    icon: <FileTextOutlined />,
+    label: '任务管理',
+    children: [
+      { key: '/task/list', label: '任务列表' },
+      { key: '/task/assemble', label: '组装任务' },
+      { key: '/schedule-config', label: '调度配置' },
+      { key: '/profile-management', label: '配置档管理' },
+    ],
+  },
   {
     key: 'material-group',
     icon: <FolderOutlined />,
@@ -40,13 +50,11 @@ const items = [
     label: '系统设置',
     children: [
       { key: '/settings', label: '基本设置' },
-      { key: '/schedule-config', label: '调度配置' },
-      { key: '/profile-management', label: '配置档管理' },
     ],
   },
 ]
 
-const materialKeys = [
+const subMenuKeys = [
   '/material/overview',
   '/material/video',
   '/material/copywriting',
@@ -55,6 +63,10 @@ const materialKeys = [
   '/material/topic',
   '/material/product',
   '/material/topic-group',
+  '/task/list',
+  '/task/assemble',
+  '/schedule-config',
+  '/profile-management',
 ]
 
 export default function LayoutComponent() {
@@ -65,14 +77,16 @@ export default function LayoutComponent() {
   } = theme.useToken()
 
   const isMaterialRoute = location.pathname.startsWith('/material')
-  const isSettingsRoute = ['/settings', '/schedule-config', '/profile-management'].includes(location.pathname)
+  const isSettingsRoute = location.pathname === '/settings'
+  const isTaskRoute = location.pathname.startsWith('/task') || ['/schedule-config', '/profile-management'].includes(location.pathname)
   const initialOpenKeys = [
     ...(isMaterialRoute ? ['material-group'] : []),
     ...(isSettingsRoute ? ['settings-group'] : []),
+    ...(isTaskRoute ? ['task-group'] : []),
   ]
   const [openKeys, setOpenKeys] = useState<string[]>(initialOpenKeys)
 
-  const selectedKey = materialKeys.find((k) => location.pathname === k)
+  const selectedKey = subMenuKeys.find((k) => location.pathname === k)
     ?? location.pathname
 
   return (
@@ -91,7 +105,7 @@ export default function LayoutComponent() {
             onOpenChange={setOpenKeys}
             items={items}
             onClick={({ key }) => {
-              if (key !== 'material-group' && key !== 'settings-group') navigate(key)
+              if (key !== 'material-group' && key !== 'settings-group' && key !== 'task-group') navigate(key)
             }}
             style={{ height: '100%', borderRight: 0 }}
           />

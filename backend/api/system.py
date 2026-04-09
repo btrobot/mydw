@@ -31,10 +31,10 @@ async def get_system_stats(db: AsyncSession = Depends(get_db)):
     # 任务统计
     total_tasks = await db.execute(select(func.count(Task.id)))
     pending_tasks = await db.execute(
-        select(func.count(Task.id)).where(Task.status == "pending")
+        select(func.count(Task.id)).where(Task.status == "ready")
     )
     success_tasks = await db.execute(
-        select(func.count(Task.id)).where(Task.status == "success")
+        select(func.count(Task.id)).where(Task.status == "uploaded")
     )
     failed_tasks = await db.execute(
         select(func.count(Task.id)).where(Task.status == "failed")
