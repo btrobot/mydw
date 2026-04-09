@@ -14,7 +14,8 @@ from loguru import logger
 
 from api import account, task, publish, system, ai, product, video, copywriting, cover, audio, topic, profile
 from api.topic import group_router as topic_group_router
-from models import init_db, async_session, PublishProfile
+import models as _models
+from models import init_db, PublishProfile
 from core.config import settings
 
 # 配置日志
@@ -71,7 +72,7 @@ async def startup():
 
 async def _seed_default_publish_profile() -> None:
     """系统启动时确保存在默认合成配置档（幂等）。"""
-    async with async_session() as session:
+    async with _models.async_session() as session:
         result = await session.execute(select(PublishProfile))
         if result.scalars().first() is None:
             default_profile = PublishProfile(
