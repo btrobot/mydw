@@ -1,7 +1,7 @@
 """
 得物掘金工具 - Pydantic Schemas
 """
-from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator, computed_field
 from typing import Optional, List, Any
 from datetime import datetime
 from enum import Enum
@@ -297,6 +297,13 @@ class TaskCreate(BaseModel):
     audio_id: Optional[int] = None
     cover_id: Optional[int] = None
     profile_id: Optional[int] = None
+    name: Optional[str] = None
+    source_video_ids: Optional[str] = None  # JSON array string
+    composition_template: Optional[str] = None
+    composition_params: Optional[str] = None  # JSON object string
+    scheduled_time: Optional[datetime] = None
+    priority: Optional[int] = 1
+    topic_ids: Optional[str] = None  # JSON array string
 
 
 class TaskUpdate(BaseModel):
@@ -370,6 +377,72 @@ class TaskResponse(BaseModel):
                 data["topic_ids"] = ids
         return data
 
+    # ============ Computed Fields (Issue 9 & 10) ============
+
+    @computed_field
+    @property
+    def video_name(self) -> Optional[str]:
+        """视频名称"""
+        return self.video.name if hasattr(self, 'video') and self.video else None
+
+    @computed_field
+    @property
+    def video_path(self) -> Optional[str]:
+        """视频路径"""
+        return self.video.file_path if hasattr(self, 'video') and self.video else None
+
+    @computed_field
+    @property
+    def content(self) -> Optional[str]:
+        """文案内容"""
+        return self.copywriting.content if hasattr(self, 'copywriting') and self.copywriting else None
+
+    @computed_field
+    @property
+    def topic(self) -> Optional[str]:
+        """话题（逗号分隔）"""
+        if hasattr(self, 'topics') and self.topics:
+            return ', '.join(t.name for t in self.topics)
+        return None
+
+    @computed_field
+    @property
+    def topic_names(self) -> List[str]:
+        """话题名称列表"""
+        if hasattr(self, 'topics') and self.topics:
+            return [t.name for t in self.topics]
+        return []
+
+    @computed_field
+    @property
+    def cover_path(self) -> Optional[str]:
+        """封面路径"""
+        return self.cover.file_path if hasattr(self, 'cover') and self.cover else None
+
+    @computed_field
+    @property
+    def audio_name(self) -> Optional[str]:
+        """音频名称"""
+        return self.audio.name if hasattr(self, 'audio') and self.audio else None
+
+    @computed_field
+    @property
+    def audio_path(self) -> Optional[str]:
+        """音频路径"""
+        return self.audio.file_path if hasattr(self, 'audio') and self.audio else None
+
+    @computed_field
+    @property
+    def account_name(self) -> Optional[str]:
+        """账号名称"""
+        return self.account.account_name if hasattr(self, 'account') and self.account else None
+
+    @computed_field
+    @property
+    def upload_url(self) -> Optional[str]:
+        """上传URL（别名）"""
+        return self.dewu_video_url
+
 
 class TaskListResponse(BaseModel):
     """任务列表响应"""
@@ -416,6 +489,7 @@ class AssembleTasksRequest(BaseModel):
     strategy: str = Field(default="round_robin", pattern="^(round_robin|manual)$")
     copywriting_mode: str = Field(default="auto_match", pattern="^(auto_match|manual)$")
     profile_id: Optional[int] = None
+    cover_id: Optional[int] = None
 
 
 # ============ 商品 Schema ============

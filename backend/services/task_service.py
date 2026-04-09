@@ -18,7 +18,7 @@ VALID_TRANSITIONS: Dict[str, List[str]] = {
     "ready":      ["uploading", "cancelled"],
     "uploading":  ["uploaded", "failed", "cancelled"],
     "uploaded":   [],
-    "failed":     ["ready", "cancelled"],
+    "failed":     ["composing", "ready", "draft", "cancelled"],
     "cancelled":  [],
 }
 
@@ -68,6 +68,8 @@ class TaskService:
                 selectinload(Task.copywriting),
                 selectinload(Task.product),
                 selectinload(Task.cover),
+                selectinload(Task.audio),
+                selectinload(Task.account),
             ).where(Task.id == task.id)
         )
         task = result.scalars().first()
@@ -89,6 +91,8 @@ class TaskService:
                 selectinload(Task.copywriting),
                 selectinload(Task.product),
                 selectinload(Task.cover),
+                selectinload(Task.audio),
+                selectinload(Task.account),
             ).where(Task.id.in_(task_ids))
         )
         loaded_tasks = result.scalars().all()

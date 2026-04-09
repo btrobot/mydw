@@ -75,11 +75,11 @@ async def update_publish_config(
 async def get_publish_status(db: AsyncSession = Depends(get_db)):
     """获取发布状态"""
     # 统计任务
-    pending = await db.execute(
-        select(func.count(Task.id)).where(Task.status == "pending")
+    ready = await db.execute(
+        select(func.count(Task.id)).where(Task.status == "ready")
     )
-    success = await db.execute(
-        select(func.count(Task.id)).where(Task.status == "success")
+    uploaded = await db.execute(
+        select(func.count(Task.id)).where(Task.status == "uploaded")
     )
     failed = await db.execute(
         select(func.count(Task.id)).where(Task.status == "failed")
@@ -88,8 +88,8 @@ async def get_publish_status(db: AsyncSession = Depends(get_db)):
     return PublishStatusResponse(
         status=_publish_status["status"],
         current_task_id=_publish_status.get("current_task_id"),
-        total_pending=pending.scalar() or 0,
-        total_success=success.scalar() or 0,
+        total_pending=ready.scalar() or 0,
+        total_success=uploaded.scalar() or 0,
         total_failed=failed.scalar() or 0
     )
 

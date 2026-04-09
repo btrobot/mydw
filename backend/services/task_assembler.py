@@ -25,6 +25,7 @@ class TaskAssembler:
         account_id: int,
         copywriting_mode: str = "auto_match",
         profile_id: Optional[int] = None,
+        cover_id: Optional[int] = None,
     ) -> List[Task]:
         """
         为每个视频组装任务，自动匹配同 product 的文案和话题。
@@ -34,6 +35,7 @@ class TaskAssembler:
             account_id: 目标账号 ID
             copywriting_mode: 文案匹配模式，目前支持 "auto_match"
             profile_id: 发布档案 ID，决定初始状态
+            cover_id: 封面 ID，应用到所有创建的任务
 
         Returns:
             创建的 Task 列表
@@ -115,8 +117,10 @@ class TaskAssembler:
                 product_id=video.product_id,
                 account_id=account_id,
                 profile_id=profile_id,
+                cover_id=cover_id,
                 status=initial_status,
                 priority=0,
+                source_video_ids=json.dumps([video.id]),
             )
             self.db.add(task)
             await self.db.flush()  # 获取 task.id，用于创建 TaskTopic

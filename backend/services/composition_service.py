@@ -192,7 +192,7 @@ class CompositionService:
             logger.warning("合成输出中未包含 video_url: job_id={}", job_id)
 
         # 更新 CompositionJob
-        job.status = "success"
+        job.status = "completed"
         job.progress = 100
         job.output_video_url = video_url
         job.output_video_path = local_path

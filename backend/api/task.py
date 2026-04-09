@@ -78,6 +78,9 @@ async def list_tasks(
         selectinload(Task.copywriting),
         selectinload(Task.topics),
         selectinload(Task.product),
+        selectinload(Task.cover),
+        selectinload(Task.audio),
+        selectinload(Task.account),
     )
     if status:
         query = query.where(Task.status == status)
@@ -108,8 +111,18 @@ async def get_task_stats(db: AsyncSession = Depends(get_db)):
 @router.get("/{task_id}", response_model=TaskResponse)
 async def get_task(task_id: int, db: AsyncSession = Depends(get_db)):
     """获取任务详情"""
-    service = TaskService(db)
-    task = await service.get_task(task_id)
+    result = await db.execute(
+        select(Task).options(
+            selectinload(Task.video),
+            selectinload(Task.copywriting),
+            selectinload(Task.topics),
+            selectinload(Task.product),
+            selectinload(Task.cover),
+            selectinload(Task.audio),
+            selectinload(Task.account),
+        ).where(Task.id == task_id)
+    )
+    task = result.scalars().first()
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     return task
@@ -204,7 +217,7 @@ async def publish_task(
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
 
-    if task.status == "running":
+    if task.status == "uploading":
         raise HTTPException(status_code=400, detail="任务正在发布中")
 
     logger.info("任务 {} 已添加到发布队列", task_id)
@@ -249,6 +262,7 @@ async def assemble_tasks(
         strategy=request.strategy,
         copywriting_mode=request.copywriting_mode,
         profile_id=request.profile_id,
+        cover_id=request.cover_id,
     )
     logger.info(
         "组装任务完成: video_count={}, account_count={}, task_count={}, strategy={}",

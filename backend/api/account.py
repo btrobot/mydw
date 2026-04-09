@@ -321,7 +321,7 @@ async def get_account_stats(db: AsyncSession = Depends(get_db)):
 
     published = await db.execute(
         select(func.count(Task.id)).where(
-            Task.status == "success",
+            Task.status == "uploaded",
             Task.updated_at >= today_start
         )
     )
@@ -329,7 +329,7 @@ async def get_account_stats(db: AsyncSession = Depends(get_db)):
 
     # 总视频数
     videos = await db.execute(
-        select(func.count(Task.id)).where(Task.status == "success")
+        select(func.count(Task.id)).where(Task.status == "uploaded")
     )
     total_videos = videos.scalar()
 

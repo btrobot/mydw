@@ -23,6 +23,7 @@ class TaskDistributor:
         strategy: str = "round_robin",
         copywriting_mode: str = "auto_match",
         profile_id: Optional[int] = None,
+        cover_id: Optional[int] = None,
     ) -> List[Task]:
         """
         将视频列表按策略分配给多个账号，每个视频创建一个任务。
@@ -33,6 +34,7 @@ class TaskDistributor:
             strategy: 分配策略，目前支持 "round_robin"
             copywriting_mode: 文案匹配模式，透传给 TaskAssembler
             profile_id: 发布档案 ID，透传给 TaskAssembler
+            cover_id: 封面 ID，透传给 TaskAssembler
 
         Returns:
             创建的 Task 列表
@@ -60,6 +62,7 @@ class TaskDistributor:
                 account_id=acct_id,
                 copywriting_mode=copywriting_mode,
                 profile_id=profile_id,
+                cover_id=cover_id,
             )
             tasks.extend(result)
             logger.info(

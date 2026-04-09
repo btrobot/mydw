@@ -59,7 +59,7 @@ class Task(Base):
     audio_id = Column(Integer, ForeignKey("audios.id"), nullable=True, index=True)
     cover_id = Column(Integer, ForeignKey("covers.id"), nullable=True, index=True)
 
-    status = Column(String(32), default="pending", index=True)  # pending, running, success, failed, paused
+    status = Column(String(32), default="draft", index=True)  # draft, composing, ready, uploading, uploaded, failed, cancelled
     publish_time = Column(DateTime, nullable=True, index=True)
     error_msg = Column(Text, nullable=True)
 
@@ -427,6 +427,8 @@ async def init_db():
     await migration_014.run_migration(engine)
     migration_015 = importlib.import_module("migrations.015_topic_groups")
     await migration_015.run_migration(engine)
+    migration_016 = importlib.import_module("migrations.016_task_composition_fields")
+    await migration_016.run_migration(engine)
     migration_017 = importlib.import_module("migrations.017_publish_profiles")
     await migration_017.run_migration(engine)
     migration_018 = importlib.import_module("migrations.018_composition_jobs")
