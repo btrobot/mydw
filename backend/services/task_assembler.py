@@ -26,6 +26,9 @@ class TaskAssembler:
         copywriting_mode: str = "auto_match",
         profile_id: Optional[int] = None,
         cover_id: Optional[int] = None,
+        copywriting_ids: Optional[List[int]] = None,
+        cover_ids: Optional[List[int]] = None,
+        audio_ids: Optional[List[int]] = None,
     ) -> List[Task]:
         """
         为每个视频组装任务，自动匹配同 product 的文案和话题。
@@ -33,9 +36,12 @@ class TaskAssembler:
         Args:
             video_ids: 视频 ID 列表
             account_id: 目标账号 ID
-            copywriting_mode: 文案匹配模式，目前支持 "auto_match"
+            copywriting_mode: 文案匹配模式，支持 "auto_match" 或 "round_robin"
             profile_id: 发布档案 ID，决定初始状态
-            cover_id: 封面 ID，应用到所有创建的任务
+            cover_id: 封面 ID，应用到所有创建的任务（向后兼容）
+            copywriting_ids: 文案 ID 列表（素材篮模式）
+            cover_ids: 封面 ID 列表（素材篮模式）
+            audio_ids: 音频 ID 列表（素材篮模式）
 
         Returns:
             创建的 Task 列表
@@ -58,16 +64,25 @@ class TaskAssembler:
             logger.warning("TaskAssembler: 未找到任何视频, video_ids={}", video_ids)
             return []
 
-        # 2. 收集所有涉及的 product_id，批量查询文案
-        product_ids = {v.product_id for v in videos if v.product_id is not None}
+        # 2. 准备文案列表（素材篮模式或自动匹配）
+        copywritings_list: List[Copywriting] = []
         copywritings_by_product: Dict[int, List[Copywriting]] = {}
 
-        if product_ids:
+        if copywriting_ids:
+            # 素材篮模式：使用指定的文案列表
             cw_result = await self.db.execute(
-                select(Copywriting).where(Copywriting.product_id.in_(product_ids))
+                select(Copywriting).where(Copywriting.id.in_(copywriting_ids))
             )
-            for cw in cw_result.scalars().all():
-                copywritings_by_product.setdefault(cw.product_id, []).append(cw)
+            copywritings_list = list(cw_result.scalars().all())
+        else:
+            # 自动匹配模式：按 product_id 查询文案
+            product_ids = {v.product_id for v in videos if v.product_id is not None}
+            if product_ids:
+                cw_result = await self.db.execute(
+                    select(Copywriting).where(Copywriting.product_id.in_(product_ids))
+                )
+                for cw in cw_result.scalars().all():
+                    copywritings_by_product.setdefault(cw.product_id, []).append(cw)
 
         # 3. 读取全局话题配置（从 PublishProfile）
         global_topic_ids: List[int] = []
@@ -105,11 +120,24 @@ class TaskAssembler:
 
         for idx, video in enumerate(videos):
             matched_cw: Optional[Copywriting] = None
+            matched_cover_id: Optional[int] = cover_id  # 向后兼容旧参数
+            matched_audio_id: Optional[int] = None
 
-            if copywriting_mode == "auto_match" and video.product_id:
+            # 文案分配
+            if copywriting_mode == "round_robin" and copywritings_list:
+                matched_cw = copywritings_list[idx % len(copywritings_list)]
+            elif copywriting_mode == "auto_match" and video.product_id:
                 candidates = copywritings_by_product.get(video.product_id, [])
                 if candidates:
                     matched_cw = candidates[idx % len(candidates)]
+
+            # 封面分配（素材篮模式优先）
+            if cover_ids:
+                matched_cover_id = cover_ids[idx % len(cover_ids)]
+
+            # 音频分配
+            if audio_ids:
+                matched_audio_id = audio_ids[idx % len(audio_ids)]
 
             task = Task(
                 video_id=video.id,
@@ -117,7 +145,8 @@ class TaskAssembler:
                 product_id=video.product_id,
                 account_id=account_id,
                 profile_id=profile_id,
-                cover_id=cover_id,
+                cover_id=matched_cover_id,
+                audio_id=matched_audio_id,
                 status=initial_status,
                 priority=0,
                 source_video_ids=json.dumps([video.id]),
@@ -131,11 +160,13 @@ class TaskAssembler:
 
             created_tasks.append(task)
             logger.info(
-                "TaskAssembler: 组装任务 task_id={}, video_id={}, account_id={}, copywriting_id={}, status={}",
+                "TaskAssembler: 组装任务 task_id={}, video_id={}, account_id={}, copywriting_id={}, cover_id={}, audio_id={}, status={}",
                 task.id,
                 video.id,
                 account_id,
                 matched_cw.id if matched_cw else None,
+                matched_cover_id,
+                matched_audio_id,
                 initial_status,
             )
 

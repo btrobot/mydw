@@ -22,6 +22,20 @@ export type AccountCreate = {
      * 账号名称
      */
     account_name: string;
+    /**
+     * Phone
+     *
+     * 明文手机号，后端加密存储
+     */
+    phone?: string | null;
+    /**
+     * Tags
+     */
+    tags?: Array<string>;
+    /**
+     * Remark
+     */
+    remark?: string | null;
 };
 
 /**
@@ -59,6 +73,42 @@ export type AccountResponse = {
      * Updated At
      */
     updated_at: string;
+    /**
+     * Phone Masked
+     */
+    phone_masked?: string | null;
+    /**
+     * Dewu Nickname
+     */
+    dewu_nickname?: string | null;
+    /**
+     * Dewu Uid
+     */
+    dewu_uid?: string | null;
+    /**
+     * Avatar Url
+     */
+    avatar_url?: string | null;
+    /**
+     * Tags
+     */
+    tags?: Array<string>;
+    /**
+     * Remark
+     */
+    remark?: string | null;
+    /**
+     * Session Expires At
+     */
+    session_expires_at?: string | null;
+    /**
+     * Last Health Check
+     */
+    last_health_check?: string | null;
+    /**
+     * Login Fail Count
+     */
+    login_fail_count?: number;
 };
 
 /**
@@ -88,7 +138,7 @@ export type AccountStats = {
 /**
  * AccountStatus
  */
-export type AccountStatus = 'active' | 'inactive' | 'error';
+export type AccountStatus = 'active' | 'inactive' | 'error' | 'logging_in' | 'session_expired' | 'disabled';
 
 /**
  * AccountUpdate
@@ -105,6 +155,20 @@ export type AccountUpdate = {
      * Cookie
      */
     cookie?: string | null;
+    /**
+     * Phone
+     *
+     * 明文手机号，后端加密存储
+     */
+    phone?: string | null;
+    /**
+     * Tags
+     */
+    tags?: Array<string> | null;
+    /**
+     * Remark
+     */
+    remark?: string | null;
 };
 
 /**
@@ -148,17 +212,63 @@ export type AddCoverRequest = {
 };
 
 /**
- * AutoGenerateRequest
+ * AssembleTasksRequest
+ *
+ * 组装任务请求 — 多视频+多账号自动分配
  */
-export type AutoGenerateRequest = {
+export type AssembleTasksRequest = {
     /**
-     * Account Id
+     * Video Ids
      */
-    account_id: number;
+    video_ids: Array<number>;
     /**
-     * Count
+     * Account Ids
      */
-    count?: number;
+    account_ids: Array<number>;
+    /**
+     * Strategy
+     */
+    strategy?: string;
+    /**
+     * Copywriting Mode
+     */
+    copywriting_mode?: string;
+    /**
+     * Profile Id
+     */
+    profile_id?: number | null;
+};
+
+/**
+ * AudioResponse
+ *
+ * 音频响应
+ */
+export type AudioResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * File Path
+     */
+    file_path: string;
+    /**
+     * File Size
+     */
+    file_size?: number | null;
+    /**
+     * Duration
+     */
+    duration?: number | null;
+    /**
+     * Created At
+     */
+    created_at: string;
 };
 
 /**
@@ -174,9 +284,195 @@ export type BackupRequest = {
 };
 
 /**
- * Body_upload_material_api_materials_upload__material_type__post
+ * BatchHealthCheckRequest
+ *
+ * 批量健康检查请求
  */
-export type BodyUploadMaterialApiMaterialsUploadMaterialTypePost = {
+export type BatchHealthCheckRequest = {
+    /**
+     * Account Ids
+     *
+     * 指定账号ID列表，为空则检测所有
+     */
+    account_ids?: Array<number> | null;
+    /**
+     * Concurrency
+     *
+     * 并发数（默认串行，最大3）
+     */
+    concurrency?: number;
+    /**
+     * Interval Seconds
+     *
+     * 每次检测间隔秒数
+     */
+    interval_seconds?: number;
+    /**
+     * Skip Inactive
+     *
+     * 跳过 inactive/disabled 状态的账号
+     */
+    skip_inactive?: boolean;
+};
+
+/**
+ * BatchHealthCheckResponse
+ *
+ * 批量健康检查响应
+ */
+export type BatchHealthCheckResponse = {
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Checked
+     */
+    checked: number;
+    /**
+     * Skipped
+     */
+    skipped: number;
+    /**
+     * Valid Count
+     */
+    valid_count: number;
+    /**
+     * Expired Count
+     */
+    expired_count: number;
+    /**
+     * Error Count
+     */
+    error_count: number;
+    /**
+     * Results
+     */
+    results: Array<BatchHealthCheckResultItem>;
+    /**
+     * Started At
+     */
+    started_at: string;
+    /**
+     * Completed At
+     */
+    completed_at: string;
+};
+
+/**
+ * BatchHealthCheckResultItem
+ *
+ * 单个账号检测结果
+ */
+export type BatchHealthCheckResultItem = {
+    /**
+     * Account Id
+     */
+    account_id: number;
+    /**
+     * Account Name
+     */
+    account_name: string;
+    /**
+     * Previous Status
+     */
+    previous_status: string;
+    /**
+     * Current Status
+     */
+    current_status: string;
+    /**
+     * Is Valid
+     */
+    is_valid: boolean;
+    /**
+     * Message
+     */
+    message: string;
+    /**
+     * Checked At
+     */
+    checked_at: string;
+};
+
+/**
+ * BatchHealthCheckStatusResponse
+ *
+ * 批量检测进度
+ */
+export type BatchHealthCheckStatusResponse = {
+    /**
+     * In Progress
+     */
+    in_progress: boolean;
+    /**
+     * Progress
+     */
+    progress?: number;
+    /**
+     * Total
+     */
+    total?: number;
+    /**
+     * Current Account Name
+     */
+    current_account_name?: string | null;
+    /**
+     * Started At
+     */
+    started_at?: string | null;
+    /**
+     * Logs
+     */
+    logs?: Array<string>;
+};
+
+/**
+ * BatchSubmitCompositionRequest
+ */
+export type BatchSubmitCompositionRequest = {
+    /**
+     * Task Ids
+     *
+     * 任务ID列表
+     */
+    task_ids: Array<number>;
+};
+
+/**
+ * Body_import_copywritings_api_copywritings_import_post
+ */
+export type BodyImportCopywritingsApiCopywritingsImportPost = {
+    /**
+     * File
+     */
+    file: Blob | File;
+};
+
+/**
+ * Body_upload_audio_api_audios_upload_post
+ */
+export type BodyUploadAudioApiAudiosUploadPost = {
+    /**
+     * File
+     */
+    file: Blob | File;
+};
+
+/**
+ * Body_upload_cover_api_covers_upload_post
+ */
+export type BodyUploadCoverApiCoversUploadPost = {
+    /**
+     * File
+     */
+    file: Blob | File;
+};
+
+/**
+ * Body_upload_video_api_videos_upload_post
+ */
+export type BodyUploadVideoApiVideosUploadPost = {
     /**
      * File
      */
@@ -224,6 +520,314 @@ export type ClipSegmentRequest = {
 };
 
 /**
+ * CompositionJobResponse
+ *
+ * 合成任务响应
+ */
+export type CompositionJobResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Task Id
+     */
+    task_id: number;
+    /**
+     * Workflow Type
+     */
+    workflow_type?: string | null;
+    /**
+     * Workflow Id
+     */
+    workflow_id?: string | null;
+    /**
+     * External Job Id
+     */
+    external_job_id?: string | null;
+    status: CompositionJobStatus;
+    /**
+     * Progress
+     */
+    progress: number;
+    /**
+     * Output Video Path
+     */
+    output_video_path?: string | null;
+    /**
+     * Output Video Url
+     */
+    output_video_url?: string | null;
+    /**
+     * Error Msg
+     */
+    error_msg?: string | null;
+    /**
+     * Started At
+     */
+    started_at?: string | null;
+    /**
+     * Completed At
+     */
+    completed_at?: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * CompositionJobStatus
+ */
+export type CompositionJobStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+
+/**
+ * CompositionMode
+ */
+export type CompositionMode = 'none' | 'coze' | 'local_ffmpeg';
+
+/**
+ * ConnectionRequest
+ *
+ * 得物账号连接请求 (手机验证码方式)
+ */
+export type ConnectionRequest = {
+    /**
+     * Phone
+     *
+     * 手机号
+     */
+    phone: string;
+    /**
+     * Code
+     *
+     * 验证码
+     */
+    code: string;
+};
+
+/**
+ * ConnectionResponse
+ *
+ * 连接响应
+ */
+export type ConnectionResponse = {
+    /**
+     * Success
+     */
+    success: boolean;
+    /**
+     * Message
+     */
+    message: string;
+    /**
+     * Status
+     */
+    status?: string;
+    /**
+     * Storage State
+     */
+    storage_state?: string | null;
+};
+
+/**
+ * ConnectionStatus
+ *
+ * 连接流程状态枚举 (原 LoginStatus)
+ *
+ * 用于 SSE 实时推送和连接流程状态管理。
+ * 状态流转: idle -> waiting_phone -> code_sent -> waiting_verify -> verifying -> success/error
+ */
+export type ConnectionStatus = 'idle' | 'waiting_phone' | 'code_sent' | 'waiting_verify' | 'verifying' | 'success' | 'error';
+
+/**
+ * ConnectionStatusResponse
+ *
+ * 连接状态响应
+ */
+export type ConnectionStatusResponse = {
+    /**
+     * Is Connected
+     */
+    is_connected: boolean;
+    status: ConnectionStatus;
+    /**
+     * Last Login
+     */
+    last_login?: string | null;
+    /**
+     * Message
+     */
+    message?: string;
+};
+
+/**
+ * CopywritingCreate
+ *
+ * 创建文案
+ */
+export type CopywritingCreate = {
+    /**
+     * Name
+     *
+     * 文案名称，为空则取 content 前 50 字
+     */
+    name?: string | null;
+    /**
+     * Content
+     */
+    content: string;
+    /**
+     * Product Id
+     */
+    product_id?: number | null;
+    /**
+     * Source Type
+     */
+    source_type?: string;
+    /**
+     * Source Ref
+     */
+    source_ref?: string | null;
+};
+
+/**
+ * CopywritingListResponse
+ *
+ * 文案列表响应
+ */
+export type CopywritingListResponse = {
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Items
+     */
+    items: Array<CopywritingResponse>;
+};
+
+/**
+ * CopywritingResponse
+ *
+ * 文案响应
+ */
+export type CopywritingResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Product Id
+     */
+    product_id?: number | null;
+    /**
+     * Product Name
+     */
+    product_name?: string | null;
+    /**
+     * Name
+     */
+    name?: string;
+    /**
+     * Content
+     */
+    content: string;
+    /**
+     * Source Type
+     */
+    source_type: string;
+    /**
+     * Source Ref
+     */
+    source_ref?: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * CopywritingUpdate
+ *
+ * 更新文案
+ */
+export type CopywritingUpdate = {
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Content
+     */
+    content?: string | null;
+    /**
+     * Product Id
+     */
+    product_id?: number | null;
+    /**
+     * Source Type
+     */
+    source_type?: string | null;
+    /**
+     * Source Ref
+     */
+    source_ref?: string | null;
+};
+
+/**
+ * CoverResponse
+ *
+ * 封面响应
+ */
+export type CoverResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Video Id
+     */
+    video_id?: number | null;
+    /**
+     * Product Id
+     */
+    product_id?: number | null;
+    /**
+     * Name
+     */
+    name?: string;
+    /**
+     * File Path
+     */
+    file_path: string;
+    /**
+     * File Size
+     */
+    file_size?: number | null;
+    /**
+     * Width
+     */
+    width?: number | null;
+    /**
+     * Height
+     */
+    height?: number | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
  * DetectHighlightsResponse
  */
 export type DetectHighlightsResponse = {
@@ -237,6 +841,22 @@ export type DetectHighlightsResponse = {
      * Count
      */
     count: number;
+};
+
+/**
+ * ExtractCoverRequest
+ */
+export type ExtractCoverRequest = {
+    /**
+     * Video Id
+     */
+    video_id: number;
+    /**
+     * Timestamp
+     *
+     * 截取时间点（秒）
+     */
+    timestamp?: number;
 };
 
 /**
@@ -266,6 +886,36 @@ export type FullPipelineRequest = {
 };
 
 /**
+ * GlobalTopicRequest
+ *
+ * 设置全局话题请求
+ */
+export type GlobalTopicRequest = {
+    /**
+     * Topic Ids
+     *
+     * 话题ID列表
+     */
+    topic_ids: Array<number>;
+};
+
+/**
+ * GlobalTopicResponse
+ *
+ * 全局话题响应
+ */
+export type GlobalTopicResponse = {
+    /**
+     * Topic Ids
+     */
+    topic_ids: Array<number>;
+    /**
+     * Topics
+     */
+    topics: Array<TopicResponse>;
+};
+
+/**
  * HTTPValidationError
  */
 export type HttpValidationError = {
@@ -276,192 +926,149 @@ export type HttpValidationError = {
 };
 
 /**
- * ImportResponse
+ * HealthCheckResponse
+ *
+ * 健康检查响应
  */
-export type ImportResponse = {
+export type HealthCheckResponse = {
     /**
      * Success
      */
-    success: number;
+    success: boolean;
     /**
-     * Failed
+     * Is Valid
      */
-    failed: number;
+    is_valid: boolean;
     /**
-     * Total
+     * Message
      */
-    total: number;
+    message: string;
+    /**
+     * Expires At
+     */
+    expires_at?: string | null;
 };
 
 /**
- * MaterialCreate
+ * ImportResult
+ */
+export type ImportResult = {
+    /**
+     * Total Lines
+     */
+    total_lines?: number;
+    /**
+     * Imported
+     */
+    imported?: number;
+    /**
+     * Skipped Empty
+     */
+    skipped_empty?: number;
+};
+
+/**
+ * PreviewCloseRequest
  *
- * 创建素材
+ * 关闭预览浏览器请求
  */
-export type MaterialCreate = {
-    type: MaterialType;
+export type PreviewCloseRequest = {
     /**
-     * Name
+     * Save Session
      */
-    name?: string | null;
-    /**
-     * Path
-     */
-    path?: string | null;
-    /**
-     * Content
-     */
-    content?: string | null;
+    save_session?: boolean;
 };
 
 /**
- * MaterialListResponse
+ * PreviewStatusResponse
  *
- * 素材列表响应
+ * 预览状态响应
  */
-export type MaterialListResponse = {
+export type PreviewStatusResponse = {
     /**
-     * Total
+     * Is Open
      */
-    total: number;
+    is_open: boolean;
     /**
-     * Items
+     * Account Id
      */
-    items: Array<MaterialResponse>;
-};
-
-/**
- * MaterialPathResponse
- */
-export type MaterialPathResponse = {
-    /**
-     * Path
-     */
-    path: string;
-    /**
-     * Files
-     */
-    files: Array<{
-        [key: string]: unknown;
-    }>;
-    /**
-     * Type
-     */
-    type: string;
-};
-
-/**
- * MaterialResponse
- *
- * 素材响应
- */
-export type MaterialResponse = {
-    type: MaterialType;
-    /**
-     * Name
-     */
-    name?: string | null;
-    /**
-     * Id
-     */
-    id: number;
-    /**
-     * Path
-     */
-    path?: string | null;
-    /**
-     * Content
-     */
-    content?: string | null;
-    /**
-     * Size
-     */
-    size?: number | null;
-    /**
-     * Duration
-     */
-    duration?: number | null;
-    /**
-     * Created At
-     */
-    created_at: string;
-};
-
-/**
- * MaterialStatsResponse
- */
-export type MaterialStatsResponse = {
-    /**
-     * Video
-     */
-    video: {
-        [key: string]: unknown;
-    };
-    /**
-     * Text
-     */
-    text: {
-        [key: string]: unknown;
-    };
-    /**
-     * Cover
-     */
-    cover: {
-        [key: string]: unknown;
-    };
-    /**
-     * Topic
-     */
-    topic: {
-        [key: string]: unknown;
-    };
-    /**
-     * Audio
-     */
-    audio: {
-        [key: string]: unknown;
-    };
-};
-
-/**
- * MaterialType
- */
-export type MaterialType = 'video' | 'text' | 'cover' | 'topic' | 'audio';
-
-/**
- * MaterialUpdate
- *
- * 更新素材
- */
-export type MaterialUpdate = {
-    /**
-     * Name
-     */
-    name?: string | null;
-    /**
-     * Path
-     */
-    path?: string | null;
-    /**
-     * Content
-     */
-    content?: string | null;
+    account_id?: number | null;
 };
 
 /**
  * ProductCreate
  *
- * 创建商品
+ * 创建商品 — 仅接受分享文本，后端解析 dewu_url
  */
 export type ProductCreate = {
+    /**
+     * Share Text
+     */
+    share_text: string;
+};
+
+/**
+ * ProductDetailResponse
+ *
+ * 商品详情响应（含全部关联素材）
+ */
+export type ProductDetailResponse = {
+    /**
+     * Id
+     */
+    id: number;
     /**
      * Name
      */
     name: string;
     /**
-     * Link
+     * Dewu Url
      */
-    link?: string | null;
+    dewu_url?: string | null;
+    /**
+     * Parse Status
+     */
+    parse_status: string;
+    /**
+     * Video Count
+     */
+    video_count?: number;
+    /**
+     * Copywriting Count
+     */
+    copywriting_count?: number;
+    /**
+     * Cover Count
+     */
+    cover_count?: number;
+    /**
+     * Topic Count
+     */
+    topic_count?: number;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+    /**
+     * Videos
+     */
+    videos?: Array<VideoResponse>;
+    /**
+     * Covers
+     */
+    covers?: Array<CoverResponse>;
+    /**
+     * Copywritings
+     */
+    copywritings?: Array<CopywritingResponse>;
+    /**
+     * Topics
+     */
+    topics?: Array<TopicResponse>;
 };
 
 /**
@@ -487,25 +1094,57 @@ export type ProductListResponse = {
  */
 export type ProductResponse = {
     /**
-     * Name
-     */
-    name: string;
-    /**
-     * Link
-     */
-    link?: string | null;
-    /**
      * Id
      */
     id: number;
     /**
-     * Description
+     * Name
      */
-    description?: string | null;
+    name: string;
+    /**
+     * Dewu Url
+     */
+    dewu_url?: string | null;
+    /**
+     * Parse Status
+     */
+    parse_status: string;
+    /**
+     * Video Count
+     */
+    video_count?: number;
+    /**
+     * Copywriting Count
+     */
+    copywriting_count?: number;
+    /**
+     * Cover Count
+     */
+    cover_count?: number;
+    /**
+     * Topic Count
+     */
+    topic_count?: number;
     /**
      * Created At
      */
     created_at: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * ProductUpdate
+ *
+ * 更新商品 — 仅允许修改名称
+ */
+export type ProductUpdate = {
+    /**
+     * Name
+     */
+    name?: string | null;
 };
 
 /**
@@ -595,6 +1234,149 @@ export type PublishControlRequest = {
 };
 
 /**
+ * PublishProfileCreate
+ *
+ * 创建合成配置档
+ */
+export type PublishProfileCreate = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Is Default
+     */
+    is_default?: boolean;
+    composition_mode?: CompositionMode;
+    /**
+     * Coze Workflow Id
+     */
+    coze_workflow_id?: string | null;
+    /**
+     * Composition Params
+     *
+     * JSON 字符串
+     */
+    composition_params?: string | null;
+    /**
+     * Global Topic Ids
+     */
+    global_topic_ids?: Array<number>;
+    /**
+     * Auto Retry
+     */
+    auto_retry?: boolean;
+    /**
+     * Max Retry Count
+     */
+    max_retry_count?: number;
+};
+
+/**
+ * PublishProfileListResponse
+ *
+ * 合成配置档列表响应
+ */
+export type PublishProfileListResponse = {
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Items
+     */
+    items: Array<PublishProfileResponse>;
+};
+
+/**
+ * PublishProfileResponse
+ *
+ * 合成配置档响应
+ */
+export type PublishProfileResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Is Default
+     */
+    is_default: boolean;
+    composition_mode: CompositionMode;
+    /**
+     * Coze Workflow Id
+     */
+    coze_workflow_id?: string | null;
+    /**
+     * Composition Params
+     */
+    composition_params?: string | null;
+    /**
+     * Global Topic Ids
+     */
+    global_topic_ids?: Array<number>;
+    /**
+     * Auto Retry
+     */
+    auto_retry: boolean;
+    /**
+     * Max Retry Count
+     */
+    max_retry_count: number;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * PublishProfileUpdate
+ *
+ * 更新合成配置档
+ */
+export type PublishProfileUpdate = {
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Is Default
+     */
+    is_default?: boolean | null;
+    composition_mode?: CompositionMode | null;
+    /**
+     * Coze Workflow Id
+     */
+    coze_workflow_id?: string | null;
+    /**
+     * Composition Params
+     *
+     * JSON 字符串
+     */
+    composition_params?: string | null;
+    /**
+     * Global Topic Ids
+     */
+    global_topic_ids?: Array<number> | null;
+    /**
+     * Auto Retry
+     */
+    auto_retry?: boolean | null;
+    /**
+     * Max Retry Count
+     */
+    max_retry_count?: number | null;
+};
+
+/**
  * PublishStatus
  */
 export type PublishStatus = 'idle' | 'running' | 'paused';
@@ -625,29 +1407,65 @@ export type PublishStatusResponse = {
 };
 
 /**
- * ScanRequest
+ * ScanResult
+ *
+ * 扫描导入结果
  */
-export type ScanRequest = {
+export type ScanResult = {
     /**
-     * Type
+     * Total Scanned
      */
-    type?: string | null;
+    total_scanned?: number;
+    /**
+     * New Imported
+     */
+    new_imported?: number;
+    /**
+     * Skipped
+     */
+    skipped?: number;
+    /**
+     * Failed
+     */
+    failed?: number;
+    /**
+     * Details
+     */
+    details?: Array<string>;
 };
 
 /**
- * ScanResponse
+ * SendCodeRequest
+ *
+ * 发送验证码请求
  */
-export type ScanResponse = {
+export type SendCodeRequest = {
     /**
-     * Total
+     * Phone
+     *
+     * 手机号（11位），为空则使用已存储的手机号
      */
-    total: number;
+    phone?: string | null;
+};
+
+/**
+ * SendCodeResponse
+ *
+ * 发送验证码响应
+ */
+export type SendCodeResponse = {
     /**
-     * Files
+     * Success
      */
-    files: Array<{
-        [key: string]: unknown;
-    }>;
+    success: boolean;
+    /**
+     * Message
+     */
+    message: string;
+    /**
+     * Status
+     */
+    status?: string;
 };
 
 /**
@@ -754,10 +1572,6 @@ export type SystemStats = {
      * Total Products
      */
     total_products: number;
-    /**
-     * Total Materials
-     */
-    total_materials: number;
 };
 
 /**
@@ -779,22 +1593,6 @@ export type TaskBatchCreateRequest = {
  */
 export type TaskCreate = {
     /**
-     * Video Path
-     */
-    video_path?: string | null;
-    /**
-     * Content
-     */
-    content?: string | null;
-    /**
-     * Topic
-     */
-    topic?: string | null;
-    /**
-     * Cover Path
-     */
-    cover_path?: string | null;
-    /**
      * Account Id
      */
     account_id: number;
@@ -803,9 +1601,25 @@ export type TaskCreate = {
      */
     product_id?: number | null;
     /**
-     * Material Id
+     * Video Id
      */
-    material_id?: number | null;
+    video_id?: number | null;
+    /**
+     * Copywriting Id
+     */
+    copywriting_id?: number | null;
+    /**
+     * Audio Id
+     */
+    audio_id?: number | null;
+    /**
+     * Cover Id
+     */
+    cover_id?: number | null;
+    /**
+     * Profile Id
+     */
+    profile_id?: number | null;
 };
 
 /**
@@ -831,22 +1645,6 @@ export type TaskListResponse = {
  */
 export type TaskResponse = {
     /**
-     * Video Path
-     */
-    video_path?: string | null;
-    /**
-     * Content
-     */
-    content?: string | null;
-    /**
-     * Topic
-     */
-    topic?: string | null;
-    /**
-     * Cover Path
-     */
-    cover_path?: string | null;
-    /**
      * Id
      */
     id: number;
@@ -858,6 +1656,26 @@ export type TaskResponse = {
      * Product Id
      */
     product_id?: number | null;
+    /**
+     * Video Id
+     */
+    video_id?: number | null;
+    /**
+     * Copywriting Id
+     */
+    copywriting_id?: number | null;
+    /**
+     * Audio Id
+     */
+    audio_id?: number | null;
+    /**
+     * Cover Id
+     */
+    cover_id?: number | null;
+    /**
+     * Topic Ids
+     */
+    topic_ids?: Array<number>;
     status: TaskStatus;
     /**
      * Publish Time
@@ -871,6 +1689,66 @@ export type TaskResponse = {
      * Priority
      */
     priority: number;
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Source Video Ids
+     */
+    source_video_ids?: string | null;
+    /**
+     * Composition Template
+     */
+    composition_template?: string | null;
+    /**
+     * Composition Params
+     */
+    composition_params?: string | null;
+    /**
+     * Composition Job Id
+     */
+    composition_job_id?: number | null;
+    /**
+     * Final Video Path
+     */
+    final_video_path?: string | null;
+    /**
+     * Final Video Duration
+     */
+    final_video_duration?: number | null;
+    /**
+     * Final Video Size
+     */
+    final_video_size?: number | null;
+    /**
+     * Scheduled Time
+     */
+    scheduled_time?: string | null;
+    /**
+     * Retry Count
+     */
+    retry_count?: number;
+    /**
+     * Dewu Video Id
+     */
+    dewu_video_id?: string | null;
+    /**
+     * Dewu Video Url
+     */
+    dewu_video_url?: string | null;
+    /**
+     * Profile Id
+     */
+    profile_id?: number | null;
+    /**
+     * Batch Id
+     */
+    batch_id?: string | null;
+    /**
+     * Failed At Status
+     */
+    failed_at_status?: string | null;
     /**
      * Created At
      */
@@ -890,35 +1768,43 @@ export type TaskStatsResponse = {
      */
     total: number;
     /**
-     * Pending
+     * Draft
      */
-    pending: number;
+    draft: number;
     /**
-     * Running
+     * Composing
      */
-    running: number;
+    composing: number;
     /**
-     * Success
+     * Ready
      */
-    success: number;
+    ready: number;
+    /**
+     * Uploading
+     */
+    uploading: number;
+    /**
+     * Uploaded
+     */
+    uploaded: number;
     /**
      * Failed
      */
     failed: number;
     /**
-     * Paused
+     * Cancelled
      */
-    paused: number;
+    cancelled: number;
     /**
-     * Today Success
+     * Today Uploaded
      */
-    today_success: number;
+    today_uploaded: number;
 };
 
 /**
  * TaskStatus
  */
-export type TaskStatus = 'pending' | 'running' | 'success' | 'failed' | 'paused';
+export type TaskStatus = 'draft' | 'composing' | 'ready' | 'uploading' | 'uploaded' | 'failed' | 'cancelled';
 
 /**
  * TaskUpdate
@@ -926,22 +1812,6 @@ export type TaskStatus = 'pending' | 'running' | 'success' | 'failed' | 'paused'
  * 更新任务
  */
 export type TaskUpdate = {
-    /**
-     * Video Path
-     */
-    video_path?: string | null;
-    /**
-     * Content
-     */
-    content?: string | null;
-    /**
-     * Topic
-     */
-    topic?: string | null;
-    /**
-     * Cover Path
-     */
-    cover_path?: string | null;
     /**
      * Account Id
      */
@@ -955,6 +1825,166 @@ export type TaskUpdate = {
      * Priority
      */
     priority?: number | null;
+    /**
+     * Profile Id
+     */
+    profile_id?: number | null;
+    /**
+     * Failed At Status
+     */
+    failed_at_status?: string | null;
+};
+
+/**
+ * TopicCreate
+ *
+ * 创建话题
+ */
+export type TopicCreate = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Heat
+     */
+    heat?: number;
+    /**
+     * Source
+     */
+    source?: string;
+};
+
+/**
+ * TopicGroupCreate
+ *
+ * 创建话题组
+ */
+export type TopicGroupCreate = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Topic Ids
+     *
+     * 话题ID列表
+     */
+    topic_ids?: Array<number>;
+};
+
+/**
+ * TopicGroupListResponse
+ *
+ * 话题组列表响应
+ */
+export type TopicGroupListResponse = {
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Items
+     */
+    items: Array<TopicGroupResponse>;
+};
+
+/**
+ * TopicGroupResponse
+ *
+ * 话题组响应
+ */
+export type TopicGroupResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Topic Ids
+     */
+    topic_ids: Array<number>;
+    /**
+     * Topics
+     */
+    topics?: Array<TopicResponse>;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * TopicGroupUpdate
+ *
+ * 更新话题组
+ */
+export type TopicGroupUpdate = {
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Topic Ids
+     *
+     * 话题ID列表
+     */
+    topic_ids?: Array<number> | null;
+};
+
+/**
+ * TopicListResponse
+ *
+ * 话题列表响应
+ */
+export type TopicListResponse = {
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Items
+     */
+    items: Array<TopicResponse>;
+};
+
+/**
+ * TopicResponse
+ *
+ * 话题响应
+ */
+export type TopicResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Heat
+     */
+    heat: number;
+    /**
+     * Source
+     */
+    source: string;
+    /**
+     * Last Synced
+     */
+    last_synced?: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
 };
 
 /**
@@ -980,6 +2010,28 @@ export type TrimVideoRequest = {
 };
 
 /**
+ * ValidateResult
+ */
+export type ValidateResult = {
+    /**
+     * Total
+     */
+    total?: number;
+    /**
+     * Valid
+     */
+    valid?: number;
+    /**
+     * Missing
+     */
+    missing?: number;
+    /**
+     * Missing Ids
+     */
+    missing_ids?: Array<number>;
+};
+
+/**
  * ValidationError
  */
 export type ValidationError = {
@@ -995,6 +2047,78 @@ export type ValidationError = {
      * Error Type
      */
     type: string;
+    /**
+     * Input
+     */
+    input?: unknown;
+    /**
+     * Context
+     */
+    ctx?: {
+        [key: string]: unknown;
+    };
+};
+
+/**
+ * VerifyCodeRequest
+ *
+ * 验证码登录请求
+ */
+export type VerifyCodeRequest = {
+    /**
+     * Code
+     *
+     * 短信验证码（4-6位）
+     */
+    code: string;
+};
+
+/**
+ * VerifyCodeResponse
+ *
+ * 验证码登录响应
+ */
+export type VerifyCodeResponse = {
+    /**
+     * Success
+     */
+    success: boolean;
+    /**
+     * Message
+     */
+    message: string;
+    /**
+     * Status
+     */
+    status?: string;
+};
+
+/**
+ * VideoCreate
+ *
+ * 创建视频
+ */
+export type VideoCreate = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * File Path
+     */
+    file_path: string;
+    /**
+     * Product Id
+     */
+    product_id?: number | null;
+    /**
+     * File Size
+     */
+    file_size?: number | null;
+    /**
+     * Duration
+     */
+    duration?: number | null;
 };
 
 /**
@@ -1031,6 +2155,162 @@ export type VideoInfoResponse = {
     format: string;
 };
 
+/**
+ * VideoListResponse
+ *
+ * 视频列表响应
+ */
+export type VideoListResponse = {
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Items
+     */
+    items: Array<VideoResponse>;
+};
+
+/**
+ * VideoResponse
+ *
+ * 视频响应
+ */
+export type VideoResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Product Id
+     */
+    product_id?: number | null;
+    /**
+     * Product Name
+     */
+    product_name?: string | null;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * File Path
+     */
+    file_path: string;
+    /**
+     * File Size
+     */
+    file_size?: number | null;
+    /**
+     * Duration
+     */
+    duration?: number | null;
+    /**
+     * Width
+     */
+    width?: number | null;
+    /**
+     * Height
+     */
+    height?: number | null;
+    /**
+     * File Hash
+     */
+    file_hash?: string | null;
+    /**
+     * Source Type
+     */
+    source_type: string;
+    /**
+     * File Exists
+     */
+    file_exists?: boolean;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * VideoUpdate
+ *
+ * 更新视频
+ */
+export type VideoUpdate = {
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Product Id
+     */
+    product_id?: number | null;
+};
+
+/**
+ * BatchDeleteRequest
+ */
+export type ApiCopywritingBatchDeleteRequest = {
+    /**
+     * Ids
+     */
+    ids: Array<number>;
+};
+
+/**
+ * BatchDeleteResponse
+ */
+export type ApiCopywritingBatchDeleteResponse = {
+    /**
+     * Deleted
+     */
+    deleted: number;
+    /**
+     * Skipped
+     */
+    skipped: number;
+    /**
+     * Skipped Ids
+     */
+    skipped_ids: Array<number>;
+};
+
+/**
+ * BatchDeleteRequest
+ *
+ * 批量删除请求
+ */
+export type SchemasBatchDeleteRequest = {
+    /**
+     * Ids
+     */
+    ids: Array<number>;
+};
+
+/**
+ * BatchDeleteResponse
+ *
+ * 批量删除响应
+ */
+export type SchemasBatchDeleteResponse = {
+    /**
+     * Deleted
+     */
+    deleted: number;
+    /**
+     * Skipped
+     */
+    skipped: number;
+    /**
+     * Skipped Ids
+     */
+    skipped_ids: Array<number>;
+};
+
 export type ListAccountsApiAccountsGetData = {
     body?: never;
     path?: never;
@@ -1039,6 +2319,14 @@ export type ListAccountsApiAccountsGetData = {
          * Status
          */
         status?: string;
+        /**
+         * Tag
+         */
+        tag?: string | null;
+        /**
+         * Search
+         */
+        search?: string | null;
     };
     url: '/api/accounts/';
 };
@@ -1103,6 +2391,47 @@ export type GetAccountStatsApiAccountsStatsGetResponses = {
 };
 
 export type GetAccountStatsApiAccountsStatsGetResponse = GetAccountStatsApiAccountsStatsGetResponses[keyof GetAccountStatsApiAccountsStatsGetResponses];
+
+export type BatchHealthCheckApiAccountsBatchHealthCheckPostData = {
+    body: BatchHealthCheckRequest;
+    path?: never;
+    query?: never;
+    url: '/api/accounts/batch-health-check';
+};
+
+export type BatchHealthCheckApiAccountsBatchHealthCheckPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BatchHealthCheckApiAccountsBatchHealthCheckPostError = BatchHealthCheckApiAccountsBatchHealthCheckPostErrors[keyof BatchHealthCheckApiAccountsBatchHealthCheckPostErrors];
+
+export type BatchHealthCheckApiAccountsBatchHealthCheckPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: BatchHealthCheckResponse;
+};
+
+export type BatchHealthCheckApiAccountsBatchHealthCheckPostResponse = BatchHealthCheckApiAccountsBatchHealthCheckPostResponses[keyof BatchHealthCheckApiAccountsBatchHealthCheckPostResponses];
+
+export type BatchHealthCheckStatusApiAccountsBatchHealthCheckStatusGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/accounts/batch-health-check/status';
+};
+
+export type BatchHealthCheckStatusApiAccountsBatchHealthCheckStatusGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: BatchHealthCheckStatusResponse;
+};
+
+export type BatchHealthCheckStatusApiAccountsBatchHealthCheckStatusGetResponse = BatchHealthCheckStatusApiAccountsBatchHealthCheckStatusGetResponses[keyof BatchHealthCheckStatusApiAccountsBatchHealthCheckStatusGetResponses];
 
 export type DeleteAccountApiAccountsAccountIdDeleteData = {
     body?: never;
@@ -1194,8 +2523,212 @@ export type UpdateAccountApiAccountsAccountIdPutResponses = {
 
 export type UpdateAccountApiAccountsAccountIdPutResponse = UpdateAccountApiAccountsAccountIdPutResponses[keyof UpdateAccountApiAccountsAccountIdPutResponses];
 
-export type LoginAccountApiAccountsLoginAccountIdPostData = {
+export type HealthCheckApiAccountsAccountIdHealthCheckPostData = {
     body?: never;
+    path: {
+        /**
+         * Account Id
+         */
+        account_id: number;
+    };
+    query?: never;
+    url: '/api/accounts/{account_id}/health-check';
+};
+
+export type HealthCheckApiAccountsAccountIdHealthCheckPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type HealthCheckApiAccountsAccountIdHealthCheckPostError = HealthCheckApiAccountsAccountIdHealthCheckPostErrors[keyof HealthCheckApiAccountsAccountIdHealthCheckPostErrors];
+
+export type HealthCheckApiAccountsAccountIdHealthCheckPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: HealthCheckResponse;
+};
+
+export type HealthCheckApiAccountsAccountIdHealthCheckPostResponse = HealthCheckApiAccountsAccountIdHealthCheckPostResponses[keyof HealthCheckApiAccountsAccountIdHealthCheckPostResponses];
+
+export type PreviewStatusApiAccountsPreviewStatusGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/accounts/preview/status';
+};
+
+export type PreviewStatusApiAccountsPreviewStatusGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: PreviewStatusResponse;
+};
+
+export type PreviewStatusApiAccountsPreviewStatusGetResponse = PreviewStatusApiAccountsPreviewStatusGetResponses[keyof PreviewStatusApiAccountsPreviewStatusGetResponses];
+
+export type PreviewAccountApiAccountsAccountIdPreviewPostData = {
+    body?: never;
+    path: {
+        /**
+         * Account Id
+         */
+        account_id: number;
+    };
+    query?: never;
+    url: '/api/accounts/{account_id}/preview';
+};
+
+export type PreviewAccountApiAccountsAccountIdPreviewPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type PreviewAccountApiAccountsAccountIdPreviewPostError = PreviewAccountApiAccountsAccountIdPreviewPostErrors[keyof PreviewAccountApiAccountsAccountIdPreviewPostErrors];
+
+export type PreviewAccountApiAccountsAccountIdPreviewPostResponses = {
+    /**
+     * Response Preview Account Api Accounts  Account Id  Preview Post
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type PreviewAccountApiAccountsAccountIdPreviewPostResponse = PreviewAccountApiAccountsAccountIdPreviewPostResponses[keyof PreviewAccountApiAccountsAccountIdPreviewPostResponses];
+
+export type ClosePreviewApiAccountsAccountIdPreviewClosePostData = {
+    body: PreviewCloseRequest;
+    path: {
+        /**
+         * Account Id
+         */
+        account_id: number;
+    };
+    query?: never;
+    url: '/api/accounts/{account_id}/preview/close';
+};
+
+export type ClosePreviewApiAccountsAccountIdPreviewClosePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ClosePreviewApiAccountsAccountIdPreviewClosePostError = ClosePreviewApiAccountsAccountIdPreviewClosePostErrors[keyof ClosePreviewApiAccountsAccountIdPreviewClosePostErrors];
+
+export type ClosePreviewApiAccountsAccountIdPreviewClosePostResponses = {
+    /**
+     * Response Close Preview Api Accounts  Account Id  Preview Close Post
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ClosePreviewApiAccountsAccountIdPreviewClosePostResponse = ClosePreviewApiAccountsAccountIdPreviewClosePostResponses[keyof ClosePreviewApiAccountsAccountIdPreviewClosePostResponses];
+
+export type ConnectAccountApiAccountsConnectAccountIdPostData = {
+    body: ConnectionRequest;
+    path: {
+        /**
+         * Account Id
+         */
+        account_id: number;
+    };
+    query?: never;
+    url: '/api/accounts/connect/{account_id}';
+};
+
+export type ConnectAccountApiAccountsConnectAccountIdPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ConnectAccountApiAccountsConnectAccountIdPostError = ConnectAccountApiAccountsConnectAccountIdPostErrors[keyof ConnectAccountApiAccountsConnectAccountIdPostErrors];
+
+export type ConnectAccountApiAccountsConnectAccountIdPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConnectionResponse;
+};
+
+export type ConnectAccountApiAccountsConnectAccountIdPostResponse = ConnectAccountApiAccountsConnectAccountIdPostResponses[keyof ConnectAccountApiAccountsConnectAccountIdPostResponses];
+
+export type SendSmsCodeApiAccountsConnectAccountIdSendCodePostData = {
+    body: SendCodeRequest;
+    path: {
+        /**
+         * Account Id
+         */
+        account_id: number;
+    };
+    query?: never;
+    url: '/api/accounts/connect/{account_id}/send-code';
+};
+
+export type SendSmsCodeApiAccountsConnectAccountIdSendCodePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SendSmsCodeApiAccountsConnectAccountIdSendCodePostError = SendSmsCodeApiAccountsConnectAccountIdSendCodePostErrors[keyof SendSmsCodeApiAccountsConnectAccountIdSendCodePostErrors];
+
+export type SendSmsCodeApiAccountsConnectAccountIdSendCodePostResponses = {
+    /**
+     * Successful Response
+     */
+    202: SendCodeResponse;
+};
+
+export type SendSmsCodeApiAccountsConnectAccountIdSendCodePostResponse = SendSmsCodeApiAccountsConnectAccountIdSendCodePostResponses[keyof SendSmsCodeApiAccountsConnectAccountIdSendCodePostResponses];
+
+export type VerifySmsCodeApiAccountsConnectAccountIdVerifyPostData = {
+    body: VerifyCodeRequest;
+    path: {
+        /**
+         * Account Id
+         */
+        account_id: number;
+    };
+    query?: never;
+    url: '/api/accounts/connect/{account_id}/verify';
+};
+
+export type VerifySmsCodeApiAccountsConnectAccountIdVerifyPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type VerifySmsCodeApiAccountsConnectAccountIdVerifyPostError = VerifySmsCodeApiAccountsConnectAccountIdVerifyPostErrors[keyof VerifySmsCodeApiAccountsConnectAccountIdVerifyPostErrors];
+
+export type VerifySmsCodeApiAccountsConnectAccountIdVerifyPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: VerifyCodeResponse;
+};
+
+export type VerifySmsCodeApiAccountsConnectAccountIdVerifyPostResponse = VerifySmsCodeApiAccountsConnectAccountIdVerifyPostResponses[keyof VerifySmsCodeApiAccountsConnectAccountIdVerifyPostResponses];
+
+export type LoginAccountDeprecatedApiAccountsLoginAccountIdPostData = {
+    body: ConnectionRequest;
     path: {
         /**
          * Account Id
@@ -1206,23 +2739,291 @@ export type LoginAccountApiAccountsLoginAccountIdPostData = {
     url: '/api/accounts/login/{account_id}';
 };
 
-export type LoginAccountApiAccountsLoginAccountIdPostErrors = {
+export type LoginAccountDeprecatedApiAccountsLoginAccountIdPostErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type LoginAccountApiAccountsLoginAccountIdPostError = LoginAccountApiAccountsLoginAccountIdPostErrors[keyof LoginAccountApiAccountsLoginAccountIdPostErrors];
+export type LoginAccountDeprecatedApiAccountsLoginAccountIdPostError = LoginAccountDeprecatedApiAccountsLoginAccountIdPostErrors[keyof LoginAccountDeprecatedApiAccountsLoginAccountIdPostErrors];
 
-export type LoginAccountApiAccountsLoginAccountIdPostResponses = {
+export type LoginAccountDeprecatedApiAccountsLoginAccountIdPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConnectionResponse;
+};
+
+export type LoginAccountDeprecatedApiAccountsLoginAccountIdPostResponse = LoginAccountDeprecatedApiAccountsLoginAccountIdPostResponses[keyof LoginAccountDeprecatedApiAccountsLoginAccountIdPostResponses];
+
+export type ConnectionStatusStreamApiAccountsConnectAccountIdStreamGetData = {
+    body?: never;
+    path: {
+        /**
+         * Account Id
+         */
+        account_id: number;
+    };
+    query?: never;
+    url: '/api/accounts/connect/{account_id}/stream';
+};
+
+export type ConnectionStatusStreamApiAccountsConnectAccountIdStreamGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ConnectionStatusStreamApiAccountsConnectAccountIdStreamGetError = ConnectionStatusStreamApiAccountsConnectAccountIdStreamGetErrors[keyof ConnectionStatusStreamApiAccountsConnectAccountIdStreamGetErrors];
+
+export type ConnectionStatusStreamApiAccountsConnectAccountIdStreamGetResponses = {
     /**
      * Successful Response
      */
     200: unknown;
 };
 
-export type GetLoginScreenshotApiAccountsLoginAccountIdScreenshotGetData = {
+export type LoginStatusStreamDeprecatedApiAccountsLoginAccountIdStreamGetData = {
+    body?: never;
+    path: {
+        /**
+         * Account Id
+         */
+        account_id: number;
+    };
+    query?: never;
+    url: '/api/accounts/login/{account_id}/stream';
+};
+
+export type LoginStatusStreamDeprecatedApiAccountsLoginAccountIdStreamGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type LoginStatusStreamDeprecatedApiAccountsLoginAccountIdStreamGetError = LoginStatusStreamDeprecatedApiAccountsLoginAccountIdStreamGetErrors[keyof LoginStatusStreamDeprecatedApiAccountsLoginAccountIdStreamGetErrors];
+
+export type LoginStatusStreamDeprecatedApiAccountsLoginAccountIdStreamGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type GetConnectionStatusApiAccountsConnectAccountIdStatusGetData = {
+    body?: never;
+    path: {
+        /**
+         * Account Id
+         */
+        account_id: number;
+    };
+    query?: never;
+    url: '/api/accounts/connect/{account_id}/status';
+};
+
+export type GetConnectionStatusApiAccountsConnectAccountIdStatusGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetConnectionStatusApiAccountsConnectAccountIdStatusGetError = GetConnectionStatusApiAccountsConnectAccountIdStatusGetErrors[keyof GetConnectionStatusApiAccountsConnectAccountIdStatusGetErrors];
+
+export type GetConnectionStatusApiAccountsConnectAccountIdStatusGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConnectionStatusResponse;
+};
+
+export type GetConnectionStatusApiAccountsConnectAccountIdStatusGetResponse = GetConnectionStatusApiAccountsConnectAccountIdStatusGetResponses[keyof GetConnectionStatusApiAccountsConnectAccountIdStatusGetResponses];
+
+export type GetLoginStatusDeprecatedApiAccountsLoginAccountIdStatusGetData = {
+    body?: never;
+    path: {
+        /**
+         * Account Id
+         */
+        account_id: number;
+    };
+    query?: never;
+    url: '/api/accounts/login/{account_id}/status';
+};
+
+export type GetLoginStatusDeprecatedApiAccountsLoginAccountIdStatusGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetLoginStatusDeprecatedApiAccountsLoginAccountIdStatusGetError = GetLoginStatusDeprecatedApiAccountsLoginAccountIdStatusGetErrors[keyof GetLoginStatusDeprecatedApiAccountsLoginAccountIdStatusGetErrors];
+
+export type GetLoginStatusDeprecatedApiAccountsLoginAccountIdStatusGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConnectionStatusResponse;
+};
+
+export type GetLoginStatusDeprecatedApiAccountsLoginAccountIdStatusGetResponse = GetLoginStatusDeprecatedApiAccountsLoginAccountIdStatusGetResponses[keyof GetLoginStatusDeprecatedApiAccountsLoginAccountIdStatusGetResponses];
+
+export type ExportSessionApiAccountsConnectAccountIdExportPostData = {
+    body?: never;
+    path: {
+        /**
+         * Account Id
+         */
+        account_id: number;
+    };
+    query?: never;
+    url: '/api/accounts/connect/{account_id}/export';
+};
+
+export type ExportSessionApiAccountsConnectAccountIdExportPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ExportSessionApiAccountsConnectAccountIdExportPostError = ExportSessionApiAccountsConnectAccountIdExportPostErrors[keyof ExportSessionApiAccountsConnectAccountIdExportPostErrors];
+
+export type ExportSessionApiAccountsConnectAccountIdExportPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type ExportSessionDeprecatedApiAccountsLoginAccountIdExportPostData = {
+    body?: never;
+    path: {
+        /**
+         * Account Id
+         */
+        account_id: number;
+    };
+    query?: never;
+    url: '/api/accounts/login/{account_id}/export';
+};
+
+export type ExportSessionDeprecatedApiAccountsLoginAccountIdExportPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ExportSessionDeprecatedApiAccountsLoginAccountIdExportPostError = ExportSessionDeprecatedApiAccountsLoginAccountIdExportPostErrors[keyof ExportSessionDeprecatedApiAccountsLoginAccountIdExportPostErrors];
+
+export type ExportSessionDeprecatedApiAccountsLoginAccountIdExportPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type ImportSessionApiAccountsConnectAccountIdImportPostData = {
+    /**
+     * Request
+     */
+    body: {
+        [key: string]: unknown;
+    };
+    path: {
+        /**
+         * Account Id
+         */
+        account_id: number;
+    };
+    query?: never;
+    url: '/api/accounts/connect/{account_id}/import';
+};
+
+export type ImportSessionApiAccountsConnectAccountIdImportPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ImportSessionApiAccountsConnectAccountIdImportPostError = ImportSessionApiAccountsConnectAccountIdImportPostErrors[keyof ImportSessionApiAccountsConnectAccountIdImportPostErrors];
+
+export type ImportSessionApiAccountsConnectAccountIdImportPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type ImportSessionDeprecatedApiAccountsLoginAccountIdImportPostData = {
+    /**
+     * Request
+     */
+    body: {
+        [key: string]: unknown;
+    };
+    path: {
+        /**
+         * Account Id
+         */
+        account_id: number;
+    };
+    query?: never;
+    url: '/api/accounts/login/{account_id}/import';
+};
+
+export type ImportSessionDeprecatedApiAccountsLoginAccountIdImportPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ImportSessionDeprecatedApiAccountsLoginAccountIdImportPostError = ImportSessionDeprecatedApiAccountsLoginAccountIdImportPostErrors[keyof ImportSessionDeprecatedApiAccountsLoginAccountIdImportPostErrors];
+
+export type ImportSessionDeprecatedApiAccountsLoginAccountIdImportPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type GetConnectionScreenshotApiAccountsConnectAccountIdScreenshotGetData = {
+    body?: never;
+    path: {
+        /**
+         * Account Id
+         */
+        account_id: number;
+    };
+    query?: never;
+    url: '/api/accounts/connect/{account_id}/screenshot';
+};
+
+export type GetConnectionScreenshotApiAccountsConnectAccountIdScreenshotGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetConnectionScreenshotApiAccountsConnectAccountIdScreenshotGetError = GetConnectionScreenshotApiAccountsConnectAccountIdScreenshotGetErrors[keyof GetConnectionScreenshotApiAccountsConnectAccountIdScreenshotGetErrors];
+
+export type GetConnectionScreenshotApiAccountsConnectAccountIdScreenshotGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type GetLoginScreenshotDeprecatedApiAccountsLoginAccountIdScreenshotGetData = {
     body?: never;
     path: {
         /**
@@ -1234,16 +3035,16 @@ export type GetLoginScreenshotApiAccountsLoginAccountIdScreenshotGetData = {
     url: '/api/accounts/login/{account_id}/screenshot';
 };
 
-export type GetLoginScreenshotApiAccountsLoginAccountIdScreenshotGetErrors = {
+export type GetLoginScreenshotDeprecatedApiAccountsLoginAccountIdScreenshotGetErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type GetLoginScreenshotApiAccountsLoginAccountIdScreenshotGetError = GetLoginScreenshotApiAccountsLoginAccountIdScreenshotGetErrors[keyof GetLoginScreenshotApiAccountsLoginAccountIdScreenshotGetErrors];
+export type GetLoginScreenshotDeprecatedApiAccountsLoginAccountIdScreenshotGetError = GetLoginScreenshotDeprecatedApiAccountsLoginAccountIdScreenshotGetErrors[keyof GetLoginScreenshotDeprecatedApiAccountsLoginAccountIdScreenshotGetErrors];
 
-export type GetLoginScreenshotApiAccountsLoginAccountIdScreenshotGetResponses = {
+export type GetLoginScreenshotDeprecatedApiAccountsLoginAccountIdScreenshotGetResponses = {
     /**
      * Successful Response
      */
@@ -1278,7 +3079,35 @@ export type TestAccountApiAccountsTestAccountIdPostResponses = {
     200: unknown;
 };
 
-export type LogoutAccountApiAccountsLogoutAccountIdPostData = {
+export type DisconnectAccountApiAccountsDisconnectAccountIdPostData = {
+    body?: never;
+    path: {
+        /**
+         * Account Id
+         */
+        account_id: number;
+    };
+    query?: never;
+    url: '/api/accounts/disconnect/{account_id}';
+};
+
+export type DisconnectAccountApiAccountsDisconnectAccountIdPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DisconnectAccountApiAccountsDisconnectAccountIdPostError = DisconnectAccountApiAccountsDisconnectAccountIdPostErrors[keyof DisconnectAccountApiAccountsDisconnectAccountIdPostErrors];
+
+export type DisconnectAccountApiAccountsDisconnectAccountIdPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type LogoutAccountDeprecatedApiAccountsLogoutAccountIdPostData = {
     body?: never;
     path: {
         /**
@@ -1290,16 +3119,16 @@ export type LogoutAccountApiAccountsLogoutAccountIdPostData = {
     url: '/api/accounts/logout/{account_id}';
 };
 
-export type LogoutAccountApiAccountsLogoutAccountIdPostErrors = {
+export type LogoutAccountDeprecatedApiAccountsLogoutAccountIdPostErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type LogoutAccountApiAccountsLogoutAccountIdPostError = LogoutAccountApiAccountsLogoutAccountIdPostErrors[keyof LogoutAccountApiAccountsLogoutAccountIdPostErrors];
+export type LogoutAccountDeprecatedApiAccountsLogoutAccountIdPostError = LogoutAccountDeprecatedApiAccountsLogoutAccountIdPostErrors[keyof LogoutAccountDeprecatedApiAccountsLogoutAccountIdPostErrors];
 
-export type LogoutAccountApiAccountsLogoutAccountIdPostResponses = {
+export type LogoutAccountDeprecatedApiAccountsLogoutAccountIdPostResponses = {
     /**
      * Successful Response
      */
@@ -1509,6 +3338,96 @@ export type UpdateTaskApiTasksTaskIdPutResponses = {
 
 export type UpdateTaskApiTasksTaskIdPutResponse = UpdateTaskApiTasksTaskIdPutResponses[keyof UpdateTaskApiTasksTaskIdPutResponses];
 
+export type CancelTaskApiTasksTaskIdCancelPostData = {
+    body?: never;
+    path: {
+        /**
+         * Task Id
+         */
+        task_id: number;
+    };
+    query?: never;
+    url: '/api/tasks/{task_id}/cancel';
+};
+
+export type CancelTaskApiTasksTaskIdCancelPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CancelTaskApiTasksTaskIdCancelPostError = CancelTaskApiTasksTaskIdCancelPostErrors[keyof CancelTaskApiTasksTaskIdCancelPostErrors];
+
+export type CancelTaskApiTasksTaskIdCancelPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: TaskResponse;
+};
+
+export type CancelTaskApiTasksTaskIdCancelPostResponse = CancelTaskApiTasksTaskIdCancelPostResponses[keyof CancelTaskApiTasksTaskIdCancelPostResponses];
+
+export type QuickRetryTaskApiTasksTaskIdRetryPostData = {
+    body?: never;
+    path: {
+        /**
+         * Task Id
+         */
+        task_id: number;
+    };
+    query?: never;
+    url: '/api/tasks/{task_id}/retry';
+};
+
+export type QuickRetryTaskApiTasksTaskIdRetryPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type QuickRetryTaskApiTasksTaskIdRetryPostError = QuickRetryTaskApiTasksTaskIdRetryPostErrors[keyof QuickRetryTaskApiTasksTaskIdRetryPostErrors];
+
+export type QuickRetryTaskApiTasksTaskIdRetryPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: TaskResponse;
+};
+
+export type QuickRetryTaskApiTasksTaskIdRetryPostResponse = QuickRetryTaskApiTasksTaskIdRetryPostResponses[keyof QuickRetryTaskApiTasksTaskIdRetryPostResponses];
+
+export type EditRetryTaskApiTasksTaskIdEditRetryPostData = {
+    body?: never;
+    path: {
+        /**
+         * Task Id
+         */
+        task_id: number;
+    };
+    query?: never;
+    url: '/api/tasks/{task_id}/edit-retry';
+};
+
+export type EditRetryTaskApiTasksTaskIdEditRetryPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type EditRetryTaskApiTasksTaskIdEditRetryPostError = EditRetryTaskApiTasksTaskIdEditRetryPostErrors[keyof EditRetryTaskApiTasksTaskIdEditRetryPostErrors];
+
+export type EditRetryTaskApiTasksTaskIdEditRetryPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: TaskResponse;
+};
+
+export type EditRetryTaskApiTasksTaskIdEditRetryPostResponse = EditRetryTaskApiTasksTaskIdEditRetryPostResponses[keyof EditRetryTaskApiTasksTaskIdEditRetryPostResponses];
+
 export type PublishTaskApiTasksTaskIdPublishPostData = {
     body?: never;
     path: {
@@ -1564,29 +3483,6 @@ export type BatchCreateTasksApiTasksBatchPostResponses = {
 
 export type BatchCreateTasksApiTasksBatchPostResponse = BatchCreateTasksApiTasksBatchPostResponses[keyof BatchCreateTasksApiTasksBatchPostResponses];
 
-export type AutoGenerateTasksApiTasksAutoGeneratePostData = {
-    body: AutoGenerateRequest;
-    path?: never;
-    query?: never;
-    url: '/api/tasks/auto-generate';
-};
-
-export type AutoGenerateTasksApiTasksAutoGeneratePostErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type AutoGenerateTasksApiTasksAutoGeneratePostError = AutoGenerateTasksApiTasksAutoGeneratePostErrors[keyof AutoGenerateTasksApiTasksAutoGeneratePostErrors];
-
-export type AutoGenerateTasksApiTasksAutoGeneratePostResponses = {
-    /**
-     * Successful Response
-     */
-    200: unknown;
-};
-
 export type ShuffleTasksApiTasksShufflePostData = {
     body?: never;
     path?: never;
@@ -1601,398 +3497,151 @@ export type ShuffleTasksApiTasksShufflePostResponses = {
     200: unknown;
 };
 
-export type InitTasksFromMaterialsApiTasksInitFromMaterialsPostData = {
-    body?: never;
-    path?: never;
-    query: {
-        /**
-         * Account Id
-         */
-        account_id: number;
-        /**
-         * Count
-         */
-        count?: number;
-    };
-    url: '/api/tasks/init-from-materials';
-};
-
-export type InitTasksFromMaterialsApiTasksInitFromMaterialsPostErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type InitTasksFromMaterialsApiTasksInitFromMaterialsPostError = InitTasksFromMaterialsApiTasksInitFromMaterialsPostErrors[keyof InitTasksFromMaterialsApiTasksInitFromMaterialsPostErrors];
-
-export type InitTasksFromMaterialsApiTasksInitFromMaterialsPostResponses = {
-    /**
-     * Successful Response
-     */
-    200: unknown;
-};
-
-export type DeleteAllMaterialsApiMaterialsDeleteData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Type
-         */
-        type?: string | null;
-    };
-    url: '/api/materials/';
-};
-
-export type DeleteAllMaterialsApiMaterialsDeleteErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type DeleteAllMaterialsApiMaterialsDeleteError = DeleteAllMaterialsApiMaterialsDeleteErrors[keyof DeleteAllMaterialsApiMaterialsDeleteErrors];
-
-export type DeleteAllMaterialsApiMaterialsDeleteResponses = {
-    /**
-     * Successful Response
-     */
-    204: void;
-};
-
-export type DeleteAllMaterialsApiMaterialsDeleteResponse = DeleteAllMaterialsApiMaterialsDeleteResponses[keyof DeleteAllMaterialsApiMaterialsDeleteResponses];
-
-export type ListMaterialsApiMaterialsGetData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Type
-         */
-        type?: string | null;
-    };
-    url: '/api/materials/';
-};
-
-export type ListMaterialsApiMaterialsGetErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type ListMaterialsApiMaterialsGetError = ListMaterialsApiMaterialsGetErrors[keyof ListMaterialsApiMaterialsGetErrors];
-
-export type ListMaterialsApiMaterialsGetResponses = {
-    /**
-     * Successful Response
-     */
-    200: MaterialListResponse;
-};
-
-export type ListMaterialsApiMaterialsGetResponse = ListMaterialsApiMaterialsGetResponses[keyof ListMaterialsApiMaterialsGetResponses];
-
-export type CreateMaterialApiMaterialsPostData = {
-    body: MaterialCreate;
+export type AssembleTasksApiTasksAssemblePostData = {
+    body: AssembleTasksRequest;
     path?: never;
     query?: never;
-    url: '/api/materials/';
+    url: '/api/tasks/assemble';
 };
 
-export type CreateMaterialApiMaterialsPostErrors = {
+export type AssembleTasksApiTasksAssemblePostErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type CreateMaterialApiMaterialsPostError = CreateMaterialApiMaterialsPostErrors[keyof CreateMaterialApiMaterialsPostErrors];
+export type AssembleTasksApiTasksAssemblePostError = AssembleTasksApiTasksAssemblePostErrors[keyof AssembleTasksApiTasksAssemblePostErrors];
 
-export type CreateMaterialApiMaterialsPostResponses = {
+export type AssembleTasksApiTasksAssemblePostResponses = {
     /**
+     * Response Assemble Tasks Api Tasks Assemble Post
+     *
      * Successful Response
      */
-    201: MaterialResponse;
+    201: Array<TaskResponse>;
 };
 
-export type CreateMaterialApiMaterialsPostResponse = CreateMaterialApiMaterialsPostResponses[keyof CreateMaterialApiMaterialsPostResponses];
+export type AssembleTasksApiTasksAssemblePostResponse = AssembleTasksApiTasksAssemblePostResponses[keyof AssembleTasksApiTasksAssemblePostResponses];
 
-export type UploadMaterialApiMaterialsUploadMaterialTypePostData = {
-    body: BodyUploadMaterialApiMaterialsUploadMaterialTypePost;
-    path: {
-        material_type: MaterialType;
-    };
-    query?: never;
-    url: '/api/materials/upload/{material_type}';
-};
-
-export type UploadMaterialApiMaterialsUploadMaterialTypePostErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type UploadMaterialApiMaterialsUploadMaterialTypePostError = UploadMaterialApiMaterialsUploadMaterialTypePostErrors[keyof UploadMaterialApiMaterialsUploadMaterialTypePostErrors];
-
-export type UploadMaterialApiMaterialsUploadMaterialTypePostResponses = {
-    /**
-     * Successful Response
-     */
-    200: MaterialResponse;
-};
-
-export type UploadMaterialApiMaterialsUploadMaterialTypePostResponse = UploadMaterialApiMaterialsUploadMaterialTypePostResponses[keyof UploadMaterialApiMaterialsUploadMaterialTypePostResponses];
-
-export type GetMaterialStatsApiMaterialsStatsGetData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/materials/stats';
-};
-
-export type GetMaterialStatsApiMaterialsStatsGetResponses = {
-    /**
-     * Successful Response
-     */
-    200: MaterialStatsResponse;
-};
-
-export type GetMaterialStatsApiMaterialsStatsGetResponse = GetMaterialStatsApiMaterialsStatsGetResponses[keyof GetMaterialStatsApiMaterialsStatsGetResponses];
-
-export type GetMaterialPathApiMaterialsPathMaterialTypeGetData = {
+export type SubmitCompositionApiTasksTaskIdSubmitCompositionPostData = {
     body?: never;
     path: {
         /**
-         * Material Type
+         * Task Id
          */
-        material_type: string;
+        task_id: number;
     };
     query?: never;
-    url: '/api/materials/path/{material_type}';
+    url: '/api/tasks/{task_id}/submit-composition';
 };
 
-export type GetMaterialPathApiMaterialsPathMaterialTypeGetErrors = {
+export type SubmitCompositionApiTasksTaskIdSubmitCompositionPostErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type GetMaterialPathApiMaterialsPathMaterialTypeGetError = GetMaterialPathApiMaterialsPathMaterialTypeGetErrors[keyof GetMaterialPathApiMaterialsPathMaterialTypeGetErrors];
+export type SubmitCompositionApiTasksTaskIdSubmitCompositionPostError = SubmitCompositionApiTasksTaskIdSubmitCompositionPostErrors[keyof SubmitCompositionApiTasksTaskIdSubmitCompositionPostErrors];
 
-export type GetMaterialPathApiMaterialsPathMaterialTypeGetResponses = {
+export type SubmitCompositionApiTasksTaskIdSubmitCompositionPostResponses = {
     /**
      * Successful Response
      */
-    200: MaterialPathResponse;
+    201: CompositionJobResponse;
 };
 
-export type GetMaterialPathApiMaterialsPathMaterialTypeGetResponse = GetMaterialPathApiMaterialsPathMaterialTypeGetResponses[keyof GetMaterialPathApiMaterialsPathMaterialTypeGetResponses];
+export type SubmitCompositionApiTasksTaskIdSubmitCompositionPostResponse = SubmitCompositionApiTasksTaskIdSubmitCompositionPostResponses[keyof SubmitCompositionApiTasksTaskIdSubmitCompositionPostResponses];
 
-export type ScanMaterialsApiMaterialsScanPostData = {
-    body?: ScanRequest;
+export type BatchSubmitCompositionApiTasksBatchSubmitCompositionPostData = {
+    body: BatchSubmitCompositionRequest;
     path?: never;
     query?: never;
-    url: '/api/materials/scan';
+    url: '/api/tasks/batch-submit-composition';
 };
 
-export type ScanMaterialsApiMaterialsScanPostErrors = {
+export type BatchSubmitCompositionApiTasksBatchSubmitCompositionPostErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type ScanMaterialsApiMaterialsScanPostError = ScanMaterialsApiMaterialsScanPostErrors[keyof ScanMaterialsApiMaterialsScanPostErrors];
+export type BatchSubmitCompositionApiTasksBatchSubmitCompositionPostError = BatchSubmitCompositionApiTasksBatchSubmitCompositionPostErrors[keyof BatchSubmitCompositionApiTasksBatchSubmitCompositionPostErrors];
 
-export type ScanMaterialsApiMaterialsScanPostResponses = {
+export type BatchSubmitCompositionApiTasksBatchSubmitCompositionPostResponses = {
     /**
+     * Response Batch Submit Composition Api Tasks Batch Submit Composition Post
+     *
      * Successful Response
      */
-    200: ScanResponse;
-};
-
-export type ScanMaterialsApiMaterialsScanPostResponse = ScanMaterialsApiMaterialsScanPostResponses[keyof ScanMaterialsApiMaterialsScanPostResponses];
-
-export type ImportMaterialsApiMaterialsImportPostData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Type
-         */
-        type?: string | null;
+    200: {
+        [key: string]: unknown;
     };
-    url: '/api/materials/import';
 };
 
-export type ImportMaterialsApiMaterialsImportPostErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
+export type BatchSubmitCompositionApiTasksBatchSubmitCompositionPostResponse = BatchSubmitCompositionApiTasksBatchSubmitCompositionPostResponses[keyof BatchSubmitCompositionApiTasksBatchSubmitCompositionPostResponses];
 
-export type ImportMaterialsApiMaterialsImportPostError = ImportMaterialsApiMaterialsImportPostErrors[keyof ImportMaterialsApiMaterialsImportPostErrors];
-
-export type ImportMaterialsApiMaterialsImportPostResponses = {
-    /**
-     * Successful Response
-     */
-    200: ImportResponse;
-};
-
-export type ImportMaterialsApiMaterialsImportPostResponse = ImportMaterialsApiMaterialsImportPostResponses[keyof ImportMaterialsApiMaterialsImportPostResponses];
-
-export type ImportMaterialsByTypeApiMaterialsImportMaterialTypePostData = {
+export type CancelCompositionApiTasksTaskIdCancelCompositionPostData = {
     body?: never;
     path: {
         /**
-         * Material Type
+         * Task Id
          */
-        material_type: string;
+        task_id: number;
     };
     query?: never;
-    url: '/api/materials/import/{material_type}';
+    url: '/api/tasks/{task_id}/cancel-composition';
 };
 
-export type ImportMaterialsByTypeApiMaterialsImportMaterialTypePostErrors = {
+export type CancelCompositionApiTasksTaskIdCancelCompositionPostErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type ImportMaterialsByTypeApiMaterialsImportMaterialTypePostError = ImportMaterialsByTypeApiMaterialsImportMaterialTypePostErrors[keyof ImportMaterialsByTypeApiMaterialsImportMaterialTypePostErrors];
+export type CancelCompositionApiTasksTaskIdCancelCompositionPostError = CancelCompositionApiTasksTaskIdCancelCompositionPostErrors[keyof CancelCompositionApiTasksTaskIdCancelCompositionPostErrors];
 
-export type ImportMaterialsByTypeApiMaterialsImportMaterialTypePostResponses = {
+export type CancelCompositionApiTasksTaskIdCancelCompositionPostResponses = {
     /**
      * Successful Response
      */
-    200: ImportResponse;
+    200: CompositionJobResponse;
 };
 
-export type ImportMaterialsByTypeApiMaterialsImportMaterialTypePostResponse = ImportMaterialsByTypeApiMaterialsImportMaterialTypePostResponses[keyof ImportMaterialsByTypeApiMaterialsImportMaterialTypePostResponses];
+export type CancelCompositionApiTasksTaskIdCancelCompositionPostResponse = CancelCompositionApiTasksTaskIdCancelCompositionPostResponses[keyof CancelCompositionApiTasksTaskIdCancelCompositionPostResponses];
 
-export type DeleteMaterialApiMaterialsMaterialIdDeleteData = {
+export type GetCompositionStatusApiTasksTaskIdCompositionStatusGetData = {
     body?: never;
     path: {
         /**
-         * Material Id
+         * Task Id
          */
-        material_id: number;
+        task_id: number;
     };
     query?: never;
-    url: '/api/materials/{material_id}';
+    url: '/api/tasks/{task_id}/composition-status';
 };
 
-export type DeleteMaterialApiMaterialsMaterialIdDeleteErrors = {
+export type GetCompositionStatusApiTasksTaskIdCompositionStatusGetErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type DeleteMaterialApiMaterialsMaterialIdDeleteError = DeleteMaterialApiMaterialsMaterialIdDeleteErrors[keyof DeleteMaterialApiMaterialsMaterialIdDeleteErrors];
+export type GetCompositionStatusApiTasksTaskIdCompositionStatusGetError = GetCompositionStatusApiTasksTaskIdCompositionStatusGetErrors[keyof GetCompositionStatusApiTasksTaskIdCompositionStatusGetErrors];
 
-export type DeleteMaterialApiMaterialsMaterialIdDeleteResponses = {
+export type GetCompositionStatusApiTasksTaskIdCompositionStatusGetResponses = {
     /**
      * Successful Response
      */
-    204: void;
+    200: CompositionJobResponse;
 };
 
-export type DeleteMaterialApiMaterialsMaterialIdDeleteResponse = DeleteMaterialApiMaterialsMaterialIdDeleteResponses[keyof DeleteMaterialApiMaterialsMaterialIdDeleteResponses];
-
-export type GetMaterialApiMaterialsMaterialIdGetData = {
-    body?: never;
-    path: {
-        /**
-         * Material Id
-         */
-        material_id: number;
-    };
-    query?: never;
-    url: '/api/materials/{material_id}';
-};
-
-export type GetMaterialApiMaterialsMaterialIdGetErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type GetMaterialApiMaterialsMaterialIdGetError = GetMaterialApiMaterialsMaterialIdGetErrors[keyof GetMaterialApiMaterialsMaterialIdGetErrors];
-
-export type GetMaterialApiMaterialsMaterialIdGetResponses = {
-    /**
-     * Successful Response
-     */
-    200: MaterialResponse;
-};
-
-export type GetMaterialApiMaterialsMaterialIdGetResponse = GetMaterialApiMaterialsMaterialIdGetResponses[keyof GetMaterialApiMaterialsMaterialIdGetResponses];
-
-export type UpdateMaterialApiMaterialsMaterialIdPutData = {
-    body: MaterialUpdate;
-    path: {
-        /**
-         * Material Id
-         */
-        material_id: number;
-    };
-    query?: never;
-    url: '/api/materials/{material_id}';
-};
-
-export type UpdateMaterialApiMaterialsMaterialIdPutErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type UpdateMaterialApiMaterialsMaterialIdPutError = UpdateMaterialApiMaterialsMaterialIdPutErrors[keyof UpdateMaterialApiMaterialsMaterialIdPutErrors];
-
-export type UpdateMaterialApiMaterialsMaterialIdPutResponses = {
-    /**
-     * Successful Response
-     */
-    200: MaterialResponse;
-};
-
-export type UpdateMaterialApiMaterialsMaterialIdPutResponse = UpdateMaterialApiMaterialsMaterialIdPutResponses[keyof UpdateMaterialApiMaterialsMaterialIdPutResponses];
-
-export type GetMaterialContentApiMaterialsMaterialIdContentGetData = {
-    body?: never;
-    path: {
-        /**
-         * Material Id
-         */
-        material_id: number;
-    };
-    query?: never;
-    url: '/api/materials/{material_id}/content';
-};
-
-export type GetMaterialContentApiMaterialsMaterialIdContentGetErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type GetMaterialContentApiMaterialsMaterialIdContentGetError = GetMaterialContentApiMaterialsMaterialIdContentGetErrors[keyof GetMaterialContentApiMaterialsMaterialIdContentGetErrors];
-
-export type GetMaterialContentApiMaterialsMaterialIdContentGetResponses = {
-    /**
-     * Successful Response
-     */
-    200: unknown;
-};
+export type GetCompositionStatusApiTasksTaskIdCompositionStatusGetResponse = GetCompositionStatusApiTasksTaskIdCompositionStatusGetResponses[keyof GetCompositionStatusApiTasksTaskIdCompositionStatusGetResponses];
 
 export type GetPublishConfigApiPublishConfigGetData = {
     body?: never;
@@ -2293,76 +3942,19 @@ export type BackupDataApiSystemBackupPostResponses = {
     200: unknown;
 };
 
-export type ListProductsApiSystemProductsGetData = {
+export type MaterialStatsApiSystemMaterialStatsGetData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/api/system/products';
+    url: '/api/system/material-stats';
 };
 
-export type ListProductsApiSystemProductsGetResponses = {
+export type MaterialStatsApiSystemMaterialStatsGetResponses = {
     /**
      * Successful Response
      */
-    200: ProductListResponse;
+    200: unknown;
 };
-
-export type ListProductsApiSystemProductsGetResponse = ListProductsApiSystemProductsGetResponses[keyof ListProductsApiSystemProductsGetResponses];
-
-export type CreateProductApiSystemProductsPostData = {
-    body: ProductCreate;
-    path?: never;
-    query?: never;
-    url: '/api/system/products';
-};
-
-export type CreateProductApiSystemProductsPostErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type CreateProductApiSystemProductsPostError = CreateProductApiSystemProductsPostErrors[keyof CreateProductApiSystemProductsPostErrors];
-
-export type CreateProductApiSystemProductsPostResponses = {
-    /**
-     * Successful Response
-     */
-    201: ProductResponse;
-};
-
-export type CreateProductApiSystemProductsPostResponse = CreateProductApiSystemProductsPostResponses[keyof CreateProductApiSystemProductsPostResponses];
-
-export type DeleteProductApiSystemProductsProductIdDeleteData = {
-    body?: never;
-    path: {
-        /**
-         * Product Id
-         */
-        product_id: number;
-    };
-    query?: never;
-    url: '/api/system/products/{product_id}';
-};
-
-export type DeleteProductApiSystemProductsProductIdDeleteErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type DeleteProductApiSystemProductsProductIdDeleteError = DeleteProductApiSystemProductsProductIdDeleteErrors[keyof DeleteProductApiSystemProductsProductIdDeleteErrors];
-
-export type DeleteProductApiSystemProductsProductIdDeleteResponses = {
-    /**
-     * Successful Response
-     */
-    204: void;
-};
-
-export type DeleteProductApiSystemProductsProductIdDeleteResponse = DeleteProductApiSystemProductsProductIdDeleteResponses[keyof DeleteProductApiSystemProductsProductIdDeleteResponses];
 
 export type GetVideoInfoApiAiVideoInfoGetData = {
     body?: never;
@@ -2548,6 +4140,1574 @@ export type FullPipelineApiAiFullPipelinePostResponses = {
 };
 
 export type FullPipelineApiAiFullPipelinePostResponse = FullPipelineApiAiFullPipelinePostResponses[keyof FullPipelineApiAiFullPipelinePostResponses];
+
+export type ListProductsApiProductsGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Name
+         *
+         * 按名称模糊搜索
+         */
+        name?: string | null;
+    };
+    url: '/api/products';
+};
+
+export type ListProductsApiProductsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListProductsApiProductsGetError = ListProductsApiProductsGetErrors[keyof ListProductsApiProductsGetErrors];
+
+export type ListProductsApiProductsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ProductListResponse;
+};
+
+export type ListProductsApiProductsGetResponse = ListProductsApiProductsGetResponses[keyof ListProductsApiProductsGetResponses];
+
+export type CreateProductApiProductsPostData = {
+    body: ProductCreate;
+    path?: never;
+    query?: never;
+    url: '/api/products';
+};
+
+export type CreateProductApiProductsPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateProductApiProductsPostError = CreateProductApiProductsPostErrors[keyof CreateProductApiProductsPostErrors];
+
+export type CreateProductApiProductsPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: ProductDetailResponse;
+};
+
+export type CreateProductApiProductsPostResponse = CreateProductApiProductsPostResponses[keyof CreateProductApiProductsPostResponses];
+
+export type DeleteProductApiProductsProductIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Product Id
+         */
+        product_id: number;
+    };
+    query?: never;
+    url: '/api/products/{product_id}';
+};
+
+export type DeleteProductApiProductsProductIdDeleteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteProductApiProductsProductIdDeleteError = DeleteProductApiProductsProductIdDeleteErrors[keyof DeleteProductApiProductsProductIdDeleteErrors];
+
+export type DeleteProductApiProductsProductIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteProductApiProductsProductIdDeleteResponse = DeleteProductApiProductsProductIdDeleteResponses[keyof DeleteProductApiProductsProductIdDeleteResponses];
+
+export type GetProductApiProductsProductIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Product Id
+         */
+        product_id: number;
+    };
+    query?: never;
+    url: '/api/products/{product_id}';
+};
+
+export type GetProductApiProductsProductIdGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetProductApiProductsProductIdGetError = GetProductApiProductsProductIdGetErrors[keyof GetProductApiProductsProductIdGetErrors];
+
+export type GetProductApiProductsProductIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ProductDetailResponse;
+};
+
+export type GetProductApiProductsProductIdGetResponse = GetProductApiProductsProductIdGetResponses[keyof GetProductApiProductsProductIdGetResponses];
+
+export type UpdateProductApiProductsProductIdPutData = {
+    body: ProductUpdate;
+    path: {
+        /**
+         * Product Id
+         */
+        product_id: number;
+    };
+    query?: never;
+    url: '/api/products/{product_id}';
+};
+
+export type UpdateProductApiProductsProductIdPutErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateProductApiProductsProductIdPutError = UpdateProductApiProductsProductIdPutErrors[keyof UpdateProductApiProductsProductIdPutErrors];
+
+export type UpdateProductApiProductsProductIdPutResponses = {
+    /**
+     * Successful Response
+     */
+    200: ProductResponse;
+};
+
+export type UpdateProductApiProductsProductIdPutResponse = UpdateProductApiProductsProductIdPutResponses[keyof UpdateProductApiProductsProductIdPutResponses];
+
+export type ParseProductMaterialsApiProductsProductIdParseMaterialsPostData = {
+    body?: never;
+    path: {
+        /**
+         * Product Id
+         */
+        product_id: number;
+    };
+    query?: never;
+    url: '/api/products/{product_id}/parse-materials';
+};
+
+export type ParseProductMaterialsApiProductsProductIdParseMaterialsPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ParseProductMaterialsApiProductsProductIdParseMaterialsPostError = ParseProductMaterialsApiProductsProductIdParseMaterialsPostErrors[keyof ParseProductMaterialsApiProductsProductIdParseMaterialsPostErrors];
+
+export type ParseProductMaterialsApiProductsProductIdParseMaterialsPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: ProductDetailResponse;
+};
+
+export type ParseProductMaterialsApiProductsProductIdParseMaterialsPostResponse = ParseProductMaterialsApiProductsProductIdParseMaterialsPostResponses[keyof ParseProductMaterialsApiProductsProductIdParseMaterialsPostResponses];
+
+export type GetProductCoversApiProductsProductIdCoversGetData = {
+    body?: never;
+    path: {
+        /**
+         * Product Id
+         */
+        product_id: number;
+    };
+    query?: never;
+    url: '/api/products/{product_id}/covers';
+};
+
+export type GetProductCoversApiProductsProductIdCoversGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetProductCoversApiProductsProductIdCoversGetError = GetProductCoversApiProductsProductIdCoversGetErrors[keyof GetProductCoversApiProductsProductIdCoversGetErrors];
+
+export type GetProductCoversApiProductsProductIdCoversGetResponses = {
+    /**
+     * Response Get Product Covers Api Products  Product Id  Covers Get
+     *
+     * Successful Response
+     */
+    200: Array<CoverResponse>;
+};
+
+export type GetProductCoversApiProductsProductIdCoversGetResponse = GetProductCoversApiProductsProductIdCoversGetResponses[keyof GetProductCoversApiProductsProductIdCoversGetResponses];
+
+export type GetProductTopicsApiProductsProductIdTopicsGetData = {
+    body?: never;
+    path: {
+        /**
+         * Product Id
+         */
+        product_id: number;
+    };
+    query?: never;
+    url: '/api/products/{product_id}/topics';
+};
+
+export type GetProductTopicsApiProductsProductIdTopicsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetProductTopicsApiProductsProductIdTopicsGetError = GetProductTopicsApiProductsProductIdTopicsGetErrors[keyof GetProductTopicsApiProductsProductIdTopicsGetErrors];
+
+export type GetProductTopicsApiProductsProductIdTopicsGetResponses = {
+    /**
+     * Response Get Product Topics Api Products  Product Id  Topics Get
+     *
+     * Successful Response
+     */
+    200: Array<TopicResponse>;
+};
+
+export type GetProductTopicsApiProductsProductIdTopicsGetResponse = GetProductTopicsApiProductsProductIdTopicsGetResponses[keyof GetProductTopicsApiProductsProductIdTopicsGetResponses];
+
+export type ListVideosApiVideosGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Product Id
+         *
+         * 按商品ID过滤
+         */
+        product_id?: number | null;
+        /**
+         * Keyword
+         *
+         * 按名称搜索
+         */
+        keyword?: string | null;
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/videos';
+};
+
+export type ListVideosApiVideosGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListVideosApiVideosGetError = ListVideosApiVideosGetErrors[keyof ListVideosApiVideosGetErrors];
+
+export type ListVideosApiVideosGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: VideoListResponse;
+};
+
+export type ListVideosApiVideosGetResponse = ListVideosApiVideosGetResponses[keyof ListVideosApiVideosGetResponses];
+
+export type CreateVideoApiVideosPostData = {
+    body: VideoCreate;
+    path?: never;
+    query?: never;
+    url: '/api/videos';
+};
+
+export type CreateVideoApiVideosPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateVideoApiVideosPostError = CreateVideoApiVideosPostErrors[keyof CreateVideoApiVideosPostErrors];
+
+export type CreateVideoApiVideosPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: VideoResponse;
+};
+
+export type CreateVideoApiVideosPostResponse = CreateVideoApiVideosPostResponses[keyof CreateVideoApiVideosPostResponses];
+
+export type DeleteVideoApiVideosVideoIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Video Id
+         */
+        video_id: number;
+    };
+    query?: never;
+    url: '/api/videos/{video_id}';
+};
+
+export type DeleteVideoApiVideosVideoIdDeleteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteVideoApiVideosVideoIdDeleteError = DeleteVideoApiVideosVideoIdDeleteErrors[keyof DeleteVideoApiVideosVideoIdDeleteErrors];
+
+export type DeleteVideoApiVideosVideoIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteVideoApiVideosVideoIdDeleteResponse = DeleteVideoApiVideosVideoIdDeleteResponses[keyof DeleteVideoApiVideosVideoIdDeleteResponses];
+
+export type GetVideoApiVideosVideoIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Video Id
+         */
+        video_id: number;
+    };
+    query?: never;
+    url: '/api/videos/{video_id}';
+};
+
+export type GetVideoApiVideosVideoIdGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetVideoApiVideosVideoIdGetError = GetVideoApiVideosVideoIdGetErrors[keyof GetVideoApiVideosVideoIdGetErrors];
+
+export type GetVideoApiVideosVideoIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: VideoResponse;
+};
+
+export type GetVideoApiVideosVideoIdGetResponse = GetVideoApiVideosVideoIdGetResponses[keyof GetVideoApiVideosVideoIdGetResponses];
+
+export type UpdateVideoApiVideosVideoIdPutData = {
+    body: VideoUpdate;
+    path: {
+        /**
+         * Video Id
+         */
+        video_id: number;
+    };
+    query?: never;
+    url: '/api/videos/{video_id}';
+};
+
+export type UpdateVideoApiVideosVideoIdPutErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateVideoApiVideosVideoIdPutError = UpdateVideoApiVideosVideoIdPutErrors[keyof UpdateVideoApiVideosVideoIdPutErrors];
+
+export type UpdateVideoApiVideosVideoIdPutResponses = {
+    /**
+     * Successful Response
+     */
+    200: VideoResponse;
+};
+
+export type UpdateVideoApiVideosVideoIdPutResponse = UpdateVideoApiVideosVideoIdPutResponses[keyof UpdateVideoApiVideosVideoIdPutResponses];
+
+export type BatchDeleteVideosApiVideosBatchDeletePostData = {
+    body: SchemasBatchDeleteRequest;
+    path?: never;
+    query?: never;
+    url: '/api/videos/batch-delete';
+};
+
+export type BatchDeleteVideosApiVideosBatchDeletePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BatchDeleteVideosApiVideosBatchDeletePostError = BatchDeleteVideosApiVideosBatchDeletePostErrors[keyof BatchDeleteVideosApiVideosBatchDeletePostErrors];
+
+export type BatchDeleteVideosApiVideosBatchDeletePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SchemasBatchDeleteResponse;
+};
+
+export type BatchDeleteVideosApiVideosBatchDeletePostResponse = BatchDeleteVideosApiVideosBatchDeletePostResponses[keyof BatchDeleteVideosApiVideosBatchDeletePostResponses];
+
+export type UploadVideoApiVideosUploadPostData = {
+    body: BodyUploadVideoApiVideosUploadPost;
+    path?: never;
+    query?: {
+        /**
+         * Product Id
+         *
+         * 关联的商品ID
+         */
+        product_id?: number | null;
+    };
+    url: '/api/videos/upload';
+};
+
+export type UploadVideoApiVideosUploadPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UploadVideoApiVideosUploadPostError = UploadVideoApiVideosUploadPostErrors[keyof UploadVideoApiVideosUploadPostErrors];
+
+export type UploadVideoApiVideosUploadPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: VideoResponse;
+};
+
+export type UploadVideoApiVideosUploadPostResponse = UploadVideoApiVideosUploadPostResponses[keyof UploadVideoApiVideosUploadPostResponses];
+
+export type ScanVideosApiVideosScanPostData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Skip Metadata
+         *
+         * 跳过 FFprobe 和 hash 计算，仅快速入库
+         */
+        skip_metadata?: boolean;
+    };
+    url: '/api/videos/scan';
+};
+
+export type ScanVideosApiVideosScanPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ScanVideosApiVideosScanPostError = ScanVideosApiVideosScanPostErrors[keyof ScanVideosApiVideosScanPostErrors];
+
+export type ScanVideosApiVideosScanPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: ScanResult;
+};
+
+export type ScanVideosApiVideosScanPostResponse = ScanVideosApiVideosScanPostResponses[keyof ScanVideosApiVideosScanPostResponses];
+
+export type ValidateVideosApiVideosValidatePostData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/videos/validate';
+};
+
+export type ValidateVideosApiVideosValidatePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: ValidateResult;
+};
+
+export type ValidateVideosApiVideosValidatePostResponse = ValidateVideosApiVideosValidatePostResponses[keyof ValidateVideosApiVideosValidatePostResponses];
+
+export type StreamVideoApiVideosVideoIdStreamGetData = {
+    body?: never;
+    path: {
+        /**
+         * Video Id
+         */
+        video_id: number;
+    };
+    query?: never;
+    url: '/api/videos/{video_id}/stream';
+};
+
+export type StreamVideoApiVideosVideoIdStreamGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type StreamVideoApiVideosVideoIdStreamGetError = StreamVideoApiVideosVideoIdStreamGetErrors[keyof StreamVideoApiVideosVideoIdStreamGetErrors];
+
+export type StreamVideoApiVideosVideoIdStreamGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type ListCopywritingsApiCopywritingsGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Product Id
+         *
+         * 按商品ID过滤
+         */
+        product_id?: number | null;
+        /**
+         * Source Type
+         *
+         * 按来源类型过滤
+         */
+        source_type?: string | null;
+        /**
+         * Keyword
+         *
+         * 按内容搜索
+         */
+        keyword?: string | null;
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/copywritings';
+};
+
+export type ListCopywritingsApiCopywritingsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListCopywritingsApiCopywritingsGetError = ListCopywritingsApiCopywritingsGetErrors[keyof ListCopywritingsApiCopywritingsGetErrors];
+
+export type ListCopywritingsApiCopywritingsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: CopywritingListResponse;
+};
+
+export type ListCopywritingsApiCopywritingsGetResponse = ListCopywritingsApiCopywritingsGetResponses[keyof ListCopywritingsApiCopywritingsGetResponses];
+
+export type CreateCopywritingApiCopywritingsPostData = {
+    body: CopywritingCreate;
+    path?: never;
+    query?: never;
+    url: '/api/copywritings';
+};
+
+export type CreateCopywritingApiCopywritingsPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateCopywritingApiCopywritingsPostError = CreateCopywritingApiCopywritingsPostErrors[keyof CreateCopywritingApiCopywritingsPostErrors];
+
+export type CreateCopywritingApiCopywritingsPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: CopywritingResponse;
+};
+
+export type CreateCopywritingApiCopywritingsPostResponse = CreateCopywritingApiCopywritingsPostResponses[keyof CreateCopywritingApiCopywritingsPostResponses];
+
+export type DeleteCopywritingApiCopywritingsCopywritingIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Copywriting Id
+         */
+        copywriting_id: number;
+    };
+    query?: never;
+    url: '/api/copywritings/{copywriting_id}';
+};
+
+export type DeleteCopywritingApiCopywritingsCopywritingIdDeleteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteCopywritingApiCopywritingsCopywritingIdDeleteError = DeleteCopywritingApiCopywritingsCopywritingIdDeleteErrors[keyof DeleteCopywritingApiCopywritingsCopywritingIdDeleteErrors];
+
+export type DeleteCopywritingApiCopywritingsCopywritingIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteCopywritingApiCopywritingsCopywritingIdDeleteResponse = DeleteCopywritingApiCopywritingsCopywritingIdDeleteResponses[keyof DeleteCopywritingApiCopywritingsCopywritingIdDeleteResponses];
+
+export type GetCopywritingApiCopywritingsCopywritingIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Copywriting Id
+         */
+        copywriting_id: number;
+    };
+    query?: never;
+    url: '/api/copywritings/{copywriting_id}';
+};
+
+export type GetCopywritingApiCopywritingsCopywritingIdGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetCopywritingApiCopywritingsCopywritingIdGetError = GetCopywritingApiCopywritingsCopywritingIdGetErrors[keyof GetCopywritingApiCopywritingsCopywritingIdGetErrors];
+
+export type GetCopywritingApiCopywritingsCopywritingIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: CopywritingResponse;
+};
+
+export type GetCopywritingApiCopywritingsCopywritingIdGetResponse = GetCopywritingApiCopywritingsCopywritingIdGetResponses[keyof GetCopywritingApiCopywritingsCopywritingIdGetResponses];
+
+export type UpdateCopywritingApiCopywritingsCopywritingIdPutData = {
+    body: CopywritingUpdate;
+    path: {
+        /**
+         * Copywriting Id
+         */
+        copywriting_id: number;
+    };
+    query?: never;
+    url: '/api/copywritings/{copywriting_id}';
+};
+
+export type UpdateCopywritingApiCopywritingsCopywritingIdPutErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateCopywritingApiCopywritingsCopywritingIdPutError = UpdateCopywritingApiCopywritingsCopywritingIdPutErrors[keyof UpdateCopywritingApiCopywritingsCopywritingIdPutErrors];
+
+export type UpdateCopywritingApiCopywritingsCopywritingIdPutResponses = {
+    /**
+     * Successful Response
+     */
+    200: CopywritingResponse;
+};
+
+export type UpdateCopywritingApiCopywritingsCopywritingIdPutResponse = UpdateCopywritingApiCopywritingsCopywritingIdPutResponses[keyof UpdateCopywritingApiCopywritingsCopywritingIdPutResponses];
+
+export type BatchDeleteCopywritingsApiCopywritingsBatchDeletePostData = {
+    body: ApiCopywritingBatchDeleteRequest;
+    path?: never;
+    query?: never;
+    url: '/api/copywritings/batch-delete';
+};
+
+export type BatchDeleteCopywritingsApiCopywritingsBatchDeletePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BatchDeleteCopywritingsApiCopywritingsBatchDeletePostError = BatchDeleteCopywritingsApiCopywritingsBatchDeletePostErrors[keyof BatchDeleteCopywritingsApiCopywritingsBatchDeletePostErrors];
+
+export type BatchDeleteCopywritingsApiCopywritingsBatchDeletePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: ApiCopywritingBatchDeleteResponse;
+};
+
+export type BatchDeleteCopywritingsApiCopywritingsBatchDeletePostResponse = BatchDeleteCopywritingsApiCopywritingsBatchDeletePostResponses[keyof BatchDeleteCopywritingsApiCopywritingsBatchDeletePostResponses];
+
+export type ImportCopywritingsApiCopywritingsImportPostData = {
+    body: BodyImportCopywritingsApiCopywritingsImportPost;
+    path?: never;
+    query?: {
+        /**
+         * Product Id
+         *
+         * 关联的商品ID
+         */
+        product_id?: number | null;
+    };
+    url: '/api/copywritings/import';
+};
+
+export type ImportCopywritingsApiCopywritingsImportPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ImportCopywritingsApiCopywritingsImportPostError = ImportCopywritingsApiCopywritingsImportPostErrors[keyof ImportCopywritingsApiCopywritingsImportPostErrors];
+
+export type ImportCopywritingsApiCopywritingsImportPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: ImportResult;
+};
+
+export type ImportCopywritingsApiCopywritingsImportPostResponse = ImportCopywritingsApiCopywritingsImportPostResponses[keyof ImportCopywritingsApiCopywritingsImportPostResponses];
+
+export type UploadCoverApiCoversUploadPostData = {
+    body: BodyUploadCoverApiCoversUploadPost;
+    path?: never;
+    query?: {
+        /**
+         * Video Id
+         *
+         * 关联的视频ID
+         */
+        video_id?: number | null;
+    };
+    url: '/api/covers/upload';
+};
+
+export type UploadCoverApiCoversUploadPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UploadCoverApiCoversUploadPostError = UploadCoverApiCoversUploadPostErrors[keyof UploadCoverApiCoversUploadPostErrors];
+
+export type UploadCoverApiCoversUploadPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: CoverResponse;
+};
+
+export type UploadCoverApiCoversUploadPostResponse = UploadCoverApiCoversUploadPostResponses[keyof UploadCoverApiCoversUploadPostResponses];
+
+export type ListCoversApiCoversGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Video Id
+         *
+         * 按视频ID过滤
+         */
+        video_id?: number | null;
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/covers';
+};
+
+export type ListCoversApiCoversGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListCoversApiCoversGetError = ListCoversApiCoversGetErrors[keyof ListCoversApiCoversGetErrors];
+
+export type ListCoversApiCoversGetResponses = {
+    /**
+     * Response List Covers Api Covers Get
+     *
+     * Successful Response
+     */
+    200: Array<CoverResponse>;
+};
+
+export type ListCoversApiCoversGetResponse = ListCoversApiCoversGetResponses[keyof ListCoversApiCoversGetResponses];
+
+export type DeleteCoverApiCoversCoverIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Cover Id
+         */
+        cover_id: number;
+    };
+    query?: never;
+    url: '/api/covers/{cover_id}';
+};
+
+export type DeleteCoverApiCoversCoverIdDeleteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteCoverApiCoversCoverIdDeleteError = DeleteCoverApiCoversCoverIdDeleteErrors[keyof DeleteCoverApiCoversCoverIdDeleteErrors];
+
+export type DeleteCoverApiCoversCoverIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteCoverApiCoversCoverIdDeleteResponse = DeleteCoverApiCoversCoverIdDeleteResponses[keyof DeleteCoverApiCoversCoverIdDeleteResponses];
+
+export type BatchDeleteCoversApiCoversBatchDeletePostData = {
+    body: SchemasBatchDeleteRequest;
+    path?: never;
+    query?: never;
+    url: '/api/covers/batch-delete';
+};
+
+export type BatchDeleteCoversApiCoversBatchDeletePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BatchDeleteCoversApiCoversBatchDeletePostError = BatchDeleteCoversApiCoversBatchDeletePostErrors[keyof BatchDeleteCoversApiCoversBatchDeletePostErrors];
+
+export type BatchDeleteCoversApiCoversBatchDeletePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SchemasBatchDeleteResponse;
+};
+
+export type BatchDeleteCoversApiCoversBatchDeletePostResponse = BatchDeleteCoversApiCoversBatchDeletePostResponses[keyof BatchDeleteCoversApiCoversBatchDeletePostResponses];
+
+export type ExtractCoverApiCoversExtractPostData = {
+    body: ExtractCoverRequest;
+    path?: never;
+    query?: never;
+    url: '/api/covers/extract';
+};
+
+export type ExtractCoverApiCoversExtractPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ExtractCoverApiCoversExtractPostError = ExtractCoverApiCoversExtractPostErrors[keyof ExtractCoverApiCoversExtractPostErrors];
+
+export type ExtractCoverApiCoversExtractPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: CoverResponse;
+};
+
+export type ExtractCoverApiCoversExtractPostResponse = ExtractCoverApiCoversExtractPostResponses[keyof ExtractCoverApiCoversExtractPostResponses];
+
+export type GetCoverImageApiCoversCoverIdImageGetData = {
+    body?: never;
+    path: {
+        /**
+         * Cover Id
+         */
+        cover_id: number;
+    };
+    query?: never;
+    url: '/api/covers/{cover_id}/image';
+};
+
+export type GetCoverImageApiCoversCoverIdImageGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetCoverImageApiCoversCoverIdImageGetError = GetCoverImageApiCoversCoverIdImageGetErrors[keyof GetCoverImageApiCoversCoverIdImageGetErrors];
+
+export type GetCoverImageApiCoversCoverIdImageGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type UploadAudioApiAudiosUploadPostData = {
+    body: BodyUploadAudioApiAudiosUploadPost;
+    path?: never;
+    query?: never;
+    url: '/api/audios/upload';
+};
+
+export type UploadAudioApiAudiosUploadPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UploadAudioApiAudiosUploadPostError = UploadAudioApiAudiosUploadPostErrors[keyof UploadAudioApiAudiosUploadPostErrors];
+
+export type UploadAudioApiAudiosUploadPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: AudioResponse;
+};
+
+export type UploadAudioApiAudiosUploadPostResponse = UploadAudioApiAudiosUploadPostResponses[keyof UploadAudioApiAudiosUploadPostResponses];
+
+export type ListAudiosApiAudiosGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Keyword
+         *
+         * 按名称模糊搜索
+         */
+        keyword?: string;
+    };
+    url: '/api/audios';
+};
+
+export type ListAudiosApiAudiosGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListAudiosApiAudiosGetError = ListAudiosApiAudiosGetErrors[keyof ListAudiosApiAudiosGetErrors];
+
+export type ListAudiosApiAudiosGetResponses = {
+    /**
+     * Response List Audios Api Audios Get
+     *
+     * Successful Response
+     */
+    200: Array<AudioResponse>;
+};
+
+export type ListAudiosApiAudiosGetResponse = ListAudiosApiAudiosGetResponses[keyof ListAudiosApiAudiosGetResponses];
+
+export type DeleteAudioApiAudiosAudioIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Audio Id
+         */
+        audio_id: number;
+    };
+    query?: never;
+    url: '/api/audios/{audio_id}';
+};
+
+export type DeleteAudioApiAudiosAudioIdDeleteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteAudioApiAudiosAudioIdDeleteError = DeleteAudioApiAudiosAudioIdDeleteErrors[keyof DeleteAudioApiAudiosAudioIdDeleteErrors];
+
+export type DeleteAudioApiAudiosAudioIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteAudioApiAudiosAudioIdDeleteResponse = DeleteAudioApiAudiosAudioIdDeleteResponses[keyof DeleteAudioApiAudiosAudioIdDeleteResponses];
+
+export type BatchDeleteAudiosApiAudiosBatchDeletePostData = {
+    body: SchemasBatchDeleteRequest;
+    path?: never;
+    query?: never;
+    url: '/api/audios/batch-delete';
+};
+
+export type BatchDeleteAudiosApiAudiosBatchDeletePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BatchDeleteAudiosApiAudiosBatchDeletePostError = BatchDeleteAudiosApiAudiosBatchDeletePostErrors[keyof BatchDeleteAudiosApiAudiosBatchDeletePostErrors];
+
+export type BatchDeleteAudiosApiAudiosBatchDeletePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SchemasBatchDeleteResponse;
+};
+
+export type BatchDeleteAudiosApiAudiosBatchDeletePostResponse = BatchDeleteAudiosApiAudiosBatchDeletePostResponses[keyof BatchDeleteAudiosApiAudiosBatchDeletePostResponses];
+
+export type ListTopicsApiTopicsGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Sort
+         *
+         * 排序字段: created_at | heat
+         */
+        sort?: string;
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Keyword
+         *
+         * 按名称模糊搜索
+         */
+        keyword?: string;
+        /**
+         * Source
+         *
+         * 按来源精确过滤
+         */
+        source?: string;
+    };
+    url: '/api/topics';
+};
+
+export type ListTopicsApiTopicsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListTopicsApiTopicsGetError = ListTopicsApiTopicsGetErrors[keyof ListTopicsApiTopicsGetErrors];
+
+export type ListTopicsApiTopicsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: TopicListResponse;
+};
+
+export type ListTopicsApiTopicsGetResponse = ListTopicsApiTopicsGetResponses[keyof ListTopicsApiTopicsGetResponses];
+
+export type CreateTopicApiTopicsPostData = {
+    body: TopicCreate;
+    path?: never;
+    query?: never;
+    url: '/api/topics';
+};
+
+export type CreateTopicApiTopicsPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateTopicApiTopicsPostError = CreateTopicApiTopicsPostErrors[keyof CreateTopicApiTopicsPostErrors];
+
+export type CreateTopicApiTopicsPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: TopicResponse;
+};
+
+export type CreateTopicApiTopicsPostResponse = CreateTopicApiTopicsPostResponses[keyof CreateTopicApiTopicsPostResponses];
+
+export type GetGlobalTopicsApiTopicsGlobalGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/topics/global';
+};
+
+export type GetGlobalTopicsApiTopicsGlobalGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: GlobalTopicResponse;
+};
+
+export type GetGlobalTopicsApiTopicsGlobalGetResponse = GetGlobalTopicsApiTopicsGlobalGetResponses[keyof GetGlobalTopicsApiTopicsGlobalGetResponses];
+
+export type SetGlobalTopicsApiTopicsGlobalPutData = {
+    body: GlobalTopicRequest;
+    path?: never;
+    query?: never;
+    url: '/api/topics/global';
+};
+
+export type SetGlobalTopicsApiTopicsGlobalPutErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SetGlobalTopicsApiTopicsGlobalPutError = SetGlobalTopicsApiTopicsGlobalPutErrors[keyof SetGlobalTopicsApiTopicsGlobalPutErrors];
+
+export type SetGlobalTopicsApiTopicsGlobalPutResponses = {
+    /**
+     * Successful Response
+     */
+    200: GlobalTopicResponse;
+};
+
+export type SetGlobalTopicsApiTopicsGlobalPutResponse = SetGlobalTopicsApiTopicsGlobalPutResponses[keyof SetGlobalTopicsApiTopicsGlobalPutResponses];
+
+export type SearchTopicsApiTopicsSearchGetData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Keyword
+         *
+         * 搜索关键词
+         */
+        keyword: string;
+    };
+    url: '/api/topics/search';
+};
+
+export type SearchTopicsApiTopicsSearchGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SearchTopicsApiTopicsSearchGetError = SearchTopicsApiTopicsSearchGetErrors[keyof SearchTopicsApiTopicsSearchGetErrors];
+
+export type SearchTopicsApiTopicsSearchGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: TopicListResponse;
+};
+
+export type SearchTopicsApiTopicsSearchGetResponse = SearchTopicsApiTopicsSearchGetResponses[keyof SearchTopicsApiTopicsSearchGetResponses];
+
+export type DeleteTopicApiTopicsTopicIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Topic Id
+         */
+        topic_id: number;
+    };
+    query?: never;
+    url: '/api/topics/{topic_id}';
+};
+
+export type DeleteTopicApiTopicsTopicIdDeleteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteTopicApiTopicsTopicIdDeleteError = DeleteTopicApiTopicsTopicIdDeleteErrors[keyof DeleteTopicApiTopicsTopicIdDeleteErrors];
+
+export type DeleteTopicApiTopicsTopicIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteTopicApiTopicsTopicIdDeleteResponse = DeleteTopicApiTopicsTopicIdDeleteResponses[keyof DeleteTopicApiTopicsTopicIdDeleteResponses];
+
+export type BatchDeleteTopicsApiTopicsBatchDeletePostData = {
+    body: SchemasBatchDeleteRequest;
+    path?: never;
+    query?: never;
+    url: '/api/topics/batch-delete';
+};
+
+export type BatchDeleteTopicsApiTopicsBatchDeletePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BatchDeleteTopicsApiTopicsBatchDeletePostError = BatchDeleteTopicsApiTopicsBatchDeletePostErrors[keyof BatchDeleteTopicsApiTopicsBatchDeletePostErrors];
+
+export type BatchDeleteTopicsApiTopicsBatchDeletePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SchemasBatchDeleteResponse;
+};
+
+export type BatchDeleteTopicsApiTopicsBatchDeletePostResponse = BatchDeleteTopicsApiTopicsBatchDeletePostResponses[keyof BatchDeleteTopicsApiTopicsBatchDeletePostResponses];
+
+export type ListTopicGroupsApiTopicGroupsGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/topic-groups';
+};
+
+export type ListTopicGroupsApiTopicGroupsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: TopicGroupListResponse;
+};
+
+export type ListTopicGroupsApiTopicGroupsGetResponse = ListTopicGroupsApiTopicGroupsGetResponses[keyof ListTopicGroupsApiTopicGroupsGetResponses];
+
+export type CreateTopicGroupApiTopicGroupsPostData = {
+    body: TopicGroupCreate;
+    path?: never;
+    query?: never;
+    url: '/api/topic-groups';
+};
+
+export type CreateTopicGroupApiTopicGroupsPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateTopicGroupApiTopicGroupsPostError = CreateTopicGroupApiTopicGroupsPostErrors[keyof CreateTopicGroupApiTopicGroupsPostErrors];
+
+export type CreateTopicGroupApiTopicGroupsPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: TopicGroupResponse;
+};
+
+export type CreateTopicGroupApiTopicGroupsPostResponse = CreateTopicGroupApiTopicGroupsPostResponses[keyof CreateTopicGroupApiTopicGroupsPostResponses];
+
+export type DeleteTopicGroupApiTopicGroupsGroupIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Group Id
+         */
+        group_id: number;
+    };
+    query?: never;
+    url: '/api/topic-groups/{group_id}';
+};
+
+export type DeleteTopicGroupApiTopicGroupsGroupIdDeleteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteTopicGroupApiTopicGroupsGroupIdDeleteError = DeleteTopicGroupApiTopicGroupsGroupIdDeleteErrors[keyof DeleteTopicGroupApiTopicGroupsGroupIdDeleteErrors];
+
+export type DeleteTopicGroupApiTopicGroupsGroupIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteTopicGroupApiTopicGroupsGroupIdDeleteResponse = DeleteTopicGroupApiTopicGroupsGroupIdDeleteResponses[keyof DeleteTopicGroupApiTopicGroupsGroupIdDeleteResponses];
+
+export type GetTopicGroupApiTopicGroupsGroupIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Group Id
+         */
+        group_id: number;
+    };
+    query?: never;
+    url: '/api/topic-groups/{group_id}';
+};
+
+export type GetTopicGroupApiTopicGroupsGroupIdGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetTopicGroupApiTopicGroupsGroupIdGetError = GetTopicGroupApiTopicGroupsGroupIdGetErrors[keyof GetTopicGroupApiTopicGroupsGroupIdGetErrors];
+
+export type GetTopicGroupApiTopicGroupsGroupIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: TopicGroupResponse;
+};
+
+export type GetTopicGroupApiTopicGroupsGroupIdGetResponse = GetTopicGroupApiTopicGroupsGroupIdGetResponses[keyof GetTopicGroupApiTopicGroupsGroupIdGetResponses];
+
+export type UpdateTopicGroupApiTopicGroupsGroupIdPutData = {
+    body: TopicGroupUpdate;
+    path: {
+        /**
+         * Group Id
+         */
+        group_id: number;
+    };
+    query?: never;
+    url: '/api/topic-groups/{group_id}';
+};
+
+export type UpdateTopicGroupApiTopicGroupsGroupIdPutErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateTopicGroupApiTopicGroupsGroupIdPutError = UpdateTopicGroupApiTopicGroupsGroupIdPutErrors[keyof UpdateTopicGroupApiTopicGroupsGroupIdPutErrors];
+
+export type UpdateTopicGroupApiTopicGroupsGroupIdPutResponses = {
+    /**
+     * Successful Response
+     */
+    200: TopicGroupResponse;
+};
+
+export type UpdateTopicGroupApiTopicGroupsGroupIdPutResponse = UpdateTopicGroupApiTopicGroupsGroupIdPutResponses[keyof UpdateTopicGroupApiTopicGroupsGroupIdPutResponses];
+
+export type ListProfilesApiProfilesGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/profiles';
+};
+
+export type ListProfilesApiProfilesGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: PublishProfileListResponse;
+};
+
+export type ListProfilesApiProfilesGetResponse = ListProfilesApiProfilesGetResponses[keyof ListProfilesApiProfilesGetResponses];
+
+export type CreateProfileApiProfilesPostData = {
+    body: PublishProfileCreate;
+    path?: never;
+    query?: never;
+    url: '/api/profiles';
+};
+
+export type CreateProfileApiProfilesPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateProfileApiProfilesPostError = CreateProfileApiProfilesPostErrors[keyof CreateProfileApiProfilesPostErrors];
+
+export type CreateProfileApiProfilesPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: PublishProfileResponse;
+};
+
+export type CreateProfileApiProfilesPostResponse = CreateProfileApiProfilesPostResponses[keyof CreateProfileApiProfilesPostResponses];
+
+export type DeleteProfileApiProfilesProfileIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Profile Id
+         */
+        profile_id: number;
+    };
+    query?: never;
+    url: '/api/profiles/{profile_id}';
+};
+
+export type DeleteProfileApiProfilesProfileIdDeleteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteProfileApiProfilesProfileIdDeleteError = DeleteProfileApiProfilesProfileIdDeleteErrors[keyof DeleteProfileApiProfilesProfileIdDeleteErrors];
+
+export type DeleteProfileApiProfilesProfileIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteProfileApiProfilesProfileIdDeleteResponse = DeleteProfileApiProfilesProfileIdDeleteResponses[keyof DeleteProfileApiProfilesProfileIdDeleteResponses];
+
+export type GetProfileApiProfilesProfileIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Profile Id
+         */
+        profile_id: number;
+    };
+    query?: never;
+    url: '/api/profiles/{profile_id}';
+};
+
+export type GetProfileApiProfilesProfileIdGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetProfileApiProfilesProfileIdGetError = GetProfileApiProfilesProfileIdGetErrors[keyof GetProfileApiProfilesProfileIdGetErrors];
+
+export type GetProfileApiProfilesProfileIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: PublishProfileResponse;
+};
+
+export type GetProfileApiProfilesProfileIdGetResponse = GetProfileApiProfilesProfileIdGetResponses[keyof GetProfileApiProfilesProfileIdGetResponses];
+
+export type UpdateProfileApiProfilesProfileIdPutData = {
+    body: PublishProfileUpdate;
+    path: {
+        /**
+         * Profile Id
+         */
+        profile_id: number;
+    };
+    query?: never;
+    url: '/api/profiles/{profile_id}';
+};
+
+export type UpdateProfileApiProfilesProfileIdPutErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateProfileApiProfilesProfileIdPutError = UpdateProfileApiProfilesProfileIdPutErrors[keyof UpdateProfileApiProfilesProfileIdPutErrors];
+
+export type UpdateProfileApiProfilesProfileIdPutResponses = {
+    /**
+     * Successful Response
+     */
+    200: PublishProfileResponse;
+};
+
+export type UpdateProfileApiProfilesProfileIdPutResponse = UpdateProfileApiProfilesProfileIdPutResponses[keyof UpdateProfileApiProfilesProfileIdPutResponses];
+
+export type SetDefaultProfileApiProfilesProfileIdSetDefaultPutData = {
+    body?: never;
+    path: {
+        /**
+         * Profile Id
+         */
+        profile_id: number;
+    };
+    query?: never;
+    url: '/api/profiles/{profile_id}/set-default';
+};
+
+export type SetDefaultProfileApiProfilesProfileIdSetDefaultPutErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SetDefaultProfileApiProfilesProfileIdSetDefaultPutError = SetDefaultProfileApiProfilesProfileIdSetDefaultPutErrors[keyof SetDefaultProfileApiProfilesProfileIdSetDefaultPutErrors];
+
+export type SetDefaultProfileApiProfilesProfileIdSetDefaultPutResponses = {
+    /**
+     * Successful Response
+     */
+    200: PublishProfileResponse;
+};
+
+export type SetDefaultProfileApiProfilesProfileIdSetDefaultPutResponse = SetDefaultProfileApiProfilesProfileIdSetDefaultPutResponses[keyof SetDefaultProfileApiProfilesProfileIdSetDefaultPutResponses];
 
 export type RootGetData = {
     body?: never;

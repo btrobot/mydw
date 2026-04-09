@@ -483,13 +483,25 @@ class TaskBatchCreateRequest(BaseModel):
 
 
 class AssembleTasksRequest(BaseModel):
-    """组装任务请求 — 多视频+多账号自动分配"""
+    """组装任务请求 — 多视频+多账号自动分配（已废弃，使用 BatchAssembleRequest）"""
     video_ids: List[int] = Field(..., min_length=1)
     account_ids: List[int] = Field(..., min_length=1)
     strategy: str = Field(default="round_robin", pattern="^(round_robin|manual)$")
     copywriting_mode: str = Field(default="auto_match", pattern="^(auto_match|manual)$")
     profile_id: Optional[int] = None
     cover_id: Optional[int] = None
+
+
+class BatchAssembleRequest(BaseModel):
+    """批量组装任务请求（素材篮模型）"""
+    video_ids: List[int] = Field(..., min_length=1, description="视频ID列表")
+    copywriting_ids: List[int] = Field(default_factory=list, description="文案ID列表")
+    cover_ids: List[int] = Field(default_factory=list, description="封面ID列表")
+    audio_ids: List[int] = Field(default_factory=list, description="音频ID列表")
+    account_ids: List[int] = Field(..., min_length=1, description="账号ID列表")
+    strategy: str = Field(default="round_robin", pattern="^(round_robin|manual)$")
+    copywriting_mode: str = Field(default="auto_match", pattern="^(auto_match|round_robin)$")
+    profile_id: Optional[int] = None
 
 
 # ============ 商品 Schema ============
@@ -532,6 +544,14 @@ class ProductDetailResponse(ProductResponse):
     covers: List["CoverResponse"] = []
     copywritings: List["CopywritingResponse"] = []
     topics: List["TopicResponse"] = []
+
+
+class ProductMaterialsResponse(BaseModel):
+    """商品关联素材响应"""
+    product: ProductResponse
+    videos: List["VideoResponse"] = []
+    copywritings: List["CopywritingResponse"] = []
+    covers: List["CoverResponse"] = []
 
 
 # ============ Video Schema (SP1-01) ============

@@ -9,7 +9,7 @@ import {
   updateAccountApiAccountsAccountIdPut,
   deleteAccountApiAccountsAccountIdDelete,
   getAccountStatsApiAccountsStatsGet,
-  loginAccountApiAccountsLoginAccountIdPost,
+  loginAccountDeprecatedApiAccountsLoginAccountIdPost,
   testAccountApiAccountsTestAccountIdPost,
 } from '@/api'
 
@@ -130,7 +130,7 @@ export const useAccountStats = () =>
 export const useLoginAccount = () =>
   useMutation({
     mutationFn: async (accountId: number) => {
-      const response = await loginAccountApiAccountsLoginAccountIdPost({ path: { account_id: accountId } })
+      const response = await loginAccountDeprecatedApiAccountsLoginAccountIdPost({ path: { account_id: accountId } })
       return response.data
     },
   })

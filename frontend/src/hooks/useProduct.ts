@@ -77,3 +77,14 @@ export const useProduct = (id: number | undefined) =>
     },
     enabled: id !== undefined,
   })
+
+/** GET /products/{id}/materials — 获取商品素材（用于素材篮快速导入） */
+export const useProductMaterials = (id: number | undefined) =>
+  useQuery<import('@/types/material').ProductMaterialsResponse>({
+    queryKey: ['product-materials', id],
+    queryFn: async () => {
+      const { data } = await api.get<import('@/types/material').ProductMaterialsResponse>(`/products/${id}/materials`)
+      return data
+    },
+    enabled: id !== undefined,
+  })

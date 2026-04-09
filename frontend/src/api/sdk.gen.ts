@@ -2,7 +2,7 @@
 
 import { type Client, formDataBodySerializer, type Options as Options2, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddAudioApiAiAddAudioPostData, AddAudioApiAiAddAudioPostErrors, AddAudioApiAiAddAudioPostResponses, AddCoverApiAiAddCoverPostData, AddCoverApiAiAddCoverPostErrors, AddCoverApiAiAddCoverPostResponses, AddSystemLogApiSystemLogsPostData, AddSystemLogApiSystemLogsPostErrors, AddSystemLogApiSystemLogsPostResponses, AutoGenerateTasksApiTasksAutoGeneratePostData, AutoGenerateTasksApiTasksAutoGeneratePostErrors, AutoGenerateTasksApiTasksAutoGeneratePostResponses, BackupDataApiSystemBackupPostData, BackupDataApiSystemBackupPostErrors, BackupDataApiSystemBackupPostResponses, BatchCreateTasksApiTasksBatchPostData, BatchCreateTasksApiTasksBatchPostErrors, BatchCreateTasksApiTasksBatchPostResponses, ControlPublishApiPublishControlPostData, ControlPublishApiPublishControlPostErrors, ControlPublishApiPublishControlPostResponses, CreateAccountApiAccountsPostData, CreateAccountApiAccountsPostErrors, CreateAccountApiAccountsPostResponses, CreateMaterialApiMaterialsPostData, CreateMaterialApiMaterialsPostErrors, CreateMaterialApiMaterialsPostResponses, CreateProductApiSystemProductsPostData, CreateProductApiSystemProductsPostErrors, CreateProductApiSystemProductsPostResponses, CreateTaskApiTasksPostData, CreateTaskApiTasksPostErrors, CreateTaskApiTasksPostResponses, DeleteAccountApiAccountsAccountIdDeleteData, DeleteAccountApiAccountsAccountIdDeleteErrors, DeleteAccountApiAccountsAccountIdDeleteResponses, DeleteAllMaterialsApiMaterialsDeleteData, DeleteAllMaterialsApiMaterialsDeleteErrors, DeleteAllMaterialsApiMaterialsDeleteResponses, DeleteAllTasksApiTasksDeleteData, DeleteAllTasksApiTasksDeleteErrors, DeleteAllTasksApiTasksDeleteResponses, DeleteMaterialApiMaterialsMaterialIdDeleteData, DeleteMaterialApiMaterialsMaterialIdDeleteErrors, DeleteMaterialApiMaterialsMaterialIdDeleteResponses, DeleteProductApiSystemProductsProductIdDeleteData, DeleteProductApiSystemProductsProductIdDeleteErrors, DeleteProductApiSystemProductsProductIdDeleteResponses, DeleteTaskApiTasksTaskIdDeleteData, DeleteTaskApiTasksTaskIdDeleteErrors, DeleteTaskApiTasksTaskIdDeleteResponses, DetectHighlightsApiAiDetectHighlightsGetData, DetectHighlightsApiAiDetectHighlightsGetErrors, DetectHighlightsApiAiDetectHighlightsGetResponses, FullPipelineApiAiFullPipelinePostData, FullPipelineApiAiFullPipelinePostErrors, FullPipelineApiAiFullPipelinePostResponses, GetAccountApiAccountsAccountIdGetData, GetAccountApiAccountsAccountIdGetErrors, GetAccountApiAccountsAccountIdGetResponses, GetAccountStatsApiAccountsStatsGetData, GetAccountStatsApiAccountsStatsGetResponses, GetLoginScreenshotApiAccountsLoginAccountIdScreenshotGetData, GetLoginScreenshotApiAccountsLoginAccountIdScreenshotGetErrors, GetLoginScreenshotApiAccountsLoginAccountIdScreenshotGetResponses, GetMaterialApiMaterialsMaterialIdGetData, GetMaterialApiMaterialsMaterialIdGetErrors, GetMaterialApiMaterialsMaterialIdGetResponses, GetMaterialContentApiMaterialsMaterialIdContentGetData, GetMaterialContentApiMaterialsMaterialIdContentGetErrors, GetMaterialContentApiMaterialsMaterialIdContentGetResponses, GetMaterialPathApiMaterialsPathMaterialTypeGetData, GetMaterialPathApiMaterialsPathMaterialTypeGetErrors, GetMaterialPathApiMaterialsPathMaterialTypeGetResponses, GetMaterialStatsApiMaterialsStatsGetData, GetMaterialStatsApiMaterialsStatsGetResponses, GetPublishConfigApiPublishConfigGetData, GetPublishConfigApiPublishConfigGetResponses, GetPublishLogsApiPublishLogsGetData, GetPublishLogsApiPublishLogsGetErrors, GetPublishLogsApiPublishLogsGetResponses, GetPublishStatusApiPublishStatusGetData, GetPublishStatusApiPublishStatusGetResponses, GetSystemConfigApiSystemConfigGetData, GetSystemConfigApiSystemConfigGetResponses, GetSystemLogsApiSystemLogsGetData, GetSystemLogsApiSystemLogsGetErrors, GetSystemLogsApiSystemLogsGetResponses, GetSystemStatsApiSystemStatsGetData, GetSystemStatsApiSystemStatsGetResponses, GetTaskApiTasksTaskIdGetData, GetTaskApiTasksTaskIdGetErrors, GetTaskApiTasksTaskIdGetResponses, GetTaskStatsApiTasksStatsGetData, GetTaskStatsApiTasksStatsGetResponses, GetVideoInfoApiAiVideoInfoGetData, GetVideoInfoApiAiVideoInfoGetErrors, GetVideoInfoApiAiVideoInfoGetResponses, HealthHealthGetData, HealthHealthGetResponses, ImportMaterialsApiMaterialsImportPostData, ImportMaterialsApiMaterialsImportPostErrors, ImportMaterialsApiMaterialsImportPostResponses, ImportMaterialsByTypeApiMaterialsImportMaterialTypePostData, ImportMaterialsByTypeApiMaterialsImportMaterialTypePostErrors, ImportMaterialsByTypeApiMaterialsImportMaterialTypePostResponses, InitTasksFromMaterialsApiTasksInitFromMaterialsPostData, InitTasksFromMaterialsApiTasksInitFromMaterialsPostErrors, InitTasksFromMaterialsApiTasksInitFromMaterialsPostResponses, ListAccountsApiAccountsGetData, ListAccountsApiAccountsGetErrors, ListAccountsApiAccountsGetResponses, ListMaterialsApiMaterialsGetData, ListMaterialsApiMaterialsGetErrors, ListMaterialsApiMaterialsGetResponses, ListProductsApiSystemProductsGetData, ListProductsApiSystemProductsGetResponses, ListTasksApiTasksGetData, ListTasksApiTasksGetErrors, ListTasksApiTasksGetResponses, LoginAccountApiAccountsLoginAccountIdPostData, LoginAccountApiAccountsLoginAccountIdPostErrors, LoginAccountApiAccountsLoginAccountIdPostResponses, LogoutAccountApiAccountsLogoutAccountIdPostData, LogoutAccountApiAccountsLogoutAccountIdPostErrors, LogoutAccountApiAccountsLogoutAccountIdPostResponses, PublishTaskApiTasksTaskIdPublishPostData, PublishTaskApiTasksTaskIdPublishPostErrors, PublishTaskApiTasksTaskIdPublishPostResponses, RefreshDataApiPublishRefreshPostData, RefreshDataApiPublishRefreshPostResponses, RootGetData, RootGetResponses, ScanMaterialsApiMaterialsScanPostData, ScanMaterialsApiMaterialsScanPostErrors, ScanMaterialsApiMaterialsScanPostResponses, ShuffleTasksApiPublishShufflePostData, ShuffleTasksApiPublishShufflePostResponses, ShuffleTasksApiTasksShufflePostData, ShuffleTasksApiTasksShufflePostResponses, SmartClipApiAiSmartClipPostData, SmartClipApiAiSmartClipPostErrors, SmartClipApiAiSmartClipPostResponses, TestAccountApiAccountsTestAccountIdPostData, TestAccountApiAccountsTestAccountIdPostErrors, TestAccountApiAccountsTestAccountIdPostResponses, TrimVideoApiAiTrimPostData, TrimVideoApiAiTrimPostErrors, TrimVideoApiAiTrimPostResponses, UpdateAccountApiAccountsAccountIdPutData, UpdateAccountApiAccountsAccountIdPutErrors, UpdateAccountApiAccountsAccountIdPutResponses, UpdateMaterialApiMaterialsMaterialIdPutData, UpdateMaterialApiMaterialsMaterialIdPutErrors, UpdateMaterialApiMaterialsMaterialIdPutResponses, UpdatePublishConfigApiPublishConfigPutData, UpdatePublishConfigApiPublishConfigPutErrors, UpdatePublishConfigApiPublishConfigPutResponses, UpdateSystemConfigApiSystemConfigPutData, UpdateSystemConfigApiSystemConfigPutErrors, UpdateSystemConfigApiSystemConfigPutResponses, UpdateTaskApiTasksTaskIdPutData, UpdateTaskApiTasksTaskIdPutErrors, UpdateTaskApiTasksTaskIdPutResponses, UploadMaterialApiMaterialsUploadMaterialTypePostData, UploadMaterialApiMaterialsUploadMaterialTypePostErrors, UploadMaterialApiMaterialsUploadMaterialTypePostResponses } from './types.gen';
+import type { AddAudioApiAiAddAudioPostData, AddAudioApiAiAddAudioPostErrors, AddAudioApiAiAddAudioPostResponses, AddCoverApiAiAddCoverPostData, AddCoverApiAiAddCoverPostErrors, AddCoverApiAiAddCoverPostResponses, AddSystemLogApiSystemLogsPostData, AddSystemLogApiSystemLogsPostErrors, AddSystemLogApiSystemLogsPostResponses, AssembleTasksApiTasksAssemblePostData, AssembleTasksApiTasksAssemblePostErrors, AssembleTasksApiTasksAssemblePostResponses, BackupDataApiSystemBackupPostData, BackupDataApiSystemBackupPostErrors, BackupDataApiSystemBackupPostResponses, BatchCreateTasksApiTasksBatchPostData, BatchCreateTasksApiTasksBatchPostErrors, BatchCreateTasksApiTasksBatchPostResponses, BatchDeleteAudiosApiAudiosBatchDeletePostData, BatchDeleteAudiosApiAudiosBatchDeletePostErrors, BatchDeleteAudiosApiAudiosBatchDeletePostResponses, BatchDeleteCopywritingsApiCopywritingsBatchDeletePostData, BatchDeleteCopywritingsApiCopywritingsBatchDeletePostErrors, BatchDeleteCopywritingsApiCopywritingsBatchDeletePostResponses, BatchDeleteCoversApiCoversBatchDeletePostData, BatchDeleteCoversApiCoversBatchDeletePostErrors, BatchDeleteCoversApiCoversBatchDeletePostResponses, BatchDeleteTopicsApiTopicsBatchDeletePostData, BatchDeleteTopicsApiTopicsBatchDeletePostErrors, BatchDeleteTopicsApiTopicsBatchDeletePostResponses, BatchDeleteVideosApiVideosBatchDeletePostData, BatchDeleteVideosApiVideosBatchDeletePostErrors, BatchDeleteVideosApiVideosBatchDeletePostResponses, BatchHealthCheckApiAccountsBatchHealthCheckPostData, BatchHealthCheckApiAccountsBatchHealthCheckPostErrors, BatchHealthCheckApiAccountsBatchHealthCheckPostResponses, BatchHealthCheckStatusApiAccountsBatchHealthCheckStatusGetData, BatchHealthCheckStatusApiAccountsBatchHealthCheckStatusGetResponses, BatchSubmitCompositionApiTasksBatchSubmitCompositionPostData, BatchSubmitCompositionApiTasksBatchSubmitCompositionPostErrors, BatchSubmitCompositionApiTasksBatchSubmitCompositionPostResponses, CancelCompositionApiTasksTaskIdCancelCompositionPostData, CancelCompositionApiTasksTaskIdCancelCompositionPostErrors, CancelCompositionApiTasksTaskIdCancelCompositionPostResponses, CancelTaskApiTasksTaskIdCancelPostData, CancelTaskApiTasksTaskIdCancelPostErrors, CancelTaskApiTasksTaskIdCancelPostResponses, ClosePreviewApiAccountsAccountIdPreviewClosePostData, ClosePreviewApiAccountsAccountIdPreviewClosePostErrors, ClosePreviewApiAccountsAccountIdPreviewClosePostResponses, ConnectAccountApiAccountsConnectAccountIdPostData, ConnectAccountApiAccountsConnectAccountIdPostErrors, ConnectAccountApiAccountsConnectAccountIdPostResponses, ConnectionStatusStreamApiAccountsConnectAccountIdStreamGetData, ConnectionStatusStreamApiAccountsConnectAccountIdStreamGetErrors, ConnectionStatusStreamApiAccountsConnectAccountIdStreamGetResponses, ControlPublishApiPublishControlPostData, ControlPublishApiPublishControlPostErrors, ControlPublishApiPublishControlPostResponses, CreateAccountApiAccountsPostData, CreateAccountApiAccountsPostErrors, CreateAccountApiAccountsPostResponses, CreateCopywritingApiCopywritingsPostData, CreateCopywritingApiCopywritingsPostErrors, CreateCopywritingApiCopywritingsPostResponses, CreateProductApiProductsPostData, CreateProductApiProductsPostErrors, CreateProductApiProductsPostResponses, CreateProfileApiProfilesPostData, CreateProfileApiProfilesPostErrors, CreateProfileApiProfilesPostResponses, CreateTaskApiTasksPostData, CreateTaskApiTasksPostErrors, CreateTaskApiTasksPostResponses, CreateTopicApiTopicsPostData, CreateTopicApiTopicsPostErrors, CreateTopicApiTopicsPostResponses, CreateTopicGroupApiTopicGroupsPostData, CreateTopicGroupApiTopicGroupsPostErrors, CreateTopicGroupApiTopicGroupsPostResponses, CreateVideoApiVideosPostData, CreateVideoApiVideosPostErrors, CreateVideoApiVideosPostResponses, DeleteAccountApiAccountsAccountIdDeleteData, DeleteAccountApiAccountsAccountIdDeleteErrors, DeleteAccountApiAccountsAccountIdDeleteResponses, DeleteAllTasksApiTasksDeleteData, DeleteAllTasksApiTasksDeleteErrors, DeleteAllTasksApiTasksDeleteResponses, DeleteAudioApiAudiosAudioIdDeleteData, DeleteAudioApiAudiosAudioIdDeleteErrors, DeleteAudioApiAudiosAudioIdDeleteResponses, DeleteCopywritingApiCopywritingsCopywritingIdDeleteData, DeleteCopywritingApiCopywritingsCopywritingIdDeleteErrors, DeleteCopywritingApiCopywritingsCopywritingIdDeleteResponses, DeleteCoverApiCoversCoverIdDeleteData, DeleteCoverApiCoversCoverIdDeleteErrors, DeleteCoverApiCoversCoverIdDeleteResponses, DeleteProductApiProductsProductIdDeleteData, DeleteProductApiProductsProductIdDeleteErrors, DeleteProductApiProductsProductIdDeleteResponses, DeleteProfileApiProfilesProfileIdDeleteData, DeleteProfileApiProfilesProfileIdDeleteErrors, DeleteProfileApiProfilesProfileIdDeleteResponses, DeleteTaskApiTasksTaskIdDeleteData, DeleteTaskApiTasksTaskIdDeleteErrors, DeleteTaskApiTasksTaskIdDeleteResponses, DeleteTopicApiTopicsTopicIdDeleteData, DeleteTopicApiTopicsTopicIdDeleteErrors, DeleteTopicApiTopicsTopicIdDeleteResponses, DeleteTopicGroupApiTopicGroupsGroupIdDeleteData, DeleteTopicGroupApiTopicGroupsGroupIdDeleteErrors, DeleteTopicGroupApiTopicGroupsGroupIdDeleteResponses, DeleteVideoApiVideosVideoIdDeleteData, DeleteVideoApiVideosVideoIdDeleteErrors, DeleteVideoApiVideosVideoIdDeleteResponses, DetectHighlightsApiAiDetectHighlightsGetData, DetectHighlightsApiAiDetectHighlightsGetErrors, DetectHighlightsApiAiDetectHighlightsGetResponses, DisconnectAccountApiAccountsDisconnectAccountIdPostData, DisconnectAccountApiAccountsDisconnectAccountIdPostErrors, DisconnectAccountApiAccountsDisconnectAccountIdPostResponses, EditRetryTaskApiTasksTaskIdEditRetryPostData, EditRetryTaskApiTasksTaskIdEditRetryPostErrors, EditRetryTaskApiTasksTaskIdEditRetryPostResponses, ExportSessionApiAccountsConnectAccountIdExportPostData, ExportSessionApiAccountsConnectAccountIdExportPostErrors, ExportSessionApiAccountsConnectAccountIdExportPostResponses, ExportSessionDeprecatedApiAccountsLoginAccountIdExportPostData, ExportSessionDeprecatedApiAccountsLoginAccountIdExportPostErrors, ExportSessionDeprecatedApiAccountsLoginAccountIdExportPostResponses, ExtractCoverApiCoversExtractPostData, ExtractCoverApiCoversExtractPostErrors, ExtractCoverApiCoversExtractPostResponses, FullPipelineApiAiFullPipelinePostData, FullPipelineApiAiFullPipelinePostErrors, FullPipelineApiAiFullPipelinePostResponses, GetAccountApiAccountsAccountIdGetData, GetAccountApiAccountsAccountIdGetErrors, GetAccountApiAccountsAccountIdGetResponses, GetAccountStatsApiAccountsStatsGetData, GetAccountStatsApiAccountsStatsGetResponses, GetCompositionStatusApiTasksTaskIdCompositionStatusGetData, GetCompositionStatusApiTasksTaskIdCompositionStatusGetErrors, GetCompositionStatusApiTasksTaskIdCompositionStatusGetResponses, GetConnectionScreenshotApiAccountsConnectAccountIdScreenshotGetData, GetConnectionScreenshotApiAccountsConnectAccountIdScreenshotGetErrors, GetConnectionScreenshotApiAccountsConnectAccountIdScreenshotGetResponses, GetConnectionStatusApiAccountsConnectAccountIdStatusGetData, GetConnectionStatusApiAccountsConnectAccountIdStatusGetErrors, GetConnectionStatusApiAccountsConnectAccountIdStatusGetResponses, GetCopywritingApiCopywritingsCopywritingIdGetData, GetCopywritingApiCopywritingsCopywritingIdGetErrors, GetCopywritingApiCopywritingsCopywritingIdGetResponses, GetCoverImageApiCoversCoverIdImageGetData, GetCoverImageApiCoversCoverIdImageGetErrors, GetCoverImageApiCoversCoverIdImageGetResponses, GetGlobalTopicsApiTopicsGlobalGetData, GetGlobalTopicsApiTopicsGlobalGetResponses, GetLoginScreenshotDeprecatedApiAccountsLoginAccountIdScreenshotGetData, GetLoginScreenshotDeprecatedApiAccountsLoginAccountIdScreenshotGetErrors, GetLoginScreenshotDeprecatedApiAccountsLoginAccountIdScreenshotGetResponses, GetLoginStatusDeprecatedApiAccountsLoginAccountIdStatusGetData, GetLoginStatusDeprecatedApiAccountsLoginAccountIdStatusGetErrors, GetLoginStatusDeprecatedApiAccountsLoginAccountIdStatusGetResponses, GetProductApiProductsProductIdGetData, GetProductApiProductsProductIdGetErrors, GetProductApiProductsProductIdGetResponses, GetProductCoversApiProductsProductIdCoversGetData, GetProductCoversApiProductsProductIdCoversGetErrors, GetProductCoversApiProductsProductIdCoversGetResponses, GetProductTopicsApiProductsProductIdTopicsGetData, GetProductTopicsApiProductsProductIdTopicsGetErrors, GetProductTopicsApiProductsProductIdTopicsGetResponses, GetProfileApiProfilesProfileIdGetData, GetProfileApiProfilesProfileIdGetErrors, GetProfileApiProfilesProfileIdGetResponses, GetPublishConfigApiPublishConfigGetData, GetPublishConfigApiPublishConfigGetResponses, GetPublishLogsApiPublishLogsGetData, GetPublishLogsApiPublishLogsGetErrors, GetPublishLogsApiPublishLogsGetResponses, GetPublishStatusApiPublishStatusGetData, GetPublishStatusApiPublishStatusGetResponses, GetSystemConfigApiSystemConfigGetData, GetSystemConfigApiSystemConfigGetResponses, GetSystemLogsApiSystemLogsGetData, GetSystemLogsApiSystemLogsGetErrors, GetSystemLogsApiSystemLogsGetResponses, GetSystemStatsApiSystemStatsGetData, GetSystemStatsApiSystemStatsGetResponses, GetTaskApiTasksTaskIdGetData, GetTaskApiTasksTaskIdGetErrors, GetTaskApiTasksTaskIdGetResponses, GetTaskStatsApiTasksStatsGetData, GetTaskStatsApiTasksStatsGetResponses, GetTopicGroupApiTopicGroupsGroupIdGetData, GetTopicGroupApiTopicGroupsGroupIdGetErrors, GetTopicGroupApiTopicGroupsGroupIdGetResponses, GetVideoApiVideosVideoIdGetData, GetVideoApiVideosVideoIdGetErrors, GetVideoApiVideosVideoIdGetResponses, GetVideoInfoApiAiVideoInfoGetData, GetVideoInfoApiAiVideoInfoGetErrors, GetVideoInfoApiAiVideoInfoGetResponses, HealthCheckApiAccountsAccountIdHealthCheckPostData, HealthCheckApiAccountsAccountIdHealthCheckPostErrors, HealthCheckApiAccountsAccountIdHealthCheckPostResponses, HealthHealthGetData, HealthHealthGetResponses, ImportCopywritingsApiCopywritingsImportPostData, ImportCopywritingsApiCopywritingsImportPostErrors, ImportCopywritingsApiCopywritingsImportPostResponses, ImportSessionApiAccountsConnectAccountIdImportPostData, ImportSessionApiAccountsConnectAccountIdImportPostErrors, ImportSessionApiAccountsConnectAccountIdImportPostResponses, ImportSessionDeprecatedApiAccountsLoginAccountIdImportPostData, ImportSessionDeprecatedApiAccountsLoginAccountIdImportPostErrors, ImportSessionDeprecatedApiAccountsLoginAccountIdImportPostResponses, ListAccountsApiAccountsGetData, ListAccountsApiAccountsGetErrors, ListAccountsApiAccountsGetResponses, ListAudiosApiAudiosGetData, ListAudiosApiAudiosGetErrors, ListAudiosApiAudiosGetResponses, ListCopywritingsApiCopywritingsGetData, ListCopywritingsApiCopywritingsGetErrors, ListCopywritingsApiCopywritingsGetResponses, ListCoversApiCoversGetData, ListCoversApiCoversGetErrors, ListCoversApiCoversGetResponses, ListProductsApiProductsGetData, ListProductsApiProductsGetErrors, ListProductsApiProductsGetResponses, ListProfilesApiProfilesGetData, ListProfilesApiProfilesGetResponses, ListTasksApiTasksGetData, ListTasksApiTasksGetErrors, ListTasksApiTasksGetResponses, ListTopicGroupsApiTopicGroupsGetData, ListTopicGroupsApiTopicGroupsGetResponses, ListTopicsApiTopicsGetData, ListTopicsApiTopicsGetErrors, ListTopicsApiTopicsGetResponses, ListVideosApiVideosGetData, ListVideosApiVideosGetErrors, ListVideosApiVideosGetResponses, LoginAccountDeprecatedApiAccountsLoginAccountIdPostData, LoginAccountDeprecatedApiAccountsLoginAccountIdPostErrors, LoginAccountDeprecatedApiAccountsLoginAccountIdPostResponses, LoginStatusStreamDeprecatedApiAccountsLoginAccountIdStreamGetData, LoginStatusStreamDeprecatedApiAccountsLoginAccountIdStreamGetErrors, LoginStatusStreamDeprecatedApiAccountsLoginAccountIdStreamGetResponses, LogoutAccountDeprecatedApiAccountsLogoutAccountIdPostData, LogoutAccountDeprecatedApiAccountsLogoutAccountIdPostErrors, LogoutAccountDeprecatedApiAccountsLogoutAccountIdPostResponses, MaterialStatsApiSystemMaterialStatsGetData, MaterialStatsApiSystemMaterialStatsGetResponses, ParseProductMaterialsApiProductsProductIdParseMaterialsPostData, ParseProductMaterialsApiProductsProductIdParseMaterialsPostErrors, ParseProductMaterialsApiProductsProductIdParseMaterialsPostResponses, PreviewAccountApiAccountsAccountIdPreviewPostData, PreviewAccountApiAccountsAccountIdPreviewPostErrors, PreviewAccountApiAccountsAccountIdPreviewPostResponses, PreviewStatusApiAccountsPreviewStatusGetData, PreviewStatusApiAccountsPreviewStatusGetResponses, PublishTaskApiTasksTaskIdPublishPostData, PublishTaskApiTasksTaskIdPublishPostErrors, PublishTaskApiTasksTaskIdPublishPostResponses, QuickRetryTaskApiTasksTaskIdRetryPostData, QuickRetryTaskApiTasksTaskIdRetryPostErrors, QuickRetryTaskApiTasksTaskIdRetryPostResponses, RefreshDataApiPublishRefreshPostData, RefreshDataApiPublishRefreshPostResponses, RootGetData, RootGetResponses, ScanVideosApiVideosScanPostData, ScanVideosApiVideosScanPostErrors, ScanVideosApiVideosScanPostResponses, SearchTopicsApiTopicsSearchGetData, SearchTopicsApiTopicsSearchGetErrors, SearchTopicsApiTopicsSearchGetResponses, SendSmsCodeApiAccountsConnectAccountIdSendCodePostData, SendSmsCodeApiAccountsConnectAccountIdSendCodePostErrors, SendSmsCodeApiAccountsConnectAccountIdSendCodePostResponses, SetDefaultProfileApiProfilesProfileIdSetDefaultPutData, SetDefaultProfileApiProfilesProfileIdSetDefaultPutErrors, SetDefaultProfileApiProfilesProfileIdSetDefaultPutResponses, SetGlobalTopicsApiTopicsGlobalPutData, SetGlobalTopicsApiTopicsGlobalPutErrors, SetGlobalTopicsApiTopicsGlobalPutResponses, ShuffleTasksApiPublishShufflePostData, ShuffleTasksApiPublishShufflePostResponses, ShuffleTasksApiTasksShufflePostData, ShuffleTasksApiTasksShufflePostResponses, SmartClipApiAiSmartClipPostData, SmartClipApiAiSmartClipPostErrors, SmartClipApiAiSmartClipPostResponses, StreamVideoApiVideosVideoIdStreamGetData, StreamVideoApiVideosVideoIdStreamGetErrors, StreamVideoApiVideosVideoIdStreamGetResponses, SubmitCompositionApiTasksTaskIdSubmitCompositionPostData, SubmitCompositionApiTasksTaskIdSubmitCompositionPostErrors, SubmitCompositionApiTasksTaskIdSubmitCompositionPostResponses, TestAccountApiAccountsTestAccountIdPostData, TestAccountApiAccountsTestAccountIdPostErrors, TestAccountApiAccountsTestAccountIdPostResponses, TrimVideoApiAiTrimPostData, TrimVideoApiAiTrimPostErrors, TrimVideoApiAiTrimPostResponses, UpdateAccountApiAccountsAccountIdPutData, UpdateAccountApiAccountsAccountIdPutErrors, UpdateAccountApiAccountsAccountIdPutResponses, UpdateCopywritingApiCopywritingsCopywritingIdPutData, UpdateCopywritingApiCopywritingsCopywritingIdPutErrors, UpdateCopywritingApiCopywritingsCopywritingIdPutResponses, UpdateProductApiProductsProductIdPutData, UpdateProductApiProductsProductIdPutErrors, UpdateProductApiProductsProductIdPutResponses, UpdateProfileApiProfilesProfileIdPutData, UpdateProfileApiProfilesProfileIdPutErrors, UpdateProfileApiProfilesProfileIdPutResponses, UpdatePublishConfigApiPublishConfigPutData, UpdatePublishConfigApiPublishConfigPutErrors, UpdatePublishConfigApiPublishConfigPutResponses, UpdateSystemConfigApiSystemConfigPutData, UpdateSystemConfigApiSystemConfigPutErrors, UpdateSystemConfigApiSystemConfigPutResponses, UpdateTaskApiTasksTaskIdPutData, UpdateTaskApiTasksTaskIdPutErrors, UpdateTaskApiTasksTaskIdPutResponses, UpdateTopicGroupApiTopicGroupsGroupIdPutData, UpdateTopicGroupApiTopicGroupsGroupIdPutErrors, UpdateTopicGroupApiTopicGroupsGroupIdPutResponses, UpdateVideoApiVideosVideoIdPutData, UpdateVideoApiVideosVideoIdPutErrors, UpdateVideoApiVideosVideoIdPutResponses, UploadAudioApiAudiosUploadPostData, UploadAudioApiAudiosUploadPostErrors, UploadAudioApiAudiosUploadPostResponses, UploadCoverApiCoversUploadPostData, UploadCoverApiCoversUploadPostErrors, UploadCoverApiCoversUploadPostResponses, UploadVideoApiVideosUploadPostData, UploadVideoApiVideosUploadPostErrors, UploadVideoApiVideosUploadPostResponses, ValidateVideosApiVideosValidatePostData, ValidateVideosApiVideosValidatePostResponses, VerifySmsCodeApiAccountsConnectAccountIdVerifyPostData, VerifySmsCodeApiAccountsConnectAccountIdVerifyPostErrors, VerifySmsCodeApiAccountsConnectAccountIdVerifyPostResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -21,7 +21,7 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 /**
  * List Accounts
  *
- * 获取账号列表
+ * 获取账号列表（支持状态过滤、标签筛选、关键词搜索）
  */
 export const listAccountsApiAccountsGet = <ThrowOnError extends boolean = false>(options?: Options<ListAccountsApiAccountsGetData, ThrowOnError>) => (options?.client ?? client).get<ListAccountsApiAccountsGetResponses, ListAccountsApiAccountsGetErrors, ThrowOnError>({ url: '/api/accounts/', ...options });
 
@@ -45,6 +45,30 @@ export const createAccountApiAccountsPost = <ThrowOnError extends boolean = fals
  * 获取账号统计
  */
 export const getAccountStatsApiAccountsStatsGet = <ThrowOnError extends boolean = false>(options?: Options<GetAccountStatsApiAccountsStatsGetData, ThrowOnError>) => (options?.client ?? client).get<GetAccountStatsApiAccountsStatsGetResponses, unknown, ThrowOnError>({ url: '/api/accounts/stats', ...options });
+
+/**
+ * Batch Health Check
+ *
+ * 批量健康检查 - 串行执行，带间隔和熔断
+ *
+ * 默认检测所有非 inactive/disabled 账号。
+ * 连续 3 次非 session 过期错误自动停止。
+ */
+export const batchHealthCheckApiAccountsBatchHealthCheckPost = <ThrowOnError extends boolean = false>(options: Options<BatchHealthCheckApiAccountsBatchHealthCheckPostData, ThrowOnError>) => (options.client ?? client).post<BatchHealthCheckApiAccountsBatchHealthCheckPostResponses, BatchHealthCheckApiAccountsBatchHealthCheckPostErrors, ThrowOnError>({
+    url: '/api/accounts/batch-health-check',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Batch Health Check Status
+ *
+ * 获取批量检测进度
+ */
+export const batchHealthCheckStatusApiAccountsBatchHealthCheckStatusGet = <ThrowOnError extends boolean = false>(options?: Options<BatchHealthCheckStatusApiAccountsBatchHealthCheckStatusGetData, ThrowOnError>) => (options?.client ?? client).get<BatchHealthCheckStatusApiAccountsBatchHealthCheckStatusGetResponses, unknown, ThrowOnError>({ url: '/api/accounts/batch-health-check/status', ...options });
 
 /**
  * Delete Account
@@ -75,18 +99,255 @@ export const updateAccountApiAccountsAccountIdPut = <ThrowOnError extends boolea
 });
 
 /**
- * Login Account
+ * Health Check
  *
- * 登录账号 - 异步启动登录流程
+ * 检查账号 Session 是否仍有效
+ *
+ * 创建临时浏览器上下文加载 storage_state，
+ * 导航到 creator.dewu.com，通过 URL 判断 session 是否过期。
  */
-export const loginAccountApiAccountsLoginAccountIdPost = <ThrowOnError extends boolean = false>(options: Options<LoginAccountApiAccountsLoginAccountIdPostData, ThrowOnError>) => (options.client ?? client).post<LoginAccountApiAccountsLoginAccountIdPostResponses, LoginAccountApiAccountsLoginAccountIdPostErrors, ThrowOnError>({ url: '/api/accounts/login/{account_id}', ...options });
+export const healthCheckApiAccountsAccountIdHealthCheckPost = <ThrowOnError extends boolean = false>(options: Options<HealthCheckApiAccountsAccountIdHealthCheckPostData, ThrowOnError>) => (options.client ?? client).post<HealthCheckApiAccountsAccountIdHealthCheckPostResponses, HealthCheckApiAccountsAccountIdHealthCheckPostErrors, ThrowOnError>({ url: '/api/accounts/{account_id}/health-check', ...options });
 
 /**
- * Get Login Screenshot
+ * Preview Status
  *
- * 获取登录页面截图
+ * 获取当前预览浏览器状态（供前端轮询）
  */
-export const getLoginScreenshotApiAccountsLoginAccountIdScreenshotGet = <ThrowOnError extends boolean = false>(options: Options<GetLoginScreenshotApiAccountsLoginAccountIdScreenshotGetData, ThrowOnError>) => (options.client ?? client).get<GetLoginScreenshotApiAccountsLoginAccountIdScreenshotGetResponses, GetLoginScreenshotApiAccountsLoginAccountIdScreenshotGetErrors, ThrowOnError>({ url: '/api/accounts/login/{account_id}/screenshot', ...options });
+export const previewStatusApiAccountsPreviewStatusGet = <ThrowOnError extends boolean = false>(options?: Options<PreviewStatusApiAccountsPreviewStatusGetData, ThrowOnError>) => (options?.client ?? client).get<PreviewStatusApiAccountsPreviewStatusGetResponses, unknown, ThrowOnError>({ url: '/api/accounts/preview/status', ...options });
+
+/**
+ * Preview Account
+ *
+ * 打开账号的 headed 预览浏览器
+ *
+ * 加载已登录的得物 session，让用户在可见窗口中查看创作者平台。
+ * 一次只允许一个预览窗口；打开新预览会先关闭已有的。
+ */
+export const previewAccountApiAccountsAccountIdPreviewPost = <ThrowOnError extends boolean = false>(options: Options<PreviewAccountApiAccountsAccountIdPreviewPostData, ThrowOnError>) => (options.client ?? client).post<PreviewAccountApiAccountsAccountIdPreviewPostResponses, PreviewAccountApiAccountsAccountIdPreviewPostErrors, ThrowOnError>({ url: '/api/accounts/{account_id}/preview', ...options });
+
+/**
+ * Close Preview
+ *
+ * 关闭预览浏览器
+ *
+ * 可选择保存更新后的 session：若 save_session=True，
+ * 将把最新的 storage_state 加密后写入数据库。
+ */
+export const closePreviewApiAccountsAccountIdPreviewClosePost = <ThrowOnError extends boolean = false>(options: Options<ClosePreviewApiAccountsAccountIdPreviewClosePostData, ThrowOnError>) => (options.client ?? client).post<ClosePreviewApiAccountsAccountIdPreviewClosePostResponses, ClosePreviewApiAccountsAccountIdPreviewClosePostErrors, ThrowOnError>({
+    url: '/api/accounts/{account_id}/preview/close',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Connect Account
+ *
+ * 连接得物账号 - 手机验证码方式
+ *
+ * 执行完整的连接流程：
+ * 1. 打开登录页
+ * 2. 勾选协议
+ * 3. 输入手机号
+ * 4. 点击发送验证码
+ * 5. 输入验证码
+ * 6. 点击登录
+ * 7. 检测登录结果
+ * 8. 保存 storage state
+ *
+ * 同时通过 connection_status_manager 推送 SSE 状态。
+ *
+ * @deprecated
+ */
+export const connectAccountApiAccountsConnectAccountIdPost = <ThrowOnError extends boolean = false>(options: Options<ConnectAccountApiAccountsConnectAccountIdPostData, ThrowOnError>) => (options.client ?? client).post<ConnectAccountApiAccountsConnectAccountIdPostResponses, ConnectAccountApiAccountsConnectAccountIdPostErrors, ThrowOnError>({
+    url: '/api/accounts/connect/{account_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Send Sms Code
+ *
+ * 第一阶段：发送短信验证码
+ *
+ * 触发后端在浏览器中打开得物登录页，输入手机号并点击发送验证码按钮。
+ * 后端保持浏览器实例以供 verify 步骤使用。
+ *
+ * 浏览器操作为异步后台任务，通过 SSE 推送实际发送状态。
+ */
+export const sendSmsCodeApiAccountsConnectAccountIdSendCodePost = <ThrowOnError extends boolean = false>(options: Options<SendSmsCodeApiAccountsConnectAccountIdSendCodePostData, ThrowOnError>) => (options.client ?? client).post<SendSmsCodeApiAccountsConnectAccountIdSendCodePostResponses, SendSmsCodeApiAccountsConnectAccountIdSendCodePostErrors, ThrowOnError>({
+    url: '/api/accounts/connect/{account_id}/send-code',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Verify Sms Code
+ *
+ * 第二阶段：验证码登录
+ *
+ * 将用户输入的验证码填入浏览器中已打开的登录表单，
+ * 点击登录按钮，等待登录结果，成功后保存加密 session。
+ */
+export const verifySmsCodeApiAccountsConnectAccountIdVerifyPost = <ThrowOnError extends boolean = false>(options: Options<VerifySmsCodeApiAccountsConnectAccountIdVerifyPostData, ThrowOnError>) => (options.client ?? client).post<VerifySmsCodeApiAccountsConnectAccountIdVerifyPostResponses, VerifySmsCodeApiAccountsConnectAccountIdVerifyPostErrors, ThrowOnError>({
+    url: '/api/accounts/connect/{account_id}/verify',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Login Account Deprecated
+ *
+ * 已弃用: 请使用 POST /connect/{account_id}
+ *
+ * @deprecated
+ */
+export const loginAccountDeprecatedApiAccountsLoginAccountIdPost = <ThrowOnError extends boolean = false>(options: Options<LoginAccountDeprecatedApiAccountsLoginAccountIdPostData, ThrowOnError>) => (options.client ?? client).post<LoginAccountDeprecatedApiAccountsLoginAccountIdPostResponses, LoginAccountDeprecatedApiAccountsLoginAccountIdPostErrors, ThrowOnError>({
+    url: '/api/accounts/login/{account_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Connection Status Stream
+ *
+ * SSE 流式推送连接状态 (事件驱动模式)
+ *
+ * 端点: GET /api/accounts/connect/{account_id}/stream
+ *
+ * 前端需先调用 POST /api/accounts/connect/{account_id} 触发连接流程，
+ * 此端点订阅状态变化并实时推送。
+ *
+ * 事件格式:
+ * - event: status_update
+ * - data: {"status": "waiting_verify", "message": "验证码已发送", "progress": 50, "timestamp": "..."}
+ *
+ * 状态值 (ConnectionStatus):
+ * - idle: 初始状态
+ * - waiting_phone: 等待输入手机号
+ * - code_sent: 验证码已发送
+ * - waiting_verify: 等待验证
+ * - verifying: 验证中
+ * - success: 连接成功
+ * - error: 连接失败
+ *
+ * 超时: 30秒无状态变化发送心跳，保持连接
+ */
+export const connectionStatusStreamApiAccountsConnectAccountIdStreamGet = <ThrowOnError extends boolean = false>(options: Options<ConnectionStatusStreamApiAccountsConnectAccountIdStreamGetData, ThrowOnError>) => (options.client ?? client).get<ConnectionStatusStreamApiAccountsConnectAccountIdStreamGetResponses, ConnectionStatusStreamApiAccountsConnectAccountIdStreamGetErrors, ThrowOnError>({ url: '/api/accounts/connect/{account_id}/stream', ...options });
+
+/**
+ * Login Status Stream Deprecated
+ *
+ * 已弃用: 请使用 GET /connect/{account_id}/stream
+ *
+ * @deprecated
+ */
+export const loginStatusStreamDeprecatedApiAccountsLoginAccountIdStreamGet = <ThrowOnError extends boolean = false>(options: Options<LoginStatusStreamDeprecatedApiAccountsLoginAccountIdStreamGetData, ThrowOnError>) => (options.client ?? client).get<LoginStatusStreamDeprecatedApiAccountsLoginAccountIdStreamGetResponses, LoginStatusStreamDeprecatedApiAccountsLoginAccountIdStreamGetErrors, ThrowOnError>({ url: '/api/accounts/login/{account_id}/stream', ...options });
+
+/**
+ * Get Connection Status
+ *
+ * 获取得物账号连接状态
+ *
+ * 检查账号是否已连接：
+ * 1. 如果有活跃的浏览器上下文，检查页面 URL
+ * 2. 如果没有上下文但有 storage state，尝试验证
+ * 3. 返回详细的连接状态信息
+ */
+export const getConnectionStatusApiAccountsConnectAccountIdStatusGet = <ThrowOnError extends boolean = false>(options: Options<GetConnectionStatusApiAccountsConnectAccountIdStatusGetData, ThrowOnError>) => (options.client ?? client).get<GetConnectionStatusApiAccountsConnectAccountIdStatusGetResponses, GetConnectionStatusApiAccountsConnectAccountIdStatusGetErrors, ThrowOnError>({ url: '/api/accounts/connect/{account_id}/status', ...options });
+
+/**
+ * Get Login Status Deprecated
+ *
+ * 已弃用: 请使用 GET /connect/{account_id}/status
+ *
+ * @deprecated
+ */
+export const getLoginStatusDeprecatedApiAccountsLoginAccountIdStatusGet = <ThrowOnError extends boolean = false>(options: Options<GetLoginStatusDeprecatedApiAccountsLoginAccountIdStatusGetData, ThrowOnError>) => (options.client ?? client).get<GetLoginStatusDeprecatedApiAccountsLoginAccountIdStatusGetResponses, GetLoginStatusDeprecatedApiAccountsLoginAccountIdStatusGetErrors, ThrowOnError>({ url: '/api/accounts/login/{account_id}/status', ...options });
+
+/**
+ * Export Session
+ *
+ * 导出账号的连接会话
+ *
+ * 将加密后的 storage state 返回给客户端。
+ * 用于备份或迁移账号连接状态。
+ */
+export const exportSessionApiAccountsConnectAccountIdExportPost = <ThrowOnError extends boolean = false>(options: Options<ExportSessionApiAccountsConnectAccountIdExportPostData, ThrowOnError>) => (options.client ?? client).post<ExportSessionApiAccountsConnectAccountIdExportPostResponses, ExportSessionApiAccountsConnectAccountIdExportPostErrors, ThrowOnError>({ url: '/api/accounts/connect/{account_id}/export', ...options });
+
+/**
+ * Export Session Deprecated
+ *
+ * 已弃用: 请使用 POST /connect/{account_id}/export
+ *
+ * @deprecated
+ */
+export const exportSessionDeprecatedApiAccountsLoginAccountIdExportPost = <ThrowOnError extends boolean = false>(options: Options<ExportSessionDeprecatedApiAccountsLoginAccountIdExportPostData, ThrowOnError>) => (options.client ?? client).post<ExportSessionDeprecatedApiAccountsLoginAccountIdExportPostResponses, ExportSessionDeprecatedApiAccountsLoginAccountIdExportPostErrors, ThrowOnError>({ url: '/api/accounts/login/{account_id}/export', ...options });
+
+/**
+ * Import Session
+ *
+ * 导入账号的连接会话
+ *
+ * 接收加密后的 storage state 并保存到数据库。
+ * 用于恢复或迁移账号连接状态。
+ */
+export const importSessionApiAccountsConnectAccountIdImportPost = <ThrowOnError extends boolean = false>(options: Options<ImportSessionApiAccountsConnectAccountIdImportPostData, ThrowOnError>) => (options.client ?? client).post<ImportSessionApiAccountsConnectAccountIdImportPostResponses, ImportSessionApiAccountsConnectAccountIdImportPostErrors, ThrowOnError>({
+    url: '/api/accounts/connect/{account_id}/import',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Import Session Deprecated
+ *
+ * 已弃用: 请使用 POST /connect/{account_id}/import
+ *
+ * @deprecated
+ */
+export const importSessionDeprecatedApiAccountsLoginAccountIdImportPost = <ThrowOnError extends boolean = false>(options: Options<ImportSessionDeprecatedApiAccountsLoginAccountIdImportPostData, ThrowOnError>) => (options.client ?? client).post<ImportSessionDeprecatedApiAccountsLoginAccountIdImportPostResponses, ImportSessionDeprecatedApiAccountsLoginAccountIdImportPostErrors, ThrowOnError>({
+    url: '/api/accounts/login/{account_id}/import',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get Connection Screenshot
+ *
+ * 获取得物登录页面截图（调试用）
+ *
+ * 打开登录页面并截图，用于调试连接问题。
+ */
+export const getConnectionScreenshotApiAccountsConnectAccountIdScreenshotGet = <ThrowOnError extends boolean = false>(options: Options<GetConnectionScreenshotApiAccountsConnectAccountIdScreenshotGetData, ThrowOnError>) => (options.client ?? client).get<GetConnectionScreenshotApiAccountsConnectAccountIdScreenshotGetResponses, GetConnectionScreenshotApiAccountsConnectAccountIdScreenshotGetErrors, ThrowOnError>({ url: '/api/accounts/connect/{account_id}/screenshot', ...options });
+
+/**
+ * Get Login Screenshot Deprecated
+ *
+ * 已弃用: 请使用 GET /connect/{account_id}/screenshot
+ *
+ * @deprecated
+ */
+export const getLoginScreenshotDeprecatedApiAccountsLoginAccountIdScreenshotGet = <ThrowOnError extends boolean = false>(options: Options<GetLoginScreenshotDeprecatedApiAccountsLoginAccountIdScreenshotGetData, ThrowOnError>) => (options.client ?? client).get<GetLoginScreenshotDeprecatedApiAccountsLoginAccountIdScreenshotGetResponses, GetLoginScreenshotDeprecatedApiAccountsLoginAccountIdScreenshotGetErrors, ThrowOnError>({ url: '/api/accounts/login/{account_id}/screenshot', ...options });
 
 /**
  * Test Account
@@ -96,11 +357,20 @@ export const getLoginScreenshotApiAccountsLoginAccountIdScreenshotGet = <ThrowOn
 export const testAccountApiAccountsTestAccountIdPost = <ThrowOnError extends boolean = false>(options: Options<TestAccountApiAccountsTestAccountIdPostData, ThrowOnError>) => (options.client ?? client).post<TestAccountApiAccountsTestAccountIdPostResponses, TestAccountApiAccountsTestAccountIdPostErrors, ThrowOnError>({ url: '/api/accounts/test/{account_id}', ...options });
 
 /**
- * Logout Account
+ * Disconnect Account
  *
- * 登出账号
+ * 断开账号连接
  */
-export const logoutAccountApiAccountsLogoutAccountIdPost = <ThrowOnError extends boolean = false>(options: Options<LogoutAccountApiAccountsLogoutAccountIdPostData, ThrowOnError>) => (options.client ?? client).post<LogoutAccountApiAccountsLogoutAccountIdPostResponses, LogoutAccountApiAccountsLogoutAccountIdPostErrors, ThrowOnError>({ url: '/api/accounts/logout/{account_id}', ...options });
+export const disconnectAccountApiAccountsDisconnectAccountIdPost = <ThrowOnError extends boolean = false>(options: Options<DisconnectAccountApiAccountsDisconnectAccountIdPostData, ThrowOnError>) => (options.client ?? client).post<DisconnectAccountApiAccountsDisconnectAccountIdPostResponses, DisconnectAccountApiAccountsDisconnectAccountIdPostErrors, ThrowOnError>({ url: '/api/accounts/disconnect/{account_id}', ...options });
+
+/**
+ * Logout Account Deprecated
+ *
+ * 已弃用: 请使用 POST /disconnect/{account_id}
+ *
+ * @deprecated
+ */
+export const logoutAccountDeprecatedApiAccountsLogoutAccountIdPost = <ThrowOnError extends boolean = false>(options: Options<LogoutAccountDeprecatedApiAccountsLogoutAccountIdPostData, ThrowOnError>) => (options.client ?? client).post<LogoutAccountDeprecatedApiAccountsLogoutAccountIdPostResponses, LogoutAccountDeprecatedApiAccountsLogoutAccountIdPostErrors, ThrowOnError>({ url: '/api/accounts/logout/{account_id}', ...options });
 
 /**
  * Delete All Tasks
@@ -166,6 +436,27 @@ export const updateTaskApiTasksTaskIdPut = <ThrowOnError extends boolean = false
 });
 
 /**
+ * Cancel Task
+ *
+ * 取消任务（非终态 → cancelled）
+ */
+export const cancelTaskApiTasksTaskIdCancelPost = <ThrowOnError extends boolean = false>(options: Options<CancelTaskApiTasksTaskIdCancelPostData, ThrowOnError>) => (options.client ?? client).post<CancelTaskApiTasksTaskIdCancelPostResponses, CancelTaskApiTasksTaskIdCancelPostErrors, ThrowOnError>({ url: '/api/tasks/{task_id}/cancel', ...options });
+
+/**
+ * Quick Retry Task
+ *
+ * 快速重试：failed → failed_at_status 对应状态
+ */
+export const quickRetryTaskApiTasksTaskIdRetryPost = <ThrowOnError extends boolean = false>(options: Options<QuickRetryTaskApiTasksTaskIdRetryPostData, ThrowOnError>) => (options.client ?? client).post<QuickRetryTaskApiTasksTaskIdRetryPostResponses, QuickRetryTaskApiTasksTaskIdRetryPostErrors, ThrowOnError>({ url: '/api/tasks/{task_id}/retry', ...options });
+
+/**
+ * Edit Retry Task
+ *
+ * 编辑重试：failed → draft
+ */
+export const editRetryTaskApiTasksTaskIdEditRetryPost = <ThrowOnError extends boolean = false>(options: Options<EditRetryTaskApiTasksTaskIdEditRetryPostData, ThrowOnError>) => (options.client ?? client).post<EditRetryTaskApiTasksTaskIdEditRetryPostResponses, EditRetryTaskApiTasksTaskIdEditRetryPostErrors, ThrowOnError>({ url: '/api/tasks/{task_id}/edit-retry', ...options });
+
+/**
  * Publish Task
  *
  * 立即发布任务
@@ -187,20 +478,6 @@ export const batchCreateTasksApiTasksBatchPost = <ThrowOnError extends boolean =
 });
 
 /**
- * Auto Generate Tasks
- *
- * 自动生成任务
- */
-export const autoGenerateTasksApiTasksAutoGeneratePost = <ThrowOnError extends boolean = false>(options: Options<AutoGenerateTasksApiTasksAutoGeneratePostData, ThrowOnError>) => (options.client ?? client).post<AutoGenerateTasksApiTasksAutoGeneratePostResponses, AutoGenerateTasksApiTasksAutoGeneratePostErrors, ThrowOnError>({
-    url: '/api/tasks/auto-generate',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
  * Shuffle Tasks
  *
  * 打乱任务顺序
@@ -208,33 +485,12 @@ export const autoGenerateTasksApiTasksAutoGeneratePost = <ThrowOnError extends b
 export const shuffleTasksApiTasksShufflePost = <ThrowOnError extends boolean = false>(options?: Options<ShuffleTasksApiTasksShufflePostData, ThrowOnError>) => (options?.client ?? client).post<ShuffleTasksApiTasksShufflePostResponses, unknown, ThrowOnError>({ url: '/api/tasks/shuffle', ...options });
 
 /**
- * Init Tasks From Materials
+ * Assemble Tasks
  *
- * 从素材初始化任务
+ * 组装任务 — 多视频+多账号自动分配
  */
-export const initTasksFromMaterialsApiTasksInitFromMaterialsPost = <ThrowOnError extends boolean = false>(options: Options<InitTasksFromMaterialsApiTasksInitFromMaterialsPostData, ThrowOnError>) => (options.client ?? client).post<InitTasksFromMaterialsApiTasksInitFromMaterialsPostResponses, InitTasksFromMaterialsApiTasksInitFromMaterialsPostErrors, ThrowOnError>({ url: '/api/tasks/init-from-materials', ...options });
-
-/**
- * Delete All Materials
- *
- * 删除所有素材
- */
-export const deleteAllMaterialsApiMaterialsDelete = <ThrowOnError extends boolean = false>(options?: Options<DeleteAllMaterialsApiMaterialsDeleteData, ThrowOnError>) => (options?.client ?? client).delete<DeleteAllMaterialsApiMaterialsDeleteResponses, DeleteAllMaterialsApiMaterialsDeleteErrors, ThrowOnError>({ url: '/api/materials/', ...options });
-
-/**
- * List Materials
- *
- * 获取素材列表
- */
-export const listMaterialsApiMaterialsGet = <ThrowOnError extends boolean = false>(options?: Options<ListMaterialsApiMaterialsGetData, ThrowOnError>) => (options?.client ?? client).get<ListMaterialsApiMaterialsGetResponses, ListMaterialsApiMaterialsGetErrors, ThrowOnError>({ url: '/api/materials/', ...options });
-
-/**
- * Create Material
- *
- * 创建素材
- */
-export const createMaterialApiMaterialsPost = <ThrowOnError extends boolean = false>(options: Options<CreateMaterialApiMaterialsPostData, ThrowOnError>) => (options.client ?? client).post<CreateMaterialApiMaterialsPostResponses, CreateMaterialApiMaterialsPostErrors, ThrowOnError>({
-    url: '/api/materials/',
+export const assembleTasksApiTasksAssemblePost = <ThrowOnError extends boolean = false>(options: Options<AssembleTasksApiTasksAssemblePostData, ThrowOnError>) => (options.client ?? client).post<AssembleTasksApiTasksAssemblePostResponses, AssembleTasksApiTasksAssemblePostErrors, ThrowOnError>({
+    url: '/api/tasks/assemble',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -243,83 +499,19 @@ export const createMaterialApiMaterialsPost = <ThrowOnError extends boolean = fa
 });
 
 /**
- * Upload Material
+ * Submit Composition
  *
- * 上传素材文件
+ * 提交单个任务合成（draft → composing）
  */
-export const uploadMaterialApiMaterialsUploadMaterialTypePost = <ThrowOnError extends boolean = false>(options: Options<UploadMaterialApiMaterialsUploadMaterialTypePostData, ThrowOnError>) => (options.client ?? client).post<UploadMaterialApiMaterialsUploadMaterialTypePostResponses, UploadMaterialApiMaterialsUploadMaterialTypePostErrors, ThrowOnError>({
-    ...formDataBodySerializer,
-    url: '/api/materials/upload/{material_type}',
-    ...options,
-    headers: {
-        'Content-Type': null,
-        ...options.headers
-    }
-});
+export const submitCompositionApiTasksTaskIdSubmitCompositionPost = <ThrowOnError extends boolean = false>(options: Options<SubmitCompositionApiTasksTaskIdSubmitCompositionPostData, ThrowOnError>) => (options.client ?? client).post<SubmitCompositionApiTasksTaskIdSubmitCompositionPostResponses, SubmitCompositionApiTasksTaskIdSubmitCompositionPostErrors, ThrowOnError>({ url: '/api/tasks/{task_id}/submit-composition', ...options });
 
 /**
- * Get Material Stats
+ * Batch Submit Composition
  *
- * 获取素材统计
+ * 批量提交合成任务
  */
-export const getMaterialStatsApiMaterialsStatsGet = <ThrowOnError extends boolean = false>(options?: Options<GetMaterialStatsApiMaterialsStatsGetData, ThrowOnError>) => (options?.client ?? client).get<GetMaterialStatsApiMaterialsStatsGetResponses, unknown, ThrowOnError>({ url: '/api/materials/stats', ...options });
-
-/**
- * Get Material Path
- *
- * 获取素材类型目录
- */
-export const getMaterialPathApiMaterialsPathMaterialTypeGet = <ThrowOnError extends boolean = false>(options: Options<GetMaterialPathApiMaterialsPathMaterialTypeGetData, ThrowOnError>) => (options.client ?? client).get<GetMaterialPathApiMaterialsPathMaterialTypeGetResponses, GetMaterialPathApiMaterialsPathMaterialTypeGetErrors, ThrowOnError>({ url: '/api/materials/path/{material_type}', ...options });
-
-/**
- * Scan Materials
- *
- * 扫描本地素材目录
- */
-export const scanMaterialsApiMaterialsScanPost = <ThrowOnError extends boolean = false>(options?: Options<ScanMaterialsApiMaterialsScanPostData, ThrowOnError>) => (options?.client ?? client).post<ScanMaterialsApiMaterialsScanPostResponses, ScanMaterialsApiMaterialsScanPostErrors, ThrowOnError>({
-    url: '/api/materials/scan',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers
-    }
-});
-
-/**
- * Import Materials
- *
- * 批量导入本地素材
- */
-export const importMaterialsApiMaterialsImportPost = <ThrowOnError extends boolean = false>(options?: Options<ImportMaterialsApiMaterialsImportPostData, ThrowOnError>) => (options?.client ?? client).post<ImportMaterialsApiMaterialsImportPostResponses, ImportMaterialsApiMaterialsImportPostErrors, ThrowOnError>({ url: '/api/materials/import', ...options });
-
-/**
- * Import Materials By Type
- *
- * 导入指定类型的素材
- */
-export const importMaterialsByTypeApiMaterialsImportMaterialTypePost = <ThrowOnError extends boolean = false>(options: Options<ImportMaterialsByTypeApiMaterialsImportMaterialTypePostData, ThrowOnError>) => (options.client ?? client).post<ImportMaterialsByTypeApiMaterialsImportMaterialTypePostResponses, ImportMaterialsByTypeApiMaterialsImportMaterialTypePostErrors, ThrowOnError>({ url: '/api/materials/import/{material_type}', ...options });
-
-/**
- * Delete Material
- *
- * 删除素材
- */
-export const deleteMaterialApiMaterialsMaterialIdDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteMaterialApiMaterialsMaterialIdDeleteData, ThrowOnError>) => (options.client ?? client).delete<DeleteMaterialApiMaterialsMaterialIdDeleteResponses, DeleteMaterialApiMaterialsMaterialIdDeleteErrors, ThrowOnError>({ url: '/api/materials/{material_id}', ...options });
-
-/**
- * Get Material
- *
- * 获取素材详情
- */
-export const getMaterialApiMaterialsMaterialIdGet = <ThrowOnError extends boolean = false>(options: Options<GetMaterialApiMaterialsMaterialIdGetData, ThrowOnError>) => (options.client ?? client).get<GetMaterialApiMaterialsMaterialIdGetResponses, GetMaterialApiMaterialsMaterialIdGetErrors, ThrowOnError>({ url: '/api/materials/{material_id}', ...options });
-
-/**
- * Update Material
- *
- * 更新素材
- */
-export const updateMaterialApiMaterialsMaterialIdPut = <ThrowOnError extends boolean = false>(options: Options<UpdateMaterialApiMaterialsMaterialIdPutData, ThrowOnError>) => (options.client ?? client).put<UpdateMaterialApiMaterialsMaterialIdPutResponses, UpdateMaterialApiMaterialsMaterialIdPutErrors, ThrowOnError>({
-    url: '/api/materials/{material_id}',
+export const batchSubmitCompositionApiTasksBatchSubmitCompositionPost = <ThrowOnError extends boolean = false>(options: Options<BatchSubmitCompositionApiTasksBatchSubmitCompositionPostData, ThrowOnError>) => (options.client ?? client).post<BatchSubmitCompositionApiTasksBatchSubmitCompositionPostResponses, BatchSubmitCompositionApiTasksBatchSubmitCompositionPostErrors, ThrowOnError>({
+    url: '/api/tasks/batch-submit-composition',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -328,11 +520,18 @@ export const updateMaterialApiMaterialsMaterialIdPut = <ThrowOnError extends boo
 });
 
 /**
- * Get Material Content
+ * Cancel Composition
  *
- * 获取素材内容
+ * 取消合成（composing → draft，CompositionJob 标记 cancelled）
  */
-export const getMaterialContentApiMaterialsMaterialIdContentGet = <ThrowOnError extends boolean = false>(options: Options<GetMaterialContentApiMaterialsMaterialIdContentGetData, ThrowOnError>) => (options.client ?? client).get<GetMaterialContentApiMaterialsMaterialIdContentGetResponses, GetMaterialContentApiMaterialsMaterialIdContentGetErrors, ThrowOnError>({ url: '/api/materials/{material_id}/content', ...options });
+export const cancelCompositionApiTasksTaskIdCancelCompositionPost = <ThrowOnError extends boolean = false>(options: Options<CancelCompositionApiTasksTaskIdCancelCompositionPostData, ThrowOnError>) => (options.client ?? client).post<CancelCompositionApiTasksTaskIdCancelCompositionPostResponses, CancelCompositionApiTasksTaskIdCancelCompositionPostErrors, ThrowOnError>({ url: '/api/tasks/{task_id}/cancel-composition', ...options });
+
+/**
+ * Get Composition Status
+ *
+ * 查询任务合成状态
+ */
+export const getCompositionStatusApiTasksTaskIdCompositionStatusGet = <ThrowOnError extends boolean = false>(options: Options<GetCompositionStatusApiTasksTaskIdCompositionStatusGetData, ThrowOnError>) => (options.client ?? client).get<GetCompositionStatusApiTasksTaskIdCompositionStatusGetResponses, GetCompositionStatusApiTasksTaskIdCompositionStatusGetErrors, ThrowOnError>({ url: '/api/tasks/{task_id}/composition-status', ...options });
 
 /**
  * Get Publish Config
@@ -447,32 +646,11 @@ export const backupDataApiSystemBackupPost = <ThrowOnError extends boolean = fal
 });
 
 /**
- * List Products
+ * Material Stats
  *
- * 获取商品列表
+ * 素材统计：各类数量、商品覆盖率
  */
-export const listProductsApiSystemProductsGet = <ThrowOnError extends boolean = false>(options?: Options<ListProductsApiSystemProductsGetData, ThrowOnError>) => (options?.client ?? client).get<ListProductsApiSystemProductsGetResponses, unknown, ThrowOnError>({ url: '/api/system/products', ...options });
-
-/**
- * Create Product
- *
- * 创建商品
- */
-export const createProductApiSystemProductsPost = <ThrowOnError extends boolean = false>(options: Options<CreateProductApiSystemProductsPostData, ThrowOnError>) => (options.client ?? client).post<CreateProductApiSystemProductsPostResponses, CreateProductApiSystemProductsPostErrors, ThrowOnError>({
-    url: '/api/system/products',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * Delete Product
- *
- * 删除商品
- */
-export const deleteProductApiSystemProductsProductIdDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteProductApiSystemProductsProductIdDeleteData, ThrowOnError>) => (options.client ?? client).delete<DeleteProductApiSystemProductsProductIdDeleteResponses, DeleteProductApiSystemProductsProductIdDeleteErrors, ThrowOnError>({ url: '/api/system/products/{product_id}', ...options });
+export const materialStatsApiSystemMaterialStatsGet = <ThrowOnError extends boolean = false>(options?: Options<MaterialStatsApiSystemMaterialStatsGetData, ThrowOnError>) => (options?.client ?? client).get<MaterialStatsApiSystemMaterialStatsGetResponses, unknown, ThrowOnError>({ url: '/api/system/material-stats', ...options });
 
 /**
  * Get Video Info
@@ -561,6 +739,543 @@ export const fullPipelineApiAiFullPipelinePost = <ThrowOnError extends boolean =
         ...options.headers
     }
 });
+
+/**
+ * List Products
+ *
+ * 获取商品列表（支持分页和名称搜索）
+ */
+export const listProductsApiProductsGet = <ThrowOnError extends boolean = false>(options?: Options<ListProductsApiProductsGetData, ThrowOnError>) => (options?.client ?? client).get<ListProductsApiProductsGetResponses, ListProductsApiProductsGetErrors, ThrowOnError>({ url: '/api/products', ...options });
+
+/**
+ * Create Product
+ *
+ * 创建商品并立即触发素材解析（原子操作）。
+ *
+ * 流程：
+ * 1. 从分享文本提取 dewu_url
+ * 2. 检查 dewu_url 唯一性
+ * 3. 创建 Product（parse_status='parsing'）
+ * 4. 调用 parse_and_create_materials()
+ * 5. 解析失败时设 parse_status='error'，仍返回商品（可重试）
+ * 6. 返回 ProductDetailResponse
+ */
+export const createProductApiProductsPost = <ThrowOnError extends boolean = false>(options: Options<CreateProductApiProductsPostData, ThrowOnError>) => (options.client ?? client).post<CreateProductApiProductsPostResponses, CreateProductApiProductsPostErrors, ThrowOnError>({
+    url: '/api/products',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete Product
+ *
+ * 删除商品，同时解除关联素材（保留素材记录，product_id 置 NULL）
+ */
+export const deleteProductApiProductsProductIdDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteProductApiProductsProductIdDeleteData, ThrowOnError>) => (options.client ?? client).delete<DeleteProductApiProductsProductIdDeleteResponses, DeleteProductApiProductsProductIdDeleteErrors, ThrowOnError>({ url: '/api/products/{product_id}', ...options });
+
+/**
+ * Get Product
+ *
+ * 获取单个商品及其全部关联素材（videos、covers、copywritings、topics）
+ */
+export const getProductApiProductsProductIdGet = <ThrowOnError extends boolean = false>(options: Options<GetProductApiProductsProductIdGetData, ThrowOnError>) => (options.client ?? client).get<GetProductApiProductsProductIdGetResponses, GetProductApiProductsProductIdGetErrors, ThrowOnError>({ url: '/api/products/{product_id}', ...options });
+
+/**
+ * Update Product
+ *
+ * 更新商品名称
+ */
+export const updateProductApiProductsProductIdPut = <ThrowOnError extends boolean = false>(options: Options<UpdateProductApiProductsProductIdPutData, ThrowOnError>) => (options.client ?? client).put<UpdateProductApiProductsProductIdPutResponses, UpdateProductApiProductsProductIdPutErrors, ThrowOnError>({
+    url: '/api/products/{product_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Parse Product Materials
+ *
+ * 重新解析商品得物页面素材（封面、视频、标题、话题），覆盖更新已有素材记录
+ */
+export const parseProductMaterialsApiProductsProductIdParseMaterialsPost = <ThrowOnError extends boolean = false>(options: Options<ParseProductMaterialsApiProductsProductIdParseMaterialsPostData, ThrowOnError>) => (options.client ?? client).post<ParseProductMaterialsApiProductsProductIdParseMaterialsPostResponses, ParseProductMaterialsApiProductsProductIdParseMaterialsPostErrors, ThrowOnError>({ url: '/api/products/{product_id}/parse-materials', ...options });
+
+/**
+ * Get Product Covers
+ *
+ * 获取商品关联的所有封面
+ */
+export const getProductCoversApiProductsProductIdCoversGet = <ThrowOnError extends boolean = false>(options: Options<GetProductCoversApiProductsProductIdCoversGetData, ThrowOnError>) => (options.client ?? client).get<GetProductCoversApiProductsProductIdCoversGetResponses, GetProductCoversApiProductsProductIdCoversGetErrors, ThrowOnError>({ url: '/api/products/{product_id}/covers', ...options });
+
+/**
+ * Get Product Topics
+ *
+ * 获取商品关联的话题（通过 product_topics 表）
+ */
+export const getProductTopicsApiProductsProductIdTopicsGet = <ThrowOnError extends boolean = false>(options: Options<GetProductTopicsApiProductsProductIdTopicsGetData, ThrowOnError>) => (options.client ?? client).get<GetProductTopicsApiProductsProductIdTopicsGetResponses, GetProductTopicsApiProductsProductIdTopicsGetErrors, ThrowOnError>({ url: '/api/products/{product_id}/topics', ...options });
+
+/**
+ * List Videos
+ *
+ * 获取视频列表（支持分页、商品过滤、关键词搜索）
+ */
+export const listVideosApiVideosGet = <ThrowOnError extends boolean = false>(options?: Options<ListVideosApiVideosGetData, ThrowOnError>) => (options?.client ?? client).get<ListVideosApiVideosGetResponses, ListVideosApiVideosGetErrors, ThrowOnError>({ url: '/api/videos', ...options });
+
+/**
+ * Create Video
+ *
+ * 创建视频
+ */
+export const createVideoApiVideosPost = <ThrowOnError extends boolean = false>(options: Options<CreateVideoApiVideosPostData, ThrowOnError>) => (options.client ?? client).post<CreateVideoApiVideosPostResponses, CreateVideoApiVideosPostErrors, ThrowOnError>({
+    url: '/api/videos',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete Video
+ *
+ * 删除视频
+ */
+export const deleteVideoApiVideosVideoIdDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteVideoApiVideosVideoIdDeleteData, ThrowOnError>) => (options.client ?? client).delete<DeleteVideoApiVideosVideoIdDeleteResponses, DeleteVideoApiVideosVideoIdDeleteErrors, ThrowOnError>({ url: '/api/videos/{video_id}', ...options });
+
+/**
+ * Get Video
+ *
+ * 获取单个视频
+ */
+export const getVideoApiVideosVideoIdGet = <ThrowOnError extends boolean = false>(options: Options<GetVideoApiVideosVideoIdGetData, ThrowOnError>) => (options.client ?? client).get<GetVideoApiVideosVideoIdGetResponses, GetVideoApiVideosVideoIdGetErrors, ThrowOnError>({ url: '/api/videos/{video_id}', ...options });
+
+/**
+ * Update Video
+ *
+ * 更新视频
+ */
+export const updateVideoApiVideosVideoIdPut = <ThrowOnError extends boolean = false>(options: Options<UpdateVideoApiVideosVideoIdPutData, ThrowOnError>) => (options.client ?? client).put<UpdateVideoApiVideosVideoIdPutResponses, UpdateVideoApiVideosVideoIdPutErrors, ThrowOnError>({
+    url: '/api/videos/{video_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Batch Delete Videos
+ *
+ * 批量删除视频（跳过被任务引用的，清理物理文件）
+ */
+export const batchDeleteVideosApiVideosBatchDeletePost = <ThrowOnError extends boolean = false>(options: Options<BatchDeleteVideosApiVideosBatchDeletePostData, ThrowOnError>) => (options.client ?? client).post<BatchDeleteVideosApiVideosBatchDeletePostResponses, BatchDeleteVideosApiVideosBatchDeletePostErrors, ThrowOnError>({
+    url: '/api/videos/batch-delete',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Upload Video
+ *
+ * 上传视频文件
+ */
+export const uploadVideoApiVideosUploadPost = <ThrowOnError extends boolean = false>(options: Options<UploadVideoApiVideosUploadPostData, ThrowOnError>) => (options.client ?? client).post<UploadVideoApiVideosUploadPostResponses, UploadVideoApiVideosUploadPostErrors, ThrowOnError>({
+    ...formDataBodySerializer,
+    url: '/api/videos/upload',
+    ...options,
+    headers: {
+        'Content-Type': null,
+        ...options.headers
+    }
+});
+
+/**
+ * Scan Videos
+ *
+ * 扫描 MATERIAL_BASE_PATH 下子目录，按商品名批量导入视频
+ */
+export const scanVideosApiVideosScanPost = <ThrowOnError extends boolean = false>(options?: Options<ScanVideosApiVideosScanPostData, ThrowOnError>) => (options?.client ?? client).post<ScanVideosApiVideosScanPostResponses, ScanVideosApiVideosScanPostErrors, ThrowOnError>({ url: '/api/videos/scan', ...options });
+
+/**
+ * Validate Videos
+ *
+ * 批量校验视频文件是否存在
+ */
+export const validateVideosApiVideosValidatePost = <ThrowOnError extends boolean = false>(options?: Options<ValidateVideosApiVideosValidatePostData, ThrowOnError>) => (options?.client ?? client).post<ValidateVideosApiVideosValidatePostResponses, unknown, ThrowOnError>({ url: '/api/videos/validate', ...options });
+
+/**
+ * Stream Video
+ *
+ * 流式返回视频文件
+ */
+export const streamVideoApiVideosVideoIdStreamGet = <ThrowOnError extends boolean = false>(options: Options<StreamVideoApiVideosVideoIdStreamGetData, ThrowOnError>) => (options.client ?? client).get<StreamVideoApiVideosVideoIdStreamGetResponses, StreamVideoApiVideosVideoIdStreamGetErrors, ThrowOnError>({ url: '/api/videos/{video_id}/stream', ...options });
+
+/**
+ * List Copywritings
+ *
+ * 获取文案列表（支持分页、商品和来源类型过滤）
+ */
+export const listCopywritingsApiCopywritingsGet = <ThrowOnError extends boolean = false>(options?: Options<ListCopywritingsApiCopywritingsGetData, ThrowOnError>) => (options?.client ?? client).get<ListCopywritingsApiCopywritingsGetResponses, ListCopywritingsApiCopywritingsGetErrors, ThrowOnError>({ url: '/api/copywritings', ...options });
+
+/**
+ * Create Copywriting
+ *
+ * 创建文案
+ */
+export const createCopywritingApiCopywritingsPost = <ThrowOnError extends boolean = false>(options: Options<CreateCopywritingApiCopywritingsPostData, ThrowOnError>) => (options.client ?? client).post<CreateCopywritingApiCopywritingsPostResponses, CreateCopywritingApiCopywritingsPostErrors, ThrowOnError>({
+    url: '/api/copywritings',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete Copywriting
+ *
+ * 删除文案
+ */
+export const deleteCopywritingApiCopywritingsCopywritingIdDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteCopywritingApiCopywritingsCopywritingIdDeleteData, ThrowOnError>) => (options.client ?? client).delete<DeleteCopywritingApiCopywritingsCopywritingIdDeleteResponses, DeleteCopywritingApiCopywritingsCopywritingIdDeleteErrors, ThrowOnError>({ url: '/api/copywritings/{copywriting_id}', ...options });
+
+/**
+ * Get Copywriting
+ *
+ * 获取单个文案
+ */
+export const getCopywritingApiCopywritingsCopywritingIdGet = <ThrowOnError extends boolean = false>(options: Options<GetCopywritingApiCopywritingsCopywritingIdGetData, ThrowOnError>) => (options.client ?? client).get<GetCopywritingApiCopywritingsCopywritingIdGetResponses, GetCopywritingApiCopywritingsCopywritingIdGetErrors, ThrowOnError>({ url: '/api/copywritings/{copywriting_id}', ...options });
+
+/**
+ * Update Copywriting
+ *
+ * 更新文案
+ */
+export const updateCopywritingApiCopywritingsCopywritingIdPut = <ThrowOnError extends boolean = false>(options: Options<UpdateCopywritingApiCopywritingsCopywritingIdPutData, ThrowOnError>) => (options.client ?? client).put<UpdateCopywritingApiCopywritingsCopywritingIdPutResponses, UpdateCopywritingApiCopywritingsCopywritingIdPutErrors, ThrowOnError>({
+    url: '/api/copywritings/{copywriting_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Batch Delete Copywritings
+ *
+ * 批量删除文案（跳过被任务引用的）
+ */
+export const batchDeleteCopywritingsApiCopywritingsBatchDeletePost = <ThrowOnError extends boolean = false>(options: Options<BatchDeleteCopywritingsApiCopywritingsBatchDeletePostData, ThrowOnError>) => (options.client ?? client).post<BatchDeleteCopywritingsApiCopywritingsBatchDeletePostResponses, BatchDeleteCopywritingsApiCopywritingsBatchDeletePostErrors, ThrowOnError>({
+    url: '/api/copywritings/batch-delete',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Import Copywritings
+ *
+ * 从 .txt 文件批量导入文案（一行一条）
+ */
+export const importCopywritingsApiCopywritingsImportPost = <ThrowOnError extends boolean = false>(options: Options<ImportCopywritingsApiCopywritingsImportPostData, ThrowOnError>) => (options.client ?? client).post<ImportCopywritingsApiCopywritingsImportPostResponses, ImportCopywritingsApiCopywritingsImportPostErrors, ThrowOnError>({
+    ...formDataBodySerializer,
+    url: '/api/copywritings/import',
+    ...options,
+    headers: {
+        'Content-Type': null,
+        ...options.headers
+    }
+});
+
+/**
+ * Upload Cover
+ *
+ * 上传封面文件
+ */
+export const uploadCoverApiCoversUploadPost = <ThrowOnError extends boolean = false>(options: Options<UploadCoverApiCoversUploadPostData, ThrowOnError>) => (options.client ?? client).post<UploadCoverApiCoversUploadPostResponses, UploadCoverApiCoversUploadPostErrors, ThrowOnError>({
+    ...formDataBodySerializer,
+    url: '/api/covers/upload',
+    ...options,
+    headers: {
+        'Content-Type': null,
+        ...options.headers
+    }
+});
+
+/**
+ * List Covers
+ *
+ * 获取封面列表（支持分页和视频过滤）
+ */
+export const listCoversApiCoversGet = <ThrowOnError extends boolean = false>(options?: Options<ListCoversApiCoversGetData, ThrowOnError>) => (options?.client ?? client).get<ListCoversApiCoversGetResponses, ListCoversApiCoversGetErrors, ThrowOnError>({ url: '/api/covers', ...options });
+
+/**
+ * Delete Cover
+ *
+ * 删除封面
+ */
+export const deleteCoverApiCoversCoverIdDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteCoverApiCoversCoverIdDeleteData, ThrowOnError>) => (options.client ?? client).delete<DeleteCoverApiCoversCoverIdDeleteResponses, DeleteCoverApiCoversCoverIdDeleteErrors, ThrowOnError>({ url: '/api/covers/{cover_id}', ...options });
+
+/**
+ * Batch Delete Covers
+ *
+ * 批量删除封面（清理物理文件）
+ */
+export const batchDeleteCoversApiCoversBatchDeletePost = <ThrowOnError extends boolean = false>(options: Options<BatchDeleteCoversApiCoversBatchDeletePostData, ThrowOnError>) => (options.client ?? client).post<BatchDeleteCoversApiCoversBatchDeletePostResponses, BatchDeleteCoversApiCoversBatchDeletePostErrors, ThrowOnError>({
+    url: '/api/covers/batch-delete',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Extract Cover
+ *
+ * 从视频指定时间点截取封面
+ */
+export const extractCoverApiCoversExtractPost = <ThrowOnError extends boolean = false>(options: Options<ExtractCoverApiCoversExtractPostData, ThrowOnError>) => (options.client ?? client).post<ExtractCoverApiCoversExtractPostResponses, ExtractCoverApiCoversExtractPostErrors, ThrowOnError>({
+    url: '/api/covers/extract',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get Cover Image
+ *
+ * 返回封面图片文件（FileResponse）
+ */
+export const getCoverImageApiCoversCoverIdImageGet = <ThrowOnError extends boolean = false>(options: Options<GetCoverImageApiCoversCoverIdImageGetData, ThrowOnError>) => (options.client ?? client).get<GetCoverImageApiCoversCoverIdImageGetResponses, GetCoverImageApiCoversCoverIdImageGetErrors, ThrowOnError>({ url: '/api/covers/{cover_id}/image', ...options });
+
+/**
+ * Upload Audio
+ *
+ * 上传音频文件
+ */
+export const uploadAudioApiAudiosUploadPost = <ThrowOnError extends boolean = false>(options: Options<UploadAudioApiAudiosUploadPostData, ThrowOnError>) => (options.client ?? client).post<UploadAudioApiAudiosUploadPostResponses, UploadAudioApiAudiosUploadPostErrors, ThrowOnError>({
+    ...formDataBodySerializer,
+    url: '/api/audios/upload',
+    ...options,
+    headers: {
+        'Content-Type': null,
+        ...options.headers
+    }
+});
+
+/**
+ * List Audios
+ *
+ * 获取音频列表（支持分页和关键词过滤）
+ */
+export const listAudiosApiAudiosGet = <ThrowOnError extends boolean = false>(options?: Options<ListAudiosApiAudiosGetData, ThrowOnError>) => (options?.client ?? client).get<ListAudiosApiAudiosGetResponses, ListAudiosApiAudiosGetErrors, ThrowOnError>({ url: '/api/audios', ...options });
+
+/**
+ * Delete Audio
+ *
+ * 删除音频
+ */
+export const deleteAudioApiAudiosAudioIdDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteAudioApiAudiosAudioIdDeleteData, ThrowOnError>) => (options.client ?? client).delete<DeleteAudioApiAudiosAudioIdDeleteResponses, DeleteAudioApiAudiosAudioIdDeleteErrors, ThrowOnError>({ url: '/api/audios/{audio_id}', ...options });
+
+/**
+ * Batch Delete Audios
+ *
+ * 批量删除音频（清理物理文件）
+ */
+export const batchDeleteAudiosApiAudiosBatchDeletePost = <ThrowOnError extends boolean = false>(options: Options<BatchDeleteAudiosApiAudiosBatchDeletePostData, ThrowOnError>) => (options.client ?? client).post<BatchDeleteAudiosApiAudiosBatchDeletePostResponses, BatchDeleteAudiosApiAudiosBatchDeletePostErrors, ThrowOnError>({
+    url: '/api/audios/batch-delete',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * List Topics
+ *
+ * 获取话题列表（支持分页、排序和过滤）
+ */
+export const listTopicsApiTopicsGet = <ThrowOnError extends boolean = false>(options?: Options<ListTopicsApiTopicsGetData, ThrowOnError>) => (options?.client ?? client).get<ListTopicsApiTopicsGetResponses, ListTopicsApiTopicsGetErrors, ThrowOnError>({ url: '/api/topics', ...options });
+
+/**
+ * Create Topic
+ *
+ * 创建话题
+ */
+export const createTopicApiTopicsPost = <ThrowOnError extends boolean = false>(options: Options<CreateTopicApiTopicsPostData, ThrowOnError>) => (options.client ?? client).post<CreateTopicApiTopicsPostResponses, CreateTopicApiTopicsPostErrors, ThrowOnError>({
+    url: '/api/topics',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get Global Topics
+ *
+ * 获取当前全局话题列表
+ */
+export const getGlobalTopicsApiTopicsGlobalGet = <ThrowOnError extends boolean = false>(options?: Options<GetGlobalTopicsApiTopicsGlobalGetData, ThrowOnError>) => (options?.client ?? client).get<GetGlobalTopicsApiTopicsGlobalGetResponses, unknown, ThrowOnError>({ url: '/api/topics/global', ...options });
+
+/**
+ * Set Global Topics
+ *
+ * 设置全局话题（覆盖写入）
+ */
+export const setGlobalTopicsApiTopicsGlobalPut = <ThrowOnError extends boolean = false>(options: Options<SetGlobalTopicsApiTopicsGlobalPutData, ThrowOnError>) => (options.client ?? client).put<SetGlobalTopicsApiTopicsGlobalPutResponses, SetGlobalTopicsApiTopicsGlobalPutErrors, ThrowOnError>({
+    url: '/api/topics/global',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Search Topics
+ *
+ * 搜索得物话题，结果自动入库（已存在则更新热度）
+ */
+export const searchTopicsApiTopicsSearchGet = <ThrowOnError extends boolean = false>(options: Options<SearchTopicsApiTopicsSearchGetData, ThrowOnError>) => (options.client ?? client).get<SearchTopicsApiTopicsSearchGetResponses, SearchTopicsApiTopicsSearchGetErrors, ThrowOnError>({ url: '/api/topics/search', ...options });
+
+/**
+ * Delete Topic
+ *
+ * 删除话题
+ */
+export const deleteTopicApiTopicsTopicIdDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteTopicApiTopicsTopicIdDeleteData, ThrowOnError>) => (options.client ?? client).delete<DeleteTopicApiTopicsTopicIdDeleteResponses, DeleteTopicApiTopicsTopicIdDeleteErrors, ThrowOnError>({ url: '/api/topics/{topic_id}', ...options });
+
+/**
+ * Batch Delete Topics
+ *
+ * 批量删除话题
+ */
+export const batchDeleteTopicsApiTopicsBatchDeletePost = <ThrowOnError extends boolean = false>(options: Options<BatchDeleteTopicsApiTopicsBatchDeletePostData, ThrowOnError>) => (options.client ?? client).post<BatchDeleteTopicsApiTopicsBatchDeletePostResponses, BatchDeleteTopicsApiTopicsBatchDeletePostErrors, ThrowOnError>({
+    url: '/api/topics/batch-delete',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * List Topic Groups
+ *
+ * 获取所有话题组
+ */
+export const listTopicGroupsApiTopicGroupsGet = <ThrowOnError extends boolean = false>(options?: Options<ListTopicGroupsApiTopicGroupsGetData, ThrowOnError>) => (options?.client ?? client).get<ListTopicGroupsApiTopicGroupsGetResponses, unknown, ThrowOnError>({ url: '/api/topic-groups', ...options });
+
+/**
+ * Create Topic Group
+ *
+ * 创建话题组
+ */
+export const createTopicGroupApiTopicGroupsPost = <ThrowOnError extends boolean = false>(options: Options<CreateTopicGroupApiTopicGroupsPostData, ThrowOnError>) => (options.client ?? client).post<CreateTopicGroupApiTopicGroupsPostResponses, CreateTopicGroupApiTopicGroupsPostErrors, ThrowOnError>({
+    url: '/api/topic-groups',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete Topic Group
+ *
+ * 删除话题组
+ */
+export const deleteTopicGroupApiTopicGroupsGroupIdDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteTopicGroupApiTopicGroupsGroupIdDeleteData, ThrowOnError>) => (options.client ?? client).delete<DeleteTopicGroupApiTopicGroupsGroupIdDeleteResponses, DeleteTopicGroupApiTopicGroupsGroupIdDeleteErrors, ThrowOnError>({ url: '/api/topic-groups/{group_id}', ...options });
+
+/**
+ * Get Topic Group
+ *
+ * 获取话题组详情（含展开的话题列表）
+ */
+export const getTopicGroupApiTopicGroupsGroupIdGet = <ThrowOnError extends boolean = false>(options: Options<GetTopicGroupApiTopicGroupsGroupIdGetData, ThrowOnError>) => (options.client ?? client).get<GetTopicGroupApiTopicGroupsGroupIdGetResponses, GetTopicGroupApiTopicGroupsGroupIdGetErrors, ThrowOnError>({ url: '/api/topic-groups/{group_id}', ...options });
+
+/**
+ * Update Topic Group
+ *
+ * 更新话题组
+ */
+export const updateTopicGroupApiTopicGroupsGroupIdPut = <ThrowOnError extends boolean = false>(options: Options<UpdateTopicGroupApiTopicGroupsGroupIdPutData, ThrowOnError>) => (options.client ?? client).put<UpdateTopicGroupApiTopicGroupsGroupIdPutResponses, UpdateTopicGroupApiTopicGroupsGroupIdPutErrors, ThrowOnError>({
+    url: '/api/topic-groups/{group_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * List Profiles
+ *
+ * 获取配置档列表
+ */
+export const listProfilesApiProfilesGet = <ThrowOnError extends boolean = false>(options?: Options<ListProfilesApiProfilesGetData, ThrowOnError>) => (options?.client ?? client).get<ListProfilesApiProfilesGetResponses, unknown, ThrowOnError>({ url: '/api/profiles', ...options });
+
+/**
+ * Create Profile
+ *
+ * 创建合成配置档
+ */
+export const createProfileApiProfilesPost = <ThrowOnError extends boolean = false>(options: Options<CreateProfileApiProfilesPostData, ThrowOnError>) => (options.client ?? client).post<CreateProfileApiProfilesPostResponses, CreateProfileApiProfilesPostErrors, ThrowOnError>({
+    url: '/api/profiles',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete Profile
+ *
+ * 删除配置档（默认配置档不允许删除）
+ */
+export const deleteProfileApiProfilesProfileIdDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteProfileApiProfilesProfileIdDeleteData, ThrowOnError>) => (options.client ?? client).delete<DeleteProfileApiProfilesProfileIdDeleteResponses, DeleteProfileApiProfilesProfileIdDeleteErrors, ThrowOnError>({ url: '/api/profiles/{profile_id}', ...options });
+
+/**
+ * Get Profile
+ *
+ * 获取配置档详情
+ */
+export const getProfileApiProfilesProfileIdGet = <ThrowOnError extends boolean = false>(options: Options<GetProfileApiProfilesProfileIdGetData, ThrowOnError>) => (options.client ?? client).get<GetProfileApiProfilesProfileIdGetResponses, GetProfileApiProfilesProfileIdGetErrors, ThrowOnError>({ url: '/api/profiles/{profile_id}', ...options });
+
+/**
+ * Update Profile
+ *
+ * 更新配置档
+ */
+export const updateProfileApiProfilesProfileIdPut = <ThrowOnError extends boolean = false>(options: Options<UpdateProfileApiProfilesProfileIdPutData, ThrowOnError>) => (options.client ?? client).put<UpdateProfileApiProfilesProfileIdPutResponses, UpdateProfileApiProfilesProfileIdPutErrors, ThrowOnError>({
+    url: '/api/profiles/{profile_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Set Default Profile
+ *
+ * 设为默认配置档（同时取消其他默认）
+ */
+export const setDefaultProfileApiProfilesProfileIdSetDefaultPut = <ThrowOnError extends boolean = false>(options: Options<SetDefaultProfileApiProfilesProfileIdSetDefaultPutData, ThrowOnError>) => (options.client ?? client).put<SetDefaultProfileApiProfilesProfileIdSetDefaultPutResponses, SetDefaultProfileApiProfilesProfileIdSetDefaultPutErrors, ThrowOnError>({ url: '/api/profiles/{profile_id}/set-default', ...options });
 
 /**
  * Root

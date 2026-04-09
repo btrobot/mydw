@@ -22,7 +22,8 @@ const items = [
     label: '任务管理',
     children: [
       { key: '/task/list', label: '任务列表' },
-      { key: '/task/assemble', label: '组装任务' },
+      { key: '/task/create', label: '创建任务' },
+      { key: '/task/assemble', label: '组装任务（旧）' },
       { key: '/schedule-config', label: '调度配置' },
       { key: '/profile-management', label: '配置档管理' },
     ],
@@ -64,6 +65,7 @@ const subMenuKeys = [
   '/material/product',
   '/material/topic-group',
   '/task/list',
+  '/task/create',
   '/task/assemble',
   '/schedule-config',
   '/profile-management',

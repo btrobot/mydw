@@ -12,7 +12,7 @@ from loguru import logger
 from models import Product, Video, Cover, Copywriting, Topic, ProductTopic, get_db
 from schemas import (
     ProductCreate, ProductUpdate, ProductResponse, ProductListResponse,
-    ProductDetailResponse, CoverResponse, TopicResponse,
+    ProductDetailResponse, ProductMaterialsResponse, CoverResponse, TopicResponse,
     VideoResponse, CopywritingResponse,
 )
 from services.product_parse_service import parse_and_create_materials
@@ -298,3 +298,32 @@ async def get_product_topics(
         .where(ProductTopic.product_id == product_id)
     )
     return topics_result.scalars().all()
+
+
+@router.get("/{product_id}/materials", response_model=ProductMaterialsResponse)
+async def get_product_materials(
+    product_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> ProductMaterialsResponse:
+    """获取商品关联的所有素材（用于素材篮快速导入）"""
+    product = await _load_product_detail(db, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="商品不存在")
+
+    videos = list(product.videos)
+    direct_covers = list(product.covers)
+    video_covers = [cover for video in videos for cover in video.covers]
+
+    seen_ids: set[int] = set()
+    all_covers: list[Cover] = []
+    for c in direct_covers + video_covers:
+        if c.id not in seen_ids:
+            seen_ids.add(c.id)
+            all_covers.append(c)
+
+    return ProductMaterialsResponse(
+        product=ProductResponse.model_validate(product),
+        videos=[VideoResponse.model_validate(v) for v in videos],
+        copywritings=[CopywritingResponse.model_validate(cw) for cw in product.copywritings],
+        covers=[CoverResponse.model_validate(c) for c in all_covers],
+    )

@@ -278,3 +278,28 @@ export const useCancelComposition = () => {
     },
   })
 }
+
+// ============ Batch Assemble (Material Basket) ============
+
+export interface BatchAssembleRequest {
+  video_ids: number[]
+  copywriting_ids: number[]
+  cover_ids: number[]
+  audio_ids: number[]
+  account_ids: number[]
+  strategy: 'round_robin' | 'manual'
+  copywriting_mode: 'auto_match' | 'round_robin'
+  profile_id?: number | null
+}
+
+export const useBatchAssemble = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (data: BatchAssembleRequest) => {
+      const { api } = await import('@/services/api')
+      const { data: result } = await api.post<TaskResponse[]>('/tasks/batch-assemble', data)
+      return result
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+  })
+}

@@ -25,7 +25,7 @@ interface TaskStats {
   uploaded: number
   failed: number
   cancelled: number
-  today_success: number
+  today_uploaded: number
 }
 
 interface LogItem {
@@ -54,7 +54,7 @@ export default function Dashboard() {
     uploaded:      ts?.uploaded      ?? 0,
     failed:        ts?.failed        ?? 0,
     cancelled:     ts?.cancelled     ?? 0,
-    today_success: ts?.today_success ?? 0,
+    today_uploaded: ts?.today_uploaded ?? 0,
   }
   const logs = (logsData as { items: LogItem[] })?.items || []
 
@@ -114,7 +114,7 @@ export default function Dashboard() {
           <Col span={3}><Statistic title="上传中" value={taskStats.uploading} valueStyle={{ color: '#1677ff' }} /></Col>
           <Col span={3}><Statistic title="已上传" value={taskStats.uploaded} valueStyle={{ color: '#3f8600' }} /></Col>
           <Col span={3}><Statistic title="失败" value={taskStats.failed} valueStyle={{ color: '#cf1322' }} /></Col>
-          <Col span={3}><Statistic title="今日上传" value={taskStats.today_success} valueStyle={{ color: '#3f8600' }} /></Col>
+          <Col span={3}><Statistic title="今日上传" value={taskStats.today_uploaded} valueStyle={{ color: '#3f8600' }} /></Col>
         </Row>
       </Card>
 

@@ -194,3 +194,12 @@ export interface TopicGroupUpdate {
   name?: string
   topic_ids?: number[]
 }
+
+// ============ Product Materials (for basket import) ============
+
+export interface ProductMaterialsResponse {
+  product: ProductResponse
+  videos: VideoResponse[]
+  copywritings: CopywritingResponse[]
+  covers: CoverResponse[]
+}
