@@ -41,6 +41,7 @@ const items = [
     children: [
       { key: '/settings', label: '基本设置' },
       { key: '/schedule-config', label: '调度配置' },
+      { key: '/profile-management', label: '配置档管理' },
     ],
   },
 ]
@@ -64,7 +65,7 @@ export default function LayoutComponent() {
   } = theme.useToken()
 
   const isMaterialRoute = location.pathname.startsWith('/material')
-  const isSettingsRoute = location.pathname === '/settings' || location.pathname === '/schedule-config'
+  const isSettingsRoute = ['/settings', '/schedule-config', '/profile-management'].includes(location.pathname)
   const initialOpenKeys = [
     ...(isMaterialRoute ? ['material-group'] : []),
     ...(isSettingsRoute ? ['settings-group'] : []),
