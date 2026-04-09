@@ -12,6 +12,7 @@ import Account from './pages/Account'
 import Task from './pages/Task'
 import AIClip from './pages/AIClip'
 import Settings from './pages/Settings'
+import ScheduleConfig from './pages/ScheduleConfig'
 import MaterialOverview from './pages/material/MaterialOverview'
 import VideoList from './pages/material/VideoList'
 import CopywritingList from './pages/material/CopywritingList'
@@ -70,6 +71,7 @@ function App() {
 
               <Route path="ai-clip" element={<AIClip />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="schedule-config" element={<ScheduleConfig />} />
             </Route>
           </Routes>
         </HashRouter>

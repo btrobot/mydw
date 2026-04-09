@@ -34,7 +34,15 @@ const items = [
     ],
   },
   { key: '/ai-clip', icon: <ScissorOutlined />, label: 'AI 剪辑' },
-  { key: '/settings', icon: <SettingOutlined />, label: '系统设置' },
+  {
+    key: 'settings-group',
+    icon: <SettingOutlined />,
+    label: '系统设置',
+    children: [
+      { key: '/settings', label: '基本设置' },
+      { key: '/schedule-config', label: '调度配置' },
+    ],
+  },
 ]
 
 const materialKeys = [
@@ -56,7 +64,12 @@ export default function LayoutComponent() {
   } = theme.useToken()
 
   const isMaterialRoute = location.pathname.startsWith('/material')
-  const [openKeys, setOpenKeys] = useState<string[]>(isMaterialRoute ? ['material-group'] : [])
+  const isSettingsRoute = location.pathname === '/settings' || location.pathname === '/schedule-config'
+  const initialOpenKeys = [
+    ...(isMaterialRoute ? ['material-group'] : []),
+    ...(isSettingsRoute ? ['settings-group'] : []),
+  ]
+  const [openKeys, setOpenKeys] = useState<string[]>(initialOpenKeys)
 
   const selectedKey = materialKeys.find((k) => location.pathname === k)
     ?? location.pathname
@@ -77,7 +90,7 @@ export default function LayoutComponent() {
             onOpenChange={setOpenKeys}
             items={items}
             onClick={({ key }) => {
-              if (key !== 'material-group') navigate(key)
+              if (key !== 'material-group' && key !== 'settings-group') navigate(key)
             }}
             style={{ height: '100%', borderRight: 0 }}
           />
