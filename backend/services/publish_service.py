@@ -76,12 +76,11 @@ class PublishService:
             # 重新查询并预加载所有关系
             task_result = await self.db.execute(
                 select(Task).options(
-                    selectinload(Task.video),
-                    selectinload(Task.copywriting),
-                    selectinload(Task.audio),
-                    selectinload(Task.product),
+                    selectinload(Task.videos),
+                    selectinload(Task.copywritings),
+                    selectinload(Task.audios),
                     selectinload(Task.topics),
-                    selectinload(Task.cover),
+                    selectinload(Task.covers),
                 ).where(Task.id == task.id)
             )
             task = task_result.scalar_one_or_none()
@@ -118,28 +117,19 @@ class PublishService:
                 await task_svc.mark_task_failed(task.id, "登录已过期")
                 return False, "登录已过期"
 
-            # 读取素材字段
+            # 读取素材字段（资源集合模型：取第一个）
             video_path: Optional[str] = (
-                task.video.file_path if task.video else None
+                task.videos[0].file_path if task.videos else None
             )
             content: str = (
-                task.copywriting.content if task.copywriting else ""
+                task.copywritings[0].content if task.copywritings else ""
             )
             topic: Optional[str] = (
                 ", ".join(t.name for t in task.topics) if task.topics else None
             )
 
-            # 读取商品链接（product 关系已预加载，fallback 到单独查询）
+            # 商品链接已废弃（product_id 不再使用）
             product_link: Optional[str] = None
-            if task.product:
-                product_link = task.product.link
-            elif task.product_id:
-                prod_result = await self.db.execute(
-                    select(Product).where(Product.id == task.product_id)
-                )
-                product = prod_result.scalar_one_or_none()
-                if product:
-                    product_link = product.link
 
             # 发布视频
             success, msg = await client.upload_video(
@@ -147,7 +137,7 @@ class PublishService:
                 title=content[:50] if content else "视频标题",
                 content=content,
                 topic=topic,
-                cover_path=task.cover.file_path if task.cover else None,
+                cover_path=task.covers[0].file_path if task.covers else None,
                 product_link=product_link
             )
 

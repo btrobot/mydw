@@ -41,7 +41,6 @@ export {
   useShuffleTasks,
   useDeleteAllTasks,
   useTaskStats,
-  useAssembleTasks,
   useRetryTask,
   useEditRetryTask,
   useCancelTask,

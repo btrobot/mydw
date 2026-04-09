@@ -4,9 +4,9 @@ import {
   Card, Form, Select, Button, Space, message, Typography,
 } from 'antd'
 import { ArrowLeftOutlined } from '@ant-design/icons'
-import { useAccounts, useAssembleTasks } from '@/hooks'
+import { useAccounts } from '@/hooks'
+import { useBatchAssemble } from '@/hooks/useTask'
 import { useVideos } from '@/hooks/useVideo'
-import { useCovers } from '@/hooks/useCover'
 import { useProfiles } from '@/hooks/useProfile'
 import type { PublishProfileResponse } from '@/hooks/useProfile'
 import type { AccountResponseExtended } from '@/hooks/useAccount'
@@ -17,9 +17,6 @@ const { Text, Title } = Typography
 interface AssembleFormValues {
   video_ids: number[]
   account_ids: number[]
-  strategy: string
-  copywriting_mode: string
-  cover_id?: number | null
   profile_id?: number | null
 }
 
@@ -36,19 +33,24 @@ export default function TaskAssemble() {
 
   const { data: accounts = [] } = useAccounts()
   const { data: videos = [] } = useVideos()
-  const { data: covers = [] } = useCovers()
   const { data: profilesData } = useProfiles()
-  const assembleTasks = useAssembleTasks()
+  const createTasks = useBatchAssemble()
 
   const profiles = profilesData?.items ?? []
-
-  // Set default profile on mount
   const defaultProfile = profiles.find((p: PublishProfileResponse) => p.is_default)
 
   const handleSubmit = useCallback(async () => {
     try {
       const values = await form.validateFields()
-      const result = await assembleTasks.mutateAsync(values)
+      const result = await createTasks.mutateAsync({
+        video_ids: values.video_ids,
+        copywriting_ids: [],
+        cover_ids: [],
+        audio_ids: [],
+        topic_ids: [],
+        account_ids: values.account_ids,
+        profile_id: values.profile_id,
+      })
       const count = Array.isArray(result) ? result.length : 0
       message.success(`组装成功，共生成 ${count} 个任务`)
       navigate('/task/list')
@@ -60,7 +62,7 @@ export default function TaskAssemble() {
         message.error('组装失败')
       }
     }
-  }, [form, assembleTasks, navigate])
+  }, [form, createTasks, navigate])
 
   return (
     <div style={{ maxWidth: 640 }}>
@@ -74,8 +76,6 @@ export default function TaskAssemble() {
           form={form}
           layout="vertical"
           initialValues={{
-            strategy: 'round_robin',
-            copywriting_mode: 'auto_match',
             profile_id: defaultProfile?.id,
           }}
         >
@@ -103,29 +103,6 @@ export default function TaskAssemble() {
               options={accounts.map((a: AccountResponseExtended) => ({ value: a.id, label: a.account_name }))}
             />
           </Form.Item>
-          <Form.Item name="strategy" label="分配策略">
-            <Select
-              options={[
-                { value: 'round_robin', label: '轮询分配' },
-                { value: 'manual', label: '手动分配' },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item name="copywriting_mode" label="文案模式">
-            <Select
-              options={[
-                { value: 'auto_match', label: '自动匹配' },
-                { value: 'manual', label: '手动指定' },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item name="cover_id" label="封面（可选）">
-            <Select
-              allowClear
-              placeholder="选择封面"
-              options={covers.map((c) => ({ value: c.id, label: c.file_path.split(/[/\\]/).pop() ?? `封面 #${c.id}` }))}
-            />
-          </Form.Item>
           <Form.Item name="profile_id" label="发布配置档（可选）">
             <Select
               allowClear
@@ -150,7 +127,7 @@ export default function TaskAssemble() {
           )}
           <Form.Item>
             <Space>
-              <Button type="primary" onClick={handleSubmit} loading={assembleTasks.isPending}>
+              <Button type="primary" onClick={handleSubmit} loading={createTasks.isPending}>
                 开始组装
               </Button>
               <Button onClick={() => navigate('/task/list')}>取消</Button>

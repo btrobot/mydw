@@ -16,7 +16,7 @@ from models import get_db
 from schemas import (
     TaskCreate, TaskUpdate, TaskResponse, TaskListResponse,
     TaskPublishRequest, TaskBatchCreateRequest, AssembleTasksRequest,
-    BatchAssembleRequest, CompositionJobResponse,
+    BatchAssembleRequest, CompositionJobResponse, TaskCreateRequest,
 )
 from services.task_service import TaskService
 from services.task_distributor import TaskDistributor
@@ -46,22 +46,55 @@ class BatchSubmitCompositionRequest(BaseModel):
 
 # ============ API 端点 ============
 
-@router.post("/", response_model=TaskResponse, status_code=201)
-async def create_task(
-    task_data: TaskCreate,
+@router.post("/", response_model=List[TaskResponse], status_code=201)
+async def create_tasks(
+    request: TaskCreateRequest,
     db: AsyncSession = Depends(get_db)
 ):
-    """创建任务"""
-    result = await db.execute(
-        select(Account).where(Account.id == task_data.account_id)
-    )
-    account = result.scalar_one_or_none()
-    if not account:
-        raise HTTPException(status_code=404, detail="账号不存在")
+    """创建任务（资源集合模型）— 1 份素材 x N 个账号 = N 个 Task"""
+    from models import Video, Copywriting, Cover, Audio, Account
 
-    service = TaskService(db)
-    task = await service.create_task(task_data.model_dump())
-    return task
+    # 验证资源存在
+    video_result = await db.execute(select(Video).where(Video.id.in_(request.video_ids)))
+    if len(video_result.scalars().all()) != len(request.video_ids):
+        raise HTTPException(status_code=400, detail="部分视频ID不存在")
+
+    if request.copywriting_ids:
+        cw_result = await db.execute(select(Copywriting).where(Copywriting.id.in_(request.copywriting_ids)))
+        if len(cw_result.scalars().all()) != len(request.copywriting_ids):
+            raise HTTPException(status_code=400, detail="部分文案ID不存在")
+
+    if request.cover_ids:
+        cover_result = await db.execute(select(Cover).where(Cover.id.in_(request.cover_ids)))
+        if len(cover_result.scalars().all()) != len(request.cover_ids):
+            raise HTTPException(status_code=400, detail="部分封面ID不存在")
+
+    if request.audio_ids:
+        audio_result = await db.execute(select(Audio).where(Audio.id.in_(request.audio_ids)))
+        if len(audio_result.scalars().all()) != len(request.audio_ids):
+            raise HTTPException(status_code=400, detail="部分音频ID不存在")
+
+    account_result = await db.execute(select(Account).where(Account.id.in_(request.account_ids)))
+    if len(account_result.scalars().all()) != len(request.account_ids):
+        raise HTTPException(status_code=400, detail="部分账号ID不存在")
+
+    distributor = TaskDistributor(db)
+    tasks = await distributor.distribute(
+        video_ids=request.video_ids,
+        account_ids=request.account_ids,
+        copywriting_ids=request.copywriting_ids if request.copywriting_ids else None,
+        cover_ids=request.cover_ids if request.cover_ids else None,
+        audio_ids=request.audio_ids if request.audio_ids else None,
+        topic_ids=request.topic_ids if request.topic_ids else None,
+        profile_id=request.profile_id,
+        name=request.name,
+    )
+
+    logger.info(
+        "创建任务: videos={}, accounts={}, tasks={}",
+        len(request.video_ids), len(request.account_ids), len(tasks),
+    )
+    return tasks
 
 
 @router.get("/", response_model=TaskListResponse)
@@ -74,12 +107,11 @@ async def list_tasks(
 ):
     """获取任务列表"""
     query = select(Task).options(
-        selectinload(Task.video),
-        selectinload(Task.copywriting),
+        selectinload(Task.videos),
+        selectinload(Task.copywritings),
+        selectinload(Task.covers),
+        selectinload(Task.audios),
         selectinload(Task.topics),
-        selectinload(Task.product),
-        selectinload(Task.cover),
-        selectinload(Task.audio),
         selectinload(Task.account),
     )
     if status:
@@ -113,12 +145,11 @@ async def get_task(task_id: int, db: AsyncSession = Depends(get_db)):
     """获取任务详情"""
     result = await db.execute(
         select(Task).options(
-            selectinload(Task.video),
-            selectinload(Task.copywriting),
+            selectinload(Task.videos),
+            selectinload(Task.copywritings),
+            selectinload(Task.covers),
+            selectinload(Task.audios),
             selectinload(Task.topics),
-            selectinload(Task.product),
-            selectinload(Task.cover),
-            selectinload(Task.audio),
             selectinload(Task.account),
         ).where(Task.id == task_id)
     )
@@ -254,22 +285,12 @@ async def assemble_tasks(
     request: AssembleTasksRequest,
     db: AsyncSession = Depends(get_db)
 ):
-    """组装任务 — 多视频+多账号自动分配（已废弃，使用 /batch-assemble）"""
+    """组装任务（兼容旧接口，内部转发到新逻辑）"""
     distributor = TaskDistributor(db)
     tasks = await distributor.distribute(
         video_ids=request.video_ids,
         account_ids=request.account_ids,
-        strategy=request.strategy,
-        copywriting_mode=request.copywriting_mode,
         profile_id=request.profile_id,
-        cover_id=request.cover_id,
-    )
-    logger.info(
-        "组装任务完成: video_count={}, account_count={}, task_count={}, strategy={}",
-        len(request.video_ids),
-        len(request.account_ids),
-        len(tasks),
-        request.strategy,
     )
     return tasks
 
@@ -279,59 +300,15 @@ async def batch_assemble_tasks(
     request: BatchAssembleRequest,
     db: AsyncSession = Depends(get_db)
 ):
-    """批量组装任务 — 素材篮模型（视频+文案+封面+音频+账号）"""
-    from models import Video, Copywriting, Cover, Audio, Account
-
-    # 验证所有 ID 存在
-    video_result = await db.execute(select(Video).where(Video.id.in_(request.video_ids)))
-    videos = video_result.scalars().all()
-    if len(videos) != len(request.video_ids):
-        raise HTTPException(status_code=400, detail="部分视频ID不存在")
-
-    if request.copywriting_ids:
-        cw_result = await db.execute(select(Copywriting).where(Copywriting.id.in_(request.copywriting_ids)))
-        copywritings = cw_result.scalars().all()
-        if len(copywritings) != len(request.copywriting_ids):
-            raise HTTPException(status_code=400, detail="部分文案ID不存在")
-
-    if request.cover_ids:
-        cover_result = await db.execute(select(Cover).where(Cover.id.in_(request.cover_ids)))
-        covers = cover_result.scalars().all()
-        if len(covers) != len(request.cover_ids):
-            raise HTTPException(status_code=400, detail="部分封面ID不存在")
-
-    if request.audio_ids:
-        audio_result = await db.execute(select(Audio).where(Audio.id.in_(request.audio_ids)))
-        audios = audio_result.scalars().all()
-        if len(audios) != len(request.audio_ids):
-            raise HTTPException(status_code=400, detail="部分音频ID不存在")
-
-    account_result = await db.execute(select(Account).where(Account.id.in_(request.account_ids)))
-    accounts = account_result.scalars().all()
-    if len(accounts) != len(request.account_ids):
-        raise HTTPException(status_code=400, detail="部分账号ID不存在")
-
-    # 调用 TaskDistributor 分配任务
+    """批量组装任务（兼容旧接口，内部转发到新逻辑）"""
     distributor = TaskDistributor(db)
     tasks = await distributor.distribute(
         video_ids=request.video_ids,
         account_ids=request.account_ids,
-        strategy=request.strategy,
-        copywriting_mode=request.copywriting_mode,
-        profile_id=request.profile_id,
         copywriting_ids=request.copywriting_ids if request.copywriting_ids else None,
         cover_ids=request.cover_ids if request.cover_ids else None,
         audio_ids=request.audio_ids if request.audio_ids else None,
-    )
-
-    logger.info(
-        "素材篮组装完成: video_count={}, copywriting_count={}, cover_count={}, audio_count={}, account_count={}, task_count={}",
-        len(request.video_ids),
-        len(request.copywriting_ids),
-        len(request.cover_ids),
-        len(request.audio_ids),
-        len(request.account_ids),
-        len(tasks),
+        profile_id=request.profile_id,
     )
     return tasks
 

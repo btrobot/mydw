@@ -21,8 +21,14 @@ export default function ProductQuickImport({ onImport }: ProductQuickImportProps
   const { data: materials, isLoading } = useProductMaterials(selectedProductId)
 
   const handleImport = () => {
-    if (!materials) {
+    if (!materials || !selectedProductId) {
       message.warning('请先选择商品')
+      return
+    }
+
+    // Guard against stale data
+    if (materials.product.id !== selectedProductId) {
+      message.warning('素材加载中，请稍候')
       return
     }
 
@@ -66,7 +72,7 @@ export default function ProductQuickImport({ onImport }: ProductQuickImportProps
           icon={<PlusOutlined />}
           onClick={handleImport}
           loading={isLoading}
-          disabled={!selectedProductId}
+          disabled={!selectedProductId || isLoading || !materials}
         >
           添加到素材篮
         </Button>

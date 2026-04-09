@@ -1,25 +1,23 @@
 import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Card, Form, Select, Button, Space, message, Typography, Row, Col, List, Tag, Empty, Divider,
+  Card, Form, Select, Button, Space, message, Typography, Tabs, Table, Popconfirm, Tag, Empty,
 } from 'antd'
-import { ArrowLeftOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, DeleteOutlined, PlusOutlined, VideoCameraOutlined, FileTextOutlined, PictureOutlined, AudioOutlined, ClearOutlined } from '@ant-design/icons'
 import { useAccounts } from '@/hooks/useAccount'
 import { useProfiles } from '@/hooks/useProfile'
 import { useBatchAssemble } from '@/hooks/useTask'
-import { useProducts } from '@/hooks/useProduct'
 import type { PublishProfileResponse } from '@/hooks/useProfile'
 import type { AccountResponseExtended } from '@/hooks/useAccount'
 import type { VideoResponse, CopywritingResponse, CoverResponse, AudioResponse } from '@/types/material'
-import MaterialBasket from '@/components/MaterialBasket'
 import ProductQuickImport from '@/components/ProductQuickImport'
+import MaterialSelectModal from '@/components/MaterialSelectModal'
+import type { TableColumnsType } from 'antd'
 
 const { Text, Title } = Typography
 
 interface TaskCreateFormValues {
   account_ids: number[]
-  strategy: 'round_robin' | 'manual'
-  copywriting_mode: 'auto_match' | 'round_robin'
   profile_id?: number | null
 }
 
@@ -36,6 +34,8 @@ const COMPOSITION_MODE_LABEL: Record<string, string> = {
   local_ffmpeg: '本地 FFmpeg 合成',
 }
 
+type MaterialType = 'video' | 'copywriting' | 'cover' | 'audio'
+
 export default function TaskCreate() {
   const navigate = useNavigate()
   const [form] = Form.useForm<TaskCreateFormValues>()
@@ -46,6 +46,10 @@ export default function TaskCreate() {
     audios: [],
   })
   const [selectedCompositionMode, setSelectedCompositionMode] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<string>('video')
+  const [modalVisible, setModalVisible] = useState(false)
+  const [modalMaterialType, setModalMaterialType] = useState<MaterialType>('video')
+  const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([])
 
   const { data: accounts = [] } = useAccounts()
   const { data: profilesData } = useProfiles()
@@ -93,6 +97,56 @@ export default function TaskCreate() {
     }))
   }, [])
 
+  const handleOpenModal = useCallback((type: MaterialType) => {
+    setModalMaterialType(type)
+    setModalVisible(true)
+  }, [])
+
+  const handleModalConfirm = useCallback((materials: VideoResponse[] | CopywritingResponse[] | CoverResponse[] | AudioResponse[]) => {
+    const typeMap: Record<MaterialType, keyof MaterialBasketState> = {
+      video: 'videos',
+      copywriting: 'copywritings',
+      cover: 'covers',
+      audio: 'audios',
+    }
+    const basketKey = typeMap[modalMaterialType]
+    addToBasket({ [basketKey]: materials })
+    message.success(`已添加 ${materials.length} 项素材`)
+    setModalVisible(false)
+  }, [modalMaterialType, addToBasket])
+
+  const handleBatchDelete = useCallback(() => {
+    const typeMap: Record<string, keyof MaterialBasketState> = {
+      video: 'videos',
+      copywriting: 'copywritings',
+      cover: 'covers',
+      audio: 'audios',
+    }
+    const basketKey = typeMap[activeTab]
+    setBasket((prev) => ({
+      ...prev,
+      [basketKey]: prev[basketKey].filter((item) => !selectedRowKeys.includes(item.id)),
+    }))
+    setSelectedRowKeys([])
+    message.success('删除成功')
+  }, [activeTab, selectedRowKeys])
+
+  const handleClearAll = useCallback(() => {
+    const typeMap: Record<string, keyof MaterialBasketState> = {
+      video: 'videos',
+      copywriting: 'copywritings',
+      cover: 'covers',
+      audio: 'audios',
+    }
+    const basketKey = typeMap[activeTab]
+    setBasket((prev) => ({
+      ...prev,
+      [basketKey]: [],
+    }))
+    setSelectedRowKeys([])
+    message.success('已清空')
+  }, [activeTab])
+
   const handleSubmit = useCallback(async () => {
     try {
       const values = await form.validateFields()
@@ -112,9 +166,8 @@ export default function TaskCreate() {
         copywriting_ids: basket.copywritings.map((c) => c.id),
         cover_ids: basket.covers.map((c) => c.id),
         audio_ids: basket.audios.map((a) => a.id),
+        topic_ids: [],
         account_ids: values.account_ids,
-        strategy: values.strategy,
-        copywriting_mode: values.copywriting_mode,
         profile_id: values.profile_id,
       })
 
@@ -133,6 +186,181 @@ export default function TaskCreate() {
 
   const basketCount = basket.videos.length + basket.copywritings.length + basket.covers.length + basket.audios.length
 
+  const videoColumns: TableColumnsType<VideoResponse> = [
+    { title: '名称', dataIndex: 'name', key: 'name', ellipsis: true },
+    { title: '时长', dataIndex: 'duration', key: 'duration', width: 100, render: (d: number | null) => d ? `${d.toFixed(1)}s` : '-' },
+    { title: '来源商品', dataIndex: 'product_name', key: 'product_name', width: 150, ellipsis: true, render: (n: string | null) => n || '-' },
+    {
+      title: '操作',
+      key: 'action',
+      width: 80,
+      render: (_: unknown, record: VideoResponse) => (
+        <Popconfirm title="确定删除？" onConfirm={() => removeFromBasket('videos', record.id)}>
+          <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+        </Popconfirm>
+      ),
+    },
+  ]
+
+  const copywritingColumns: TableColumnsType<CopywritingResponse> = [
+    { title: '名称', dataIndex: 'name', key: 'name', ellipsis: true },
+    { title: '内容预览', dataIndex: 'content', key: 'content', ellipsis: true, render: (c: string) => c.slice(0, 50) + (c.length > 50 ? '...' : '') },
+    { title: '来源商品', dataIndex: 'product_name', key: 'product_name', width: 150, ellipsis: true, render: (n: string | null) => n || '-' },
+    {
+      title: '操作',
+      key: 'action',
+      width: 80,
+      render: (_: unknown, record: CopywritingResponse) => (
+        <Popconfirm title="确定删除？" onConfirm={() => removeFromBasket('copywritings', record.id)}>
+          <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+        </Popconfirm>
+      ),
+    },
+  ]
+
+  const coverColumns: TableColumnsType<CoverResponse> = [
+    { title: '名称', dataIndex: 'name', key: 'name', ellipsis: true },
+    { title: '尺寸', key: 'size', width: 120, render: (_: unknown, r: CoverResponse) => r.width && r.height ? `${r.width}x${r.height}` : '-' },
+    {
+      title: '操作',
+      key: 'action',
+      width: 80,
+      render: (_: unknown, record: CoverResponse) => (
+        <Popconfirm title="确定删除？" onConfirm={() => removeFromBasket('covers', record.id)}>
+          <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+        </Popconfirm>
+      ),
+    },
+  ]
+
+  const audioColumns: TableColumnsType<AudioResponse> = [
+    { title: '名称', dataIndex: 'name', key: 'name', ellipsis: true },
+    { title: '时长', dataIndex: 'duration', key: 'duration', width: 100, render: (d: number | null) => d ? `${d.toFixed(1)}s` : '-' },
+    {
+      title: '操作',
+      key: 'action',
+      width: 80,
+      render: (_: unknown, record: AudioResponse) => (
+        <Popconfirm title="确定删除？" onConfirm={() => removeFromBasket('audios', record.id)}>
+          <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+        </Popconfirm>
+      ),
+    },
+  ]
+
+  const tabItems = [
+    {
+      key: 'video',
+      label: (
+        <Space>
+          <VideoCameraOutlined />
+          <span>视频</span>
+          {basket.videos.length > 0 && <Tag color="blue">{basket.videos.length}</Tag>}
+        </Space>
+      ),
+      children: basket.videos.length === 0 ? (
+        <Empty description="暂无视频" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+      ) : (
+        <Table<VideoResponse>
+          rowKey="id"
+          dataSource={basket.videos}
+          columns={videoColumns}
+          pagination={false}
+          size="small"
+          rowSelection={{
+            selectedRowKeys,
+            onChange: (keys) => setSelectedRowKeys(keys as number[]),
+          }}
+        />
+      ),
+    },
+    {
+      key: 'copywriting',
+      label: (
+        <Space>
+          <FileTextOutlined />
+          <span>文案</span>
+          {basket.copywritings.length > 0 && <Tag color="blue">{basket.copywritings.length}</Tag>}
+        </Space>
+      ),
+      children: basket.copywritings.length === 0 ? (
+        <Empty description="暂无文案" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+      ) : (
+        <Table<CopywritingResponse>
+          rowKey="id"
+          dataSource={basket.copywritings}
+          columns={copywritingColumns}
+          pagination={false}
+          size="small"
+          rowSelection={{
+            selectedRowKeys,
+            onChange: (keys) => setSelectedRowKeys(keys as number[]),
+          }}
+        />
+      ),
+    },
+    {
+      key: 'cover',
+      label: (
+        <Space>
+          <PictureOutlined />
+          <span>封面</span>
+          {basket.covers.length > 0 && <Tag color="blue">{basket.covers.length}</Tag>}
+        </Space>
+      ),
+      children: basket.covers.length === 0 ? (
+        <Empty description="暂无封面" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+      ) : (
+        <Table<CoverResponse>
+          rowKey="id"
+          dataSource={basket.covers}
+          columns={coverColumns}
+          pagination={false}
+          size="small"
+          rowSelection={{
+            selectedRowKeys,
+            onChange: (keys) => setSelectedRowKeys(keys as number[]),
+          }}
+        />
+      ),
+    },
+    {
+      key: 'audio',
+      label: (
+        <Space>
+          <AudioOutlined />
+          <span>音频</span>
+          {basket.audios.length > 0 && <Tag color="blue">{basket.audios.length}</Tag>}
+        </Space>
+      ),
+      children: basket.audios.length === 0 ? (
+        <Empty description="暂无音频" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+      ) : (
+        <Table<AudioResponse>
+          rowKey="id"
+          dataSource={basket.audios}
+          columns={audioColumns}
+          pagination={false}
+          size="small"
+          rowSelection={{
+            selectedRowKeys,
+            onChange: (keys) => setSelectedRowKeys(keys as number[]),
+          }}
+        />
+      ),
+    },
+  ]
+
+  const getCurrentTabCount = () => {
+    const countMap: Record<string, number> = {
+      video: basket.videos.length,
+      copywriting: basket.copywritings.length,
+      cover: basket.covers.length,
+      audio: basket.audios.length,
+    }
+    return countMap[activeTab] || 0
+  }
+
   return (
     <div>
       <Space style={{ marginBottom: 16 }}>
@@ -140,34 +368,64 @@ export default function TaskCreate() {
         <Title level={4} style={{ margin: 0 }}>创建任务</Title>
       </Space>
 
-      <Row gutter={16}>
-        <Col span={12}>
-          <Card title="素材来源" style={{ marginBottom: 16 }}>
-            <ProductQuickImport onImport={addToBasket} />
-          </Card>
-        </Col>
+      <Card title="商品快速导入" style={{ marginBottom: 16 }}>
+        <ProductQuickImport onImport={addToBasket} />
+      </Card>
 
-        <Col span={12}>
-          <Card
-            title={
-              <Space>
-                <span>素材篮</span>
-                {basketCount > 0 && <Tag color="blue">{basketCount} 项</Tag>}
-              </Space>
-            }
-          >
-            <MaterialBasket basket={basket} onRemove={removeFromBasket} />
-          </Card>
-        </Col>
-      </Row>
+      <Card
+        title={
+          <Space>
+            <span>素材篮</span>
+            {basketCount > 0 && <Tag color="blue">{basketCount} 项</Tag>}
+          </Space>
+        }
+        extra={
+          <Space>
+            <Button
+              icon={<PlusOutlined />}
+              onClick={() => handleOpenModal(activeTab as MaterialType)}
+            >
+              手动添加
+            </Button>
+            {selectedRowKeys.length > 0 && (
+              <Popconfirm
+                title={`确定删除选中的 ${selectedRowKeys.length} 项？`}
+                onConfirm={handleBatchDelete}
+              >
+                <Button danger icon={<DeleteOutlined />}>
+                  批量删除
+                </Button>
+              </Popconfirm>
+            )}
+            {getCurrentTabCount() > 0 && (
+              <Popconfirm
+                title="确定清空当前标签页的所有素材？"
+                onConfirm={handleClearAll}
+              >
+                <Button danger icon={<ClearOutlined />}>
+                  清空
+                </Button>
+              </Popconfirm>
+            )}
+          </Space>
+        }
+        style={{ marginBottom: 16 }}
+      >
+        <Tabs
+          activeKey={activeTab}
+          onChange={(key) => {
+            setActiveTab(key)
+            setSelectedRowKeys([])
+          }}
+          items={tabItems}
+        />
+      </Card>
 
       <Card title="发布配置">
         <Form
           form={form}
           layout="vertical"
           initialValues={{
-            strategy: 'round_robin',
-            copywriting_mode: 'auto_match',
             profile_id: defaultProfile?.id,
           }}
         >
@@ -184,24 +442,6 @@ export default function TaskCreate() {
                 value: a.id,
                 label: a.account_name,
               }))}
-            />
-          </Form.Item>
-
-          <Form.Item name="strategy" label="分配策略">
-            <Select
-              options={[
-                { value: 'round_robin', label: '轮询分配' },
-                { value: 'manual', label: '手动分配' },
-              ]}
-            />
-          </Form.Item>
-
-          <Form.Item name="copywriting_mode" label="文案模式">
-            <Select
-              options={[
-                { value: 'auto_match', label: '自动匹配' },
-                { value: 'round_robin', label: '轮询分配' },
-              ]}
             />
           </Form.Item>
 
@@ -244,6 +484,13 @@ export default function TaskCreate() {
           </Form.Item>
         </Form>
       </Card>
+
+      <MaterialSelectModal
+        visible={modalVisible}
+        materialType={modalMaterialType}
+        onConfirm={handleModalConfirm}
+        onCancel={() => setModalVisible(false)}
+      />
     </div>
   )
 }

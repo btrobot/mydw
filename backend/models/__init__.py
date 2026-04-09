@@ -51,9 +51,9 @@ class Task(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False, index=True)
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=True)
 
-    # 素材 FK
+    # 旧 FK（保留列兼容 SQLite，代码不再读写）
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=True)
     video_id = Column(Integer, ForeignKey("videos.id"), nullable=True, index=True)
     copywriting_id = Column(Integer, ForeignKey("copywritings.id"), nullable=True, index=True)
     audio_id = Column(Integer, ForeignKey("audios.id"), nullable=True, index=True)
@@ -90,12 +90,11 @@ class Task(Base):
 
     # 关系
     account = relationship("Account", back_populates="tasks")
-    product = relationship("Product", back_populates="tasks")
     logs = relationship("PublishLog", back_populates="task")
-    video = relationship("Video")
-    copywriting = relationship("Copywriting")
-    audio = relationship("Audio")
-    cover = relationship("Cover")
+    videos = relationship("Video", secondary="task_videos", passive_deletes=True)
+    copywritings = relationship("Copywriting", secondary="task_copywritings", passive_deletes=True)
+    covers = relationship("Cover", secondary="task_covers", passive_deletes=True)
+    audios = relationship("Audio", secondary="task_audios", passive_deletes=True)
     topics = relationship("Topic", secondary="task_topics", passive_deletes=True)
     composition_jobs = relationship("CompositionJob", back_populates="task", order_by="CompositionJob.id")
     profile = relationship("PublishProfile", foreign_keys=[profile_id])
@@ -123,7 +122,7 @@ class Product(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # 关系
-    tasks = relationship("Task", back_populates="product")
+    tasks = relationship("Task", foreign_keys="Task.product_id")
     videos = relationship("Video", back_populates="product")
     copywritings = relationship("Copywriting", back_populates="product")
     covers = relationship("Cover", back_populates="product")
@@ -217,6 +216,54 @@ class Topic(Base):
     last_synced = Column(DateTime, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class TaskVideo(Base):
+    """任务-视频关联表"""
+    __tablename__ = "task_videos"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
+    video_id = Column(Integer, ForeignKey("videos.id"), nullable=False, index=True)
+    sort_order = Column(Integer, default=0, nullable=False)
+
+    __table_args__ = (UniqueConstraint('task_id', 'video_id'),)
+
+
+class TaskCopywriting(Base):
+    """任务-文案关联表"""
+    __tablename__ = "task_copywritings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
+    copywriting_id = Column(Integer, ForeignKey("copywritings.id"), nullable=False, index=True)
+    sort_order = Column(Integer, default=0, nullable=False)
+
+    __table_args__ = (UniqueConstraint('task_id', 'copywriting_id'),)
+
+
+class TaskCover(Base):
+    """任务-封面关联表"""
+    __tablename__ = "task_covers"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
+    cover_id = Column(Integer, ForeignKey("covers.id"), nullable=False, index=True)
+    sort_order = Column(Integer, default=0, nullable=False)
+
+    __table_args__ = (UniqueConstraint('task_id', 'cover_id'),)
+
+
+class TaskAudio(Base):
+    """任务-音频关联表"""
+    __tablename__ = "task_audios"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
+    audio_id = Column(Integer, ForeignKey("audios.id"), nullable=False, index=True)
+    sort_order = Column(Integer, default=0, nullable=False)
+
+    __table_args__ = (UniqueConstraint('task_id', 'audio_id'),)
 
 
 class TaskTopic(Base):
@@ -437,6 +484,8 @@ async def init_db():
     await migration_019.run_migration(engine)
     migration_020 = importlib.import_module("migrations.020_task_new_fields")
     await migration_020.run_migration(engine)
+    migration_021 = importlib.import_module("migrations.021_task_resource_tables")
+    await migration_021.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

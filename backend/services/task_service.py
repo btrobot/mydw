@@ -8,7 +8,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from loguru import logger
 
-from models import Task, Account, PublishLog, PublishConfig, PublishProfile
+from models import Task, Account, PublishLog, PublishConfig, PublishProfile, TaskVideo, TaskCopywriting, TaskCover, TaskAudio
 
 
 # 合法状态转换表
@@ -64,11 +64,10 @@ class TaskService:
         result = await self.db.execute(
             select(Task).options(
                 selectinload(Task.topics),
-                selectinload(Task.video),
-                selectinload(Task.copywriting),
-                selectinload(Task.product),
-                selectinload(Task.cover),
-                selectinload(Task.audio),
+                selectinload(Task.videos),
+                selectinload(Task.copywritings),
+                selectinload(Task.covers),
+                selectinload(Task.audios),
                 selectinload(Task.account),
             ).where(Task.id == task.id)
         )
@@ -87,11 +86,10 @@ class TaskService:
         result = await self.db.execute(
             select(Task).options(
                 selectinload(Task.topics),
-                selectinload(Task.video),
-                selectinload(Task.copywriting),
-                selectinload(Task.product),
-                selectinload(Task.cover),
-                selectinload(Task.audio),
+                selectinload(Task.videos),
+                selectinload(Task.copywritings),
+                selectinload(Task.covers),
+                selectinload(Task.audios),
                 selectinload(Task.account),
             ).where(Task.id.in_(task_ids))
         )

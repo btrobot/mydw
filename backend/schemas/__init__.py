@@ -288,54 +288,71 @@ class AccountStats(BaseModel):
 
 # ============ 任务 Schema ============
 
+class TaskCreateRequest(BaseModel):
+    """创建任务（资源集合模型）"""
+    video_ids: List[int] = Field(..., min_length=1, description="视频ID列表")
+    copywriting_ids: List[int] = Field(default_factory=list, description="文案ID列表")
+    cover_ids: List[int] = Field(default_factory=list, description="封面ID列表")
+    audio_ids: List[int] = Field(default_factory=list, description="音频ID列表")
+    topic_ids: List[int] = Field(default_factory=list, description="话题ID列表")
+    account_ids: List[int] = Field(..., min_length=1, description="账号ID列表")
+    profile_id: Optional[int] = None
+    name: Optional[str] = Field(None, max_length=256)
+    scheduled_time: Optional[datetime] = None
+    priority: Optional[int] = 1
+
+    @field_validator("video_ids", "copywriting_ids", "cover_ids", "audio_ids", "topic_ids", "account_ids")
+    @classmethod
+    def deduplicate_ids(cls, v: List[int]) -> List[int]:
+        """保序去重，防止 UniqueConstraint 异常。"""
+        return list(dict.fromkeys(v))
+
+
 class TaskCreate(BaseModel):
-    """创建任务"""
+    """创建单个任务（内部使用，兼容旧接口）"""
     account_id: int
-    product_id: Optional[int] = None
     video_id: Optional[int] = None
     copywriting_id: Optional[int] = None
     audio_id: Optional[int] = None
     cover_id: Optional[int] = None
     profile_id: Optional[int] = None
     name: Optional[str] = None
-    source_video_ids: Optional[str] = None  # JSON array string
+    source_video_ids: Optional[str] = None
     composition_template: Optional[str] = None
-    composition_params: Optional[str] = None  # JSON object string
+    composition_params: Optional[str] = None
     scheduled_time: Optional[datetime] = None
     priority: Optional[int] = 1
-    topic_ids: Optional[str] = None  # JSON array string
+    topic_ids: Optional[str] = None
 
 
 class TaskUpdate(BaseModel):
     """更新任务"""
     account_id: Optional[int] = None
-    product_id: Optional[int] = None
     status: Optional[TaskStatus] = None
     priority: Optional[int] = None
     profile_id: Optional[int] = None
     failed_at_status: Optional[str] = Field(None, max_length=32)
+    name: Optional[str] = Field(None, max_length=256)
 
 
 class TaskResponse(BaseModel):
-    """任务响应"""
+    """任务响应（资源集合模型）"""
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     account_id: int
-    product_id: Optional[int] = None
-    video_id: Optional[int] = None
-    copywriting_id: Optional[int] = None
-    audio_id: Optional[int] = None
-    cover_id: Optional[int] = None
+    video_ids: List[int] = Field(default_factory=list)
+    copywriting_ids: List[int] = Field(default_factory=list)
+    cover_ids: List[int] = Field(default_factory=list)
+    audio_ids: List[int] = Field(default_factory=list)
     topic_ids: List[int] = Field(default_factory=list)
     status: TaskStatus
     publish_time: Optional[datetime] = None
     error_msg: Optional[str] = None
     priority: int
 
-    # 合成相关字段（migration 016）
+    # 合成相关字段
     name: Optional[str] = None
-    source_video_ids: Optional[str] = None
     composition_template: Optional[str] = None
     composition_params: Optional[str] = None
     composition_job_id: Optional[int] = None
@@ -347,7 +364,7 @@ class TaskResponse(BaseModel):
     dewu_video_id: Optional[str] = None
     dewu_video_url: Optional[str] = None
 
-    # 发布档案关联字段（migration 020）
+    # 发布档案关联字段
     profile_id: Optional[int] = None
     batch_id: Optional[str] = None
     failed_at_status: Optional[str] = None
@@ -357,79 +374,30 @@ class TaskResponse(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _resolve_topic_ids(cls, data: Any) -> Any:
-        """从 ORM 关系中读取 topics 列表填充 topic_ids。"""
-        topics_raw = (
-            data.get("topics") if isinstance(data, dict)
-            else getattr(data, "topics", None)
-        )
-        if topics_raw is not None and not isinstance(topics_raw, list):
+    def _resolve_resource_ids(cls, data: Any) -> Any:
+        """从 ORM 关系中提取各资源 ID 列表。"""
+        if isinstance(data, dict):
             return data
-        if topics_raw:
-            ids = [t.id if hasattr(t, "id") else t for t in topics_raw]
-            if isinstance(data, dict):
-                data["topic_ids"] = ids
+
+        result = {
+            c.key: getattr(data, c.key)
+            for c in data.__class__.__table__.columns
+        }
+
+        for attr, key in [
+            ("videos", "video_ids"),
+            ("copywritings", "copywriting_ids"),
+            ("covers", "cover_ids"),
+            ("audios", "audio_ids"),
+            ("topics", "topic_ids"),
+        ]:
+            items = getattr(data, attr, None)
+            if items:
+                result[key] = [item.id for item in items]
             else:
-                data = {
-                    c.key: getattr(data, c.key)
-                    for c in data.__class__.__table__.columns
-                }
-                data["topic_ids"] = ids
-        return data
+                result[key] = []
 
-    # ============ Computed Fields (Issue 9 & 10) ============
-
-    @computed_field
-    @property
-    def video_name(self) -> Optional[str]:
-        """视频名称"""
-        return self.video.name if hasattr(self, 'video') and self.video else None
-
-    @computed_field
-    @property
-    def video_path(self) -> Optional[str]:
-        """视频路径"""
-        return self.video.file_path if hasattr(self, 'video') and self.video else None
-
-    @computed_field
-    @property
-    def content(self) -> Optional[str]:
-        """文案内容"""
-        return self.copywriting.content if hasattr(self, 'copywriting') and self.copywriting else None
-
-    @computed_field
-    @property
-    def topic(self) -> Optional[str]:
-        """话题（逗号分隔）"""
-        if hasattr(self, 'topics') and self.topics:
-            return ', '.join(t.name for t in self.topics)
-        return None
-
-    @computed_field
-    @property
-    def topic_names(self) -> List[str]:
-        """话题名称列表"""
-        if hasattr(self, 'topics') and self.topics:
-            return [t.name for t in self.topics]
-        return []
-
-    @computed_field
-    @property
-    def cover_path(self) -> Optional[str]:
-        """封面路径"""
-        return self.cover.file_path if hasattr(self, 'cover') and self.cover else None
-
-    @computed_field
-    @property
-    def audio_name(self) -> Optional[str]:
-        """音频名称"""
-        return self.audio.name if hasattr(self, 'audio') and self.audio else None
-
-    @computed_field
-    @property
-    def audio_path(self) -> Optional[str]:
-        """音频路径"""
-        return self.audio.file_path if hasattr(self, 'audio') and self.audio else None
+        return result
 
     @computed_field
     @property
@@ -483,24 +451,19 @@ class TaskBatchCreateRequest(BaseModel):
 
 
 class AssembleTasksRequest(BaseModel):
-    """组装任务请求 — 多视频+多账号自动分配（已废弃，使用 BatchAssembleRequest）"""
+    """组装任务请求（已废弃，保留兼容）"""
     video_ids: List[int] = Field(..., min_length=1)
     account_ids: List[int] = Field(..., min_length=1)
-    strategy: str = Field(default="round_robin", pattern="^(round_robin|manual)$")
-    copywriting_mode: str = Field(default="auto_match", pattern="^(auto_match|manual)$")
     profile_id: Optional[int] = None
-    cover_id: Optional[int] = None
 
 
 class BatchAssembleRequest(BaseModel):
-    """批量组装任务请求（素材篮模型）"""
+    """批量组装任务请求（已废弃，使用 TaskCreateRequest）"""
     video_ids: List[int] = Field(..., min_length=1, description="视频ID列表")
     copywriting_ids: List[int] = Field(default_factory=list, description="文案ID列表")
     cover_ids: List[int] = Field(default_factory=list, description="封面ID列表")
     audio_ids: List[int] = Field(default_factory=list, description="音频ID列表")
     account_ids: List[int] = Field(..., min_length=1, description="账号ID列表")
-    strategy: str = Field(default="round_robin", pattern="^(round_robin|manual)$")
-    copywriting_mode: str = Field(default="auto_match", pattern="^(auto_match|round_robin)$")
     profile_id: Optional[int] = None
 
 

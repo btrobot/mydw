@@ -126,6 +126,22 @@ Renderer → IPC → Main Process (窗口控制、文件对话框)
 
 ---
 
+## ADR-007: 任务资源集合模型
+
+**状态**: Accepted
+**日期**: 2026-04-09
+
+**关键结论**: Task 从扁平 FK（1:1 绑定素材）重构为关联表模型（1:N 资源集合）
+
+**变更**:
+- 新增 4 张关联表: task_videos, task_copywritings, task_covers, task_audios（与 task_topics 一致）
+- 废弃 Task 上的 video_id, copywriting_id, audio_id, cover_id, product_id, source_video_ids
+- 废弃 strategy, copywriting_mode 参数
+- 新 API: POST /tasks/ 接受 TaskCreateRequest（资源 ID 列表 + 账号列表）
+- 语义: 1 份素材集合 x N 个账号 = N 个 Task
+
+---
+
 ## 决策模板
 
 新增决策时:

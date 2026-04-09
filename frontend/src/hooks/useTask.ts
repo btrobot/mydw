@@ -137,24 +137,6 @@ export const useTaskStats = () =>
     },
   })
 
-export const useAssembleTasks = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (data: {
-      video_ids: number[]
-      account_ids: number[]
-      strategy?: string
-      copywriting_mode?: string
-      profile_id?: number | null
-    }) => {
-      const { api } = await import('@/services/api')
-      const { data: result } = await api.post<TaskResponse[]>('/tasks/assemble', data)
-      return result
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
-  })
-}
-
 export const useRetryTask = () => {
   const queryClient = useQueryClient()
   return useMutation({
@@ -279,25 +261,25 @@ export const useCancelComposition = () => {
   })
 }
 
-// ============ Batch Assemble (Material Basket) ============
+// ============ Create Tasks (Resource Collection Model) ============
 
-export interface BatchAssembleRequest {
+export interface CreateTasksRequest {
   video_ids: number[]
   copywriting_ids: number[]
   cover_ids: number[]
   audio_ids: number[]
+  topic_ids: number[]
   account_ids: number[]
-  strategy: 'round_robin' | 'manual'
-  copywriting_mode: 'auto_match' | 'round_robin'
   profile_id?: number | null
+  name?: string | null
 }
 
 export const useBatchAssemble = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (data: BatchAssembleRequest) => {
+    mutationFn: async (data: CreateTasksRequest) => {
       const { api } = await import('@/services/api')
-      const { data: result } = await api.post<TaskResponse[]>('/tasks/batch-assemble', data)
+      const { data: result } = await api.post<TaskResponse[]>('/tasks/', data)
       return result
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
