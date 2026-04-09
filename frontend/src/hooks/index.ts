@@ -42,7 +42,14 @@ export {
   useDeleteAllTasks,
   useTaskStats,
   useAssembleTasks,
+  useRetryTask,
+  useEditRetryTask,
+  useCancelTask,
+  useSubmitComposition,
+  useCompositionStatus,
+  useCancelComposition,
 } from './useTask'
+export type { CompositionJobResponse } from './useTask'
 
 // Publish Hooks
 export {
@@ -90,3 +97,13 @@ export { useAudios, useUploadAudio, useDeleteAudio, useBatchDeleteAudios } from 
 
 // Topic Hooks
 export { useTopics, useCreateTopic, useDeleteTopic, useSearchTopics, useGlobalTopics, useSetGlobalTopics, useBatchDeleteTopics, useTopicGroups, useTopicGroup, useCreateTopicGroup, useUpdateTopicGroup, useDeleteTopicGroup } from './useTopic'
+
+// Profile Hooks
+export {
+  useProfiles,
+  useCreateProfile,
+  useUpdateProfile,
+  useDeleteProfile,
+  useSetDefaultProfile,
+} from './useProfile'
+export type { PublishProfileResponse, PublishProfileCreate, PublishProfileUpdate, CompositionMode } from './useProfile'

@@ -2,6 +2,7 @@
  * Task Hooks - 任务相关的 React Query hooks
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useRef } from 'react'
 import {
   listTasksApiTasksGet,
   createTaskApiTasksPost,
@@ -144,11 +145,136 @@ export const useAssembleTasks = () => {
       account_ids: number[]
       strategy?: string
       copywriting_mode?: string
+      profile_id?: number | null
     }) => {
       const { api } = await import('@/services/api')
       const { data: result } = await api.post<TaskResponse[]>('/tasks/assemble', data)
       return result
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+  })
+}
+
+export const useRetryTask = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (taskId: number) => {
+      const { api } = await import('@/services/api')
+      const { data: result } = await api.post<TaskResponse>(`/tasks/${taskId}/retry`)
+      return result
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+  })
+}
+
+export const useEditRetryTask = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (taskId: number) => {
+      const { api } = await import('@/services/api')
+      const { data: result } = await api.post<TaskResponse>(`/tasks/${taskId}/edit-retry`)
+      return result
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+  })
+}
+
+export const useCancelTask = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (taskId: number) => {
+      const { api } = await import('@/services/api')
+      const { data: result } = await api.post<TaskResponse>(`/tasks/${taskId}/cancel`)
+      return result
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+  })
+}
+
+// ============ 合成 Hooks (FE-TM-04) ============
+
+export interface CompositionJobResponse {
+  id: number
+  task_id: number
+  workflow_type: string | null
+  workflow_id: string | null
+  external_job_id: string | null
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
+  progress: number
+  output_video_path: string | null
+  output_video_url: string | null
+  error_msg: string | null
+  started_at: string | null
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export const useSubmitComposition = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (taskId: number) => {
+      const { api } = await import('@/services/api')
+      const { data } = await api.post<CompositionJobResponse>(`/tasks/${taskId}/submit-composition`)
+      return data
+    },
+    onSuccess: (_data, taskId) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      queryClient.invalidateQueries({ queryKey: ['compositionStatus', taskId] })
+    },
+  })
+}
+
+export const useCompositionStatus = (taskId: number | null) => {
+  const queryClient = useQueryClient()
+  const query = useQuery<CompositionJobResponse>({
+    queryKey: ['compositionStatus', taskId],
+    queryFn: async () => {
+      const { api } = await import('@/services/api')
+      const { data } = await api.get<CompositionJobResponse>(`/tasks/${taskId}/composition-status`)
+      return data
+    },
+    enabled: taskId !== null,
+    refetchInterval: false,
+  })
+
+  const isComposing = query.data?.status === 'pending' || query.data?.status === 'processing'
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    if (taskId === null) return
+    if (isComposing) {
+      intervalRef.current = setInterval(() => {
+        void queryClient.invalidateQueries({ queryKey: ['compositionStatus', taskId] })
+      }, 5000)
+    } else {
+      if (intervalRef.current !== null) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+    }
+    return () => {
+      if (intervalRef.current !== null) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+    }
+  }, [isComposing, taskId, queryClient])
+
+  return query
+}
+
+export const useCancelComposition = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (taskId: number) => {
+      const { api } = await import('@/services/api')
+      const { data } = await api.post<CompositionJobResponse>(`/tasks/${taskId}/cancel-composition`)
+      return data
+    },
+    onSuccess: (_data, taskId) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      queryClient.invalidateQueries({ queryKey: ['compositionStatus', taskId] })
+    },
   })
 }
