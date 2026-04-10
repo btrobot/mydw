@@ -54,3 +54,4 @@ production/session-state/*.md
 
 production/session-logs/*.jsonl
 
+backend/.mypy_cache/
