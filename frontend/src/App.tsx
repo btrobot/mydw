@@ -26,7 +26,7 @@ import ProductList from './pages/product/ProductList'
 import ProductDetail from './pages/product/ProductDetail'
 import VideoDetail from './pages/material/VideoDetail'
 import TaskDetail from './pages/task/TaskDetail'
-import TaskAssemble from './pages/task/TaskAssemble'
+
 import TaskCreate from './pages/task/TaskCreate'
 
 dayjs.locale('zh-cn')
@@ -58,7 +58,7 @@ function App() {
               <Route path="task" element={<Navigate to="/task/list" replace />} />
               <Route path="task/list" element={<TaskList />} />
               <Route path="task/create" element={<TaskCreate />} />
-              <Route path="task/assemble" element={<TaskAssemble />} />
+
               <Route path="task/:id" element={<TaskDetail />} />
 
               {/* 素材中心 */}

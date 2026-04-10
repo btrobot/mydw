@@ -17,7 +17,6 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
-    // 开发环境代理 API 请求到后端
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8000',

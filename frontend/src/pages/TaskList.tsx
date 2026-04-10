@@ -1,172 +1,168 @@
-import { useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Table, Tag, Button, Space, Popconfirm, Row, Col, Tooltip,
-} from 'antd'
-import {
-  ReloadOutlined, AppstoreAddOutlined,
-} from '@ant-design/icons'
-import {
-  useTasks,
-  useAccounts,
-  useDeleteTask,
-  useDeleteAllTasks,
-} from '../hooks'
-import { useVideos } from '../hooks/useVideo'
-import { message } from 'antd'
-import type { AccountResponseExtended } from '../hooks/useAccount'
-import type { VideoResponse } from '@/types/material'
+import { Tag, Button, Popconfirm, Tooltip, message } from 'antd'
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
+import { ProTable } from '@ant-design/pro-components'
+import type { ProColumns, ActionType } from '@ant-design/pro-components'
 
-type TaskStatus =
-  | 'draft'
-  | 'composing'
-  | 'ready'
-  | 'uploading'
-  | 'uploaded'
-  | 'failed'
-  | 'cancelled'
+import { useAccounts, useDeleteTask, useDeleteAllTasks } from '@/hooks'
+import { handleApiError } from '@/utils/error'
+import { api } from '@/services/api'
 
-interface Task {
+type TaskStatus = 'draft' | 'composing' | 'ready' | 'uploading' | 'uploaded' | 'failed' | 'cancelled'
+
+interface TaskRow {
   id: number
+  name?: string | null
   account_id: number
-  video_id?: number | null
-  topic_ids?: number[] | null
+  video_ids: number[]
+  copywriting_ids: number[]
+  cover_ids: number[]
+  audio_ids: number[]
+  topic_ids: number[]
   status: TaskStatus
-  publish_time?: string | null
-  error_msg?: string | null
   priority: number
+  error_msg?: string | null
+  publish_time?: string | null
   created_at: string
 }
 
 const statusMap: Record<TaskStatus, { color: string; text: string }> = {
-  draft:      { color: 'default',    text: '草稿' },
-  composing:  { color: 'processing', text: '合成中' },
-  ready:      { color: 'warning',    text: '待上传' },
-  uploading:  { color: 'processing', text: '上传中' },
-  uploaded:   { color: 'success',    text: '已上传' },
-  failed:     { color: 'error',      text: '失败' },
-  cancelled:  { color: 'default',    text: '已取消' },
+  draft:     { color: 'default',    text: '草稿' },
+  composing: { color: 'processing', text: '合成中' },
+  ready:     { color: 'warning',    text: '待上传' },
+  uploading: { color: 'processing', text: '上传中' },
+  uploaded:  { color: 'success',    text: '已上传' },
+  failed:    { color: 'error',      text: '失败' },
+  cancelled: { color: 'default',    text: '已取消' },
 }
 
-const STATUS_FILTER_OPTIONS = (Object.keys(statusMap) as TaskStatus[]).map((key) => ({
-  text: statusMap[key].text,
-  value: key,
-}))
+const statusValueEnum = Object.fromEntries(
+  Object.entries(statusMap).map(([k, v]) => [k, { text: v.text }])
+)
 
 export default function TaskList() {
   const navigate = useNavigate()
+  const actionRef = useRef<ActionType>()
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
 
-  const { data: tasksData, isLoading, refetch: refetchTasks } = useTasks()
   const { data: accounts = [] } = useAccounts()
-  const { data: videos = [] } = useVideos()
   const deleteTask = useDeleteTask()
   const deleteAllTasks = useDeleteAllTasks()
 
-  const tasks = tasksData?.items as unknown as Task[] ?? []
+  const accountValueEnum = Object.fromEntries(
+    accounts.map((a) => [a.id, { text: a.account_name }])
+  )
 
   const handleDelete = useCallback(async (id: number) => {
     try {
       await deleteTask.mutateAsync(id)
       message.success('删除成功')
+      actionRef.current?.reload()
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        message.error(error.message)
-      } else {
-        message.error('删除失败')
-      }
+      handleApiError(error, '删除失败')
     }
   }, [deleteTask])
+
+  const handleBatchDelete = useCallback(async () => {
+    try {
+      for (const id of selectedIds) {
+        await deleteTask.mutateAsync(id)
+      }
+      setSelectedIds([])
+      message.success(`已删除 ${selectedIds.length} 个任务`)
+      actionRef.current?.reload()
+    } catch (error: unknown) {
+      handleApiError(error, '批量删除失败')
+    }
+  }, [selectedIds, deleteTask])
 
   const handleClearAll = useCallback(async () => {
     try {
       await deleteAllTasks.mutateAsync()
       message.success('已清空所有任务')
+      actionRef.current?.reload()
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        message.error(error.message)
-      } else {
-        message.error('清空失败')
-      }
+      handleApiError(error, '清空失败')
     }
   }, [deleteAllTasks])
 
-  const columns = [
+  const columns: ProColumns<TaskRow>[] = [
     {
       title: 'ID',
       dataIndex: 'id',
-      key: 'id',
-      width: 60,
+      width: 70,
+      sorter: true,
+      hideInSearch: true,
+    },
+    {
+      title: '任务名称',
+      dataIndex: 'name',
+      ellipsis: true,
+      hideInSearch: true,
+      render: (_, record) => record.name || `任务 #${record.id}`,
     },
     {
       title: '账号',
       dataIndex: 'account_id',
-      key: 'account_id',
-      width: 120,
-      render: (id: number) =>
-        accounts.find((a: AccountResponseExtended) => a.id === id)?.account_name || `ID:${id}`,
-    },
-    {
-      title: '视频名称',
-      dataIndex: 'video_id',
-      key: 'video_id',
-      ellipsis: true,
-      render: (videoId: number | null | undefined) => {
-        if (videoId) {
-          const video = videos.find((v: VideoResponse) => v.id === videoId)
-          if (video) return <span style={{ fontSize: 12 }}>{video.name}</span>
-        }
-        return '-'
-      },
-    },
-    {
-      title: '话题标签',
-      dataIndex: 'topic_ids',
-      key: 'topic_ids',
-      width: 160,
-      render: (topicIds: number[] | null | undefined) => {
-        if (topicIds && topicIds.length > 0) {
-          return (
-            <Space size={2} wrap>
-              {topicIds.map(tid => (
-                <Tag key={tid} style={{ fontSize: 11, margin: 0 }}>#{tid}</Tag>
-              ))}
-            </Space>
-          )
-        }
-        return '-'
-      },
+      width: 130,
+      valueType: 'select',
+      valueEnum: accountValueEnum,
+      fieldProps: { placeholder: '按账号筛选', allowClear: true },
     },
     {
       title: '状态',
       dataIndex: 'status',
-      key: 'status',
-      width: 90,
-      filters: STATUS_FILTER_OPTIONS,
-      onFilter: (value: unknown, record: Task) => record.status === value,
-      render: (status: TaskStatus, record: Task) => {
-        const { color, text } = statusMap[status] ?? { color: 'default', text: status }
+      width: 100,
+      valueType: 'select',
+      valueEnum: statusValueEnum,
+      fieldProps: { placeholder: '按状态筛选', allowClear: true },
+      render: (_, record) => {
+        const { color, text } = statusMap[record.status] ?? { color: 'default', text: record.status }
         const tag = <Tag color={color}>{text}</Tag>
-        if (status === 'failed' && record.error_msg) {
+        if (record.status === 'failed' && record.error_msg) {
           return <Tooltip title={record.error_msg}>{tag}</Tooltip>
         }
         return tag
       },
     },
     {
-      title: '发布时间',
-      dataIndex: 'publish_time',
-      key: 'publish_time',
+      title: '素材',
+      key: 'materials',
       width: 160,
-      render: (text: string | null) =>
-        text ? new Date(text).toLocaleString('zh-CN') : '-',
+      hideInSearch: true,
+      render: (_, record) => {
+        const parts: string[] = []
+        if (record.video_ids.length) parts.push(`${record.video_ids.length} 视频`)
+        if (record.copywriting_ids.length) parts.push(`${record.copywriting_ids.length} 文案`)
+        if (record.cover_ids.length) parts.push(`${record.cover_ids.length} 封面`)
+        if (record.audio_ids.length) parts.push(`${record.audio_ids.length} 音频`)
+        return parts.length ? parts.join(' / ') : '-'
+      },
+    },
+    {
+      title: '优先级',
+      dataIndex: 'priority',
+      width: 80,
+      hideInSearch: true,
+      sorter: true,
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'created_at',
+      width: 160,
+      sorter: true,
+      hideInSearch: true,
+      render: (_, record) => new Date(record.created_at).toLocaleString('zh-CN'),
     },
     {
       title: '操作',
       key: 'action',
       width: 80,
-      render: (_: unknown, record: Task) => (
-        <Popconfirm title="确定删除该任务？" onConfirm={() => handleDelete(record.id)}>
-          <Button type="link" size="small" danger loading={deleteTask.isPending}>
+      hideInSearch: true,
+      render: (_, record) => (
+        <Popconfirm title="确定删除？" onConfirm={(e) => { e?.stopPropagation(); handleDelete(record.id) }}>
+          <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={(e) => e.stopPropagation()}>
             删除
           </Button>
         </Popconfirm>
@@ -175,39 +171,46 @@ export default function TaskList() {
   ]
 
   return (
-    <>
-      {/* 操作栏 */}
-      <Row justify="space-between" style={{ marginBottom: 16 }}>
-        <Col>
-          <Space>
-            <Button type="primary" icon={<AppstoreAddOutlined />} onClick={() => navigate('/task/assemble')}>
-              组装任务
-            </Button>
-            <Popconfirm title="确定清空所有任务？" onConfirm={handleClearAll}>
-              <Button danger>清空所有</Button>
-            </Popconfirm>
-          </Space>
-        </Col>
-        <Col>
-          <Button icon={<ReloadOutlined />} onClick={() => refetchTasks()}>
-            刷新
-          </Button>
-        </Col>
-      </Row>
+    <ProTable<TaskRow>
+      actionRef={actionRef}
+      rowKey="id"
+      columns={columns}
+      request={async (params) => {
+        const query: Record<string, string | number> = {}
+        if (params.status) query.status = params.status
+        if (params.account_id) query.account_id = params.account_id
+        if (params.current) query.offset = ((params.current - 1) * (params.pageSize ?? 20))
+        if (params.pageSize) query.limit = params.pageSize
 
-      <Table<Task>
-        columns={columns}
-        dataSource={tasks}
-        rowKey="id"
-        loading={isLoading}
-        pagination={{ pageSize: 15 }}
-        size="small"
-        scroll={{ x: 1000 }}
-        onRow={(record) => ({
-          onClick: () => navigate(`/task/${record.id}`),
-          style: { cursor: 'pointer' },
-        })}
-      />
-    </>
+        const { data } = await api.get<{ total: number; items: TaskRow[] }>('/tasks', { params: query })
+        return { data: data.items, success: true, total: data.total }
+      }}
+      rowSelection={{
+        selectedRowKeys: selectedIds,
+        onChange: (keys) => setSelectedIds(keys as number[]),
+      }}
+      tableAlertOptionRender={() => (
+        <Popconfirm title={`确定删除 ${selectedIds.length} 项？`} onConfirm={handleBatchDelete}>
+          <Button danger size="small" icon={<DeleteOutlined />} loading={deleteTask.isPending}>
+            批量删除 ({selectedIds.length})
+          </Button>
+        </Popconfirm>
+      )}
+      toolBarRender={() => [
+        <Button key="create" type="primary" icon={<PlusOutlined />} onClick={() => navigate('/task/create')}>
+          创建任务
+        </Button>,
+        <Popconfirm key="clear" title="确定清空所有任务？" onConfirm={handleClearAll}>
+          <Button danger loading={deleteAllTasks.isPending}>清空所有</Button>
+        </Popconfirm>,
+      ]}
+      onRow={(record) => ({
+        onClick: () => navigate(`/task/${record.id}`),
+        style: { cursor: 'pointer' },
+      })}
+      pagination={{ pageSize: 20, showTotal: (t) => `共 ${t} 条` }}
+      size="small"
+      search={{ labelWidth: 'auto' }}
+    />
   )
 }
