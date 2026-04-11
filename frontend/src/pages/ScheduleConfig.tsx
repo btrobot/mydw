@@ -1,66 +1,41 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { Card, Form, InputNumber, Switch, Button, Divider, message, Space } from 'antd'
 import { SaveOutlined } from '@ant-design/icons'
-import { api } from '../services/api'
-import axios from 'axios'
+import { useScheduleConfig, useUpdateScheduleConfig } from '../hooks/useScheduleConfig'
 
-interface ScheduleConfigValues {
-  interval_minutes: number
-  start_hour: number
-  end_hour: number
-  max_per_account_per_day: number
-  shuffle: boolean
-  auto_start: boolean
-}
+import type { ScheduleConfigRequest } from '@/api'
 
 export default function ScheduleConfig() {
-  const [form] = Form.useForm<ScheduleConfigValues>()
-  const [loading, setLoading] = useState(false)
+  const [form] = Form.useForm<ScheduleConfigRequest>()
+  const { data, isLoading } = useScheduleConfig()
+  const updateScheduleConfig = useUpdateScheduleConfig()
 
   useEffect(() => {
-    fetchConfig()
-  }, [])
-
-  const fetchConfig = async () => {
-    try {
-      const res = await api.get<ScheduleConfigValues>('/publish/config')
+    if (data) {
       form.setFieldsValue({
-        interval_minutes: res.data.interval_minutes,
-        start_hour: res.data.start_hour,
-        end_hour: res.data.end_hour,
-        max_per_account_per_day: res.data.max_per_account_per_day,
-        shuffle: res.data.shuffle,
-        auto_start: res.data.auto_start,
+        interval_minutes: data.interval_minutes,
+        start_hour: data.start_hour,
+        end_hour: data.end_hour,
+        max_per_account_per_day: data.max_per_account_per_day,
+        shuffle: data.shuffle,
+        auto_start: data.auto_start,
       })
-    } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        message.error(error.response?.data?.detail || error.message)
-      } else if (error instanceof Error) {
-        message.error(error.message)
-      } else {
-        message.error('加载配置失败')
-      }
     }
-  }
+  }, [data, form])
 
   const handleSave = async () => {
     try {
-      setLoading(true)
-      const values = form.getFieldsValue()
-      await api.put('/publish/config', values)
+      const values = await form.validateFields()
+      await updateScheduleConfig.mutateAsync(values)
       message.success('保存成功')
     } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        message.error(error.response?.data?.detail || error.message)
-      } else if (error instanceof Error) {
+      if (error instanceof Error && error.message !== 'Validation failed') {
         message.error(error.message)
-      } else {
-        message.error('保存失败')
       }
-    } finally {
-      setLoading(false)
     }
   }
+
+  const loading = isLoading || updateScheduleConfig.isPending
 
   return (
     <Card

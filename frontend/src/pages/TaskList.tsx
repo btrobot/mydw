@@ -4,28 +4,15 @@ import { Tag, Button, Popconfirm, Tooltip, message } from 'antd'
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns, ActionType } from '@ant-design/pro-components'
+import { listTasksApiTasksGet } from '@/api'
+import type { TaskResponse } from '@/api'
 
 import { useAccounts, useDeleteTask, useDeleteAllTasks } from '@/hooks'
 import { handleApiError } from '@/utils/error'
-import { api } from '@/services/api'
 
 type TaskStatus = 'draft' | 'composing' | 'ready' | 'uploading' | 'uploaded' | 'failed' | 'cancelled'
 
-interface TaskRow {
-  id: number
-  name?: string | null
-  account_id: number
-  video_ids: number[]
-  copywriting_ids: number[]
-  cover_ids: number[]
-  audio_ids: number[]
-  topic_ids: number[]
-  status: TaskStatus
-  priority: number
-  error_msg?: string | null
-  publish_time?: string | null
-  created_at: string
-}
+type TaskRow = TaskResponse
 
 const statusMap: Record<TaskStatus, { color: string; text: string }> = {
   draft:     { color: 'default',    text: '草稿' },
@@ -133,10 +120,10 @@ export default function TaskList() {
       hideInSearch: true,
       render: (_, record) => {
         const parts: string[] = []
-        if (record.video_ids.length) parts.push(`${record.video_ids.length} 视频`)
-        if (record.copywriting_ids.length) parts.push(`${record.copywriting_ids.length} 文案`)
-        if (record.cover_ids.length) parts.push(`${record.cover_ids.length} 封面`)
-        if (record.audio_ids.length) parts.push(`${record.audio_ids.length} 音频`)
+        if ((record.video_ids?.length ?? 0) > 0) parts.push(`${record.video_ids?.length ?? 0} 视频`)
+        if ((record.copywriting_ids?.length ?? 0) > 0) parts.push(`${record.copywriting_ids?.length ?? 0} 文案`)
+        if ((record.cover_ids?.length ?? 0) > 0) parts.push(`${record.cover_ids?.length ?? 0} 封面`)
+        if ((record.audio_ids?.length ?? 0) > 0) parts.push(`${record.audio_ids?.length ?? 0} 音频`)
         return parts.length ? parts.join(' / ') : '-'
       },
     },
@@ -182,8 +169,9 @@ export default function TaskList() {
         if (params.current) query.offset = ((params.current - 1) * (params.pageSize ?? 20))
         if (params.pageSize) query.limit = params.pageSize
 
-        const { data } = await api.get<{ total: number; items: TaskRow[] }>('/tasks', { params: query })
-        return { data: data.items, success: true, total: data.total }
+        const response = await listTasksApiTasksGet({ query })
+        const data = response.data ?? { total: 0, items: [] }
+        return { data: data.items as TaskRow[], success: true, total: data.total }
       }}
       rowSelection={{
         selectedRowKeys: selectedIds,

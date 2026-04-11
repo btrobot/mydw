@@ -1,8 +1,16 @@
 # API Reference
 
+> Status: Stale / archival reference  
+> 当前 authoritative API truth 请优先看：
+> - backend live docs: `/docs`
+> - OpenAPI export: `/openapi.json`
+> - `docs/current-architecture-baseline.md`
+> - `docs/current-runtime-truth.md`
+>
+> 本文档保留为历史性参考，不再保证逐端点细节始终与当前代码同步。
+
 > Version: 1.0.0 | Updated: 2026-04-07
 > Owner: Backend Lead
-> Status: Active
 
 Base URL: `http://localhost:8000`
 Live docs: `/docs` (Swagger) | `/redoc` | `/openapi.json`

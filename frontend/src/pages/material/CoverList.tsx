@@ -8,17 +8,18 @@ import { UploadOutlined, DeleteOutlined, VideoCameraOutlined, EyeOutlined } from
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns, ActionType } from '@ant-design/pro-components'
 import { useNavigate } from 'react-router-dom'
+import { listCoversApiCoversGet } from '@/api'
 
 import { useUploadCover, useDeleteCover, useBatchDeleteCovers, useVideos } from '@/hooks'
 import type { CoverResponse } from '@/types/material'
 import { formatSize } from '@/utils/format'
 import { handleApiError } from '@/utils/error'
-import { api, API_BASE } from '@/services/api'
+import { API_BASE } from '@/services/api'
 
 const { Text } = Typography
 
 interface NameCellProps {
-  name: string
+  name: string | null | undefined
   previewSrc: string
 }
 
@@ -26,7 +27,7 @@ function NameCell({ name, previewSrc }: NameCellProps) {
   const [visible, setVisible] = useState(false)
   return (
     <Space>
-      <Text>{name}</Text>
+      <Text>{name ?? '未命名封面'}</Text>
       <EyeOutlined
         style={{ cursor: 'pointer', color: '#1677ff' }}
         onClick={() => setVisible(true)}
@@ -135,7 +136,7 @@ export default function CoverList() {
       dataIndex: 'file_size',
       width: 90,
       hideInSearch: true,
-      render: (_, record) => formatSize(record.file_size),
+      render: (_, record) => formatSize(record.file_size ?? null),
     },
     {
       title: '尺寸',
@@ -174,9 +175,10 @@ export default function CoverList() {
       rowKey="id"
       columns={columns}
       request={async (params) => {
-        const { data } = await api.get<CoverResponse[]>('/covers', {
-          params: params.video_id !== undefined ? { video_id: params.video_id } : undefined,
+        const response = await listCoversApiCoversGet({
+          query: params.video_id !== undefined ? { video_id: params.video_id as number } : undefined,
         })
+        const data = (response.data ?? []) as CoverResponse[]
         return { data, success: true, total: data.length }
       }}
       rowSelection={{

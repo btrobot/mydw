@@ -5,6 +5,15 @@
 
 得物平台自动化视频发布系统，支持多账号管理、智能素材剪辑、任务定时发布。
 
+## 当前推荐阅读入口
+
+请优先按下面顺序阅读当前文档真相：
+
+1. `docs/current-architecture-baseline.md` — 当前架构总入口
+2. `docs/current-runtime-truth.md` — 当前运行事实清单
+3. `docs/epic-7-doc-authority-matrix.md` — 文档职责边界
+4. `docs/dev-guide.md` — 开发与启动指南
+
 ## 功能特性
 
 - **账号管理**: 多账号 cookie 加密存储，浏览器上下文隔离
@@ -46,16 +55,18 @@ python -m playwright install chromium
 # Windows
 .\dev.bat
 
-# 或手动启动
-# 终端1: 后端
+# 或按协议拆开运行
+# 终端1: 后端（通过统一启动脚本）
 cd backend
-.\venv\Scripts\activate
-uvicorn main:app --reload --port 8000
+.\run.bat
 
 # 终端2: 前端
 cd frontend
 npm run dev
 ```
+
+> Electron 运行时不再应直接依赖 Python venv / exe 路径布局。  
+> 详见 `docs/startup-protocol.md`。
 
 ### 访问地址
 
@@ -63,88 +74,11 @@ npm run dev
 - 后端 API: http://localhost:8000
 - API 文档: http://localhost:8000/docs
 
-## 项目结构
+## 当前文档边界
 
-```
-dewugojin/
-├── frontend/                    # Electron + React 前端
-│   ├── src/
-│   │   ├── pages/               # 页面组件
-│   │   │   ├── Dashboard.tsx    # 数据看板
-│   │   │   ├── Account.tsx      # 账号管理
-│   │   │   ├── Task.tsx         # 任务管理
-│   │   │   ├── Material.tsx     # 素材管理
-│   │   │   ├── AIClip.tsx       # AI 智能剪辑
-│   │   │   └── Settings.tsx     # 系统设置
-│   │   ├── components/          # 公共组件
-│   │   └── services/            # API 服务
-│   └── electron/                # Electron 配置
-├── backend/                      # Python FastAPI 后端
-│   ├── api/                     # API 路由
-│   │   ├── account.py           # 账号管理
-│   │   ├── task.py              # 任务管理
-│   │   ├── material.py          # 素材管理
-│   │   ├── publish.py           # 发布控制
-│   │   ├── ai.py                # AI 剪辑
-│   │   └── system.py            # 系统接口
-│   ├── models/                  # 数据库模型
-│   ├── services/                # 业务服务
-│   │   ├── browser_service.py  # 浏览器自动化
-│   │   └── ai_clip_service.py  # AI 剪辑服务
-│   └── core/                    # 核心配置
-├── data/                        # 素材存储目录
-│   ├── video/                   # 视频素材
-│   ├── audio/                   # 音频素材
-│   ├── cover/                   # 封面素材
-│   ├── text/                    # 文案素材
-│   └── topic/                   # 话题素材
-└── README.md
-```
-
-## API 接口
-
-### 账号管理
-
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| GET | /api/accounts | 获取账号列表 |
-| POST | /api/accounts | 创建账号 |
-| PUT | /api/accounts/{id} | 更新账号 |
-| DELETE | /api/accounts/{id} | 删除账号 |
-| POST | /api/accounts/{id}/login | 登录账号 |
-| POST | /api/accounts/{id}/logout | 登出账号 |
-
-### 素材管理
-
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| GET | /api/materials | 获取素材列表 |
-| POST | /api/materials/upload/{type} | 上传素材 |
-| GET | /api/materials/stats | 获取统计 |
-| POST | /api/materials/scan | 扫描本地素材 |
-| POST | /api/materials/import | 批量导入素材 |
-
-### AI 剪辑
-
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| GET | /api/ai/video-info | 获取视频信息 |
-| GET | /api/ai/detect-highlights | 检测高光片段 |
-| POST | /api/ai/smart-clip | 智能剪辑 |
-| POST | /api/ai/add-audio | 添加背景音乐 |
-| POST | /api/ai/add-cover | 添加封面 |
-| POST | /api/ai/full-pipeline | 完整剪辑流程 |
-
-### 任务管理
-
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| GET | /api/tasks | 获取任务列表 |
-| POST | /api/tasks | 创建任务 |
-| PUT | /api/tasks/{id} | 更新任务 |
-| DELETE | /api/tasks/{id} | 删除任务 |
-| POST | /api/tasks/{id}/execute | 执行任务 |
-| POST | /api/tasks/batch-execute | 批量执行 |
+- 当前架构总览：`docs/current-architecture-baseline.md`
+- 当前运行事实：`docs/current-runtime-truth.md`
+- 旧的详细架构说明、API 参考、数据模型字典在 Epic 7 / PR2 后会被视为 **stale / archival reference**，阅读时请先以当前入口文档为准。
 
 ## 数据安全
 
@@ -163,4 +97,4 @@ npm run build
 
 ## 开发指南
 
-详见 [ARCHITECTURE.md](ARCHITECTURE.md)
+详见 `docs/dev-guide.md`

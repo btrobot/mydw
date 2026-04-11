@@ -10,12 +10,13 @@ import {
 } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns, ActionType } from '@ant-design/pro-components'
+import { listVideosApiVideosGet } from '@/api'
 
 import { useCreateVideo, useDeleteVideo, useUploadVideo, useScanVideos, useBatchDeleteVideos } from '@/hooks'
 import type { VideoResponse, VideoListResponse } from '@/types/material'
 import { formatSize, formatDuration } from '@/utils/format'
 import { handleApiError } from '@/utils/error'
-import { api, API_BASE } from '@/services/api'
+import { API_BASE } from '@/services/api'
 import ProductSelect from '@/components/ProductSelect'
 
 const { Text } = Typography
@@ -162,7 +163,7 @@ export default function VideoList() {
       width: 90,
       sorter: true,
       hideInSearch: true,
-      render: (_, record) => formatSize(record.file_size),
+      render: (_, record) => formatSize(record.file_size ?? null),
     },
     {
       title: '时长',
@@ -170,7 +171,7 @@ export default function VideoList() {
       width: 80,
       sorter: true,
       hideInSearch: true,
-      render: (_, record) => formatDuration(record.duration),
+      render: (_, record) => formatDuration(record.duration ?? null),
     },
     {
       title: '创建时间',
@@ -210,9 +211,10 @@ export default function VideoList() {
         rowKey="id"
         columns={columns}
         request={async (params) => {
-          const { data } = await api.get<VideoListResponse>('/videos', {
-            params: params.name ? { keyword: params.name } : undefined,
+          const response = await listVideosApiVideosGet({
+            query: params.name ? { keyword: params.name as string } : undefined,
           })
+          const data = response.data as VideoListResponse
           const fileExists = params.file_exists as string | undefined
           const items = fileExists === undefined
             ? data.items

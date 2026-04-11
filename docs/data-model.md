@@ -1,8 +1,15 @@
 # Data Model
 
+> Status: Stale / archival reference  
+> 当前 authoritative 数据模型真相请优先看：
+> - `backend/models/__init__.py`
+> - `docs/current-architecture-baseline.md`
+> - `docs/current-runtime-truth.md`
+>
+> 本文档保留为历史性字典参考，但不再保证字段/关系描述始终与当前代码完全同步。
+
 > Version: 1.0.0 | Updated: 2026-04-07
 > Owner: Backend Lead
-> Status: Active
 
 Database: SQLite (aiosqlite) at `backend/data/dewugojin.db`
 ORM: SQLAlchemy 2.0 async

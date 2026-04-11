@@ -33,6 +33,7 @@ logs/
 node_modules/
 dist/
 dist-electron/
+frontend/openapi.local.json
 
 # Build
 release/
@@ -55,3 +56,12 @@ production/session-state/*.md
 production/session-logs/*.jsonl
 
 backend/.mypy_cache/
+.omx/
+.codex/*
+!.codex/agents/
+!.codex/agents/**
+!.codex/skills/
+!.codex/skills/**
+.codex/skills/.system/**
+!.codex/prompts/
+!.codex/prompts/**

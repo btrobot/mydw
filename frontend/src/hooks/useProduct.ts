@@ -2,17 +2,31 @@
  * Product Hooks — /api/products
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/services/api'
-import type { ProductResponse, ProductDetailResponse, ProductListResponse, ProductCreate } from '@/types/material'
+import {
+  listProductsApiProductsGet,
+  createProductApiProductsPost,
+  deleteProductApiProductsProductIdDelete,
+  updateProductApiProductsProductIdPut,
+  getProductApiProductsProductIdGet,
+  getProductMaterialsApiProductsProductIdMaterialsGet,
+  parseProductMaterialsApiProductsProductIdParseMaterialsPost,
+} from '@/api'
+import type {
+  ProductCreate,
+  ProductDetailResponse,
+  ProductListResponse,
+  ProductMaterialsResponse,
+  ProductResponse,
+} from '@/api'
 
 export const useProducts = (name?: string) =>
   useQuery<ProductResponse[]>({
     queryKey: ['products-v2', name],
     queryFn: async () => {
-      const { data } = await api.get<ProductListResponse>('/products', {
-        params: name ? { name } : undefined,
+      const response = await listProductsApiProductsGet({
+        query: name ? { name } : undefined,
       })
-      return data.items
+      return (response.data as ProductListResponse).items
     },
   })
 
@@ -20,7 +34,7 @@ export const useBatchDeleteProducts = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (ids: number[]) => {
-      await Promise.all(ids.map((id) => api.delete(`/products/${id}`)))
+      await Promise.all(ids.map((id) => deleteProductApiProductsProductIdDelete({ path: { product_id: id } })))
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products-v2'] })
@@ -32,8 +46,8 @@ export const useCreateProduct = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: ProductCreate) => {
-      const { data } = await api.post<ProductResponse>('/products', payload)
-      return data
+      const response = await createProductApiProductsPost({ body: payload })
+      return response.data!
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products-v2'] })
@@ -45,7 +59,7 @@ export const useDeleteProduct = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (productId: number) => {
-      await api.delete(`/products/${productId}`)
+      await deleteProductApiProductsProductIdDelete({ path: { product_id: productId } })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products-v2'] })
@@ -58,8 +72,11 @@ export const useUpdateProduct = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, name }: { id: number; name: string }) => {
-      const { data } = await api.put<ProductResponse>(`/products/${id}`, { name })
-      return data
+      const response = await updateProductApiProductsProductIdPut({
+        path: { product_id: id },
+        body: { name },
+      })
+      return response.data!
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products-v2'] })
@@ -72,19 +89,35 @@ export const useProduct = (id: number | undefined) =>
   useQuery<ProductDetailResponse>({
     queryKey: ['product', id],
     queryFn: async () => {
-      const { data } = await api.get<ProductDetailResponse>(`/products/${id}`)
-      return data
+      const response = await getProductApiProductsProductIdGet({ path: { product_id: id! } })
+      return response.data!
     },
     enabled: id !== undefined,
   })
 
 /** GET /products/{id}/materials — 获取商品素材（用于素材篮快速导入） */
 export const useProductMaterials = (id: number | undefined) =>
-  useQuery<import('@/types/material').ProductMaterialsResponse>({
+  useQuery<ProductMaterialsResponse>({
     queryKey: ['product-materials', id],
     queryFn: async () => {
-      const { data } = await api.get<import('@/types/material').ProductMaterialsResponse>(`/products/${id}/materials`)
-      return data
+      const response = await getProductMaterialsApiProductsProductIdMaterialsGet({ path: { product_id: id! } })
+      return response.data!
     },
     enabled: id !== undefined,
   })
+
+export const useParseProductMaterials = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (productId: number) => {
+      const response = await parseProductMaterialsApiProductsProductIdParseMaterialsPost({
+        path: { product_id: productId },
+      })
+      return response.data as ProductDetailResponse
+    },
+    onSuccess: (_data, productId) => {
+      queryClient.invalidateQueries({ queryKey: ['product', productId] })
+      queryClient.invalidateQueries({ queryKey: ['products-v2'] })
+    },
+  })
+}

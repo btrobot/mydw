@@ -12,9 +12,9 @@ import {
   useCreateCopywriting, useDeleteCopywriting,
   useUpdateCopywriting, useImportCopywritings, useBatchDeleteCopywritings,
 } from '@/hooks'
+import { listCopywritingsApiCopywritingsGet } from '@/api'
 import type { CopywritingResponse, CopywritingListResponse } from '@/types/material'
 import { handleApiError } from '@/utils/error'
-import { api } from '@/services/api'
 import ProductSelect from '@/components/ProductSelect'
 
 const SOURCE_TYPE_VALUE_ENUM = {
@@ -175,12 +175,13 @@ export default function CopywritingList() {
         rowKey="id"
         columns={columns}
         request={async (params) => {
-          const { data } = await api.get<CopywritingListResponse>('/copywritings', {
-            params: {
-              ...(params.content ? { keyword: params.content } : {}),
-              ...(params.source_type ? { source_type: params.source_type } : {}),
+          const response = await listCopywritingsApiCopywritingsGet({
+            query: {
+              keyword: params.content as string | undefined,
+              source_type: params.source_type as string | undefined,
             },
           })
+          const data = response.data as CopywritingListResponse
           return { data: data.items, success: true, total: data.total }
         }}
         rowSelection={{

@@ -10,10 +10,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from models import Task, Account, ScheduleConfig, Product
+from models import Task, Account, ScheduleConfig
 from core.browser import browser_manager
 from core.dewu_client import get_dewu_client
 from services.task_service import TaskService
+from services.task_execution_semantics import (
+    PublishabilityError,
+    resolve_publish_execution_view,
+)
 
 
 class PublishService:
@@ -97,6 +101,14 @@ class PublishService:
                 await task_svc.mark_task_failed(task.id, "账号无效或未登录")
                 return False, "账号无效"
 
+            try:
+                execution_view = resolve_publish_execution_view(task)
+            except PublishabilityError as exc:
+                message = str(exc)
+                await task_svc.mark_task_failed(task.id, message)
+                logger.warning("任务 {} 不满足 direct publish 语义: {}", task.id, message)
+                return False, message
+
             # 获取得物客户端
             client = await get_dewu_client(account.id)
 
@@ -117,27 +129,16 @@ class PublishService:
                 await task_svc.mark_task_failed(task.id, "登录已过期")
                 return False, "登录已过期"
 
-            # 读取素材字段（资源集合模型：取第一个）
-            video_path: Optional[str] = (
-                task.videos[0].file_path if task.videos else None
-            )
-            content: str = (
-                task.copywritings[0].content if task.copywritings else ""
-            )
-            topic: Optional[str] = (
-                ", ".join(t.name for t in task.topics) if task.topics else None
-            )
-
             # 商品链接已废弃（product_id 不再使用）
             product_link: Optional[str] = None
 
             # 发布视频
             success, msg = await client.upload_video(
-                video_path=video_path,
-                title=content[:50] if content else "视频标题",
-                content=content,
-                topic=topic,
-                cover_path=task.covers[0].file_path if task.covers else None,
+                video_path=execution_view.video_path,
+                title=execution_view.content[:50] if execution_view.content else "视频标题",
+                content=execution_view.content,
+                topic=execution_view.topic,
+                cover_path=execution_view.cover_path,
                 product_link=product_link
             )
 

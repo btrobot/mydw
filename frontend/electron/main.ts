@@ -1,9 +1,10 @@
 /**
  * 得物掘金工具 - Electron 主进程
  */
-import { app, BrowserWindow, Menu, ipcMain, shell, Tray, nativeImage } from 'electron'
+import { app, BrowserWindow, Menu, ipcMain, shell, Tray, nativeImage, dialog } from 'electron'
 import path from 'path'
 import { spawn, ChildProcess } from 'child_process'
+import { BackendStartupError, createBackendLauncherSpec, waitForBackendHealth } from './backendLauncher'
 
 // 禁用硬件加速
 app.disableHardwareAcceleration()
@@ -17,6 +18,8 @@ const isDev = !app.isPackaged
 
 // 开发环境 URL
 const VITE_DEV_SERVER_URL = 'http://localhost:5173'
+const BACKEND_HEALTH_TIMEOUT_MS = 15000
+const BACKEND_HEALTH_RETRY_MS = 500
 
 // 创建主窗口
 function createWindow() {
@@ -116,7 +119,7 @@ function createMenu() {
             dialog.showMessageBox({
               type: 'info',
               title: '关于得物掘金工具',
-              message: '得物掘金工具 v0.1.0',
+              message: `得物掘金工具 v${app.getVersion()}`,
               detail: '得物平台自动化发布系统\n基于 Electron + React + FastAPI'
             })
           }
@@ -181,34 +184,28 @@ function createTray() {
 }
 
 // 启动后端服务
-function startBackend() {
-  const backendPath = isDev
-    ? path.join(__dirname, '../../backend')
-    : path.join(process.resourcesPath, 'backend')
+async function startBackend() {
+  const launcher = createBackendLauncherSpec({
+    isDev,
+    electronDir: __dirname,
+    resourcesPath: process.resourcesPath,
+  })
 
-  const pythonCmd = isDev
-    ? path.join(__dirname, '../../backend/venv/Scripts/python.exe')
-    : null
+  console.log('[Main] 启动后端服务...', {
+    backendPath: launcher.backendPath,
+    command: launcher.command,
+    args: launcher.args,
+    healthUrl: launcher.healthUrl,
+    isDev,
+  })
 
-  console.log('[Main] 启动后端服务...', { backendPath, isDev })
-
-  if (isDev) {
-    // 开发模式：用 python + uvicorn
-    backendProcess = spawn(pythonCmd!, ['-m', 'uvicorn', 'main:app', '--port', '8000', '--host', '127.0.0.1'], {
-      cwd: backendPath,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      shell: true,
-      detached: false
-    })
-  } else {
-    // 生产模式：用 PyInstaller 打包的 exe
-    const backendExe = path.join(backendPath, 'backend.exe')
-    backendProcess = spawn(backendExe, [], {
-      cwd: backendPath,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      detached: false
-    })
-  }
+  backendProcess = spawn(launcher.command, launcher.args, {
+    cwd: launcher.cwd,
+    env: launcher.env,
+    stdio: ['pipe', 'pipe', 'pipe'],
+    detached: false,
+    shell: false,
+  })
 
   backendProcess.stdout?.on('data', (data) => {
     console.log('[Backend]', data.toString())
@@ -224,6 +221,11 @@ function startBackend() {
 
   backendProcess.on('exit', (code) => {
     console.log('[Backend] 进程退出, code:', code)
+  })
+
+  await waitForBackendHealth(backendProcess, launcher.healthUrl, {
+    timeoutMs: BACKEND_HEALTH_TIMEOUT_MS,
+    retryIntervalMs: BACKEND_HEALTH_RETRY_MS,
   })
 }
 
@@ -277,20 +279,34 @@ function setupIpcHandlers() {
 }
 
 // 应用就绪
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   console.log('[Main] 应用启动...')
 
   // 设置 IPC 处理器
   setupIpcHandlers()
+
+  try {
+    // 先启动并等待后端健康，再创建窗口/托盘
+    await startBackend()
+  } catch (error) {
+    const message = error instanceof BackendStartupError
+      ? `[${error.code}] ${error.message}`
+      : error instanceof Error
+        ? error.message
+        : '未知错误'
+
+    console.error('[Main] 后端启动失败:', message)
+    stopBackend()
+    dialog.showErrorBox('后端启动失败', message)
+    app.quit()
+    return
+  }
 
   // 创建窗口
   createWindow()
 
   // 创建托盘
   createTray()
-
-  // 启动后端
-  startBackend()
 
   // macOS 激活时重新创建窗口
   app.on('activate', () => {

@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 import {
   listTasksApiTasksGet,
-  createTaskApiTasksPost,
+  createTasksApiTasksPost,
   getTaskApiTasksTaskIdGet,
   updateTaskApiTasksTaskIdPut,
   deleteTaskApiTasksTaskIdDelete,
@@ -14,13 +14,19 @@ import {
   shuffleTasksApiTasksShufflePost,
   deleteAllTasksApiTasksDelete,
   getTaskStatsApiTasksStatsGet,
+  quickRetryTaskApiTasksTaskIdRetryPost,
+  editRetryTaskApiTasksTaskIdEditRetryPost,
+  cancelTaskApiTasksTaskIdCancelPost,
+  submitCompositionApiTasksTaskIdSubmitCompositionPost,
+  getCompositionStatusApiTasksTaskIdCompositionStatusGet,
+  cancelCompositionApiTasksTaskIdCancelCompositionPost,
 } from '@/api'
 
 import type {
   TaskResponse,
   TaskStatsResponse,
   TaskListResponse,
-  TaskCreate,
+  TaskCreateRequest,
   TaskUpdate,
   TaskBatchCreateRequest,
 } from '@/api'
@@ -47,8 +53,8 @@ export const useTask = (taskId: number) =>
 export const useCreateTask = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (data: TaskCreate) => {
-      const response = await createTaskApiTasksPost({ body: data })
+    mutationFn: async (data: TaskCreateRequest) => {
+      const response = await createTasksApiTasksPost({ body: data })
       return response.data
     },
     onSuccess: () => {
@@ -141,9 +147,8 @@ export const useRetryTask = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (taskId: number) => {
-      const { api } = await import('@/services/api')
-      const { data: result } = await api.post<TaskResponse>(`/tasks/${taskId}/retry`)
-      return result
+      const response = await quickRetryTaskApiTasksTaskIdRetryPost({ path: { task_id: taskId } })
+      return response.data!
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
   })
@@ -153,9 +158,8 @@ export const useEditRetryTask = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (taskId: number) => {
-      const { api } = await import('@/services/api')
-      const { data: result } = await api.post<TaskResponse>(`/tasks/${taskId}/edit-retry`)
-      return result
+      const response = await editRetryTaskApiTasksTaskIdEditRetryPost({ path: { task_id: taskId } })
+      return response.data!
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
   })
@@ -165,9 +169,8 @@ export const useCancelTask = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (taskId: number) => {
-      const { api } = await import('@/services/api')
-      const { data: result } = await api.post<TaskResponse>(`/tasks/${taskId}/cancel`)
-      return result
+      const response = await cancelTaskApiTasksTaskIdCancelPost({ path: { task_id: taskId } })
+      return response.data!
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
   })
@@ -196,9 +199,10 @@ export const useSubmitComposition = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (taskId: number) => {
-      const { api } = await import('@/services/api')
-      const { data } = await api.post<CompositionJobResponse>(`/tasks/${taskId}/submit-composition`)
-      return data
+      const response = await submitCompositionApiTasksTaskIdSubmitCompositionPost({
+        path: { task_id: taskId },
+      })
+      return response.data as CompositionJobResponse
     },
     onSuccess: (_data, taskId) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
@@ -212,9 +216,10 @@ export const useCompositionStatus = (taskId: number | null) => {
   const query = useQuery<CompositionJobResponse>({
     queryKey: ['compositionStatus', taskId],
     queryFn: async () => {
-      const { api } = await import('@/services/api')
-      const { data } = await api.get<CompositionJobResponse>(`/tasks/${taskId}/composition-status`)
-      return data
+      const response = await getCompositionStatusApiTasksTaskIdCompositionStatusGet({
+        path: { task_id: taskId! },
+      })
+      return response.data as CompositionJobResponse
     },
     enabled: taskId !== null,
     refetchInterval: false,
@@ -250,9 +255,10 @@ export const useCancelComposition = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (taskId: number) => {
-      const { api } = await import('@/services/api')
-      const { data } = await api.post<CompositionJobResponse>(`/tasks/${taskId}/cancel-composition`)
-      return data
+      const response = await cancelCompositionApiTasksTaskIdCancelCompositionPost({
+        path: { task_id: taskId },
+      })
+      return response.data as CompositionJobResponse
     },
     onSuccess: (_data, taskId) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
@@ -278,9 +284,8 @@ export const useBatchAssemble = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (data: CreateTasksRequest) => {
-      const { api } = await import('@/services/api')
-      const { data: result } = await api.post<TaskResponse[]>('/tasks/', data)
-      return result
+      const response = await createTasksApiTasksPost({ body: data })
+      return response.data ?? []
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
   })

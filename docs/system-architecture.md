@@ -1,5 +1,13 @@
 # 得物掘金工具 — 系统架构说明
 
+> 状态: Stale / archival reference  
+> 当前 authoritative 入口请先看：
+> - `docs/current-architecture-baseline.md`
+> - `docs/current-runtime-truth.md`
+> - `docs/epic-7-doc-authority-matrix.md`
+>
+> 说明：本文档保留为历史性长文参考，但**不再是默认 authoritative source**。
+
 > 版本: 0.1.0 | 更新日期: 2026-04-07
 
 ---

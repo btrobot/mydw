@@ -56,7 +56,7 @@ function ProfileModal({ open, editing, onClose }: ProfileModalProps) {
           name: editing.name,
           composition_mode: editing.composition_mode,
           coze_workflow_id: editing.coze_workflow_id ?? '',
-          global_topic_ids: editing.global_topic_ids.join(', '),
+          global_topic_ids: (editing.global_topic_ids ?? []).join(', '),
           auto_retry: editing.auto_retry,
           max_retry_count: editing.max_retry_count,
         })

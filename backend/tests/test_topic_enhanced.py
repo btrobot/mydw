@@ -4,7 +4,7 @@ SP4-07: 话题增强集成测试
 覆盖：
 - test_global_topics_set_and_get   — PUT /api/topics/global 设置3个话题 → GET 验证返回
 - test_global_topics_empty         — 设置空列表 → 验证返回空
-- test_assemble_with_global_topics — 全局话题 → POST /api/tasks/assemble → task.topic_ids 包含全局话题
+- test_assemble_with_global_topics_does_not_affect_task_assembly — 当前 global topics 仍是 legacy singleton surface，不会自动注入 task assembly
 """
 import pytest
 from httpx import AsyncClient
@@ -95,10 +95,10 @@ async def test_global_topics_empty(
 
 
 @pytest.mark.asyncio
-async def test_assemble_with_global_topics(
+async def test_assemble_with_global_topics_does_not_affect_task_assembly(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """设置全局话题 → POST /api/tasks/assemble → GET /api/tasks 验证 task.topic_ids 包含全局话题。"""
+    """当前 `/api/topics/global` 只管理 legacy singleton topic surface，不会自动注入 TaskAssembler。"""
     t1 = await _create_topic(db_session, "全局话题1")
     t2 = await _create_topic(db_session, "全局话题2")
     acct = await _create_account(db_session, "gt_a1")
@@ -129,4 +129,4 @@ async def test_assemble_with_global_topics(
     assert list_resp.status_code == 200
     items = list_resp.json()["items"]
     assert len(items) == 1
-    assert sorted(items[0]["topic_ids"]) == sorted([t1.id, t2.id])
+    assert items[0]["topic_ids"] == []

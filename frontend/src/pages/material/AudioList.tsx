@@ -7,12 +7,12 @@ import { UploadOutlined, DeleteOutlined } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns, ActionType } from '@ant-design/pro-components'
 import { useState } from 'react'
+import { listAudiosApiAudiosGet } from '@/api'
 
 import { useUploadAudio, useDeleteAudio, useBatchDeleteAudios } from '@/hooks'
 import type { AudioResponse } from '@/types/material'
 import { formatSize, formatDuration } from '@/utils/format'
 import { handleApiError } from '@/utils/error'
-import { api } from '@/services/api'
 
 export default function AudioList() {
   const actionRef = useRef<ActionType>()
@@ -74,7 +74,7 @@ export default function AudioList() {
       width: 90,
       sorter: true,
       hideInSearch: true,
-      render: (_, record) => formatSize(record.file_size),
+      render: (_, record) => formatSize(record.file_size ?? null),
     },
     {
       title: '时长',
@@ -82,7 +82,7 @@ export default function AudioList() {
       width: 80,
       sorter: true,
       hideInSearch: true,
-      render: (_, record) => formatDuration(record.duration),
+      render: (_, record) => formatDuration(record.duration ?? null),
     },
     {
       title: '创建时间',
@@ -111,9 +111,10 @@ export default function AudioList() {
       rowKey="id"
       columns={columns}
       request={async (params) => {
-        const { data } = await api.get<AudioResponse[]>('/audios', {
-          params: params.name ? { keyword: params.name } : undefined,
+        const response = await listAudiosApiAudiosGet({
+          query: params.name ? { keyword: params.name as string } : undefined,
         })
+        const data = (response.data ?? []) as AudioResponse[]
         return { data, success: true, total: data.length }
       }}
       rowSelection={{

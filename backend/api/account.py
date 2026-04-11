@@ -25,7 +25,7 @@ from schemas import (
     HealthCheckResponse,
     BatchHealthCheckRequest, BatchHealthCheckResponse, BatchHealthCheckResultItem,
     BatchHealthCheckStatusResponse,
-    PreviewCloseRequest, PreviewStatusResponse,
+    PreviewActionResponse, PreviewCloseRequest, PreviewStatusResponse,
 )
 from core.browser import browser_manager, preview_manager
 from core.config import settings
@@ -746,11 +746,11 @@ async def preview_status() -> PreviewStatusResponse:
     )
 
 
-@router.post("/{account_id}/preview")
+@router.post("/{account_id}/preview", response_model=PreviewActionResponse)
 async def preview_account(
     account_id: int,
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> PreviewActionResponse:
     """
     打开账号的 headed 预览浏览器
 
@@ -773,15 +773,20 @@ async def preview_account(
         raise HTTPException(status_code=500, detail="打开预览浏览器失败")
 
     logger.info("账号 {} 预览浏览器已打开", account_id)
-    return {"success": True, "message": "预览浏览器已打开"}
+    return PreviewActionResponse(
+        success=True,
+        message="预览浏览器已打开",
+        is_open=True,
+        account_id=account_id,
+    )
 
 
-@router.post("/{account_id}/preview/close")
+@router.post("/{account_id}/preview/close", response_model=PreviewActionResponse)
 async def close_preview(
     account_id: int,
     request: PreviewCloseRequest,
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> PreviewActionResponse:
     """
     关闭预览浏览器
 
@@ -812,7 +817,12 @@ async def close_preview(
             logger.info("账号 {} 预览 session 已保存到数据库", account_id)
 
     logger.info("账号 {} 预览浏览器已关闭 (save_session={})", account_id, request.save_session)
-    return {"success": True, "message": "预览已关闭"}
+    return PreviewActionResponse(
+        success=True,
+        message="预览已关闭",
+        is_open=False,
+        account_id=None,
+    )
 
 
 @router.post("/connect/{account_id}", response_model=ConnectionResponse, deprecated=True)

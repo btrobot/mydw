@@ -1,21 +1,26 @@
 """
 得物掘金工具 - 话题管理 API (SP1-05, SP4-03)
 """
-import json
 from datetime import datetime
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from loguru import logger
-from pydantic import BaseModel
 
-from models import Topic, PublishConfig, TopicGroup, get_db
+from models import Topic, TopicGroup, get_db
 from schemas import (
     TopicCreate, TopicResponse, TopicListResponse,
     GlobalTopicRequest, GlobalTopicResponse,
     BatchDeleteRequest, BatchDeleteResponse,
     TopicGroupCreate, TopicGroupUpdate, TopicGroupResponse, TopicGroupListResponse,
+)
+from services.topic_relation_service import (
+    get_global_topic_ids,
+    get_topics_by_ids,
+    get_topic_group_topic_ids,
+    sync_global_topic_ids,
+    sync_topic_group_topic_ids,
 )
 
 router = APIRouter(tags=["话题管理"])
@@ -83,7 +88,7 @@ async def set_global_topics(
     data: GlobalTopicRequest,
     db: AsyncSession = Depends(get_db),
 ) -> GlobalTopicResponse:
-    """设置全局话题（覆盖写入）"""
+    """设置全局话题（canonical source=global_topics，仍 dual-write PublishConfig fallback；不会自动注入 task assembly）。"""
     # 验证所有 topic_id 存在
     if data.topic_ids:
         result = await db.execute(select(Topic).where(Topic.id.in_(data.topic_ids)))
@@ -95,42 +100,21 @@ async def set_global_topics(
     else:
         found_topics = []
 
-    # 读取或创建 PublishConfig（取第一条）
-    cfg_result = await db.execute(select(PublishConfig).limit(1))
-    config = cfg_result.scalars().first()
-    if not config:
-        config = PublishConfig()
-        db.add(config)
-
-    config.global_topic_ids = json.dumps(data.topic_ids)
+    normalized = await sync_global_topic_ids(db, data.topic_ids)
     await db.commit()
-    await db.refresh(config)
 
-    logger.info("全局话题已更新: topic_ids={}", data.topic_ids)
-    return GlobalTopicResponse(topic_ids=data.topic_ids, topics=list(found_topics))
+    logger.info("全局话题已更新: topic_ids={}", normalized)
+    return GlobalTopicResponse(topic_ids=normalized, topics=list(found_topics))
 
 
 @router.get("/global", response_model=GlobalTopicResponse)
 async def get_global_topics(
     db: AsyncSession = Depends(get_db),
 ) -> GlobalTopicResponse:
-    """获取当前全局话题列表"""
-    cfg_result = await db.execute(select(PublishConfig).limit(1))
-    config = cfg_result.scalars().first()
+    """获取当前全局话题列表（relation rows 优先，缺失时 fallback 到 PublishConfig JSON）。"""
+    topic_ids = await get_global_topic_ids(db)
 
-    if not config or not config.global_topic_ids:
-        return GlobalTopicResponse(topic_ids=[], topics=[])
-
-    try:
-        raw = json.loads(config.global_topic_ids)
-        topic_ids: List[int] = [tid for tid in raw if isinstance(tid, int)]
-    except (ValueError, TypeError):
-        topic_ids = []
-
-    topics: list[Topic] = []
-    if topic_ids:
-        result = await db.execute(select(Topic).where(Topic.id.in_(topic_ids)))
-        topics = list(result.scalars().all())
+    topics = await get_topics_by_ids(db, topic_ids)
 
     return GlobalTopicResponse(topic_ids=topic_ids, topics=topics)
 
@@ -225,10 +209,11 @@ async def batch_delete_topics(
 async def list_topic_groups(
     db: AsyncSession = Depends(get_db),
 ) -> TopicGroupListResponse:
-    """获取所有话题组"""
+    """获取所有话题组；topic_ids 由 relation rows 优先解析，当前不自动注入 task assembly。"""
     result = await db.execute(select(TopicGroup).order_by(TopicGroup.created_at.desc()))
     groups = result.scalars().all()
-    return TopicGroupListResponse(total=len(groups), items=list(groups))
+    items = [await _build_group_response(group, db) for group in groups]
+    return TopicGroupListResponse(total=len(groups), items=items)
 
 
 @group_router.post("", response_model=TopicGroupResponse, status_code=201)
@@ -236,7 +221,7 @@ async def create_topic_group(
     data: TopicGroupCreate,
     db: AsyncSession = Depends(get_db),
 ) -> TopicGroupResponse:
-    """创建话题组"""
+    """创建话题组；当前只管理命名话题列表，并 dual-write relation rows + legacy JSON fallback。"""
     existing = await db.execute(select(TopicGroup).where(TopicGroup.name == data.name))
     if existing.scalars().first():
         raise HTTPException(status_code=400, detail="话题组名称已存在")
@@ -250,9 +235,11 @@ async def create_topic_group(
 
     group = TopicGroup(
         name=data.name,
-        topic_ids=json.dumps(data.topic_ids),
+        topic_ids="[]",
     )
     db.add(group)
+    await db.flush()
+    await sync_topic_group_topic_ids(db, group, data.topic_ids)
     await db.commit()
     await db.refresh(group)
     logger.info("话题组创建成功: group_id={}, name={}", group.id, group.name)
@@ -264,7 +251,7 @@ async def get_topic_group(
     group_id: int,
     db: AsyncSession = Depends(get_db),
 ) -> TopicGroupResponse:
-    """获取话题组详情（含展开的话题列表）"""
+    """获取话题组详情（含展开的话题列表）；relation rows 优先，当前不会自动注入 task assembly。"""
     result = await db.execute(select(TopicGroup).where(TopicGroup.id == group_id))
     group = result.scalars().first()
     if not group:
@@ -278,7 +265,7 @@ async def update_topic_group(
     data: TopicGroupUpdate,
     db: AsyncSession = Depends(get_db),
 ) -> TopicGroupResponse:
-    """更新话题组"""
+    """更新话题组；当前只影响 named topic-list CRUD surface，并同步 relation rows + legacy JSON fallback。"""
     result = await db.execute(select(TopicGroup).where(TopicGroup.id == group_id))
     group = result.scalars().first()
     if not group:
@@ -297,7 +284,7 @@ async def update_topic_group(
             missing = set(data.topic_ids) - found_ids
             if missing:
                 raise HTTPException(status_code=400, detail=f"话题不存在: {sorted(missing)}")
-        group.topic_ids = json.dumps(data.topic_ids)
+        await sync_topic_group_topic_ids(db, group, data.topic_ids)
 
     await db.commit()
     await db.refresh(group)
@@ -325,15 +312,9 @@ async def delete_topic_group(
 
 async def _build_group_response(group: TopicGroup, db: AsyncSession) -> TopicGroupResponse:
     """将 ORM TopicGroup 转换为 TopicGroupResponse（含展开话题）。"""
-    try:
-        topic_ids: List[int] = [tid for tid in json.loads(group.topic_ids) if isinstance(tid, int)]
-    except (ValueError, TypeError):
-        topic_ids = []
+    topic_ids = await get_topic_group_topic_ids(db, group)
 
-    topics: List[Topic] = []
-    if topic_ids:
-        res = await db.execute(select(Topic).where(Topic.id.in_(topic_ids)))
-        topics = list(res.scalars().all())
+    topics = await get_topics_by_ids(db, topic_ids)
 
     return TopicGroupResponse(
         id=group.id,

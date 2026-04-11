@@ -2,19 +2,33 @@
  * Copywriting Hooks — /api/copywritings
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/services/api'
-import type { CopywritingResponse, CopywritingListResponse, CopywritingCreate, BatchDeleteResponse } from '@/types/material'
+import {
+  listCopywritingsApiCopywritingsGet,
+  createCopywritingApiCopywritingsPost,
+  deleteCopywritingApiCopywritingsCopywritingIdDelete,
+  updateCopywritingApiCopywritingsCopywritingIdPut,
+  importCopywritingsApiCopywritingsImportPost,
+  batchDeleteCopywritingsApiCopywritingsBatchDeletePost,
+} from '@/api'
+import type {
+  CopywritingCreate,
+  CopywritingListResponse,
+  CopywritingResponse,
+} from '@/api'
+import type { BatchDeleteResponse } from '@/types/material'
 
 export const useCopywritings = (params?: { keyword?: string; sourceType?: string; productId?: number }) =>
   useQuery<CopywritingResponse[]>({
     queryKey: ['copywritings', params],
     queryFn: async () => {
-      const queryParams: Record<string, string | number> = {}
-      if (params?.keyword) queryParams.keyword = params.keyword
-      if (params?.sourceType) queryParams.source_type = params.sourceType
-      if (params?.productId !== undefined) queryParams.product_id = params.productId
-      const { data } = await api.get<CopywritingListResponse>('/copywritings', { params: queryParams })
-      return data.items
+      const response = await listCopywritingsApiCopywritingsGet({
+        query: {
+          keyword: params?.keyword,
+          source_type: params?.sourceType,
+          product_id: params?.productId,
+        },
+      })
+      return (response.data as CopywritingListResponse).items
     },
   })
 
@@ -22,8 +36,8 @@ export const useCreateCopywriting = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: CopywritingCreate) => {
-      const { data } = await api.post<CopywritingResponse>('/copywritings', payload)
-      return data
+      const response = await createCopywritingApiCopywritingsPost({ body: payload })
+      return response.data!
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['copywritings'] })
@@ -35,7 +49,7 @@ export const useDeleteCopywriting = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (copywritingId: number) => {
-      await api.delete(`/copywritings/${copywritingId}`)
+      await deleteCopywritingApiCopywritingsCopywritingIdDelete({ path: { copywriting_id: copywritingId } })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['copywritings'] })
@@ -48,8 +62,11 @@ export const useUpdateCopywriting = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, ...payload }: { id: number; content?: string; product_id?: number | null }) => {
-      const { data } = await api.put<CopywritingResponse>(`/copywritings/${id}`, payload)
-      return data
+      const response = await updateCopywritingApiCopywritingsCopywritingIdPut({
+        path: { copywriting_id: id },
+        body: payload,
+      })
+      return response.data!
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['copywritings'] })
@@ -68,14 +85,11 @@ export const useImportCopywritings = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ file, productId }: { file: File; productId?: number }) => {
-      const formData = new FormData()
-      formData.append('file', file)
-      const params = productId !== undefined ? { product_id: productId } : {}
-      const { data } = await api.post<ImportResult>('/copywritings/import', formData, {
-        params,
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const response = await importCopywritingsApiCopywritingsImportPost({
+        body: { file },
+        query: productId !== undefined ? { product_id: productId } : undefined,
       })
-      return data
+      return response.data as ImportResult
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['copywritings'] })
@@ -87,8 +101,8 @@ export const useBatchDeleteCopywritings = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (ids: number[]) => {
-      const { data } = await api.post<BatchDeleteResponse>('/copywritings/batch-delete', { ids })
-      return data
+      const response = await batchDeleteCopywritingsApiCopywritingsBatchDeletePost({ body: { ids } })
+      return response.data as BatchDeleteResponse
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['copywritings'] })

@@ -1,44 +1,32 @@
 """
 发布控制 API
+
+说明：
+- `/config` 仍是遗留兼容入口，返回/写入 contract 保持兼容
+- 调度配置的 canonical contract 将逐步收口到独立的 schedule-config API
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from loguru import logger
 
-from models import Task, Account, PublishConfig, PublishLog
+from models import Task, Account, PublishLog
 from models import get_db
 from schemas import (
     PublishConfigRequest, PublishConfigResponse,
     PublishControlRequest, PublishStatusResponse
 )
+from services.schedule_config_service import ScheduleConfigService
 from services.scheduler import scheduler
 
 router = APIRouter()
 
-# 发布状态存储
-_publish_status = {
-    "status": "idle",
-    "current_task_id": None
-}
-
 
 @router.get("/config", response_model=PublishConfigResponse)
 async def get_publish_config(db: AsyncSession = Depends(get_db)):
-    """获取发布配置"""
-    result = await db.execute(
-        select(PublishConfig).where(PublishConfig.name == "default")
-    )
-    config = result.scalar_one_or_none()
-
-    if not config:
-        # 创建默认配置
-        config = PublishConfig(name="default")
-        db.add(config)
-        await db.commit()
-        await db.refresh(config)
-
-    return config
+    """获取发布配置（遗留兼容入口，底层真相已桥接到 ScheduleConfig）。"""
+    service = ScheduleConfigService(db)
+    return await service.get_or_create_default()
 
 
 @router.put("/config", response_model=PublishConfigResponse)
@@ -46,34 +34,16 @@ async def update_publish_config(
     config_data: PublishConfigRequest,
     db: AsyncSession = Depends(get_db)
 ):
-    """更新发布配置"""
-    result = await db.execute(
-        select(PublishConfig).where(PublishConfig.name == "default")
-    )
-    config = result.scalar_one_or_none()
-
-    if not config:
-        config = PublishConfig(name="default")
-        db.add(config)
-
-    # 更新配置
-    config.interval_minutes = config_data.interval_minutes
-    config.start_hour = config_data.start_hour
-    config.end_hour = config_data.end_hour
-    config.max_per_account_per_day = config_data.max_per_account_per_day
-    config.shuffle = config_data.shuffle
-    config.auto_start = config_data.auto_start
-
-    await db.commit()
-    await db.refresh(config)
-
-    logger.info("更新发布配置")
+    """更新发布配置（遗留兼容入口，写入 canonical ScheduleConfig）。"""
+    service = ScheduleConfigService(db)
+    config = await service.update_default(config_data)
+    logger.info("更新发布配置（兼容接口，canonical source=ScheduleConfig）")
     return config
 
 
 @router.get("/status", response_model=PublishStatusResponse)
 async def get_publish_status(db: AsyncSession = Depends(get_db)):
-    """获取发布状态"""
+    """获取发布状态（基于 scheduler runtime truth）。"""
     # 统计任务
     ready = await db.execute(
         select(func.count(Task.id)).where(Task.status == "ready")
@@ -86,8 +56,8 @@ async def get_publish_status(db: AsyncSession = Depends(get_db)):
     )
 
     return PublishStatusResponse(
-        status=_publish_status["status"],
-        current_task_id=_publish_status.get("current_task_id"),
+        status=scheduler.get_status(),
+        current_task_id=scheduler.current_task_id(),
         total_pending=ready.scalar() or 0,
         total_success=uploaded.scalar() or 0,
         total_failed=failed.scalar() or 0
@@ -99,29 +69,25 @@ async def control_publish(
     request: PublishControlRequest,
     db: AsyncSession = Depends(get_db)
 ):
-    """发布控制"""
+    """发布控制（基于 scheduler runtime truth）。"""
     action = request.action.lower()
 
     if action == "start":
-        if _publish_status["status"] == "running":
+        if scheduler.is_running():
             raise HTTPException(status_code=400, detail="发布已在运行中")
 
-        _publish_status["status"] = "running"
         result = await scheduler.start_publishing()
         logger.info("开始发布任务")
 
         return {"success": True, "action": action, **result}
 
     elif action == "pause":
-        _publish_status["status"] = "paused"
         result = await scheduler.pause_publishing()
         logger.info("暂停发布任务")
 
         return {"success": True, "action": action, **result}
 
     elif action == "stop":
-        _publish_status["status"] = "idle"
-        _publish_status["current_task_id"] = None
         result = await scheduler.stop_publishing()
         logger.info("停止发布任务")
 

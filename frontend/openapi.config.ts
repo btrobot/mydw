@@ -1,7 +1,7 @@
 import type { ConfigFile } from '@hey-api/openapi-ts'
 
 export default {
-  input: 'http://127.0.0.1:8000/openapi.json',
+  input: './openapi.local.json',
   output: {
     path: './src/api',
     index: true,

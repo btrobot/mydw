@@ -22,6 +22,7 @@ from services.task_service import TaskService
 from services.task_distributor import TaskDistributor
 from services.scheduler import scheduler
 from services.composition_service import CompositionService
+from services.task_execution_semantics import TaskSemanticsError
 
 router = APIRouter()
 
@@ -79,16 +80,19 @@ async def create_tasks(
         raise HTTPException(status_code=400, detail="部分账号ID不存在")
 
     distributor = TaskDistributor(db)
-    tasks = await distributor.distribute(
-        video_ids=request.video_ids,
-        account_ids=request.account_ids,
-        copywriting_ids=request.copywriting_ids if request.copywriting_ids else None,
-        cover_ids=request.cover_ids if request.cover_ids else None,
-        audio_ids=request.audio_ids if request.audio_ids else None,
-        topic_ids=request.topic_ids if request.topic_ids else None,
-        profile_id=request.profile_id,
-        name=request.name,
-    )
+    try:
+        tasks = await distributor.distribute(
+            video_ids=request.video_ids,
+            account_ids=request.account_ids,
+            copywriting_ids=request.copywriting_ids if request.copywriting_ids else None,
+            cover_ids=request.cover_ids if request.cover_ids else None,
+            audio_ids=request.audio_ids if request.audio_ids else None,
+            topic_ids=request.topic_ids if request.topic_ids else None,
+            profile_id=request.profile_id,
+            name=request.name,
+        )
+    except TaskSemanticsError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     logger.info(
         "创建任务: videos={}, accounts={}, tasks={}",
@@ -287,11 +291,14 @@ async def assemble_tasks(
 ):
     """组装任务（兼容旧接口，内部转发到新逻辑）"""
     distributor = TaskDistributor(db)
-    tasks = await distributor.distribute(
-        video_ids=request.video_ids,
-        account_ids=request.account_ids,
-        profile_id=request.profile_id,
-    )
+    try:
+        tasks = await distributor.distribute(
+            video_ids=request.video_ids,
+            account_ids=request.account_ids,
+            profile_id=request.profile_id,
+        )
+    except TaskSemanticsError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return tasks
 
 
@@ -302,14 +309,17 @@ async def batch_assemble_tasks(
 ):
     """批量组装任务（兼容旧接口，内部转发到新逻辑）"""
     distributor = TaskDistributor(db)
-    tasks = await distributor.distribute(
-        video_ids=request.video_ids,
-        account_ids=request.account_ids,
-        copywriting_ids=request.copywriting_ids if request.copywriting_ids else None,
-        cover_ids=request.cover_ids if request.cover_ids else None,
-        audio_ids=request.audio_ids if request.audio_ids else None,
-        profile_id=request.profile_id,
-    )
+    try:
+        tasks = await distributor.distribute(
+            video_ids=request.video_ids,
+            account_ids=request.account_ids,
+            copywriting_ids=request.copywriting_ids if request.copywriting_ids else None,
+            cover_ids=request.cover_ids if request.cover_ids else None,
+            audio_ids=request.audio_ids if request.audio_ids else None,
+            profile_id=request.profile_id,
+        )
+    except TaskSemanticsError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return tasks
 
 

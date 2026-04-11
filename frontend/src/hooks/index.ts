@@ -50,14 +50,14 @@ export {
 } from './useTask'
 export type { CompositionJobResponse } from './useTask'
 
-// Publish Hooks
+// Schedule Config Hooks
 export {
-  usePublishConfig,
-  useUpdatePublishConfig,
-  useControlPublish,
-  usePublishStatus,
-  usePublishLogs,
-} from './usePublish'
+  useScheduleConfig,
+  useUpdateScheduleConfig,
+} from './useScheduleConfig'
+
+// Publish Hooks
+export { useControlPublish, usePublishStatus, usePublishLogs } from './usePublish'
 
 // System Hooks
 export {
@@ -80,7 +80,16 @@ export {
 } from './useAIClip'
 
 // Product Hooks (new domain API)
-export { useProducts as useProductsV2, useCreateProduct as useCreateProductV2, useDeleteProduct as useDeleteProductV2, useUpdateProduct as useUpdateProductV2, useBatchDeleteProducts, useProduct } from './useProduct'
+export {
+  useProducts as useProductsV2,
+  useCreateProduct as useCreateProductV2,
+  useDeleteProduct as useDeleteProductV2,
+  useUpdateProduct as useUpdateProductV2,
+  useBatchDeleteProducts,
+  useProduct,
+  useProductMaterials,
+  useParseProductMaterials,
+} from './useProduct'
 
 // Video Hooks
 export { useVideo, useVideos, useCreateVideo, useDeleteVideo, useUploadVideo, useScanVideos, useBatchDeleteVideos } from './useVideo'

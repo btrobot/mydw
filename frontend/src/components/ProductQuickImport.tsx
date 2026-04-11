@@ -32,7 +32,7 @@ export default function ProductQuickImport({ onImport }: ProductQuickImportProps
       return
     }
 
-    const count = materials.videos.length + materials.copywritings.length + materials.covers.length
+    const count = (materials.videos?.length ?? 0) + (materials.copywritings?.length ?? 0) + (materials.covers?.length ?? 0)
     if (count === 0) {
       message.warning('该商品没有可用素材')
       return

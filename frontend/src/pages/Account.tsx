@@ -582,7 +582,7 @@ export default function Account() {
             fontFamily: 'monospace',
           }}
         >
-          {(batchStatus.logs).map((log, i) => (
+          {(batchStatus.logs ?? []).map((log, i) => (
             <div
               key={i}
               style={{

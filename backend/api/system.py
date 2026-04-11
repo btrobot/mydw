@@ -2,19 +2,19 @@
 系统 API
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
-from typing import List
-from datetime import datetime
-from pathlib import Path
+from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
-from models import Account, Task, Product, SystemLog, PublishConfig, Video, Copywriting, Cover, Audio, Topic
+from models import Account, Task, Product, SystemLog, Video, Copywriting, Cover, Audio, Topic
 from models import get_db
 from schemas import (
-    SystemStats, SystemLogResponse, SystemLogListResponse,
-    BackupRequest,
+    SystemStats, SystemLogListResponse,
+    BackupRequest, BackupResponse, MaterialStatsResponse,
+    SystemConfigResponse, SystemConfigUpdateResponse,
 )
+from services.system_backup_service import SystemBackupService
+from services.system_config_service import SystemConfigService
 
 router = APIRouter()
 
@@ -95,60 +95,58 @@ async def add_system_log(
     return {"success": True}
 
 
-@router.get("/config")
-async def get_system_config(db: AsyncSession = Depends(get_db)):
-    """获取系统配置"""
-    # TODO: 从配置文件读取
-    return {
-        "material_base_path": "D:/系统/桌面/得物剪辑/待上传数据",
-        "auto_backup": False,
-        "log_level": "INFO"
-    }
+@router.get("/config", response_model=SystemConfigResponse)
+async def get_system_config():
+    """获取系统设置真相：runtime-config + 只读启动期信息。"""
+    return SystemConfigService().get_config()
 
 
-@router.put("/config")
+@router.put("/config", response_model=SystemConfigUpdateResponse)
 async def update_system_config(
-    material_base_path: str = None,
-    auto_backup: bool = None,
-    log_level: str = None
+    material_base_path: str = Query(
+        default=None,
+        description="当前唯一支持运行时修改的设置项；写入 data/system_config.json。",
+    ),
+    auto_backup: bool = Query(
+        default=None,
+        description="兼容占位参数；当前不支持运行时修改，传入时会返回 400。",
+    ),
+    log_level: str = Query(
+        default=None,
+        description="只读启动期配置；权威来源是 .env / backend/core/config.py，传入时会返回 400。",
+    ),
 ):
-    """更新系统配置"""
-    # TODO: 保存到配置文件
-    logger.info(f"更新系统配置: material_path={material_base_path}")
+    """更新受支持的 runtime-config；不接受伪配置字段静默成功。"""
+    try:
+        updated = SystemConfigService().update_config(
+            material_base_path=material_base_path,
+            auto_backup=auto_backup,
+            log_level=log_level,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    return {"success": True}
+    logger.info("更新系统配置: material_path={}", updated["material_base_path"])
+
+    return SystemConfigUpdateResponse(
+        success=True,
+        material_base_path=updated["material_base_path"],
+        auto_backup=updated["auto_backup"],
+        log_level=updated["log_level"],
+    )
 
 
-@router.post("/backup")
+@router.post("/backup", response_model=BackupResponse)
 async def backup_data(request: BackupRequest, db: AsyncSession = Depends(get_db)):
     """备份数据"""
-    backup_dir = Path("data/backups")
-    backup_dir.mkdir(parents=True, exist_ok=True)
-
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_file = backup_dir / f"backup_{timestamp}.json"
-
-    # TODO: 导出数据库到 JSON
-    backup_data = {
-        "version": "0.1.0",
-        "timestamp": timestamp,
-        "accounts": [],
-        "tasks": [],
-        "materials": [],
-        "products": []
-    }
-
-    logger.info(f"数据备份: {backup_file}")
-
-    return {
-        "success": True,
-        "backup_file": str(backup_file)
-    }
+    backup_file = await SystemBackupService(db).create_backup(include_logs=request.include_logs)
+    logger.info("数据备份: {}", backup_file)
+    return BackupResponse(success=True, backup_file=str(backup_file))
 
 
 # ─── SP8-05: 素材统计 ────────────────────────────────────────────────────────
 
-@router.get("/material-stats")
+@router.get("/material-stats", response_model=MaterialStatsResponse)
 async def material_stats(db: AsyncSession = Depends(get_db)):
     """素材统计：各类数量、商品覆盖率"""
     video_count = (await db.execute(select(func.count()).select_from(Video))).scalar() or 0

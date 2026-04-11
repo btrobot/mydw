@@ -7,11 +7,11 @@ import {
 import { PlusOutlined, EditOutlined, DeleteOutlined, SyncOutlined } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns, ActionType } from '@ant-design/pro-components'
+import { listProductsApiProductsGet } from '@/api'
 
-import { useCreateProductV2, useDeleteProductV2, useUpdateProductV2, useBatchDeleteProducts } from '@/hooks'
-import type { ProductResponse, ProductListResponse, ParseMaterialsResponse, ParseStatus } from '@/types/material'
+import { useCreateProductV2, useDeleteProductV2, useUpdateProductV2, useBatchDeleteProducts, useParseProductMaterials } from '@/hooks'
+import type { ProductResponse, ProductListResponse, ParseStatus } from '@/types/material'
 import { handleApiError } from '@/utils/error'
-import { api } from '@/services/api'
 
 const { Link } = Typography
 
@@ -38,6 +38,7 @@ export default function ProductList() {
   const deleteProduct = useDeleteProductV2()
   const updateProduct = useUpdateProductV2()
   const batchDeleteProducts = useBatchDeleteProducts()
+  const parseProductMaterials = useParseProductMaterials()
 
   const handleAdd = useCallback(async () => {
     try {
@@ -90,8 +91,8 @@ export default function ProductList() {
   const handleParse = useCallback(async (id: number) => {
     setParsingIds((prev) => new Set(prev).add(id))
     try {
-      const { data } = await api.post<ParseMaterialsResponse>(`/products/${id}/parse-materials`)
-      message.success(`解析完成: ${data.videos_downloaded} 个视频, ${data.covers_downloaded} 张封面, ${data.topics.length} 个话题`)
+      const data = await parseProductMaterials.mutateAsync(id)
+      message.success(`解析完成: ${(data.videos ?? []).length} 个视频, ${(data.covers ?? []).length} 张封面, ${(data.topics ?? []).length} 个话题`)
       actionRef.current?.reload()
     } catch (error: unknown) {
       handleApiError(error, '解析素材失败')
@@ -102,7 +103,7 @@ export default function ProductList() {
         return next
       })
     }
-  }, [])
+  }, [parseProductMaterials])
 
   const columns: ProColumns<ProductResponse>[] = [
     {
@@ -190,9 +191,10 @@ export default function ProductList() {
         rowKey="id"
         columns={columns}
         request={async (params) => {
-          const { data } = await api.get<ProductListResponse>('/products', {
-            params: params.name ? { name: params.name } : undefined,
+          const response = await listProductsApiProductsGet({
+            query: params.name ? { name: params.name as string } : undefined,
           })
+          const data = response.data as ProductListResponse
           return { data: data.items, success: true, total: data.total }
         }}
         rowSelection={{

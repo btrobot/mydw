@@ -1,8 +1,6 @@
 """
 发布配置档 API
 """
-import json
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
@@ -16,6 +14,7 @@ from schemas import (
     PublishProfileResponse,
     PublishProfileListResponse,
 )
+from services.topic_relation_service import get_profile_topic_ids, sync_profile_topic_ids
 
 router = APIRouter()
 
@@ -25,7 +24,7 @@ async def create_profile(
     data: PublishProfileCreate,
     db: AsyncSession = Depends(get_db),
 ) -> PublishProfileResponse:
-    """创建合成配置档"""
+    """创建合成配置档；`global_topic_ids` 当前代表 profile-level default topics，并 dual-write 到 relation rows。"""
     # 检查名称唯一性
     existing = (await db.execute(
         select(PublishProfile).where(PublishProfile.name == data.name)
@@ -43,22 +42,24 @@ async def create_profile(
         composition_mode=data.composition_mode.value,
         coze_workflow_id=data.coze_workflow_id,
         composition_params=data.composition_params,
-        global_topic_ids=json.dumps(data.global_topic_ids),
+        global_topic_ids="[]",
         auto_retry=data.auto_retry,
         max_retry_count=data.max_retry_count,
     )
     db.add(profile)
+    await db.flush()
+    await sync_profile_topic_ids(db, profile, data.global_topic_ids)
     await db.commit()
     await db.refresh(profile)
     logger.info("配置档创建成功: id={}, name={}", profile.id, profile.name)
-    return PublishProfileResponse.model_validate(profile)
+    return await _build_profile_response(profile, db)
 
 
 @router.get("", response_model=PublishProfileListResponse)
 async def list_profiles(
     db: AsyncSession = Depends(get_db),
 ) -> PublishProfileListResponse:
-    """获取配置档列表"""
+    """获取配置档列表；返回的 `global_topic_ids` 由 relation rows 优先解析。"""
     total_result = await db.execute(select(func.count()).select_from(PublishProfile))
     total = total_result.scalar_one()
 
@@ -66,9 +67,10 @@ async def list_profiles(
         select(PublishProfile).order_by(PublishProfile.is_default.desc(), PublishProfile.created_at.asc())
     )
     profiles = result.scalars().all()
+    items = [await _build_profile_response(p, db) for p in profiles]
     return PublishProfileListResponse(
         total=total,
-        items=[PublishProfileResponse.model_validate(p) for p in profiles],
+        items=items,
     )
 
 
@@ -77,9 +79,9 @@ async def get_profile(
     profile_id: int,
     db: AsyncSession = Depends(get_db),
 ) -> PublishProfileResponse:
-    """获取配置档详情"""
+    """获取配置档详情；`global_topic_ids` 当前会被 TaskAssembler 自动并入任务，且 relation rows 优先。"""
     profile = await _get_or_404(db, profile_id)
-    return PublishProfileResponse.model_validate(profile)
+    return await _build_profile_response(profile, db)
 
 
 @router.put("/{profile_id}", response_model=PublishProfileResponse)
@@ -88,7 +90,7 @@ async def update_profile(
     data: PublishProfileUpdate,
     db: AsyncSession = Depends(get_db),
 ) -> PublishProfileResponse:
-    """更新配置档"""
+    """更新配置档；`global_topic_ids` 会同步 relation rows 与 legacy JSON fallback。"""
     profile = await _get_or_404(db, profile_id)
 
     # 检查名称唯一性（排除自身）
@@ -117,7 +119,7 @@ async def update_profile(
     if data.composition_params is not None:
         profile.composition_params = data.composition_params
     if data.global_topic_ids is not None:
-        profile.global_topic_ids = json.dumps(data.global_topic_ids)
+        await sync_profile_topic_ids(db, profile, data.global_topic_ids)
     if data.auto_retry is not None:
         profile.auto_retry = data.auto_retry
     if data.max_retry_count is not None:
@@ -126,7 +128,7 @@ async def update_profile(
     await db.commit()
     await db.refresh(profile)
     logger.info("配置档更新成功: id={}, name={}", profile.id, profile.name)
-    return PublishProfileResponse.model_validate(profile)
+    return await _build_profile_response(profile, db)
 
 
 @router.delete("/{profile_id}", status_code=204)
@@ -155,7 +157,7 @@ async def set_default_profile(
     await db.commit()
     await db.refresh(profile)
     logger.info("已设为默认配置档: id={}, name={}", profile.id, profile.name)
-    return PublishProfileResponse.model_validate(profile)
+    return await _build_profile_response(profile, db)
 
 
 # ============ 内部辅助 ============
@@ -177,3 +179,23 @@ async def _clear_default(db: AsyncSession) -> None:
     )
     for p in result.scalars().all():
         p.is_default = False
+
+
+async def _build_profile_response(
+    profile: PublishProfile,
+    db: AsyncSession,
+) -> PublishProfileResponse:
+    payload = {
+        "id": profile.id,
+        "name": profile.name,
+        "is_default": profile.is_default,
+        "composition_mode": profile.composition_mode,
+        "coze_workflow_id": profile.coze_workflow_id,
+        "composition_params": profile.composition_params,
+        "global_topic_ids": await get_profile_topic_ids(db, profile),
+        "auto_retry": profile.auto_retry,
+        "max_retry_count": profile.max_retry_count,
+        "created_at": profile.created_at,
+        "updated_at": profile.updated_at,
+    }
+    return PublishProfileResponse.model_validate(payload)

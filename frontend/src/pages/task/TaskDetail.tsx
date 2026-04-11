@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Button, Card, Tag, Space, message, Spin, Flex, Typography,
-  Descriptions, Progress, Popconfirm, Alert,
+  Descriptions, Progress, Popconfirm, Alert, Divider,
 } from 'antd'
 import {
   ReloadOutlined, EditOutlined, StopOutlined, DeleteOutlined,
@@ -18,7 +18,10 @@ import {
   useCancelTask,
   useDeleteTask,
 } from '@/hooks'
+import { useProfiles } from '@/hooks/useProfile'
 import { handleApiError } from '@/utils/error'
+import type { TaskResponse } from '@/api'
+import { getTaskSemanticsSummary } from './taskSemantics'
 
 const { Text, Title } = Typography
 
@@ -31,37 +34,6 @@ type TaskStatus =
   | 'uploaded'
   | 'failed'
   | 'cancelled'
-
-// Extended task interface — generated TaskResponse is outdated; cast at call site
-interface TaskDetail {
-  id: number
-  account_id: number
-  product_id?: number | null
-  video_id?: number | null
-  copywriting_id?: number | null
-  audio_id?: number | null
-  cover_id?: number | null
-  status: TaskStatus
-  priority: number
-  publish_time?: string | null
-  error_msg?: string | null
-  created_at: string
-  updated_at: string
-  // composition fields
-  video_path?: string | null
-  content?: string | null
-  topic?: string | null
-  cover_path?: string | null
-  audio_path?: string | null
-  // upload result fields
-  dewu_video_id?: string | null
-  upload_url?: string | null
-  uploaded_at?: string | null
-  // account name (may be joined by backend)
-  account_name?: string | null
-  video_name?: string | null
-  audio_name?: string | null
-}
 
 const statusMap: Record<TaskStatus, { color: string; text: string }> = {
   draft:      { color: 'default',    text: '草稿' },
@@ -95,8 +67,9 @@ export default function TaskDetail() {
   const navigate = useNavigate()
   const taskId = id ? parseInt(id, 10) : undefined
 
-  const { data: rawTask, isLoading } = useTask(taskId ?? 0)
-  const task = rawTask as unknown as TaskDetail | undefined
+  const { data: task, isLoading } = useTask(taskId ?? 0)
+  const { data: profilesData } = useProfiles()
+  const profiles = profilesData?.items ?? []
 
   // Composition status polling — only active when task exists
   const compositionQuery = useCompositionStatus(taskId ?? null)
@@ -196,6 +169,8 @@ export default function TaskDetail() {
   const isFailed = task.status === 'failed'
   const isTerminal = TERMINAL_STATES.has(task.status)
   const compositionActive = compositionJob?.status === 'pending' || compositionJob?.status === 'processing'
+  const semantics = getTaskSemanticsSummary(task as TaskResponse, profiles)
+  const renderIds = (ids?: number[]) => (ids && ids.length > 0 ? ids.map((item) => `#${item}`).join(', ') : '-')
 
   return (
     <Flex vertical gap={16} style={{ padding: 24, maxWidth: 900 }}>
@@ -218,8 +193,8 @@ export default function TaskDetail() {
           <Descriptions.Item label="账号 ID">
             {task.account_name ? `${task.account_name} (${task.account_id})` : task.account_id}
           </Descriptions.Item>
-          <Descriptions.Item label="商品 ID">
-            {task.product_id ?? '-'}
+          <Descriptions.Item label="配置档 ID">
+            {task.profile_id ?? '-'}
           </Descriptions.Item>
           <Descriptions.Item label="优先级">
             <Tag color={priorityColor(task.priority)}>
@@ -227,7 +202,7 @@ export default function TaskDetail() {
             </Tag>
           </Descriptions.Item>
           <Descriptions.Item label="计划发布时间">
-            {task.publish_time ? new Date(task.publish_time).toLocaleString('zh-CN') : '-'}
+            {task.scheduled_time ? new Date(task.scheduled_time).toLocaleString('zh-CN') : '-'}
           </Descriptions.Item>
           <Descriptions.Item label="创建时间">
             {new Date(task.created_at).toLocaleString('zh-CN')}
@@ -243,30 +218,70 @@ export default function TaskDetail() {
         </Descriptions>
       </Card>
 
-      {/* Card 2: 素材 */}
-      <Card title="素材" size="small">
+      {/* Card 2: 执行语义 */}
+      <Card title="执行语义" size="small">
         <Descriptions bordered size="small" column={1}>
-          <Descriptions.Item label="视频">
-            {task.video_name ?? task.video_path ?? (task.video_id ? `ID: ${task.video_id}` : '-')}
+          <Descriptions.Item label="模式">
+            {semantics.modeLabel}
           </Descriptions.Item>
-          <Descriptions.Item label="文案内容">
-            {task.content ? (
-              <Text style={{ whiteSpace: 'pre-wrap' }}>{task.content}</Text>
-            ) : '-'}
+          <Descriptions.Item label="直接发布是否满足当前语义">
+            <Tag color={semantics.directPublishAllowed ? 'success' : 'warning'}>
+              {semantics.directPublishAllowed ? '满足' : '不满足'}
+            </Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="话题标签">
-            {task.topic ?? '-'}
+          <Descriptions.Item label="最终发布视频来源">
+            {semantics.usesFinalVideo ? '使用 final_video_path（合成产物）' : '使用视频资源集合'}
           </Descriptions.Item>
-          <Descriptions.Item label="音频">
-            {task.audio_name ?? task.audio_path ?? (task.audio_id ? `ID: ${task.audio_id}` : '-')}
+          <Descriptions.Item label="语义说明">
+            {semantics.mode === 'none'
+              ? '直接发布模式：仅支持 1 个最终视频、0/1 个文案、0/1 个封面；多话题允许；独立音频需先合成。'
+              : '合成模式：多视频 / 多文案 / 多封面 / 音频属于合成输入；最终直接发布使用合成后的 final video。'}
           </Descriptions.Item>
-          <Descriptions.Item label="封面">
-            {task.cover_path ?? (task.cover_id ? `ID: ${task.cover_id}` : '-')}
+        </Descriptions>
+        {semantics.violations.length > 0 && (
+          <>
+            <Divider />
+            <Alert
+              type="warning"
+              showIcon
+              message="当前任务语义提示"
+              description={
+                <ul style={{ margin: 0, paddingInlineStart: 18 }}>
+                  {semantics.violations.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              }
+            />
+          </>
+        )}
+      </Card>
+
+      {/* Card 3: 素材集合 */}
+      <Card title="素材集合" size="small">
+        <Descriptions bordered size="small" column={1}>
+          <Descriptions.Item label={`视频（${task.video_ids?.length ?? 0}）`}>
+            {renderIds(task.video_ids)}
+          </Descriptions.Item>
+          <Descriptions.Item label={`文案（${task.copywriting_ids?.length ?? 0}）`}>
+            {renderIds(task.copywriting_ids)}
+          </Descriptions.Item>
+          <Descriptions.Item label={`封面（${task.cover_ids?.length ?? 0}）`}>
+            {renderIds(task.cover_ids)}
+          </Descriptions.Item>
+          <Descriptions.Item label={`音频（${task.audio_ids?.length ?? 0}）`}>
+            {renderIds(task.audio_ids)}
+          </Descriptions.Item>
+          <Descriptions.Item label={`话题（${task.topic_ids?.length ?? 0}）`}>
+            {renderIds(task.topic_ids)}
+          </Descriptions.Item>
+          <Descriptions.Item label="Final Video Path">
+            {task.final_video_path ?? '-'}
           </Descriptions.Item>
         </Descriptions>
       </Card>
 
-      {/* Card 3: 合成 (draft / composing 状态显示) */}
+      {/* Card 4: 合成 (draft / composing 状态显示) */}
       {isComposing && (
         <Card title="合成" size="small">
           {compositionActive && compositionJob ? (
@@ -315,7 +330,7 @@ export default function TaskDetail() {
         </Card>
       )}
 
-      {/* Card 4: 上传结果 (uploaded 状态显示) */}
+      {/* Card 5: 上传结果 (uploaded 状态显示) */}
       {isUploaded && (
         <Card title="上传结果" size="small">
           <Descriptions bordered size="small" column={1}>
@@ -328,9 +343,6 @@ export default function TaskDetail() {
                   {task.upload_url}
                 </a>
               ) : '-'}
-            </Descriptions.Item>
-            <Descriptions.Item label="上传时间">
-              {task.uploaded_at ? new Date(task.uploaded_at).toLocaleString('zh-CN') : '-'}
             </Descriptions.Item>
           </Descriptions>
         </Card>

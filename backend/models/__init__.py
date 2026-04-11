@@ -35,7 +35,7 @@ class Account(Base):
     dewu_nickname = Column(String(128), nullable=True)       # 得物昵称
     dewu_uid = Column(String(64), nullable=True)             # 得物平台 UID
     avatar_url = Column(String(512), nullable=True)          # 头像 URL
-    tags = Column(Text, default='[]')                        # JSON 数组标签
+    tags = Column(Text, default='[]')                        # JSON 数组标签；Phase 6 最终结论为 normalize-later
     remark = Column(Text, nullable=True)                     # 备注
     session_expires_at = Column(DateTime, nullable=True)     # Session 过期时间
     last_health_check = Column(DateTime, nullable=True)      # 上次健康检查时间
@@ -52,7 +52,7 @@ class Task(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False, index=True)
 
-    # 旧 FK（保留列兼容 SQLite，代码不再读写）
+    # 旧 FK（兼容保留列，不再是 authoritative 任务语义；新逻辑应读取资源集合关系）
     product_id = Column(Integer, ForeignKey("products.id"), nullable=True)
     video_id = Column(Integer, ForeignKey("videos.id"), nullable=True, index=True)
     copywriting_id = Column(Integer, ForeignKey("copywritings.id"), nullable=True, index=True)
@@ -68,9 +68,9 @@ class Task(Base):
     # 合成相关字段（migration 016）
     name = Column(String(256), nullable=True)
     description = Column(String, nullable=True)
-    source_video_ids = Column(String, nullable=True)          # JSON array
+    source_video_ids = Column(String, nullable=True)          # JSON array；迁移遗留字段，Phase 6 结论为 delete-ready-later
     composition_template = Column(String(64), nullable=True)
-    composition_params = Column(String, nullable=True)        # JSON
+    composition_params = Column(String, nullable=True)        # Opaque JSON params；Phase 6 结论为 keep-json
     composition_job_id = Column(Integer, nullable=True, index=True)
     final_video_path = Column(String(512), nullable=True)
     final_video_duration = Column(Integer, nullable=True)
@@ -277,6 +277,41 @@ class TaskTopic(Base):
     __table_args__ = (UniqueConstraint('task_id', 'topic_id'),)
 
 
+class GlobalTopic(Base):
+    """全局 singleton 话题关联表（Phase 6 / PR4 canonical source）"""
+    __tablename__ = "global_topics"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    topic_id = Column(Integer, ForeignKey("topics.id"), nullable=False, index=True)
+    sort_order = Column(Integer, default=0, nullable=False)
+
+    __table_args__ = (UniqueConstraint('topic_id'),)
+
+
+class PublishProfileTopic(Base):
+    """配置档-话题关联表（Phase 6 / PR4 canonical source）"""
+    __tablename__ = "publish_profile_topics"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    profile_id = Column(Integer, ForeignKey("publish_profiles.id", ondelete="CASCADE"), nullable=False, index=True)
+    topic_id = Column(Integer, ForeignKey("topics.id"), nullable=False, index=True)
+    sort_order = Column(Integer, default=0, nullable=False)
+
+    __table_args__ = (UniqueConstraint('profile_id', 'topic_id'),)
+
+
+class TopicGroupTopic(Base):
+    """话题组-话题关联表（Phase 6 / PR4 canonical source）"""
+    __tablename__ = "topic_group_topics"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    group_id = Column(Integer, ForeignKey("topic_groups.id", ondelete="CASCADE"), nullable=False, index=True)
+    topic_id = Column(Integer, ForeignKey("topics.id"), nullable=False, index=True)
+    sort_order = Column(Integer, default=0, nullable=False)
+
+    __table_args__ = (UniqueConstraint('group_id', 'topic_id'),)
+
+
 class ProductTopic(Base):
     """商品-话题关联表"""
     __tablename__ = "product_topics"
@@ -329,7 +364,7 @@ class PublishLog(Base):
 
 
 class PublishConfig(Base):
-    """发布配置表"""
+    """发布配置表（遗留兼容模型，调度真相将逐步收口到 ScheduleConfig）"""
     __tablename__ = "publish_config"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -340,7 +375,7 @@ class PublishConfig(Base):
     max_per_account_per_day = Column(Integer, default=5)
     shuffle = Column(Boolean, default=False)
     auto_start = Column(Boolean, default=False)
-    global_topic_ids = Column(Text, default='[]')  # JSON数组存储全局话题ID
+    global_topic_ids = Column(Text, default='[]')  # legacy singleton topic surface；不再代表调度 canonical truth
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -357,10 +392,10 @@ class PublishProfile(Base):
     # 合成配置
     composition_mode = Column(String(32), default="none")   # 'none' / 'coze' / 'local_ffmpeg'
     coze_workflow_id = Column(String(128), nullable=True)
-    composition_params = Column(Text, nullable=True)        # JSON
+    composition_params = Column(Text, nullable=True)        # Opaque JSON 配置；Phase 6 结论为 keep-json
 
     # 话题配置
-    global_topic_ids = Column(Text, default="[]")           # JSON array
+    global_topic_ids = Column(Text, default="[]")           # 当前 TaskAssembler 唯一会自动合并的 profile-level default topics
 
     # 重试配置
     auto_retry = Column(Boolean, default=True)
@@ -369,9 +404,12 @@ class PublishProfile(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # 关系
+    topic_links = relationship("PublishProfileTopic", passive_deletes=True, order_by="PublishProfileTopic.sort_order")
+
 
 class ScheduleConfig(Base):
-    """调度配置表（全局单例，替代 publish_config）"""
+    """调度配置表（全局单例，作为调度配置的 canonical truth）"""
     __tablename__ = "schedule_config"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -393,10 +431,13 @@ class TopicGroup(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(128), unique=True, nullable=False, index=True)
-    topic_ids = Column(Text, nullable=False, default='[]')  # JSON array of topic IDs
+    topic_ids = Column(Text, nullable=False, default='[]')  # 命名话题列表 JSON；当前 CRUD-only，不会自动注入 task assembly
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # 关系
+    topic_links = relationship("TopicGroupTopic", passive_deletes=True, order_by="TopicGroupTopic.sort_order")
 
 
 class SystemLog(Base):
@@ -486,6 +527,8 @@ async def init_db():
     await migration_020.run_migration(engine)
     migration_021 = importlib.import_module("migrations.021_task_resource_tables")
     await migration_021.run_migration(engine)
+    migration_022 = importlib.import_module("migrations.022_topic_relation_sources")
+    await migration_022.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

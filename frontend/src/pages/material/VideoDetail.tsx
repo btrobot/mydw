@@ -49,12 +49,12 @@ export default function VideoDetail() {
           {
             title: '文件大小',
             dataIndex: 'file_size',
-            render: (_, r) => formatSize(r.file_size),
+            render: (_, r) => formatSize(r.file_size ?? null),
           },
           {
             title: '时长',
             dataIndex: 'duration',
-            render: (_, r) => formatDuration(r.duration),
+            render: (_, r) => formatDuration(r.duration ?? null),
           },
           {
             title: '关联商品',

@@ -2,17 +2,23 @@
  * Audio Hooks — /api/audios
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/services/api'
-import type { AudioResponse, BatchDeleteResponse } from '@/types/material'
+import {
+  listAudiosApiAudiosGet,
+  uploadAudioApiAudiosUploadPost,
+  deleteAudioApiAudiosAudioIdDelete,
+  batchDeleteAudiosApiAudiosBatchDeletePost,
+} from '@/api'
+import type { AudioResponse } from '@/api'
+import type { BatchDeleteResponse } from '@/types/material'
 
 export const useAudios = (keyword?: string) =>
   useQuery<AudioResponse[]>({
     queryKey: ['audios', keyword],
     queryFn: async () => {
-      const { data } = await api.get<AudioResponse[]>('/audios', {
-        params: keyword ? { keyword } : undefined,
+      const response = await listAudiosApiAudiosGet({
+        query: keyword ? { keyword } : undefined,
       })
-      return data
+      return (response.data ?? []) as AudioResponse[]
     },
   })
 
@@ -20,12 +26,10 @@ export const useUploadAudio = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (file: File) => {
-      const formData = new FormData()
-      formData.append('file', file)
-      const { data } = await api.post<AudioResponse>('/audios/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const response = await uploadAudioApiAudiosUploadPost({
+        body: { file },
       })
-      return data
+      return response.data!
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['audios'] })
@@ -37,7 +41,7 @@ export const useDeleteAudio = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (audioId: number) => {
-      await api.delete(`/audios/${audioId}`)
+      await deleteAudioApiAudiosAudioIdDelete({ path: { audio_id: audioId } })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['audios'] })
@@ -49,8 +53,8 @@ export const useBatchDeleteAudios = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (ids: number[]) => {
-      const { data } = await api.post<BatchDeleteResponse>('/audios/batch-delete', { ids })
-      return data
+      const response = await batchDeleteAudiosApiAudiosBatchDeletePost({ body: { ids } })
+      return response.data as BatchDeleteResponse
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['audios'] })

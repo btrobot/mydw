@@ -3,7 +3,6 @@ TaskAssembler — 创建任务并关联资源集合
 
 重构后逻辑：1 份素材集合 + 1 个账号 = 1 个 Task + N 条关联记录
 """
-import json
 from typing import List, Optional
 
 from loguru import logger
@@ -12,9 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from models import (
-    PublishProfile, Task, Topic,
+    PublishProfile, Task,
     TaskVideo, TaskCopywriting, TaskCover, TaskAudio, TaskTopic,
 )
+from services.task_execution_semantics import validate_task_resource_inputs
+from services.topic_semantics import merge_task_topic_ids
+from services.topic_relation_service import get_profile_topic_ids
 
 
 class TaskAssembler:
@@ -43,15 +45,21 @@ class TaskAssembler:
         # 查询一次 profile，复用
         profile = await self._get_profile(profile_id)
         initial_status = "ready" if (profile is None or profile.composition_mode == "none") else "draft"
+        validate_task_resource_inputs(
+            video_ids=video_ids,
+            copywriting_ids=copywriting_ids,
+            cover_ids=cover_ids,
+            audio_ids=audio_ids,
+            composition_mode=profile.composition_mode if profile else "none",
+        )
 
-        # 合并 profile 全局话题
-        all_topic_ids = list(topic_ids or [])
-        global_topic_ids = self._parse_topic_ids(profile)
-        seen = set(all_topic_ids)
-        for tid in global_topic_ids:
-            if tid not in seen:
-                all_topic_ids.append(tid)
-                seen.add(tid)
+        # Phase 6 / PR3 baseline:
+        # explicit task topics first, then profile-level default topics.
+        # `/api/topics/global` and `TopicGroup.topic_ids` are not auto-injected here.
+        all_topic_ids = merge_task_topic_ids(
+            explicit_topic_ids=topic_ids,
+            profile_default_topic_ids=await get_profile_topic_ids(self.db, profile),
+        )
 
         # 创建 Task
         task = Task(
@@ -119,12 +127,3 @@ class TaskAssembler:
         )
         return result.scalars().first()
 
-    @staticmethod
-    def _parse_topic_ids(profile: Optional[PublishProfile]) -> List[int]:
-        """从 profile 解析全局话题 ID 列表。"""
-        if not profile or not profile.global_topic_ids:
-            return []
-        try:
-            return json.loads(profile.global_topic_ids)
-        except (ValueError, TypeError):
-            return []

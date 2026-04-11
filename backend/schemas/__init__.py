@@ -73,7 +73,10 @@ class AccountBase(BaseModel):
 class AccountCreate(AccountBase):
     """创建账号"""
     phone: Optional[str] = Field(None, min_length=11, max_length=11, description="明文手机号，后端加密存储")
-    tags: List[str] = Field(default_factory=list)
+    tags: List[str] = Field(
+        default_factory=list,
+        description="多值账号标签；Phase 6 最终结论为 normalize-later，当前仍以 JSON 数组存储。",
+    )
     remark: Optional[str] = None
 
 
@@ -83,7 +86,10 @@ class AccountUpdate(BaseModel):
     status: Optional[AccountStatus] = None
     cookie: Optional[str] = None
     phone: Optional[str] = Field(None, min_length=11, max_length=11, description="明文手机号，后端加密存储")
-    tags: Optional[List[str]] = None
+    tags: Optional[List[str]] = Field(
+        None,
+        description="多值账号标签；Phase 6 最终结论为 normalize-later，当前仍以 JSON 数组存储。",
+    )
     remark: Optional[str] = None
 
 
@@ -102,7 +108,10 @@ class AccountResponse(AccountBase):
     dewu_nickname: Optional[str] = None
     dewu_uid: Optional[str] = None
     avatar_url: Optional[str] = None
-    tags: List[str] = Field(default_factory=list)
+    tags: List[str] = Field(
+        default_factory=list,
+        description="多值账号标签；当前仍从 JSON 数组解析，后续进入 normalize-later 方案。",
+    )
     remark: Optional[str] = None
     session_expires_at: Optional[datetime] = None
     last_health_check: Optional[datetime] = None
@@ -309,7 +318,7 @@ class TaskCreateRequest(BaseModel):
 
 
 class TaskCreate(BaseModel):
-    """创建单个任务（内部使用，兼容旧接口）"""
+    """创建单个任务（内部/兼容用途；非 authoritative public create contract）"""
     account_id: int
     video_id: Optional[int] = None
     copywriting_id: Optional[int] = None
@@ -317,9 +326,15 @@ class TaskCreate(BaseModel):
     cover_id: Optional[int] = None
     profile_id: Optional[int] = None
     name: Optional[str] = None
-    source_video_ids: Optional[str] = None
+    source_video_ids: Optional[str] = Field(
+        None,
+        description="legacy migration-observation field；authoritative source 已是 task_videos，Phase 6 结论为 delete-ready-later。",
+    )
     composition_template: Optional[str] = None
-    composition_params: Optional[str] = None
+    composition_params: Optional[str] = Field(
+        None,
+        description="task 级 opaque JSON params；Phase 6 结论为 keep-json。",
+    )
     scheduled_time: Optional[datetime] = None
     priority: Optional[int] = 1
     topic_ids: Optional[str] = None
@@ -336,7 +351,7 @@ class TaskUpdate(BaseModel):
 
 
 class TaskResponse(BaseModel):
-    """任务响应（资源集合模型）"""
+    """任务响应（authoritative 资源集合模型；legacy single-resource 字段不再公开承诺）"""
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -354,7 +369,10 @@ class TaskResponse(BaseModel):
     # 合成相关字段
     name: Optional[str] = None
     composition_template: Optional[str] = None
-    composition_params: Optional[str] = None
+    composition_params: Optional[str] = Field(
+        None,
+        description="task 级 opaque JSON params；Phase 6 结论为 keep-json。",
+    )
     composition_job_id: Optional[int] = None
     final_video_path: Optional[str] = None
     final_video_duration: Optional[int] = None
@@ -451,14 +469,14 @@ class TaskBatchCreateRequest(BaseModel):
 
 
 class AssembleTasksRequest(BaseModel):
-    """组装任务请求（已废弃，保留兼容）"""
+    """组装任务请求（已废弃，保留兼容；authoritative 语义以 TaskCreateRequest 为准）"""
     video_ids: List[int] = Field(..., min_length=1)
     account_ids: List[int] = Field(..., min_length=1)
     profile_id: Optional[int] = None
 
 
 class BatchAssembleRequest(BaseModel):
-    """批量组装任务请求（已废弃，使用 TaskCreateRequest）"""
+    """批量组装任务请求（已废弃；authoritative 语义以 TaskCreateRequest 为准）"""
     video_ids: List[int] = Field(..., min_length=1, description="视频ID列表")
     copywriting_ids: List[int] = Field(default_factory=list, description="文案ID列表")
     cover_ids: List[int] = Field(default_factory=list, description="封面ID列表")
@@ -722,7 +740,7 @@ class TopicListResponse(BaseModel):
 # ============ 发布控制 Schema ============
 
 class PublishConfigRequest(BaseModel):
-    """发布配置请求"""
+    """发布配置请求（遗留兼容 schema，后续由 ScheduleConfigRequest 取代）"""
     interval_minutes: int = Field(default=30, ge=1, le=1440)
     start_hour: int = Field(default=9, ge=0, le=23)
     end_hour: int = Field(default=22, ge=0, le=23)
@@ -732,7 +750,7 @@ class PublishConfigRequest(BaseModel):
 
 
 class PublishConfigResponse(BaseModel):
-    """发布配置响应"""
+    """发布配置响应（遗留兼容 schema，后续由 ScheduleConfigResponse 取代）"""
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -831,6 +849,57 @@ class BackupRequest(BaseModel):
     include_logs: bool = False
 
 
+class BackupResponse(BaseModel):
+    """备份响应"""
+    success: bool
+    backup_file: str
+
+
+class SystemConfigResponse(BaseModel):
+    """系统配置响应（真实 runtime-config + 只读系统信息）"""
+    material_base_path: str = Field(
+        ...,
+        description="当前唯一支持运行时修改的设置项；优先读取 runtime-config，缺失时回退到 startup-env。",
+    )
+    auto_backup: bool = Field(
+        ...,
+        description="兼容占位字段；当前始终为 false，且不支持运行时修改。",
+    )
+    log_level: str = Field(
+        ...,
+        description="只读启动期配置；权威来源是 .env / backend/core/config.py，不支持运行时修改。",
+    )
+
+
+class SystemConfigUpdateResponse(BaseModel):
+    """系统配置更新响应（仅 material_base_path 可真实写入）"""
+    success: bool
+    material_base_path: Optional[str] = Field(
+        None,
+        description="成功写入后的素材根目录；当前唯一支持运行时修改的设置项。",
+    )
+    auto_backup: Optional[bool] = Field(
+        None,
+        description="兼容占位字段；当前不会被写入，若请求传入将被明确拒绝。",
+    )
+    log_level: Optional[str] = Field(
+        None,
+        description="只读启动期配置回显；不会在运行时写回。",
+    )
+
+
+class MaterialStatsResponse(BaseModel):
+    """素材统计响应"""
+    videos: int
+    copywritings: int
+    covers: int
+    audios: int
+    topics: int
+    products: int
+    products_with_video: int
+    coverage_rate: float
+
+
 # ============ 预览 Schema ============
 
 class PreviewCloseRequest(BaseModel):
@@ -842,6 +911,12 @@ class PreviewStatusResponse(BaseModel):
     """预览状态响应"""
     is_open: bool
     account_id: Optional[int] = None
+
+
+class PreviewActionResponse(PreviewStatusResponse):
+    """预览浏览器操作响应"""
+    success: bool
+    message: str
 
 
 # ============ PublishProfile Schema ============
@@ -858,8 +933,14 @@ class PublishProfileCreate(BaseModel):
     is_default: bool = False
     composition_mode: CompositionMode = CompositionMode.NONE
     coze_workflow_id: Optional[str] = Field(None, max_length=128)
-    composition_params: Optional[str] = Field(None, description="JSON 字符串")
-    global_topic_ids: List[int] = Field(default_factory=list)
+    composition_params: Optional[str] = Field(
+        None,
+        description="profile 级 opaque JSON 配置；Phase 6 结论为 keep-json。",
+    )
+    global_topic_ids: List[int] = Field(
+        default_factory=list,
+        description="profile-level default topics；当前由 publish_profile_topics 作为 canonical source，仍返回兼容 `topic_ids` shape。",
+    )
     auto_retry: bool = True
     max_retry_count: int = Field(default=3, ge=0, le=10)
 
@@ -880,8 +961,14 @@ class PublishProfileUpdate(BaseModel):
     is_default: Optional[bool] = None
     composition_mode: Optional[CompositionMode] = None
     coze_workflow_id: Optional[str] = Field(None, max_length=128)
-    composition_params: Optional[str] = Field(None, description="JSON 字符串")
-    global_topic_ids: Optional[List[int]] = None
+    composition_params: Optional[str] = Field(
+        None,
+        description="profile 级 opaque JSON 配置；Phase 6 结论为 keep-json。",
+    )
+    global_topic_ids: Optional[List[int]] = Field(
+        None,
+        description="profile-level default topics；写入时会同步 relation rows 与 legacy JSON fallback。",
+    )
     auto_retry: Optional[bool] = None
     max_retry_count: Optional[int] = Field(None, ge=0, le=10)
 
@@ -906,7 +993,10 @@ class PublishProfileResponse(BaseModel):
     composition_mode: CompositionMode
     coze_workflow_id: Optional[str] = None
     composition_params: Optional[str] = None
-    global_topic_ids: List[int] = Field(default_factory=list)
+    global_topic_ids: List[int] = Field(
+        default_factory=list,
+        description="profile-level default topics；当前 TaskAssembler 会自动并入任务，canonical source 为 relation rows。",
+    )
     auto_retry: bool
     max_retry_count: int
     created_at: datetime
@@ -944,13 +1034,13 @@ class PublishProfileListResponse(BaseModel):
 class TopicGroupCreate(BaseModel):
     """创建话题组"""
     name: str = Field(..., min_length=1, max_length=128)
-    topic_ids: List[int] = Field(default_factory=list, description="话题ID列表")
+    topic_ids: List[int] = Field(default_factory=list, description="命名话题列表；canonical source 为 topic_group_topics，当前不会自动注入 task assembly")
 
 
 class TopicGroupUpdate(BaseModel):
     """更新话题组"""
     name: Optional[str] = Field(None, min_length=1, max_length=128)
-    topic_ids: Optional[List[int]] = Field(None, description="话题ID列表")
+    topic_ids: Optional[List[int]] = Field(None, description="命名话题列表；写入时同步 relation rows 与 legacy JSON fallback，当前不会自动注入 task assembly")
 
 
 class TopicGroupResponse(BaseModel):
@@ -991,13 +1081,16 @@ class TopicGroupListResponse(BaseModel):
 # ============ 全局话题 Schema (SP4-03) ============
 
 class GlobalTopicRequest(BaseModel):
-    """设置全局话题请求"""
-    topic_ids: List[int] = Field(..., description="话题ID列表")
+    """设置全局话题请求（legacy singleton topic surface）"""
+    topic_ids: List[int] = Field(..., description="legacy singleton topic surface；canonical source 为 global_topics，当前不会自动注入 task assembly")
 
 
 class GlobalTopicResponse(BaseModel):
-    """全局话题响应"""
-    topic_ids: List[int]
+    """全局话题响应（legacy singleton topic surface）"""
+    topic_ids: List[int] = Field(
+        ...,
+        description="当前读写 global_topics，并 dual-write PublishConfig.global_topic_ids 作为 fallback；不会自动注入 task assembly。",
+    )
     topics: List[TopicResponse]
 
 

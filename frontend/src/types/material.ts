@@ -1,205 +1,43 @@
 /**
- * Material domain types — aligned with backend schemas (SP2-01)
+ * Material/Product/Topic domain types
+ *
+ * Prefer generated API types as the source of truth.
+ * This file now acts as a compatibility re-export surface for existing imports.
  */
 
-// ============ Batch Delete ============
+export type {
+  AudioResponse,
+  CopywritingCreate,
+  CopywritingListResponse,
+  CopywritingResponse,
+  CoverResponse,
+  GlobalTopicResponse as GlobalTopicsResponse,
+  ProductCreate,
+  ProductDetailResponse,
+  ProductListResponse,
+  ProductMaterialsResponse,
+  ProductResponse,
+  TopicCreate,
+  TopicGroupCreate,
+  TopicGroupListResponse,
+  TopicGroupResponse,
+  TopicGroupUpdate,
+  TopicListResponse,
+  TopicResponse,
+  VideoCreate,
+  VideoListResponse,
+  VideoResponse,
+} from '@/api'
 
-export interface BatchDeleteResponse {
-  deleted: number
-  skipped: number
-  skipped_ids: number[]
-}
-
-// ============ Product ============
-
+export type BatchDeleteResponse = import('@/api').SchemasBatchDeleteResponse
 export type ParseStatus = 'pending' | 'parsing' | 'parsed' | 'error'
 
-export interface ProductResponse {
-  id: number
-  name: string
-  dewu_url: string | null
-  parse_status: ParseStatus
-  video_count: number
-  copywriting_count: number
-  cover_count: number
-  topic_count: number
-  created_at: string
-  updated_at: string
-}
-
-export interface ProductListResponse {
-  total: number
-  items: ProductResponse[]
-}
-
-export interface ProductDetailResponse extends ProductResponse {
-  videos: VideoResponse[]
-  covers: CoverResponse[]
-  copywritings: CopywritingResponse[]
-  topics: TopicResponse[]
-}
-
-export interface ProductCreate {
-  share_text: string
-}
-
-// ============ Video ============
-
-export interface VideoResponse {
-  id: number
-  product_id: number | null
-  product_name: string | null
-  name: string
-  file_path: string
-  file_size: number | null
-  duration: number | null
-  width: number | null
-  height: number | null
-  file_hash: string | null
-  source_type: string
-  file_exists?: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface VideoListResponse {
-  total: number
-  items: VideoResponse[]
-}
-
-export interface VideoCreate {
-  name: string
-  file_path: string
-  product_id?: number | null
-  file_size?: number | null
-  duration?: number | null
-}
-
-// ============ Copywriting ============
-
-export interface CopywritingResponse {
-  id: number
-  product_id: number | null
-  product_name: string | null
-  name: string
-  content: string
-  source_type: string
-  source_ref: string | null
-  created_at: string
-  updated_at: string
-}
-
-export interface CopywritingListResponse {
-  total: number
-  items: CopywritingResponse[]
-}
-
-export interface CopywritingCreate {
-  content: string
-  product_id?: number | null
-  source_type?: string
-  source_ref?: string | null
-}
-
-// ============ Cover ============
-
-export interface CoverResponse {
-  id: number
-  product_id: number | null
-  video_id: number | null
-  name: string
-  file_path: string
-  file_size: number | null
-  width: number | null
-  height: number | null
-  created_at: string
-}
-
-// ============ Audio ============
-
-export interface AudioResponse {
-  id: number
-  name: string
-  file_path: string
-  file_size: number | null
-  duration: number | null
-  created_at: string
-}
-
-// ============ Parse Materials ============
-
 export interface ParseMaterialsResponse {
-  success: boolean
-  product_id: number
-  title: string
-  topics: string[]
   videos_downloaded: number
   covers_downloaded: number
-  errors: string[]
-}
-
-// ============ Topic ============
-
-export interface TopicResponse {
-  id: number
-  name: string
-  heat: number
-  source: string
-  last_synced: string | null
-  created_at: string
-}
-
-export interface TopicListResponse {
-  total: number
-  items: TopicResponse[]
-}
-
-export interface TopicCreate {
-  name: string
-  heat?: number
-  source?: string
-}
-
-export interface GlobalTopicsResponse {
-  topic_ids: number[]
-  topics: TopicResponse[]
+  topics: Array<{ id?: number; name?: string } | string>
 }
 
 export interface SetGlobalTopicsRequest {
   topic_ids: number[]
-}
-
-// ============ Topic Group ============
-
-export interface TopicGroupResponse {
-  id: number
-  name: string
-  topic_ids: number[]
-  topics: TopicResponse[]
-  created_at: string
-  updated_at: string
-}
-
-export interface TopicGroupListResponse {
-  total: number
-  items: TopicGroupResponse[]
-}
-
-export interface TopicGroupCreate {
-  name: string
-  topic_ids: number[]
-}
-
-export interface TopicGroupUpdate {
-  name?: string
-  topic_ids?: number[]
-}
-
-// ============ Product Materials (for basket import) ============
-
-export interface ProductMaterialsResponse {
-  product: ProductResponse
-  videos: VideoResponse[]
-  copywritings: CopywritingResponse[]
-  covers: CoverResponse[]
 }

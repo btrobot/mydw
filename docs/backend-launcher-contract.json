@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "name": "backend-launcher-contract",
+  "owner": "electron-main-process",
+  "purpose": "Electron invokes a backend launcher via a stable protocol instead of hardcoding Python venv or packaged executable paths.",
+  "inputs": {
+    "mode": {
+      "type": "string",
+      "enum": ["dev", "prod"],
+      "required": true
+    },
+    "backendRoot": {
+      "type": "string",
+      "required": true,
+      "description": "Filesystem root that contains the backend runtime assets."
+    },
+    "cwd": {
+      "type": "string",
+      "required": true
+    },
+    "host": {
+      "type": "string",
+      "required": true,
+      "default": "127.0.0.1"
+    },
+    "port": {
+      "type": "integer",
+      "required": true,
+      "default": 8000
+    },
+    "env": {
+      "type": "object",
+      "required": false
+    }
+  },
+  "outputs": {
+    "pid": {
+      "type": "integer",
+      "required": true
+    },
+    "endpoint": {
+      "type": "string",
+      "required": true
+    },
+    "healthUrl": {
+      "type": "string",
+      "required": true
+    },
+    "stdioMode": {
+      "type": "string",
+      "enum": ["pipe", "inherit"],
+      "required": true
+    }
+  },
+  "health": {
+    "path": "/health",
+    "expectedHttpStatus": 200,
+    "expectedJson": {
+      "status": "healthy"
+    },
+    "guarantee": "FastAPI process is accepting requests on the configured host/port; deeper subsystem readiness is intentionally deferred to Phase 4 PR3.",
+    "timeoutMs": 15000,
+    "retryIntervalMs": 500
+  },
+  "errors": {
+    "spawn_failure": {
+      "description": "Launcher could not start the backend process at all."
+    },
+    "early_exit": {
+      "description": "Backend process exited before reaching health-ready state."
+    },
+    "health_timeout": {
+      "description": "Backend process started but did not satisfy the health contract before timeout."
+    }
+  },
+  "modeAdapters": {
+    "dev": {
+      "implementation": "launcher-managed python/uvicorn adapter",
+      "mustNotLeakIntoElectron": [
+        "backend/venv/Scripts/python.exe",
+        "uvicorn main:app"
+      ]
+    },
+    "prod": {
+      "implementation": "launcher-managed packaged backend adapter",
+      "mustNotLeakIntoElectron": [
+        "backend.exe"
+      ]
+    }
+  }
+}

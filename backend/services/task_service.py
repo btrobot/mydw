@@ -8,7 +8,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from loguru import logger
 
-from models import Task, Account, PublishLog, PublishConfig, PublishProfile, TaskVideo, TaskCopywriting, TaskCover, TaskAudio
+from models import Task, PublishLog, PublishProfile
 
 
 # 合法状态转换表

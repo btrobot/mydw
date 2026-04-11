@@ -2,61 +2,32 @@
  * Profile Hooks - 合成配置档相关的 React Query hooks
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
 import { message } from 'antd'
-import { api } from '@/services/api'
+import {
+  listProfilesApiProfilesGet,
+  createProfileApiProfilesPost,
+  updateProfileApiProfilesProfileIdPut,
+  deleteProfileApiProfilesProfileIdDelete,
+  setDefaultProfileApiProfilesProfileIdSetDefaultPut,
+} from '@/api'
+import type {
+  PublishProfileCreate,
+  PublishProfileListResponse,
+  PublishProfileUpdate,
+} from '@/api'
 
-// ============ Types ============
-
-export type CompositionMode = 'none' | 'coze' | 'local_ffmpeg'
-
-export interface PublishProfileResponse {
-  id: number
-  name: string
-  is_default: boolean
-  composition_mode: CompositionMode
-  coze_workflow_id: string | null
-  composition_params: string | null
-  global_topic_ids: number[]
-  auto_retry: boolean
-  max_retry_count: number
-  created_at: string
-  updated_at: string
-}
-
-export interface PublishProfileListResponse {
-  total: number
-  items: PublishProfileResponse[]
-}
-
-export interface PublishProfileCreate {
-  name: string
-  is_default?: boolean
-  composition_mode?: CompositionMode
-  coze_workflow_id?: string | null
-  composition_params?: string | null
-  global_topic_ids?: number[]
-  auto_retry?: boolean
-  max_retry_count?: number
-}
-
-export interface PublishProfileUpdate {
-  name?: string
-  is_default?: boolean
-  composition_mode?: CompositionMode
-  coze_workflow_id?: string | null
-  composition_params?: string | null
-  global_topic_ids?: number[]
-  auto_retry?: boolean
-  max_retry_count?: number
-}
+export type {
+  CompositionMode,
+  PublishProfileCreate,
+  PublishProfileListResponse,
+  PublishProfileResponse,
+  PublishProfileUpdate,
+} from '@/api'
 
 // ============ Error helper ============
 
 function handleError(error: unknown, fallback: string): void {
-  if (axios.isAxiosError(error)) {
-    message.error(error.response?.data?.detail || error.message)
-  } else if (error instanceof Error) {
+  if (error instanceof Error) {
     message.error(error.message)
   } else {
     message.error(fallback)
@@ -69,8 +40,8 @@ export const useProfiles = () =>
   useQuery<PublishProfileListResponse>({
     queryKey: ['profiles'],
     queryFn: async () => {
-      const response = await api.get<PublishProfileListResponse>('/profiles')
-      return response.data
+      const response = await listProfilesApiProfilesGet()
+      return response.data!
     },
   })
 
@@ -78,8 +49,8 @@ export const useCreateProfile = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (data: PublishProfileCreate) => {
-      const response = await api.post<PublishProfileResponse>('/profiles', data)
-      return response.data
+      const response = await createProfileApiProfilesPost({ body: data })
+      return response.data!
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] })
@@ -93,8 +64,11 @@ export const useUpdateProfile = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, data }: { id: number; data: PublishProfileUpdate }) => {
-      const response = await api.put<PublishProfileResponse>(`/profiles/${id}`, data)
-      return response.data
+      const response = await updateProfileApiProfilesProfileIdPut({
+        path: { profile_id: id },
+        body: data,
+      })
+      return response.data!
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] })
@@ -108,7 +82,7 @@ export const useDeleteProfile = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (id: number) => {
-      await api.delete(`/profiles/${id}`)
+      await deleteProfileApiProfilesProfileIdDelete({ path: { profile_id: id } })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] })
@@ -122,8 +96,10 @@ export const useSetDefaultProfile = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (id: number) => {
-      const response = await api.put<PublishProfileResponse>(`/profiles/${id}/set-default`)
-      return response.data
+      const response = await setDefaultProfileApiProfilesProfileIdSetDefaultPut({
+        path: { profile_id: id },
+      })
+      return response.data!
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] })

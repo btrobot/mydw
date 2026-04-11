@@ -10,8 +10,9 @@ from sqlalchemy.orm import selectinload
 from loguru import logger
 from pydantic import BaseModel
 
-from models import Copywriting, Task, get_db
+from models import Copywriting, get_db
 from schemas import CopywritingCreate, CopywritingUpdate, CopywritingResponse, CopywritingListResponse
+from services.task_compat_service import count_tasks_referencing_copywriting
 
 router = APIRouter(tags=["文案管理"])
 
@@ -123,10 +124,7 @@ async def delete_copywriting(
         raise HTTPException(status_code=404, detail="文案不存在")
 
     # SP7-04: 删除前引用检查
-    ref_result = await db.execute(
-        select(func.count()).select_from(Task).where(Task.copywriting_id == copywriting_id)
-    )
-    ref_count = ref_result.scalar() or 0
+    ref_count = await count_tasks_referencing_copywriting(db, copywriting_id)
     if ref_count > 0:
         raise HTTPException(status_code=409, detail="文案被 {} 个任务引用，无法删除".format(ref_count))
 
@@ -163,10 +161,7 @@ async def batch_delete_copywritings(
             skipped_ids.append(cw_id)
             continue
 
-        ref_result = await db.execute(
-            select(func.count()).select_from(Task).where(Task.copywriting_id == cw_id)
-        )
-        if (ref_result.scalar() or 0) > 0:
+        if await count_tasks_referencing_copywriting(db, cw_id) > 0:
             skipped_ids.append(cw_id)
             continue
 

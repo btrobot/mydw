@@ -13,9 +13,9 @@ import {
   useCreateTopic, useDeleteTopic, useSearchTopics,
   useBatchDeleteTopics,
 } from '@/hooks'
+import { listTopicsApiTopicsGet } from '@/api'
 import type { TopicResponse, TopicListResponse } from '@/types/material'
 import { handleApiError } from '@/utils/error'
-import { api } from '@/services/api'
 
 const { Text } = Typography
 
@@ -145,12 +145,13 @@ export default function TopicList() {
         rowKey="id"
         columns={columns}
         request={async (params) => {
-          const { data } = await api.get<TopicListResponse>('/topics', {
-            params: {
-              keyword: params.name || undefined,
-              source: params.source || undefined,
+          const response = await listTopicsApiTopicsGet({
+            query: {
+              keyword: params.name as string | undefined,
+              source: params.source as string | undefined,
             },
           })
+          const data = response.data as TopicListResponse
           return { data: data.items, success: true, total: data.total }
         }}
         rowSelection={{

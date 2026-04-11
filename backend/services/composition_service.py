@@ -14,7 +14,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.coze_client import CozeClient
-from models import CompositionJob, Task, Video
+from models import CompositionJob, Task
+from services.task_compat_service import resolve_primary_task_video
 from services.task_service import TaskService
 
 
@@ -102,17 +103,13 @@ class CompositionService:
 
             # 上传素材文件（视频）
             coze = CozeClient()
-            if task.video_id:
-                video_result = await self.db.execute(
-                    select(Video).where(Video.id == task.video_id)
+            video = await resolve_primary_task_video(self.db, task)
+            if video and video.file_path:
+                file_id = await coze.upload_file(video.file_path)
+                params["video_file_id"] = file_id
+                logger.info(
+                    "素材上传完成: task_id={}, file_id={}", task_id, file_id
                 )
-                video = video_result.scalars().first()
-                if video and video.file_path:
-                    file_id = await coze.upload_file(video.file_path)
-                    params["video_file_id"] = file_id
-                    logger.info(
-                        "素材上传完成: task_id={}, file_id={}", task_id, file_id
-                    )
 
             external_job_id = await coze.submit_composition(workflow_id, params)
 

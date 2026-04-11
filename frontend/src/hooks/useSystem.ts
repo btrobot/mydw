@@ -1,7 +1,7 @@
 /**
  * System Hooks - 系统相关的 React Query hooks
  */
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getSystemStatsApiSystemStatsGet,
   getSystemLogsApiSystemLogsGet,
@@ -11,9 +11,12 @@ import {
 } from '@/api'
 
 import type {
+  BackupResponse,
   SystemStats,
   BackupRequest,
   SystemLogListResponse,
+  SystemConfigResponse,
+  SystemConfigUpdateResponse,
 } from '@/api'
 
 export const useSystemStats = () =>
@@ -40,22 +43,32 @@ export const useBackup = () =>
   useMutation({
     mutationFn: async (data: BackupRequest) => {
       const response = await backupDataApiSystemBackupPost({ body: data })
-      return response.data
+      return response.data as BackupResponse
     },
   })
 
 export const useSystemConfig = () =>
-  useQuery({
+  useQuery<SystemConfigResponse>({
     queryKey: ['systemConfig'],
     queryFn: async () => {
       const response = await getSystemConfigApiSystemConfigGet()
-      return response.data
+      return response.data as SystemConfigResponse
     },
   })
 
-export const useUpdateSystemConfig = () =>
-  useMutation({
-    mutationFn: async (data: { material_base_path?: string; video_output_path?: string; log_level?: string }) => {
-      await updateSystemConfigApiSystemConfigPut({ query: data })
+export const useUpdateSystemConfig = () => {
+  const queryClient = useQueryClient()
+  return useMutation<SystemConfigUpdateResponse | undefined, Error, { material_base_path?: string }>({
+    mutationFn: async (data: { material_base_path?: string }) => {
+      const response = await updateSystemConfigApiSystemConfigPut({
+        query: {
+          material_base_path: data.material_base_path,
+        },
+      })
+      return response.data as SystemConfigUpdateResponse
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['systemConfig'] })
     },
   })
+}

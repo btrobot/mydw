@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 from loguru import logger
 
-from api import account, task, publish, system, ai, product, video, copywriting, cover, audio, topic, profile
+from api import account, task, publish, schedule_config, system, ai, product, video, copywriting, cover, audio, topic, profile
 from api.topic import group_router as topic_group_router
 import models as _models
 from models import init_db, PublishProfile
@@ -31,7 +31,7 @@ logger.add(
 app = FastAPI(
     title="得物掘金工具 API",
     description="得物平台自动化发布系统后端服务",
-    version="0.1.0",
+    version=settings.APP_VERSION,
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -49,6 +49,7 @@ app.add_middleware(
 app.include_router(account.router, prefix="/api/accounts", tags=["账号管理"])
 app.include_router(task.router, prefix="/api/tasks", tags=["任务管理"])
 app.include_router(publish.router, prefix="/api/publish", tags=["发布控制"])
+app.include_router(schedule_config.router, prefix="/api", tags=["调度配置"])
 app.include_router(system.router, prefix="/api/system", tags=["系统"])
 app.include_router(ai.router, prefix="/api/ai", tags=["AI剪辑"])
 app.include_router(product.router, prefix="/api/products", tags=["商品管理"])
@@ -96,7 +97,7 @@ async def root():
     """根路径"""
     return {
         "name": "得物掘金工具 API",
-        "version": "0.1.0",
+        "version": settings.APP_VERSION,
         "status": "running"
     }
 

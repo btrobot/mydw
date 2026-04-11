@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from models import Task, CompositionJob, ScheduleConfig
 from core.config import settings
+from services.schedule_config_service import ScheduleConfigService
 
 
 class TaskScheduler:
@@ -18,10 +19,28 @@ class TaskScheduler:
 
     def __init__(self) -> None:
         self._loop_task: Optional[asyncio.Task] = None
+        self._paused: bool = False
+        self._current_task_id: Optional[int] = None
 
     def is_running(self) -> bool:
         """是否正在运行"""
         return self._loop_task is not None and not self._loop_task.done()
+
+    def is_paused(self) -> bool:
+        """是否处于暂停态。"""
+        return self._paused
+
+    def current_task_id(self) -> Optional[int]:
+        """返回当前发布中的任务 ID。"""
+        return self._current_task_id
+
+    def get_status(self) -> str:
+        """返回对外暴露的调度器状态。"""
+        if self.is_running():
+            return "running"
+        if self.is_paused():
+            return "paused"
+        return "idle"
 
     async def start_publishing(self) -> dict:
         """启动发布任务"""
@@ -29,6 +48,7 @@ class TaskScheduler:
             logger.warning("发布任务已在运行")
             return {"success": False, "message": "发布任务已在运行"}
 
+        self._paused = False
         self._loop_task = asyncio.create_task(self._publish_loop())
         logger.info("发布任务已启动")
         return {"success": True, "message": "发布任务已启动"}
@@ -48,10 +68,13 @@ class TaskScheduler:
                         task = await service.get_next_task()
 
                         if not task:
+                            self._current_task_id = None
                             await asyncio.sleep(10)
                             continue
 
+                        self._current_task_id = task.id
                         await service.publish_task(task)
+                        self._current_task_id = None
 
                         if config and config.shuffle:
                             await self._shuffle_ready_tasks(db)
@@ -70,19 +93,28 @@ class TaskScheduler:
                     await asyncio.sleep(10)
 
         except asyncio.CancelledError:
+            self._current_task_id = None
             logger.info("发布循环已取消")
 
     async def _get_schedule_config(self, db: AsyncSession) -> Optional[ScheduleConfig]:
-        """读取 schedule_config 表中 name=default 的配置"""
-        result = await db.execute(
-            select(ScheduleConfig).where(ScheduleConfig.name == "default")
-        )
-        return result.scalar_one_or_none()
+        """读取默认调度配置（通过 canonical access service）。"""
+        service = ScheduleConfigService(db)
+        return await service.get_default()
 
     async def pause_publishing(self) -> dict:
-        """暂停发布（预留接口，当前通过 stop/start 实现）"""
-        logger.info("暂停发布")
-        return {"success": True}
+        """暂停发布，并保留 paused 状态供后续恢复。"""
+        if self.is_running():
+            self._loop_task.cancel()
+            try:
+                await self._loop_task
+            except asyncio.CancelledError:
+                pass
+
+        self._loop_task = None
+        self._current_task_id = None
+        self._paused = True
+        logger.info("发布任务已暂停")
+        return {"success": True, "message": "发布任务已暂停"}
 
     async def stop_publishing(self) -> dict:
         """停止发布，取消后台 asyncio.Task"""
@@ -95,6 +127,8 @@ class TaskScheduler:
             logger.info("发布任务已停止")
 
         self._loop_task = None
+        self._current_task_id = None
+        self._paused = False
         return {"success": True, "message": "发布任务已停止"}
 
     async def shuffle_tasks(self, db: AsyncSession) -> dict:

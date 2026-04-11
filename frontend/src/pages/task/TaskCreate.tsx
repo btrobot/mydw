@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Card, Form, Select, Button, Space, message, Typography, Tabs, Table, Popconfirm, Tag, Empty,
+  Alert, Card, Form, Select, Button, Space, message, Typography, Tabs, Table, Popconfirm, Tag, Empty,
 } from 'antd'
 import { ArrowLeftOutlined, DeleteOutlined, PlusOutlined, VideoCameraOutlined, FileTextOutlined, PictureOutlined, AudioOutlined, ClearOutlined } from '@ant-design/icons'
 import { useAccounts } from '@/hooks/useAccount'
@@ -13,6 +13,11 @@ import type { VideoResponse, CopywritingResponse, CoverResponse, AudioResponse }
 import ProductQuickImport from '@/components/ProductQuickImport'
 import MaterialSelectModal from '@/components/MaterialSelectModal'
 import type { TableColumnsType } from 'antd'
+import {
+  getDirectPublishViolations,
+  getTaskMaterialCounts,
+  resolveCompositionMode,
+} from './taskSemantics'
 
 const { Text, Title } = Typography
 
@@ -45,7 +50,6 @@ export default function TaskCreate() {
     covers: [],
     audios: [],
   })
-  const [selectedCompositionMode, setSelectedCompositionMode] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<string>('video')
   const [modalVisible, setModalVisible] = useState(false)
   const [modalMaterialType, setModalMaterialType] = useState<MaterialType>('video')
@@ -57,6 +61,24 @@ export default function TaskCreate() {
 
   const profiles = profilesData?.items ?? []
   const defaultProfile = profiles.find((p: PublishProfileResponse) => p.is_default)
+  const selectedMode = useMemo(
+    () => resolveCompositionMode(form.getFieldValue('profile_id'), profiles),
+    [form, profiles],
+  )
+  const basketCounts = useMemo(
+    () => getTaskMaterialCounts({
+      video_ids: basket.videos.map((item) => item.id),
+      copywriting_ids: basket.copywritings.map((item) => item.id),
+      cover_ids: basket.covers.map((item) => item.id),
+      audio_ids: basket.audios.map((item) => item.id),
+      topic_ids: [],
+    }),
+    [basket],
+  )
+  const directPublishViolations = useMemo(
+    () => (selectedMode === 'none' ? getDirectPublishViolations(basketCounts) : []),
+    [basketCounts, selectedMode],
+  )
 
   const addToBasket = useCallback((materials: Partial<MaterialBasketState>) => {
     setBasket((prev) => {
@@ -450,10 +472,6 @@ export default function TaskCreate() {
               allowClear
               placeholder="选择配置档（不选则使用默认）"
               optionFilterProp="label"
-              onChange={(value: number | null | undefined) => {
-                const profile = profiles.find((p: PublishProfileResponse) => p.id === value)
-                setSelectedCompositionMode(profile?.composition_mode ?? null)
-              }}
               options={profiles.map((p: PublishProfileResponse) => ({
                 value: p.id,
                 label: p.is_default ? `${p.name}（默认）` : p.name,
@@ -461,13 +479,47 @@ export default function TaskCreate() {
             />
           </Form.Item>
 
-          {selectedCompositionMode !== null && (
+          {profiles.length > 0 && (
             <Form.Item>
               <Text type="secondary">
-                合成方式：{COMPOSITION_MODE_LABEL[selectedCompositionMode] ?? selectedCompositionMode}
+                合成方式：{COMPOSITION_MODE_LABEL[selectedMode] ?? selectedMode}
               </Text>
             </Form.Item>
           )}
+
+          <Form.Item>
+            {selectedMode === 'none' ? (
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Alert
+                  type="info"
+                  showIcon
+                  message="当前为直接发布模式"
+                  description="只支持 1 个最终视频、0/1 个文案、0/1 个封面；多话题允许；独立音频输入需先走合成。"
+                />
+                {directPublishViolations.length > 0 && (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    message="当前素材组合不满足直接发布语义"
+                    description={
+                      <ul style={{ margin: 0, paddingInlineStart: 18 }}>
+                        {directPublishViolations.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    }
+                  />
+                )}
+              </Space>
+            ) : (
+              <Alert
+                type="info"
+                showIcon
+                message="当前为合成模式"
+                description="素材篮中的多视频 / 多文案 / 多封面 / 音频会被视为合成输入；最终直接发布使用合成后的 final video。"
+              />
+            )}
+          </Form.Item>
 
           <Form.Item>
             <Space>
@@ -475,7 +527,7 @@ export default function TaskCreate() {
                 type="primary"
                 onClick={handleSubmit}
                 loading={batchAssemble.isPending}
-                disabled={basket.videos.length === 0}
+                disabled={basket.videos.length === 0 || directPublishViolations.length > 0}
               >
                 创建任务
               </Button>

@@ -16,12 +16,13 @@ import type { ProColumns } from '@ant-design/pro-components'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   useProduct,
+  useParseProductMaterials,
   useUpdateProductV2,
 } from '@/hooks'
-import type { VideoResponse, CopywritingResponse, ParseMaterialsResponse } from '@/types/material'
+import type { VideoResponse, CopywritingResponse } from '@/types/material'
 import { formatSize, formatDuration } from '@/utils/format'
 import { handleApiError } from '@/utils/error'
-import { api, API_BASE } from '@/services/api'
+import { API_BASE } from '@/services/api'
 
 const { Text } = Typography
 
@@ -39,6 +40,7 @@ export default function ProductDetail() {
 
   const queryClient = useQueryClient()
   const { data: product, isLoading: productLoading } = useProduct(productId)
+  const parseProductMaterials = useParseProductMaterials()
 
   const videos = product?.videos ?? []
   const covers = product?.covers ?? []
@@ -63,20 +65,20 @@ export default function ProductDetail() {
     if (!productId) return
     setParsing(true)
     try {
-      const { data } = await api.post<ParseMaterialsResponse>(`/products/${productId}/parse-materials`)
-      message.success(`解析完成: ${data.videos_downloaded} 个视频, ${data.covers_downloaded} 张封面, ${data.topics.length} 个话题`)
+      const data = await parseProductMaterials.mutateAsync(productId)
+      message.success(`解析完成: ${(data.videos ?? []).length} 个视频, ${(data.covers ?? []).length} 张封面, ${(data.topics ?? []).length} 个话题`)
       queryClient.invalidateQueries({ queryKey: ['product', productId] })
     } catch (error: unknown) {
       handleApiError(error, '解析素材失败')
     } finally {
       setParsing(false)
     }
-  }, [productId, queryClient])
+  }, [productId, parseProductMaterials, queryClient])
 
   const videoColumns: ProColumns<VideoResponse>[] = [
     { title: '视频名称', dataIndex: 'name', ellipsis: true },
-    { title: '大小', dataIndex: 'file_size', width: 100, render: (_, r) => formatSize(r.file_size) },
-    { title: '时长', dataIndex: 'duration', width: 80, render: (_, r) => formatDuration(r.duration) },
+    { title: '大小', dataIndex: 'file_size', width: 100, render: (_, r) => formatSize(r.file_size ?? null) },
+    { title: '时长', dataIndex: 'duration', width: 80, render: (_, r) => formatDuration(r.duration ?? null) },
     {
       title: '创建时间', dataIndex: 'created_at', width: 160,
       render: (_, r) => new Date(r.created_at).toLocaleString('zh-CN'),

@@ -2,16 +2,24 @@
  * Cover Hooks — /api/covers
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/services/api'
-import type { CoverResponse, BatchDeleteResponse } from '@/types/material'
+import {
+  listCoversApiCoversGet,
+  uploadCoverApiCoversUploadPost,
+  deleteCoverApiCoversCoverIdDelete,
+  extractCoverApiCoversExtractPost,
+  batchDeleteCoversApiCoversBatchDeletePost,
+} from '@/api'
+import type { CoverResponse } from '@/api'
+import type { BatchDeleteResponse } from '@/types/material'
 
 export const useCovers = (videoId?: number) =>
   useQuery<CoverResponse[]>({
     queryKey: ['covers', videoId],
     queryFn: async () => {
-      const params = videoId !== undefined ? { video_id: videoId } : {}
-      const { data } = await api.get<CoverResponse[]>('/covers', { params })
-      return data
+      const response = await listCoversApiCoversGet({
+        query: videoId !== undefined ? { video_id: videoId } : undefined,
+      })
+      return (response.data ?? []) as CoverResponse[]
     },
   })
 
@@ -19,14 +27,11 @@ export const useUploadCover = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ file, videoId }: { file: File; videoId?: number }) => {
-      const formData = new FormData()
-      formData.append('file', file)
-      const params = videoId !== undefined ? { video_id: videoId } : {}
-      const { data } = await api.post<CoverResponse>('/covers/upload', formData, {
-        params,
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const response = await uploadCoverApiCoversUploadPost({
+        body: { file },
+        query: videoId !== undefined ? { video_id: videoId } : undefined,
       })
-      return data
+      return response.data!
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['covers'] })
@@ -38,7 +43,7 @@ export const useDeleteCover = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (coverId: number) => {
-      await api.delete(`/covers/${coverId}`)
+      await deleteCoverApiCoversCoverIdDelete({ path: { cover_id: coverId } })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['covers'] })
@@ -51,11 +56,13 @@ export const useExtractCover = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ videoId, timestamp }: { videoId: number; timestamp?: number }) => {
-      const { data } = await api.post<CoverResponse>('/covers/extract', {
-        video_id: videoId,
-        timestamp: timestamp ?? 1.0,
+      const response = await extractCoverApiCoversExtractPost({
+        body: {
+          video_id: videoId,
+          timestamp: timestamp ?? 1.0,
+        },
       })
-      return data
+      return response.data!
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['covers'] })
@@ -67,8 +74,8 @@ export const useBatchDeleteCovers = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (ids: number[]) => {
-      const { data } = await api.post<BatchDeleteResponse>('/covers/batch-delete', { ids })
-      return data
+      const response = await batchDeleteCoversApiCoversBatchDeletePost({ body: { ids } })
+      return response.data as BatchDeleteResponse
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['covers'] })

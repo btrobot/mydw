@@ -11,9 +11,9 @@ import {
   useUpdateTopicGroup,
   useDeleteTopicGroup,
 } from '@/hooks'
+import { listTopicGroupsApiTopicGroupsGet } from '@/api'
 import type { TopicGroupResponse, TopicGroupListResponse, TopicResponse } from '@/types/material'
 import { handleApiError } from '@/utils/error'
-import { api } from '@/services/api'
 
 interface GroupFormValues {
   name: string
@@ -161,10 +161,12 @@ export default function TopicGroupList() {
         rowKey="id"
         columns={columns}
         request={async (params) => {
-          const { data } = await api.get<TopicGroupListResponse>('/topic-groups', {
-            params: params.name ? { keyword: params.name } : undefined,
-          })
-          return { data: data.items, success: true, total: data.items.length }
+          const response = await listTopicGroupsApiTopicGroupsGet()
+          const data = response.data as TopicGroupListResponse
+          const items = params.name
+            ? data.items.filter((item) => item.name.includes(params.name as string))
+            : data.items
+          return { data: items, success: true, total: items.length }
         }}
         rowSelection={{
           selectedRowKeys: selectedIds,

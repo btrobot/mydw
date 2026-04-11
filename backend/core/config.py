@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     # 应用基本信息
     APP_NAME: str = "得物掘金工具"
-    APP_VERSION: str = "0.1.0"
+    APP_VERSION: str = "0.2.0"
     DEBUG: bool = True
 
     # 服务配置

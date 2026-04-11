@@ -12,9 +12,10 @@ from sqlalchemy.orm import selectinload
 from loguru import logger
 from pydantic import BaseModel
 
-from models import Video, Product, Task, get_db
+from models import Video, Product, get_db
 from schemas import VideoCreate, VideoUpdate, VideoResponse, VideoListResponse, BatchDeleteRequest, BatchDeleteResponse
 from core.config import settings
+from services.task_compat_service import count_tasks_referencing_video
 from utils.ffprobe import extract_video_metadata
 from utils.hash import compute_file_hash
 from services.media_storage_service import MediaStorageService
@@ -129,10 +130,7 @@ async def delete_video(
         raise HTTPException(status_code=404, detail="视频不存在")
 
     # SP7-04: 删除前引用检查
-    ref_result = await db.execute(
-        select(func.count()).select_from(Task).where(Task.video_id == video_id)
-    )
-    ref_count = ref_result.scalar() or 0
+    ref_count = await count_tasks_referencing_video(db, video_id)
     if ref_count > 0:
         raise HTTPException(status_code=409, detail="视频被 {} 个任务引用，无法删除".format(ref_count))
 
@@ -175,10 +173,7 @@ async def batch_delete_videos(
             skipped_ids.append(video_id)
             continue
 
-        ref_result = await db.execute(
-            select(func.count()).select_from(Task).where(Task.video_id == video_id)
-        )
-        if (ref_result.scalar() or 0) > 0:
+        if await count_tasks_referencing_video(db, video_id) > 0:
             skipped_ids.append(video_id)
             continue
 

@@ -37,10 +37,10 @@ echo ========================================
 echo 依赖安装完成！
 echo ========================================
 echo.
-echo 启动后端服务:
-echo   uvicorn main:app --reload --port 8000
+echo 推荐启动后端服务:
+echo   .\run.bat
 echo.
-echo 或运行:
+echo 如需仅测试 Python 入口，也可运行:
 echo   python main.py
 echo.
 pause

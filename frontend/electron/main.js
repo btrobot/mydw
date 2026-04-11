@@ -111,7 +111,7 @@ function createMenu() {
                         dialog.showMessageBox({
                             type: 'info',
                             title: '关于得物掘金工具',
-                            message: '得物掘金工具 v0.1.0',
+                            message: `得物掘金工具 v${electron_1.app.getVersion()}`,
                             detail: '得物平台自动化发布系统\n基于 Electron + React + FastAPI'
                         });
                     }

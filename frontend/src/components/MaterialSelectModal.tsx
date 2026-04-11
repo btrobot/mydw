@@ -143,7 +143,7 @@ export default function MaterialSelectModal({ visible, materialType, onConfirm, 
     }
 
     const selectedMaterials = dataSource.filter((item) => selectedRowKeys.includes(item.id))
-    onConfirm(selectedMaterials)
+    onConfirm(selectedMaterials as VideoResponse[] | CopywritingResponse[] | CoverResponse[] | AudioResponse[])
     setSelectedRowKeys([])
     setKeyword('')
   }

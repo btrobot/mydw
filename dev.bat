@@ -64,10 +64,8 @@ echo.
 echo 按 Ctrl+C 停止服务
 echo.
 
-REM 启动后端
-cd backend
-start "后端服务" cmd /c "call venv\Scripts\activate.bat && uvicorn main:app --reload --port 8000 --host 127.0.0.1"
-cd ..
+REM 启动后端（统一走 backend\run.bat）
+start "后端服务" cmd /c "cd /d %~dp0backend && call run.bat"
 
 REM 启动前端
 cd frontend

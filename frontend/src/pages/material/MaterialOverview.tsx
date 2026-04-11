@@ -5,26 +5,19 @@ import {
   SoundOutlined, TagsOutlined, ShopOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
-import { api } from '@/services/api'
+import { materialStatsApiSystemMaterialStatsGet } from '@/api'
+import type { MaterialStatsResponse } from '@/api'
 
 const { Title } = Typography
 
-interface MaterialStats {
-  videos: number
-  copywritings: number
-  covers: number
-  audios: number
-  topics: number
-  coverage_rate: number
-  products: number
-  products_with_video: number
-}
-
 export default function MaterialOverview() {
   const navigate = useNavigate()
-  const { data: stats } = useQuery<MaterialStats>({
+  const { data: stats } = useQuery<MaterialStatsResponse>({
     queryKey: ['material-stats'],
-    queryFn: async () => (await api.get('/system/material-stats')).data,
+    queryFn: async () => {
+      const response = await materialStatsApiSystemMaterialStatsGet()
+      return response.data!
+    },
   })
 
   return (
