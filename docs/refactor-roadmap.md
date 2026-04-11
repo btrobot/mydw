@@ -1,3 +1,16 @@
+# Historical Planning Reference — 重构总目标
+
+> 状态：历史规划参考（historical planning reference），**不是当前 authoritative truth 文档**。  
+> 当前阅读入口请先看：
+> - `docs/README.md`
+> - `docs/current-architecture-baseline.md`
+> - `docs/current-runtime-truth.md`
+>
+> 说明：
+> - 本文档记录的是当时的重构规划视角，保留供历史回溯和 `.omx` 历史 planning context 参考
+> - `.omx` 中仍出现对本文档的引用，并不表示它仍是当前系统真相
+> - 当前系统的 present-tense 行为与权威边界应以 current docs 为准
+
 # 重构总目标
 
 用 3 个阶段解决 4 类问题：

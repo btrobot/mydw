@@ -17,6 +17,7 @@ def test_readme_points_to_current_authoritative_docs() -> None:
     readme = _read_repo_file("README.md")
 
     assert "当前推荐阅读入口" in readme
+    assert "docs/README.md" in readme
     assert "docs/current-architecture-baseline.md" in readme
     assert "docs/current-runtime-truth.md" in readme
     assert "ARCHITECTURE.md" not in readme
@@ -57,3 +58,18 @@ def test_stale_doc_inventory_lists_high_visibility_docs() -> None:
     assert "docs/data-model.md" in inventory
     assert "current-architecture-baseline" in inventory
     assert "recommended reading path" in inventory or "推荐阅读路径" in inventory
+
+
+def test_refactor_planning_docs_are_marked_historical_and_redirect_to_current_truth() -> None:
+    for relative_path in [
+        "docs/refactor-roadmap.md",
+        "docs/refactor-issue-breakdown.md",
+        "docs/refactor-gap-list.md",
+    ]:
+        content = _read_repo_file(relative_path)
+
+        assert "Historical Planning Reference" in content or "历史规划参考" in content
+        assert "docs/README.md" in content
+        assert "docs/current-architecture-baseline.md" in content
+        assert "docs/current-runtime-truth.md" in content
+        assert ".omx" in content or "历史 planning context" in content or "历史上下文" in content

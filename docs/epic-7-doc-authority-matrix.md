@@ -4,6 +4,7 @@
 
 | 文档 | 角色 | 是否 authoritative | 负责内容 | 备注 |
 |---|---|---|---|---|
+| `docs/README.md` | 文档导航首页 / docs entrypoint | 是（导航层面） | 给出 current / historical / runtime 的阅读入口与分类规则 | 不承担具体 runtime truth 细节 |
 | `docs/current-architecture-baseline.md` | 架构总入口 / entrypoint | 是 | 当前系统的高层结构、边界、推荐阅读路径 | 面向 onboarding / 快速建模 |
 | `docs/current-runtime-truth.md` | 运行事实清单 | 是 | 当前代码已证明的 runtime truth / canonical source 列表 | 不负责完整架构导览 |
 | `docs/runtime-truth.md` | 轻量入口 / entrypoint alias | 否 | 指向 `current-runtime-truth.md` 与 baseline | 不应与 canonical 内容竞争 |
@@ -14,7 +15,9 @@
 
 ## 当前规则
 
-1. **找当前系统长什么样** → 先看 `current-architecture-baseline.md`
-2. **找当前代码真实行为** → 看 `current-runtime-truth.md`
-3. **找历史长文架构说明** → `system-architecture.md` 只作参考，不是默认 truth source
-4. `runtime-truth.md` 如果存在，只允许做入口，不允许复制出第二份 competing truth
+1. **想知道先读什么** → 先看 `docs/README.md`
+2. **找当前系统长什么样** → 看 `current-architecture-baseline.md`
+3. **找当前代码真实行为** → 看 `current-runtime-truth.md`
+4. **找历史长文架构说明** → `system-architecture.md` 只作参考，不是默认 truth source
+5. `runtime-truth.md` 如果存在，只允许做入口，不允许复制出第二份 competing truth
+6. `.codex/`、`.omx/`、`.claude/` 等 runtime/local 路径不属于项目主文档入口

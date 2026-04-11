@@ -26,6 +26,7 @@ def test_current_architecture_baseline_exists_and_links_runtime_truth() -> None:
 def test_doc_authority_matrix_defines_baseline_runtime_and_legacy_roles() -> None:
     authority_matrix = _read_repo_file("docs/epic-7-doc-authority-matrix.md")
 
+    assert "docs/README.md" in authority_matrix
     assert "current-architecture-baseline.md" in authority_matrix
     assert "current-runtime-truth.md" in authority_matrix
     assert "runtime-truth.md" in authority_matrix
@@ -49,6 +50,7 @@ def test_current_architecture_baseline_contains_recommended_reading_path() -> No
 
     assert "推荐阅读路径" in baseline
     assert "README.md" in baseline
+    assert "docs/README.md" in baseline
     assert "docs/current-runtime-truth.md" in baseline
 
 
@@ -60,3 +62,170 @@ def test_docs_parity_checklist_covers_phase_1_to_6_truths() -> None:
     assert "task semantics" in checklist
     assert "settings" in checklist
     assert "topic relation" in checklist
+
+
+def test_docs_readme_exists_and_separates_current_docs_from_runtime_artifacts() -> None:
+    docs_index = _read_repo_file("docs/README.md")
+
+    assert "文档导航" in docs_index or "Documentation" in docs_index
+    assert "docs/current-architecture-baseline.md" in docs_index
+    assert "docs/current-runtime-truth.md" in docs_index
+    assert "docs/epic-7-doc-authority-matrix.md" in docs_index
+    assert "docs/doc-inventory-ledger.md" in docs_index
+    assert "docs/runtime-local-artifact-policy.md" in docs_index
+    assert ".codex/" in docs_index
+    assert ".omx/" in docs_index
+    assert ".claude/" in docs_index
+    assert "runtime" in docs_index or "本地" in docs_index or "运行时" in docs_index
+
+
+def test_doc_inventory_ledger_classifies_major_document_and_runtime_clusters() -> None:
+    ledger = _read_repo_file("docs/doc-inventory-ledger.md")
+
+    assert "Inventory Ledger" in ledger or "台账" in ledger
+    assert "docs/" in ledger
+    assert "design/" in ledger
+    assert "dev-docs/" in ledger
+    assert "private-docs/" in ledger
+    assert "backend/docs/" in ledger
+    assert ".codex-export/" in ledger
+    assert "production/" in ledger
+    assert ".codex/" in ledger
+    assert ".omx/" in ledger
+    assert ".claude/" in ledger
+    assert "current" in ledger
+    assert "working" in ledger
+    assert "historical" in ledger or "archival" in ledger
+    assert "runtime" in ledger
+    assert "keep" in ledger
+    assert "archive" in ledger or "move" in ledger
+
+
+def test_first_archive_batch_moves_old_planning_docs_out_of_docs_root() -> None:
+    archived = [
+        "docs/archive/planning/task-breakdown-phase1.md",
+        "docs/archive/planning/task-breakdown-phase3.md",
+        "docs/archive/planning/task-breakdown-phase4.md",
+        "docs/archive/planning/sprint-plan-phase1.md",
+        "docs/archive/planning/sprint-plan-phase3.md",
+        "docs/archive/planning/sprint-plan-phase4.md",
+        "docs/archive/planning/sprint-plan-sprint5.md",
+        "docs/archive/planning/sprint-6-plan.md",
+        "docs/archive/planning/sprint-7-plan.md",
+        "docs/archive/planning/sprint-8-plan.md",
+    ]
+
+    for archived_path in archived:
+        assert (REPO_ROOT / archived_path).exists(), f"missing archived file: {archived_path}"
+
+    for root_path in [
+        "docs/task-breakdown-phase1.md",
+        "docs/task-breakdown-phase3.md",
+        "docs/task-breakdown-phase4.md",
+        "docs/sprint-plan-phase1.md",
+        "docs/sprint-plan-phase3.md",
+        "docs/sprint-plan-phase4.md",
+        "docs/sprint-plan-sprint5.md",
+        "docs/sprint-6-plan.md",
+        "docs/sprint-7-plan.md",
+        "docs/sprint-8-plan.md",
+    ]:
+        assert not (REPO_ROOT / root_path).exists(), f"file should no longer be in docs root: {root_path}"
+
+
+def test_second_archive_batch_moves_unreferenced_analysis_docs_out_of_docs_root() -> None:
+    archived = [
+        "docs/archive/analysis/refactor-list.md",
+        "docs/archive/analysis/task-management-analysis.md",
+        "docs/archive/analysis/task-management-er-design.md",
+        "docs/archive/analysis/task-management-operations.md",
+    ]
+
+    for archived_path in archived:
+        assert (REPO_ROOT / archived_path).exists(), f"missing archived file: {archived_path}"
+
+    for root_path in [
+        "docs/refactor-list.md",
+        "docs/task-management-analysis.md",
+        "docs/task-management-er-design.md",
+        "docs/task-management-operations.md",
+    ]:
+        assert not (REPO_ROOT / root_path).exists(), f"file should no longer be in docs root: {root_path}"
+
+
+def test_design_and_devdocs_archive_batch_moves_exploratory_docs_out_of_primary_paths() -> None:
+    archived = [
+        "design/archive/Claude Code Hooks.md",
+        "design/archive/sprint-intro.md",
+        "design/archive/task-breakdown-intro.md",
+        "dev-docs/archive/dewu-login-automation.md",
+        "dev-docs/archive/login-dewu.md",
+        "dev-docs/archive/thinking-x.md",
+        "dev-docs/archive/req-04-02.md",
+    ]
+
+    for archived_path in archived:
+        assert (REPO_ROOT / archived_path).exists(), f"missing archived file: {archived_path}"
+
+    for root_path in [
+        "design/Claude Code Hooks.md",
+        "design/sprint-intro.md",
+        "design/task-breakdown-intro.md",
+        "dev-docs/dewu-login-automation.md",
+        "dev-docs/login-dewu.md",
+        "dev-docs/thinking-x.md",
+        "dev-docs/req/04-02.md",
+    ]:
+        assert not (REPO_ROOT / root_path).exists(), f"file should no longer remain in primary path: {root_path}"
+
+
+def test_backend_docs_archive_batch_moves_legacy_backend_design_docs_out_of_primary_path() -> None:
+    archived = [
+        "backend/docs/archive/account-management-design.md",
+        "backend/docs/archive/api-contract-connect.md",
+        "backend/docs/archive/batch-health-check-design.md",
+        "backend/docs/archive/state-machine.md",
+    ]
+
+    for archived_path in archived:
+        assert (REPO_ROOT / archived_path).exists(), f"missing archived file: {archived_path}"
+
+    for root_path in [
+        "backend/docs/account-management-design.md",
+        "backend/docs/api-contract-connect.md",
+        "backend/docs/batch-health-check-design.md",
+        "backend/docs/state-machine.md",
+    ]:
+        assert not (REPO_ROOT / root_path).exists(), f"file should no longer remain in backend/docs root: {root_path}"
+
+
+def test_design_core_archive_batch_moves_stale_stack_and_login_docs_out_of_primary_path() -> None:
+    archived = [
+        "design/archive/backend-stack.md",
+        "design/archive/frontend-stack.md",
+        "design/archive/login-arch.md",
+    ]
+
+    for archived_path in archived:
+        assert (REPO_ROOT / archived_path).exists(), f"missing archived file: {archived_path}"
+
+    for root_path in [
+        "design/backend-stack.md",
+        "design/frontend-stack.md",
+        "design/login-arch.md",
+    ]:
+        assert not (REPO_ROOT / root_path).exists(), f"file should no longer remain in design root: {root_path}"
+
+
+def test_runtime_local_artifact_policy_documents_boundary_and_current_git_state() -> None:
+    policy = _read_repo_file("docs/runtime-local-artifact-policy.md")
+
+    assert ".codex/" in policy
+    assert ".omx/" in policy
+    assert ".claude/" in policy
+    assert ".codex-export/" in policy
+    assert "production/session-logs" in policy or "production/session-state" in policy
+    assert ".gitignore" in policy
+    assert "runtime" in policy or "本地" in policy or "运行时" in policy
+    assert "committed" in policy or "已提交" in policy
+    assert "future policy" in policy or "后续策略" in policy

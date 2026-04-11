@@ -9,10 +9,11 @@
 
 请优先按下面顺序阅读当前文档真相：
 
-1. `docs/current-architecture-baseline.md` — 当前架构总入口
-2. `docs/current-runtime-truth.md` — 当前运行事实清单
-3. `docs/epic-7-doc-authority-matrix.md` — 文档职责边界
-4. `docs/dev-guide.md` — 开发与启动指南
+1. `docs/README.md` — 文档导航首页
+2. `docs/current-architecture-baseline.md` — 当前架构总入口
+3. `docs/current-runtime-truth.md` — 当前运行事实清单
+4. `docs/epic-7-doc-authority-matrix.md` — 文档职责边界
+5. `docs/dev-guide.md` — 开发与启动指南
 
 ## 功能特性
 
@@ -76,6 +77,7 @@ npm run dev
 
 ## 当前文档边界
 
+- 文档导航首页：`docs/README.md`
 - 当前架构总览：`docs/current-architecture-baseline.md`
 - 当前运行事实：`docs/current-runtime-truth.md`
 - 旧的详细架构说明、API 参考、数据模型字典在 Epic 7 / PR2 后会被视为 **stale / archival reference**，阅读时请先以当前入口文档为准。

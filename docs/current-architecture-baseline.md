@@ -78,18 +78,21 @@
 
 ### 30 秒了解项目
 1. `README.md`
-2. `docs/current-architecture-baseline.md`
+2. `docs/README.md`
+3. `docs/current-architecture-baseline.md`
 
 ### 想知道“当前真实行为”
-1. `docs/current-runtime-truth.md`
-2. 对应专题文档：
+1. `docs/README.md`
+2. `docs/current-runtime-truth.md`
+3. 对应专题文档：
    - `docs/task-semantics.md`
    - `docs/settings-truth-matrix.md`
    - `docs/phase-6-*.md`
 
 ### 想知道“为什么这样设计”
-1. `docs/adr/README.md`
-2. 相关 ADR
+1. `docs/README.md`
+2. `docs/adr/README.md`
+3. 相关 ADR
 
 ## 6. 与旧文档的关系
 

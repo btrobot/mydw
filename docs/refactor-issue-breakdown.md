@@ -1,3 +1,16 @@
+# Historical Planning Reference — Refactor Issue Breakdown
+
+> 状态：历史规划参考（historical planning reference），**不是当前 authoritative truth 文档**。  
+> 当前阅读入口请先看：
+> - `docs/README.md`
+> - `docs/current-architecture-baseline.md`
+> - `docs/current-runtime-truth.md`
+>
+> 说明：
+> - 本文档记录的是重构任务拆分与阶段性 issue breakdown
+> - `.omx` 历史 planning context 仍可能引用本文档，但这些引用不等于当前 truth source
+> - 当前系统事实与边界应以 current docs 为准
+
 # Epic 1：统一调度配置真相
 
 ## Task 1.1 盘点 PublishConfig / ScheduleConfig 的真实使用路径

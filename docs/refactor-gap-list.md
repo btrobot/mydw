@@ -1,6 +1,17 @@
-# Refactor Gap List
+# Historical Planning Reference — Refactor Gap List
 
 > 目的：列出当前代码与目标架构之间的明确差距，供后续 Phase / PR 跟踪使用。
+>
+> 状态：历史规划参考（historical planning reference），**不是当前 authoritative truth 文档**。  
+> 当前阅读入口请先看：
+> - `docs/README.md`
+> - `docs/current-architecture-baseline.md`
+> - `docs/current-runtime-truth.md`
+>
+> 说明：
+> - 本文档保留 gap-tracking 视角，便于回溯当时的重构目标
+> - `.omx` 历史 planning context 仍可能引用它，但不表示它是 current truth
+> - 当前系统事实和边界应以 current docs 为准
 
 ## Phase 1 — 统一配置真相
 
