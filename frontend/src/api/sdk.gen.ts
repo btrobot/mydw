@@ -1168,14 +1168,14 @@ export const createTopicApiTopicsPost = <ThrowOnError extends boolean = false>(o
 /**
  * Get Global Topics
  *
- * 获取当前全局话题列表
+ * 获取当前全局话题列表（relation rows 优先，缺失时 fallback 到 PublishConfig JSON）。
  */
 export const getGlobalTopicsApiTopicsGlobalGet = <ThrowOnError extends boolean = false>(options?: Options<GetGlobalTopicsApiTopicsGlobalGetData, ThrowOnError>) => (options?.client ?? client).get<GetGlobalTopicsApiTopicsGlobalGetResponses, unknown, ThrowOnError>({ url: '/api/topics/global', ...options });
 
 /**
  * Set Global Topics
  *
- * 设置全局话题（覆盖写入）
+ * 设置全局话题（canonical source=global_topics，仍 dual-write PublishConfig fallback；不会自动注入 task assembly）。
  */
 export const setGlobalTopicsApiTopicsGlobalPut = <ThrowOnError extends boolean = false>(options: Options<SetGlobalTopicsApiTopicsGlobalPutData, ThrowOnError>) => (options.client ?? client).put<SetGlobalTopicsApiTopicsGlobalPutResponses, SetGlobalTopicsApiTopicsGlobalPutErrors, ThrowOnError>({
     url: '/api/topics/global',
@@ -1217,14 +1217,14 @@ export const batchDeleteTopicsApiTopicsBatchDeletePost = <ThrowOnError extends b
 /**
  * List Topic Groups
  *
- * 获取所有话题组
+ * 获取所有话题组；topic_ids 由 relation rows 优先解析，当前不自动注入 task assembly。
  */
 export const listTopicGroupsApiTopicGroupsGet = <ThrowOnError extends boolean = false>(options?: Options<ListTopicGroupsApiTopicGroupsGetData, ThrowOnError>) => (options?.client ?? client).get<ListTopicGroupsApiTopicGroupsGetResponses, unknown, ThrowOnError>({ url: '/api/topic-groups', ...options });
 
 /**
  * Create Topic Group
  *
- * 创建话题组
+ * 创建话题组；当前只管理命名话题列表，并 dual-write relation rows + legacy JSON fallback。
  */
 export const createTopicGroupApiTopicGroupsPost = <ThrowOnError extends boolean = false>(options: Options<CreateTopicGroupApiTopicGroupsPostData, ThrowOnError>) => (options.client ?? client).post<CreateTopicGroupApiTopicGroupsPostResponses, CreateTopicGroupApiTopicGroupsPostErrors, ThrowOnError>({
     url: '/api/topic-groups',
@@ -1245,14 +1245,14 @@ export const deleteTopicGroupApiTopicGroupsGroupIdDelete = <ThrowOnError extends
 /**
  * Get Topic Group
  *
- * 获取话题组详情（含展开的话题列表）
+ * 获取话题组详情（含展开的话题列表）；relation rows 优先，当前不会自动注入 task assembly。
  */
 export const getTopicGroupApiTopicGroupsGroupIdGet = <ThrowOnError extends boolean = false>(options: Options<GetTopicGroupApiTopicGroupsGroupIdGetData, ThrowOnError>) => (options.client ?? client).get<GetTopicGroupApiTopicGroupsGroupIdGetResponses, GetTopicGroupApiTopicGroupsGroupIdGetErrors, ThrowOnError>({ url: '/api/topic-groups/{group_id}', ...options });
 
 /**
  * Update Topic Group
  *
- * 更新话题组
+ * 更新话题组；当前只影响 named topic-list CRUD surface，并同步 relation rows + legacy JSON fallback。
  */
 export const updateTopicGroupApiTopicGroupsGroupIdPut = <ThrowOnError extends boolean = false>(options: Options<UpdateTopicGroupApiTopicGroupsGroupIdPutData, ThrowOnError>) => (options.client ?? client).put<UpdateTopicGroupApiTopicGroupsGroupIdPutResponses, UpdateTopicGroupApiTopicGroupsGroupIdPutErrors, ThrowOnError>({
     url: '/api/topic-groups/{group_id}',
@@ -1266,14 +1266,14 @@ export const updateTopicGroupApiTopicGroupsGroupIdPut = <ThrowOnError extends bo
 /**
  * List Profiles
  *
- * 获取配置档列表
+ * 获取配置档列表；返回的 `global_topic_ids` 由 relation rows 优先解析。
  */
 export const listProfilesApiProfilesGet = <ThrowOnError extends boolean = false>(options?: Options<ListProfilesApiProfilesGetData, ThrowOnError>) => (options?.client ?? client).get<ListProfilesApiProfilesGetResponses, unknown, ThrowOnError>({ url: '/api/profiles', ...options });
 
 /**
  * Create Profile
  *
- * 创建合成配置档
+ * 创建合成配置档；`global_topic_ids` 当前代表 profile-level default topics，并 dual-write 到 relation rows。
  */
 export const createProfileApiProfilesPost = <ThrowOnError extends boolean = false>(options: Options<CreateProfileApiProfilesPostData, ThrowOnError>) => (options.client ?? client).post<CreateProfileApiProfilesPostResponses, CreateProfileApiProfilesPostErrors, ThrowOnError>({
     url: '/api/profiles',
@@ -1294,14 +1294,14 @@ export const deleteProfileApiProfilesProfileIdDelete = <ThrowOnError extends boo
 /**
  * Get Profile
  *
- * 获取配置档详情
+ * 获取配置档详情；`global_topic_ids` 当前会被 TaskAssembler 自动并入任务，且 relation rows 优先。
  */
 export const getProfileApiProfilesProfileIdGet = <ThrowOnError extends boolean = false>(options: Options<GetProfileApiProfilesProfileIdGetData, ThrowOnError>) => (options.client ?? client).get<GetProfileApiProfilesProfileIdGetResponses, GetProfileApiProfilesProfileIdGetErrors, ThrowOnError>({ url: '/api/profiles/{profile_id}', ...options });
 
 /**
  * Update Profile
  *
- * 更新配置档
+ * 更新配置档；`global_topic_ids` 会同步 relation rows 与 legacy JSON fallback。
  */
 export const updateProfileApiProfilesProfileIdPut = <ThrowOnError extends boolean = false>(options: Options<UpdateProfileApiProfilesProfileIdPutData, ThrowOnError>) => (options.client ?? client).put<UpdateProfileApiProfilesProfileIdPutResponses, UpdateProfileApiProfilesProfileIdPutErrors, ThrowOnError>({
     url: '/api/profiles/{profile_id}',

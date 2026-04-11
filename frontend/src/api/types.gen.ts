@@ -30,6 +30,8 @@ export type AccountCreate = {
     phone?: string | null;
     /**
      * Tags
+     *
+     * 多值账号标签；Phase 6 最终结论为 normalize-later，当前仍以 JSON 数组存储。
      */
     tags?: Array<string>;
     /**
@@ -91,6 +93,8 @@ export type AccountResponse = {
     avatar_url?: string | null;
     /**
      * Tags
+     *
+     * 多值账号标签；当前仍从 JSON 数组解析，后续进入 normalize-later 方案。
      */
     tags?: Array<string>;
     /**
@@ -163,6 +167,8 @@ export type AccountUpdate = {
     phone?: string | null;
     /**
      * Tags
+     *
+     * 多值账号标签；Phase 6 最终结论为 normalize-later，当前仍以 JSON 数组存储。
      */
     tags?: Array<string> | null;
     /**
@@ -938,13 +944,13 @@ export type FullPipelineRequest = {
 /**
  * GlobalTopicRequest
  *
- * 设置全局话题请求
+ * 设置全局话题请求（legacy singleton topic surface）
  */
 export type GlobalTopicRequest = {
     /**
      * Topic Ids
      *
-     * 话题ID列表
+     * legacy singleton topic surface；canonical source 为 global_topics，当前不会自动注入 task assembly
      */
     topic_ids: Array<number>;
 };
@@ -952,11 +958,13 @@ export type GlobalTopicRequest = {
 /**
  * GlobalTopicResponse
  *
- * 全局话题响应
+ * 全局话题响应（legacy singleton topic surface）
  */
 export type GlobalTopicResponse = {
     /**
      * Topic Ids
+     *
+     * 当前读写 global_topics，并 dual-write PublishConfig.global_topic_ids 作为 fallback；不会自动注入 task assembly。
      */
     topic_ids: Array<number>;
     /**
@@ -1390,11 +1398,13 @@ export type PublishProfileCreate = {
     /**
      * Composition Params
      *
-     * JSON 字符串
+     * profile 级 opaque JSON 配置；Phase 6 结论为 keep-json。
      */
     composition_params?: string | null;
     /**
      * Global Topic Ids
+     *
+     * profile-level default topics；当前由 publish_profile_topics 作为 canonical source，仍返回兼容 `topic_ids` shape。
      */
     global_topic_ids?: Array<number>;
     /**
@@ -1452,6 +1462,8 @@ export type PublishProfileResponse = {
     composition_params?: string | null;
     /**
      * Global Topic Ids
+     *
+     * profile-level default topics；当前 TaskAssembler 会自动并入任务，canonical source 为 relation rows。
      */
     global_topic_ids?: Array<number>;
     /**
@@ -1494,11 +1506,13 @@ export type PublishProfileUpdate = {
     /**
      * Composition Params
      *
-     * JSON 字符串
+     * profile 级 opaque JSON 配置；Phase 6 结论为 keep-json。
      */
     composition_params?: string | null;
     /**
      * Global Topic Ids
+     *
+     * profile-level default topics；写入时会同步 relation rows 与 legacy JSON fallback。
      */
     global_topic_ids?: Array<number> | null;
     /**
@@ -1905,6 +1919,8 @@ export type TaskCreate = {
     name?: string | null;
     /**
      * Source Video Ids
+     *
+     * legacy migration-observation field；authoritative source 已是 task_videos，Phase 6 结论为 delete-ready-later。
      */
     source_video_ids?: string | null;
     /**
@@ -1913,6 +1929,8 @@ export type TaskCreate = {
     composition_template?: string | null;
     /**
      * Composition Params
+     *
+     * task 级 opaque JSON params；Phase 6 结论为 keep-json。
      */
     composition_params?: string | null;
     /**
@@ -2062,6 +2080,8 @@ export type TaskResponse = {
     composition_template?: string | null;
     /**
      * Composition Params
+     *
+     * task 级 opaque JSON params；Phase 6 结论为 keep-json。
      */
     composition_params?: string | null;
     /**
@@ -2239,7 +2259,7 @@ export type TopicGroupCreate = {
     /**
      * Topic Ids
      *
-     * 话题ID列表
+     * 命名话题列表；canonical source 为 topic_group_topics，当前不会自动注入 task assembly
      */
     topic_ids?: Array<number>;
 };
@@ -2305,7 +2325,7 @@ export type TopicGroupUpdate = {
     /**
      * Topic Ids
      *
-     * 话题ID列表
+     * 命名话题列表；写入时同步 relation rows 与 legacy JSON fallback，当前不会自动注入 task assembly
      */
     topic_ids?: Array<number> | null;
 };
@@ -2745,6 +2765,8 @@ export type TaskResponseWritable = {
     composition_template?: string | null;
     /**
      * Composition Params
+     *
+     * task 级 opaque JSON params；Phase 6 结论为 keep-json。
      */
     composition_params?: string | null;
     /**

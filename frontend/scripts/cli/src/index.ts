@@ -16,8 +16,7 @@ import {
   runMaterialTests,
   TestResult,
 } from './suites/index.js'
-
-const VERSION = '0.2.0'
+import { VERSION } from './version.js'
 
 // 帮助信息
 const HELP = `

@@ -14,7 +14,9 @@
 ```
 [ ] CLAUDE.md 存在且有 ## References 表
 [ ] backend/CLAUDE.md 存在
-[ ] docs/system-architecture.md 存在
+[ ] docs/current-architecture-baseline.md 存在
+[ ] docs/current-runtime-truth.md 存在
+[ ] docs/system-architecture.md 若保留，则已明确标记 stale / archival
 [ ] docs/dev-guide.md 存在
 [ ] docs/data-model.md 存在
 [ ] docs/api-reference.md 存在
@@ -77,6 +79,8 @@ grep "^### " docs/api-reference.md | wc -l
 ### 2.3 架构文档 vs 代码
 
 ```
+[ ] docs/epic-7-doc-authority-matrix.md 中的职责边界已更新
+[ ] 当前架构入口与运行事实入口清晰（baseline / runtime truth）
 [ ] 技术栈版本与 package.json / requirements.txt 一致
 [ ] 项目结构树与实际目录一致
 [ ] 路由注册列表与 main.py 一致
@@ -105,7 +109,8 @@ grep "^### " docs/api-reference.md | wc -l
 
 ```
 [ ] 同一信息不在两个文档中重复描述
-[ ] 无两个文档描述同一主题（如旧 architecture.md 和新 system-architecture.md 并存）
+[ ] 旧文档若保留，已明确标记为 stale / archival reference
+[ ] 无两个文档同时声称自己是当前 authoritative architecture source
 [ ] 引用关系是单向的（A 引用 B，B 不反向引用 A 的细节）
 ```
 

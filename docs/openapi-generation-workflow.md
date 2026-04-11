@@ -23,6 +23,8 @@ From `frontend/`:
 ```bash
 npm run api:export
 npm run api:generate
+npm run generated:regenerate
+npm run generated:check
 ```
 
 What happens:
@@ -30,8 +32,10 @@ What happens:
 - `api:export` runs `scripts/export-openapi.mjs`
 - the node wrapper invokes `scripts/export_openapi.py`
 - the Python script imports backend `main.app`
-- it writes `frontend/openapi.local.json`
-- `openapi-ts` then generates `frontend/src/api/*`
+- it writes `frontend/openapi.local.json` as a tracked generated artifact
+- `openapi-ts` then generates `frontend/src/api/*` as tracked generated artifacts
+- `generated:regenerate` also refreshes the tracked Electron JS mirrors via `tsc -p electron/tsconfig.json`
+- `generated:check` regenerates then checks content + git status for `openapi.local.json`, `src/api`, and tracked `electron/*.js(.map)` mirrors so predictable diffs stay enforceable even when files are already dirty
 
 ## Why local file input
 
@@ -49,7 +53,9 @@ This avoids dependence on:
 
 ## Notes
 
-- `frontend/openapi.local.json` is a generated artifact and is ignored by git
+- `frontend/openapi.local.json` is a tracked generated artifact: local snapshot input for client generation, but not a handwritten source of truth
+- `frontend/src/api/*` is a tracked generated client tree and should not be hand-edited
+- broader generated/source governance, commit policy, and Electron TS/JS boundary rules live in `docs/generated-artifact-policy.md`
 - generation should happen only after schema parity is stable enough to avoid churn
 - broader API adoption and manual axios exception governance belong to later Phase 3 PRs
 - remaining allowed manual exceptions are tracked in `docs/manual-axios-exceptions.md`

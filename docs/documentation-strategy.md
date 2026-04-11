@@ -14,7 +14,7 @@
 |------|------|------|------|
 | **项目入口** | `CLAUDE.md` | 好 | 面向 Agent 协作，不是面向开发者的 README |
 | **后端入口** | `backend/CLAUDE.md` | 好 | 虚拟环境、项目结构、依赖管理，实用 |
-| **系统架构** | `docs/system-architecture.md` | 好 | 全面覆盖前后端架构、ER、API 总览、安全、流程 |
+| **系统架构（历史长文）** | `docs/system-architecture.md` | 中 | 当前保留为 stale / archival reference，不再是默认入口 |
 | **旧架构文档** | `docs/architecture.md` | 过时 | 与 `system-architecture.md` 内容重叠，版本 0.2.0 |
 | **需求说明** | `docs/requirements-spec.md` | 好 | 整合三份需求来源，标注冲突 |
 | **用户手册** | `docs/user-guide.md` | 好 | 面向终端用户的操作指南 |
@@ -32,7 +32,7 @@
 | 文档维度 | 覆盖度 | 说明 |
 |----------|--------|------|
 | 需求文档 | 90% | 有统一需求说明 + 差距分析，做得好 |
-| 系统架构 | 85% | `system-architecture.md` 覆盖全面，但有旧版本冗余 |
+| 系统架构 | 85% | 当前 authoritative 入口已切到 baseline + runtime truth，旧长文仍需谨慎引用 |
 | API 参考 | 20% | 架构文档有端点总览表，但无参数/响应/示例详情 |
 | 数据模型 | 40% | 架构文档有 ER 概览，但字段说明不够，缺少迁移历史 |
 | 开发指南 | 30% | `backend/CLAUDE.md` 有后端启动，前端完全没有 |
@@ -75,7 +75,7 @@
      │  开发指南   │  │  架构文档   │  │  参考文档   │
      │ (How-to)   │  │ (Why)      │  │ (What)     │
      └────────────┘  └────────────┘  └────────────┘
-     快速启动         系统架构         API 参考
+     快速启动         当前架构基线     API 参考
      添加新功能       ADR 决策记录     数据模型字典
      常见问题         领域模型分析     配置项说明
 ```
@@ -86,8 +86,8 @@
 
 | 文档 | 路径 | 目的 | 维护策略 |
 |------|------|------|----------|
-| API 参考 | `docs/api-reference.md` | 所有端点的参数、响应、示例 | **自动生成** — 从 FastAPI OpenAPI schema 导出 |
-| 数据模型字典 | `docs/data-model.md` | 所有表的字段、类型、约束、关系 | **半自动** — 从 SQLAlchemy 模型提取，手动补充业务说明 |
+| API 参考 | `docs/api-reference.md` | 历史性参考；当前真相以 `/docs` / `/openapi.json` 为准 | **自动生成/导出** |
+| 数据模型字典 | `docs/data-model.md` | 历史性参考；当前真相以 `backend/models/__init__.py` 为准 | **半自动** — 从 SQLAlchemy 模型提取，手动补充业务说明 |
 | 开发快速启动 | `docs/dev-guide.md` | 环境搭建、前后端启动、常用命令 | **手写** — 变更少，偶尔更新 |
 
 #### P1 — 短期补充（提升协作效率）
@@ -97,7 +97,7 @@
 | README.md | `README.md`（项目根） | 项目简介、技术栈、快速启动链接 | **手写** — 项目入口，保持简洁 |
 | ADR 补录 | `docs/adr/ADR-001~006.md` 等 | 补录早期关键决策 | **手写** — 回忆补录，之后每次决策时写 |
 | CHANGELOG | `CHANGELOG.md` | 版本变更记录 | **半自动** — 基于 commit 生成草稿，手动整理 |
-| 架构文档清理 | 删除 `docs/architecture.md` | 消除与 `system-architecture.md` 的冗余 | 一次性操作 |
+| 架构文档清理 | 处理旧架构文档与 stale 标记 | 消除旧文档伪装成当前事实的问题 | 一次性/按需操作 |
 
 #### P2 — 中期完善（支撑规模化）
 
@@ -105,7 +105,7 @@
 |------|------|------|----------|
 | 测试策略 | `docs/testing-strategy.md` | 测试分层、覆盖率目标、如何运行测试 | **手写** — QA Lead 负责 |
 | 部署指南 | `docs/deployment-guide.md` | Electron 打包、分发、环境配置 | **手写** — DevOps 负责 |
-| 前端架构补充 | `docs/frontend-architecture.md` | 组件树、状态管理、路由、hooks 设计 | **手写** — 当前 system-architecture.md 前端部分较薄 |
+| 前端架构补充 | `docs/frontend-architecture.md` | 组件树、状态管理、路由、hooks 设计 | **手写** — 当前 baseline 文档只做总入口，前端细节仍可后续展开 |
 
 ---
 
@@ -296,7 +296,7 @@ npm run electron:dev
 ## 六、维护原则
 
 1. **文档跟代码走**：API 变了就更新 API 参考，模型变了就更新数据模型字典。不要攒着。
-2. **单一事实来源**：每个信息只在一个地方维护。`system-architecture.md` 是架构的唯一来源，不要在多处重复。
+2. **单一事实来源**：每个信息只在一个地方维护。Epic 7 后当前架构总入口应为 `docs/current-architecture-baseline.md`，当前运行事实清单应为 `docs/current-runtime-truth.md`，`system-architecture.md` 只保留为历史长文参考。
 3. **删除过时文档**：过时文档比没有文档更危险。`docs/architecture.md` 应该删除。
 4. **自动化优先**：能从代码生成的就不手写。FastAPI 的 OpenAPI schema 是天然的 API 文档源。
 5. **实用主义**：不追求文档完美，追求"能在 30 秒内找到答案"。

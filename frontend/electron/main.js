@@ -9,6 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const electron_1 = require("electron");
 const path_1 = __importDefault(require("path"));
 const child_process_1 = require("child_process");
+const backendLauncher_1 = require("./backendLauncher");
 // 禁用硬件加速
 electron_1.app.disableHardwareAcceleration();
 let mainWindow = null;
@@ -18,6 +19,8 @@ let isQuitting = false;
 const isDev = !electron_1.app.isPackaged;
 // 开发环境 URL
 const VITE_DEV_SERVER_URL = 'http://localhost:5173';
+const BACKEND_HEALTH_TIMEOUT_MS = 15000;
+const BACKEND_HEALTH_RETRY_MS = 500;
 // 创建主窗口
 function createWindow() {
     mainWindow = new electron_1.BrowserWindow({
@@ -170,32 +173,26 @@ function createTray() {
     });
 }
 // 启动后端服务
-function startBackend() {
-    const backendPath = isDev
-        ? path_1.default.join(__dirname, '../../backend')
-        : path_1.default.join(process.resourcesPath, 'backend');
-    const pythonCmd = isDev
-        ? path_1.default.join(__dirname, '../../backend/venv/Scripts/python.exe')
-        : null;
-    console.log('[Main] 启动后端服务...', { backendPath, isDev });
-    if (isDev) {
-        // 开发模式：用 python + uvicorn
-        backendProcess = (0, child_process_1.spawn)(pythonCmd, ['-m', 'uvicorn', 'main:app', '--port', '8000', '--host', '127.0.0.1'], {
-            cwd: backendPath,
-            stdio: ['pipe', 'pipe', 'pipe'],
-            shell: true,
-            detached: false
-        });
-    }
-    else {
-        // 生产模式：用 PyInstaller 打包的 exe
-        const backendExe = path_1.default.join(backendPath, 'backend.exe');
-        backendProcess = (0, child_process_1.spawn)(backendExe, [], {
-            cwd: backendPath,
-            stdio: ['pipe', 'pipe', 'pipe'],
-            detached: false
-        });
-    }
+async function startBackend() {
+    const launcher = (0, backendLauncher_1.createBackendLauncherSpec)({
+        isDev,
+        electronDir: __dirname,
+        resourcesPath: process.resourcesPath,
+    });
+    console.log('[Main] 启动后端服务...', {
+        backendPath: launcher.backendPath,
+        command: launcher.command,
+        args: launcher.args,
+        healthUrl: launcher.healthUrl,
+        isDev,
+    });
+    backendProcess = (0, child_process_1.spawn)(launcher.command, launcher.args, {
+        cwd: launcher.cwd,
+        env: launcher.env,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        detached: false,
+        shell: false,
+    });
     backendProcess.stdout?.on('data', (data) => {
         console.log('[Backend]', data.toString());
     });
@@ -207,6 +204,10 @@ function startBackend() {
     });
     backendProcess.on('exit', (code) => {
         console.log('[Backend] 进程退出, code:', code);
+    });
+    await (0, backendLauncher_1.waitForBackendHealth)(backendProcess, launcher.healthUrl, {
+        timeoutMs: BACKEND_HEALTH_TIMEOUT_MS,
+        retryIntervalMs: BACKEND_HEALTH_RETRY_MS,
     });
 }
 // 停止后端服务
@@ -252,16 +253,30 @@ function setupIpcHandlers() {
     });
 }
 // 应用就绪
-electron_1.app.whenReady().then(() => {
+electron_1.app.whenReady().then(async () => {
     console.log('[Main] 应用启动...');
     // 设置 IPC 处理器
     setupIpcHandlers();
+    try {
+        // 先启动并等待后端健康，再创建窗口/托盘
+        await startBackend();
+    }
+    catch (error) {
+        const message = error instanceof backendLauncher_1.BackendStartupError
+            ? `[${error.code}] ${error.message}`
+            : error instanceof Error
+                ? error.message
+                : '未知错误';
+        console.error('[Main] 后端启动失败:', message);
+        stopBackend();
+        electron_1.dialog.showErrorBox('后端启动失败', message);
+        electron_1.app.quit();
+        return;
+    }
     // 创建窗口
     createWindow();
     // 创建托盘
     createTray();
-    // 启动后端
-    startBackend();
     // macOS 激活时重新创建窗口
     electron_1.app.on('activate', () => {
         if (electron_1.BrowserWindow.getAllWindows().length === 0) {

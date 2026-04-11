@@ -93,7 +93,7 @@ cd frontend
 npm run build
 ```
 
-打包后的应用位于 `frontend/release/` 目录。
+打包后的应用位于 `frontend/dist-electron/` 目录。
 
 ## 开发指南
 
