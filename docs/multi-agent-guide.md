@@ -394,4 +394,4 @@ Tech Lead 定义 API 契约
 - [协作规则](.claude/rules/coordination-rules.md) — Agent 层级、委托协议、冲突解决
 - [使用指南](.claude/docs/usage-guide.md) — 多 Agent 使用示例
 - [领域模型设计](docs/task-management-domain-model.md) — 最近的大功能实施案例
-- [任务分解](production/task-breakdown/task-management-impl.md) — 任务分解示例
+- [任务分解](docs/archive/examples/task-management-impl.md) — 任务分解示例

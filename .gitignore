@@ -54,8 +54,11 @@ production/session-state/*.md
 !production/session-state/*.md.template
 
 production/session-logs/*.jsonl
+production/session-logs/*.md
+!production/session-logs/*.md.template
 
 backend/.mypy_cache/
+.pytest_cache/
 .omx/
 .codex/*
 !.codex/agents/
@@ -65,3 +68,7 @@ backend/.mypy_cache/
 .codex/skills/.system/**
 !.codex/prompts/
 !.codex/prompts/**
+
+.claude/settings.local.json
+frontend/logs/
+frontend/test-results/

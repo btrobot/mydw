@@ -22,11 +22,12 @@
 | `docs/system-architecture.md`, `docs/api-reference.md`, `docs/data-model.md`, `docs/archive/planning/` 下的旧 sprint / breakdown 文档，以及 `docs/archive/analysis/` 下的旧分析/设计文档 | 高可见度旧文档与历史计划/分析资料 | `historical` | `archive` | 已开始把旧计划文档与一批无当前引用的旧分析文档移入 archive 子目录 |
 | `design/` | 设计草图、栈说明、历史设计材料 | `historical` with a shrinking active subset | `move` / `archive` later | 已把明显的技能说明、旧栈说明、旧登录架构和历史探索材料移到 `design/archive/`，剩余文件再逐个判断 |
 | `dev-docs/` | 开发探索/登录自动化相关笔记 | `working` → mixed with `historical` | `move` / `archive` later | 已把明显历史探索材料移到 `dev-docs/archive/`，其余文件待继续分层 |
-| `private-docs/` | 私有/内部分析与评审材料 | `working` or `historical` | `move` later | 建议后续收口到 `internal/` 或统一私有目录 |
+| `private-docs/` | 私有/内部分析与评审材料 | `historical` | `archive` | 已移入 `docs/archive/private/`，不再占据根层主路径 |
 | `backend/docs/` | backend 局部设计/状态文档 | `historical` | `archive` | 首批旧 backend 设计/审批稿已移入 `backend/docs/archive/`；若后续新增 docs，应明确其是否仍属于 active engineering docs |
-| `plans/` | 零散计划文档 | `historical` or `working` | `move` later | 不应和当前入口文档竞争 |
+| `plans/` | 根层零散计划文档 | `historical` | `archive` | 首个根层计划文档已移入 `docs/archive/planning/`，其余同类文件应继续离开根目录 |
 | `.codex-export/` | 导出型项目说明/快照/分析报告 | `runtime` | `keep` with explicit boundary or move out of main browse path | 看起来像文档，但本质是导出产物 |
 | `production/session-*` | 生产/会话状态与拆解产物 | `runtime` | `keep` with explicit boundary | 不属于项目主文档入口 |
+| `production/task-breakdown/` | task breakdown 示例/历史产物 | `historical` or `example` | `archive` | 已开始移到 `docs/archive/examples/`，避免继续停留在 runtime-like 根路径下 |
 | `.codex/` | Codex prompts, skills, sessions, logs, local state | `runtime` | `keep` or revisit policy later | agent/runtime 资产，不是产品文档 |
 | `.omx/` | OMX state, plans, logs, context snapshots, notepad | `runtime` | `keep` or revisit policy later | orchestration/runtime 资产 |
 | `.claude/` | Claude Code rules, hooks, memory, skills | `runtime` | `keep` or revisit policy later | 本地 agent/runtime 资产 |
@@ -120,6 +121,24 @@ Current location:
 Current location:
 
 - `design/archive/`
+
+### Sixth archive batch completed in current cleanup execution
+- `plans/cosmic-baking-micali.md`
+- `production/task-breakdown/task-management-impl.md`
+- `production/task-breakdown/task-orchestration.md`
+
+Current locations:
+
+- `docs/archive/planning/`
+- `docs/archive/examples/`
+
+### Seventh archive batch completed in current cleanup execution
+- `private-docs/arch.md`
+- `private-docs/multi-agents-review.md`
+
+Current location:
+
+- `docs/archive/private/`
 
 ## Follow-up actions supported by this ledger
 

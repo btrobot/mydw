@@ -229,3 +229,40 @@ def test_runtime_local_artifact_policy_documents_boundary_and_current_git_state(
     assert "runtime" in policy or "本地" in policy or "运行时" in policy
     assert "committed" in policy or "已提交" in policy
     assert "future policy" in policy or "后续策略" in policy
+
+
+def test_root_plans_and_task_breakdown_examples_move_out_of_root_runtime_paths() -> None:
+    archived = [
+        "docs/archive/planning/cosmic-baking-micali.md",
+        "docs/archive/examples/task-management-impl.md",
+        "docs/archive/examples/task-orchestration.md",
+    ]
+
+    for archived_path in archived:
+        assert (REPO_ROOT / archived_path).exists(), f"missing archived file: {archived_path}"
+
+    for old_path in [
+        "plans/cosmic-baking-micali.md",
+        "production/task-breakdown/task-management-impl.md",
+        "production/task-breakdown/task-orchestration.md",
+    ]:
+        assert not (REPO_ROOT / old_path).exists(), f"file should no longer remain in old path: {old_path}"
+
+
+def test_private_docs_move_into_archive_and_d_mirror_dirs_are_reclassified_as_local_paths() -> None:
+    archived = [
+        "docs/archive/private/arch.md",
+        "docs/archive/private/multi-agents-review.md",
+    ]
+
+    for archived_path in archived:
+        assert (REPO_ROOT / archived_path).exists(), f"missing archived file: {archived_path}"
+
+    for old_path in [
+        "private-docs/arch.md",
+        "private-docs/multi-agents-review.md",
+    ]:
+        assert not (REPO_ROOT / old_path).exists(), f"file should no longer remain in old path: {old_path}"
+
+    runtime_policy = _read_repo_file("docs/runtime-local-artifact-policy.md")
+    assert "D:" in runtime_policy or "mirror" in runtime_policy

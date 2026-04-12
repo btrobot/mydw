@@ -73,6 +73,15 @@
 
 - `design/archive/`
 
+当前第六批已归档的根层计划与 task-breakdown 示例位于：
+
+- `docs/archive/planning/`
+- `docs/archive/examples/`
+
+当前第七批已归档的 private-docs 材料位于：
+
+- `docs/archive/private/`
+
 ## Runtime / local artifact boundary
 
 下面这些路径**不是项目主文档入口**，不要把它们当作“先读什么”的答案：

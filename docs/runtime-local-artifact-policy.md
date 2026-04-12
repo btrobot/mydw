@@ -82,6 +82,15 @@
 - 运行会话和拆解产物
 - 更接近 runtime artifacts than product docs
 
+### `production/task-breakdown/`
+- 更像历史示例/产物，而不是当前 runtime truth
+- 更适合归档到 `docs/archive/examples/` 一类的非主路径位置
+
+### `D:` mirror paths
+- 当前它们更像由本地 `MATERIAL_BASE_PATH` 默认值派生出来的本地目录镜像
+- 在现有配置仍默认指向 `D:/系统/桌面/得物剪辑/待上传数据` 的前提下，不应把“目录存在”本身当成仓库结构真相
+- 当前治理目标是：**不让这些路径被 Git 跟踪，也不让它们出现在项目主文档入口中**
+
 ## Future policy direction / 后续策略
 
 后续建议把这些目录再分成三类治理：
