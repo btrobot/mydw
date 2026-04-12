@@ -9,6 +9,7 @@
 
 - `.codex/`
 - `.omx/`
+- `.omc/`
 - `production/session-logs/`
 - `production/session-state/`
 - `production/task-breakdown/`
@@ -29,6 +30,7 @@
 
 - `.codex/` 中既有 prompts / skills / agents，也有 logs、sqlite、history、sessions、snapshots
 - `.omx/` 中既有 plans/context，也有 runtime state、logs、notepad、metrics
+- `.omc/` 中主要是 Claude/OMC 会话与 mission 运行状态（session、state、project-memory 等）
 - `production/session-*` 中有会话模板与历史产物
 
 这意味着：
@@ -43,6 +45,7 @@
 
 - `production/session-state/*.md`、`production/session-logs/*.jsonl` 默认忽略
 - `.omx/` 默认忽略
+- `.omc/` 默认忽略（当前若有已跟踪文件，需单独清理 tracked exceptions）
 - `.codex/*` 默认忽略，但对 `agents/`、`skills/`、`prompts/` 做了例外放行
 
 这说明仓库已经隐含存在一个 policy：
@@ -65,6 +68,11 @@
 - 主要是 OMX orchestration/runtime 资产
 - `plans/`、`context/` 可能帮助理解历史执行路径
 - `state/`、`logs/`、`notepad.md`、`metrics.json` 不应被当作当前产品文档真相
+
+### `.omc/`
+- 主要是 OMC/Claude runtime 资产
+- 常见内容包括 `sessions/`、`state/`、`project-memory.json`
+- 这些内容用于会话/调度状态，不应被当作项目文档阅读入口
 
 ### `docs/archive/exports/`
 - 导出型参考材料 / snapshots
@@ -109,6 +117,6 @@
 
 在当前这轮目录/文档整理中：
 
-- 不把 `.codex/`、`.omx/`、`production/session-*` 当作项目主文档簇
+- 不把 `.codex/`、`.omx/`、`.omc/`、`production/session-*` 当作项目主文档簇
 - 先在导航和 inventory 中标明它们的 runtime/local 属性
 - 是否进一步移动、瘦身、ignore 化，放到后续专门的 policy/cleanup PR 决定

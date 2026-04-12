@@ -1,12 +1,10 @@
 # Frontend Development
 
-> Version: 1.0.0 | Updated: 2026-04-07
-> Owner: Frontend Lead
+> Version: 1.1.0
+> Updated: 2026-04-12
 > Status: Active
 
-Frontend entry point for DewuGoJin Electron + React application.
-
----
+Frontend entry point for the DewuGoJin Electron + React application.
 
 ## Tech Stack
 
@@ -14,93 +12,68 @@ Frontend entry point for DewuGoJin Electron + React application.
 |-------|-----------|
 | Desktop | Electron 28 |
 | UI Framework | React 18 |
-| Language | TypeScript 5 (strict mode) |
+| Language | TypeScript 5 |
 | Build | Vite 5 |
 | Components | Ant Design 5 |
 | State | Zustand |
-| API Client | @hey-api/client-fetch (auto-generated from OpenAPI) |
 | Data Fetching | @tanstack/react-query |
+| API Client | @hey-api/client-fetch + generated SDK |
 | E2E Testing | Playwright |
 
----
+## Current repo surface
 
-## Quick Start
+`frontend/` 里的高信号目录：
+
+- `src/` — 页面、组件、hooks、状态和前端逻辑
+- `electron/` — Electron 主进程 / preload / launcher 层
+- `scripts/` — OpenAPI 导出、生成物检查、版本同步等脚本
+- `e2e/` — Playwright E2E 测试
+
+本地运行产物不应被当作 repo surface：
+
+- `node_modules/`
+- `dist/`, `dist-electron/`
+- `logs/`
+- `test-results/`
+
+## Common commands
 
 ```bash
 cd frontend
 npm install
-npm run dev              # Vite dev server at :5173
-npm run dev:electron     # Full Electron app
-npm run typecheck        # Type check
-npm run api:generate     # Regenerate API client from backend OpenAPI
+npm run dev
+npm run dev:electron
+npm run typecheck
+npm run api:generate
+npm run generated:check
+npm run test:e2e
 ```
 
----
+## Generated artifacts
 
-## Project Structure
+当前前端存在一部分**应受治理的生成物**，请遵循现有策略：
 
+- `frontend/openapi.local.json`
+- `frontend/src/api/`
+- `frontend/electron/*.js` 及其 map 文件
+
+修改相关来源后，优先使用：
+
+```bash
+npm run generated:regenerate
+npm run generated:check
 ```
-frontend/
-├── electron/
-│   ├── main.js          # Electron main process
-│   └── preload.js       # Context bridge (minimal API)
-├── src/
-│   ├── pages/           # Route-level page components
-│   │   ├── Dashboard.tsx    # System overview
-│   │   ├── Account.tsx      # Account management
-│   │   ├── Task.tsx         # Task management
-│   │   ├── Material.tsx     # Material management (video/copy/cover/audio)
-│   │   ├── AIClip.tsx       # AI video clipping
-│   │   └── Settings.tsx     # System settings
-│   ├── components/      # Shared/reusable components
-│   ├── services/
-│   │   └── api.ts       # API service layer
-│   ├── stores/          # Zustand state stores
-│   ├── types/           # TypeScript type definitions
-│   └── utils/           # Utility functions
-├── package.json
-├── tsconfig.json
-└── vite.config.ts
-```
-
----
-
-## Coding Standards
-
-| Rule | Standard |
-|------|----------|
-| Types | No `any` -- use `unknown` + type guards |
-| Components | Functional components + Hooks only |
-| State | Zustand for global, useState for local |
-| Error handling | `catch (error: unknown)` with AxiosError check |
-| Styling | Ant Design tokens, no inline styles |
-
-See `.claude/rules/typescript-coding-rules.md` for full rules.
-
-### Error Handling Pattern
-
-```typescript
-catch (error: unknown) {
-  if (axios.isAxiosError(error)) {
-    message.error(error.response?.data?.detail || error.message)
-  } else if (error instanceof Error) {
-    message.error(error.message)
-  } else {
-    message.error('Operation failed')
-  }
-}
-```
-
----
 
 ## References
 
 | Document | Path | What it answers |
 |----------|------|-----------------|
-| API Reference | `docs/api-reference.md` | Backend endpoint contracts |
-| Data Model | `docs/data-model.md` | Database schemas (for understanding API responses) |
-| TypeScript Rules | `.claude/rules/typescript-coding-rules.md` | Coding standards |
-| E2E Testing Rules | `.claude/rules/e2e-testing-rules.md` | Playwright test patterns |
-| Dev Guide | `docs/dev-guide.md` | Full setup instructions |
-| Project Memory | `.claude/memory/PROJECT.md` | 项目禁止规则、必做规则 |
-| Session State | `production/session-state/active.md` | 当前任务状态和进度 |
+| Docs Index | `docs/README.md` | 当前文档阅读入口 |
+| Current Architecture | `docs/current-architecture-baseline.md` | 当前前后端架构基线 |
+| Current Runtime Truth | `docs/current-runtime-truth.md` | 当前运行/API 真相 |
+| Dev Guide | `docs/dev-guide.md` | 环境搭建与启动流程 |
+| Generated Artifact Policy | `docs/generated-artifact-policy.md` | 生成物边界与治理规则 |
+| OpenAPI Workflow | `docs/openapi-generation-workflow.md` | OpenAPI 导出与 SDK 生成流程 |
+| Runtime/Local Artifact Policy | `docs/runtime-local-artifact-policy.md` | runtime / local artifact 边界 |
+| API Reference (stale) | `docs/archive/reference/api-reference.md` | 历史 API 参考，需晚于 current docs 阅读 |
+| Data Model (stale) | `docs/archive/reference/data-model.md` | 历史数据模型参考，需晚于 current docs 阅读 |

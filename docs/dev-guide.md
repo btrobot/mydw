@@ -151,7 +151,7 @@ frontend/
 - Type: SQLite (async via aiosqlite)
 - Location: `backend/data/dewugojin.db` (auto-created on first run)
 - Migrations: `backend/migrations/` (run automatically at startup, idempotent)
-- Schema: see `docs/data-model.md`
+- Schema: see `docs/archive/reference/data-model.md`
 
 To reset the database, delete `backend/data/dewugojin.db` and restart the backend.
 
@@ -194,7 +194,7 @@ See `AGENTS.md`, `backend/CLAUDE.md`, and the current OMX/Codex workflow surface
 
 | Document | Path | What it covers |
 |----------|------|----------------|
-| API Reference | `docs/api-reference.md` | All endpoints |
-| Data Model | `docs/data-model.md` | Database schemas |
-| System Architecture | `docs/system-architecture.md` | Component diagram |
+| API Reference | `docs/archive/reference/api-reference.md` | Historical endpoint reference |
+| Data Model | `docs/archive/reference/data-model.md` | Historical schema reference |
+| System Architecture | `docs/archive/reference/system-architecture.md` | Historical architecture deep-dive |
 | Coding & Workflow Conventions | `AGENTS.md`, `backend/CLAUDE.md` | Current repo-wide coding and collaboration expectations |

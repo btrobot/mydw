@@ -14,7 +14,7 @@
 
 需要特别注意：
 
-- 现有 `docs/data-model.md` 中仍有部分旧字段和旧关系描述，没有完全跟上当前 ORM
+- 现有 `docs/archive/reference/data-model.md` 中仍有部分旧字段和旧关系描述，没有完全跟上当前 ORM
 - 本文优先以当前 ORM 和当前服务代码为准
 
 ## 2. 总体关系图

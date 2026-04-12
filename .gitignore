@@ -43,23 +43,11 @@ release/
 .env
 .env.local
 
+# Local orchestration/runtime state
 .omc/
-
-# ============================================
-# Session State Files
-# ============================================
-# Auto-generated transient state - only track templates
-
-production/session-state/*.md
-!production/session-state/*.md.template
-
-production/session-logs/*.jsonl
-production/session-logs/*.md
-!production/session-logs/*.md.template
-
-backend/.mypy_cache/
-.pytest_cache/
 .omx/
+
+# Keep only shared Codex workflow definitions committed
 .codex/*
 !.codex/agents/
 !.codex/agents/**
@@ -68,6 +56,19 @@ backend/.mypy_cache/
 .codex/skills/.system/**
 !.codex/prompts/
 !.codex/prompts/**
+
+# Local data mirror paths
+/D:/
+
+# Session state templates
+production/session-state/*.md
+!production/session-state/*.md.template
+production/session-logs/*.jsonl
+production/session-logs/*.md
+!production/session-logs/*.md.template
+
+backend/.mypy_cache/
+.pytest_cache/
 
 .claude/
 frontend/logs/

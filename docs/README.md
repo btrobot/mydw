@@ -38,11 +38,11 @@
 
 以下高可见度文档已经被降级为 historical / stale / archival reference，应在 current 文档之后阅读：
 
-- `docs/system-architecture.md`
-- `docs/api-reference.md`
-- `docs/data-model.md`
+- `docs/archive/reference/system-architecture.md`
+- `docs/archive/reference/api-reference.md`
+- `docs/archive/reference/data-model.md`
 - `docs/archive/planning/` 下的早期 task-breakdown / sprint-plan 类文档
-- `docs/refactor-roadmap.md` / `docs/refactor-issue-breakdown.md` / `docs/refactor-gap-list.md`（保留在根目录仅因仍有历史 planning 上下文引用，但应按历史规划参考理解）
+- `docs/archive/history/refactor-roadmap.md` / `docs/archive/history/refactor-issue-breakdown.md` / `docs/archive/history/refactor-gap-list.md`（历史规划参考）
 - 其他仍在 `docs/` 根目录中的旧 roadmap / planning / breakdown 文档
 
 更完整的 authority 说明见：
@@ -92,6 +92,7 @@
 
 - `.codex/` — Codex 本地 prompts / skills / sessions / state
 - `.omx/` — OMX runtime state、plans、logs、notepad、session artifacts
+- `.omc/` — OMC/Claude runtime state、sessions、mission memory
 - `production/session-*` — 运行会话产物
 
 它们可能对 agent/runtime 运维有用，但不属于产品/架构主阅读路径。

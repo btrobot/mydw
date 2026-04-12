@@ -96,7 +96,7 @@
 
 ## 6. 与旧文档的关系
 
-`docs/system-architecture.md` 当前仍存在，但在 Epic 7 / PR1 后：
+`docs/archive/reference/system-architecture.md` 仍保留为历史架构长文，但在 Epic 7 / PR1 后：
 
 - **不是默认阅读入口**
 - 后续会在 Epic 7 / PR2 中被明确处理：
@@ -107,8 +107,8 @@
 
 PR2 完成后，以下文档也被明确降级为 archival / stale reference：
 
-- `docs/api-reference.md`
-- `docs/data-model.md`
+- `docs/archive/reference/api-reference.md`
+- `docs/archive/reference/data-model.md`
 
 它们仍可提供历史性上下文，但当前 authoritative source 已切换到：
 

@@ -30,9 +30,9 @@ Every `CLAUDE.md` (root or subdirectory) MUST contain a `## References` section 
 
 | Document | Path | What it answers |
 |----------|------|-----------------|
-| System Architecture | docs/system-architecture.md | How the system is structured |
-| API Reference | docs/api-reference.md | Endpoint params, responses, errors |
-| Data Model | docs/data-model.md | Table schemas, field types, constraints |
+| System Architecture | docs/archive/reference/system-architecture.md | How the system is structured |
+| API Reference | docs/archive/reference/api-reference.md | Endpoint params, responses, errors |
+| Data Model | docs/archive/reference/data-model.md | Table schemas, field types, constraints |
 | Dev Guide | docs/dev-guide.md | How to set up and run the project |
 | ADRs | docs/adr/ | Why we chose X over Y |
 ```
@@ -46,8 +46,8 @@ Agent definition files (`.claude/agents/*.md`) SHOULD include a `## Key Referenc
 ```markdown
 ## Key References
 
-- `docs/api-reference.md` -- API contracts this agent implements
-- `docs/data-model.md` -- Database schemas
+- `docs/archive/reference/api-reference.md` -- API contracts this agent implements
+- `docs/archive/reference/data-model.md` -- Database schemas
 - `backend/CLAUDE.md` -- Backend dev environment setup
 - `.claude/rules/python-coding-rules.md` -- Coding standards
 ```
@@ -74,9 +74,9 @@ Answers: "what does this system do and how do I work with it"
 | Document | Path Convention | Answers |
 |----------|----------------|---------|
 | Project Entry | `CLAUDE.md` | Tech stack, structure, agent config, references |
-| System Architecture | `docs/system-architecture.md` | Components, data flow, deployment topology |
-| API Reference | `docs/api-reference.md` | Endpoint signatures, params, responses, errors |
-| Data Model | `docs/data-model.md` | Table/collection schemas, relationships |
+| System Architecture | `docs/archive/reference/system-architecture.md` | Components, data flow, deployment topology |
+| API Reference | `docs/archive/reference/api-reference.md` | Endpoint signatures, params, responses, errors |
+| Data Model | `docs/archive/reference/data-model.md` | Table/collection schemas, relationships |
 | Dev Guide | `docs/dev-guide.md` | Environment setup, run commands |
 
 ### 3.2 Tier 2 -- Growing Projects
@@ -225,11 +225,11 @@ Extend pre-commit hooks to detect doc-code drift via path matching:
 
 ```
 Trigger: file in backend/models/ modified
-Check: docs/data-model.md updated in same commit?
+Check: docs/archive/reference/data-model.md updated in same commit?
 Action: Warning (not block) -- "Model changed but data-model.md not updated"
 
 Trigger: file in backend/api/ modified
-Check: docs/api-reference.md updated in same commit?
+Check: docs/archive/reference/api-reference.md updated in same commit?
 Action: Warning -- "API route changed, consider updating api-reference.md"
 ```
 

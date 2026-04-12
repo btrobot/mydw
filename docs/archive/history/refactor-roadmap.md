@@ -47,7 +47,7 @@
 ### 2. 列出真相冲突清单
 建一个追踪文档：
 
-- `docs/refactor-gap-list.md`
+- `docs/archive/history/refactor-gap-list.md`
 
 至少列这几项：
 - `PublishConfig` vs `ScheduleConfig`
@@ -68,7 +68,7 @@
 
 ## 交付物
 - `docs/current-architecture-baseline.md`
-- `docs/refactor-gap-list.md`
+- `docs/archive/history/refactor-gap-list.md`
 - `docs/regression-checklist.md`
 
 ## 验收标准

@@ -16,10 +16,10 @@
 [ ] backend/CLAUDE.md 存在
 [ ] docs/current-architecture-baseline.md 存在
 [ ] docs/current-runtime-truth.md 存在
-[ ] docs/system-architecture.md 若保留，则已明确标记 stale / archival
+[ ] docs/archive/reference/system-architecture.md 若保留，则已明确标记 stale / archival
 [ ] docs/dev-guide.md 存在
-[ ] docs/data-model.md 存在
-[ ] docs/api-reference.md 存在
+[ ] docs/archive/reference/data-model.md 存在
+[ ] docs/archive/reference/api-reference.md 存在
 ```
 
 ### 1.2 References 表覆盖度
@@ -45,7 +45,7 @@
 ### 2.1 数据模型 vs 代码
 
 ```
-[ ] docs/data-model.md 中的表名与 models/__init__.py 中的 __tablename__ 一致
+[ ] docs/archive/reference/data-model.md 中的表名与 models/__init__.py 中的 __tablename__ 一致
 [ ] 字段列表与模型定义一致（无遗漏、无多余）
 [ ] 关系描述与 relationship() 定义一致
 [ ] 加密标记与实际 encrypt_data() 调用一致
@@ -56,7 +56,7 @@
 # 提取模型中的表名
 grep "__tablename__" backend/models/__init__.py
 # 对比文档中的表名
-grep "^## " docs/data-model.md
+grep "^## " docs/archive/reference/data-model.md
 ```
 
 ### 2.2 API 端点 vs 代码
@@ -73,7 +73,7 @@ grep "^## " docs/data-model.md
 # 提取所有路由
 grep "@router\." backend/api/*.py
 # 对比文档端点数量
-grep "^### " docs/api-reference.md | wc -l
+grep "^### " docs/archive/reference/api-reference.md | wc -l
 ```
 
 ### 2.3 架构文档 vs 代码
@@ -158,7 +158,7 @@ import re
 from pathlib import Path
 
 models_file = Path("backend/models/__init__.py")
-doc_file = Path("docs/data-model.md")
+doc_file = Path("docs/archive/reference/data-model.md")
 
 # 提取代码中的表名
 code_tables = set(re.findall(r'__tablename__\s*=\s*"(\w+)"', models_file.read_text()))
@@ -183,7 +183,7 @@ import re
 from pathlib import Path
 
 api_dir = Path("backend/api")
-doc_file = Path("docs/api-reference.md")
+doc_file = Path("docs/archive/reference/api-reference.md")
 
 # 代码中的端点数
 code_count = 0

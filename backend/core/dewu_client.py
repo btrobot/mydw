@@ -709,7 +709,7 @@ class DewuClient:
             # 保存调试截图
             await self._save_debug_screenshot("login_start")
 
-            # ========== 第一步：勾选协议复选框（移到手机号输入之前，与 test_patch_login_debug.py 一致）==========
+            # ========== 第一步：勾选协议复选框（在输入手机号前先处理协议勾选）==========
             checkbox_selected = await self._select_agree_checkbox()
             if not checkbox_selected:
                 logger.warning("账号 {} 未勾选协议或未找到复选框，可能协议已默认勾选", self.account_id)
@@ -724,7 +724,7 @@ class DewuClient:
             await self.page.wait_for_timeout(500)
             logger.debug("账号 {} 手机号已输入: {}***", self.account_id, phone[:3])
 
-            # ========== 第三步：点击发送验证码（使用文本遍历查找，与 test_patch_login_debug.py 一致）==========
+            # ========== 第三步：点击发送验证码（优先按按钮文本查找）==========
             # 使用文本遍历查找验证码按钮
             code_button = await self._find_button_by_text(
                 self.page,
@@ -856,7 +856,7 @@ class DewuClient:
 
     async def _find_button_by_text(self, page: Page, patterns: List[str]) -> Optional[Any]:
         """
-        根据文本内容查找按钮（与 test_patch_login_debug.py 一致的逻辑）
+        根据文本内容查找按钮（与当前登录流程共用的查找逻辑）
 
         Args:
             page: Playwright 页面对象

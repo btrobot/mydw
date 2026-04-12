@@ -1,115 +1,67 @@
-> Updated: 2026-04-07
-
 # Backend 开发规范
 
-## 虚拟环境
+> Updated: 2026-04-12
+> Scope: FastAPI backend + automation/runtime support
 
-Python 虚拟环境位于 `backend/venv/`。
+## 当前定位
 
-### 激活方式
+`backend/` 是项目的后端源码面，主要包含：
 
-**Windows PowerShell:**
-```powershell
-.\venv\Scripts\Activate.ps1
+- `api/` — FastAPI 路由层
+- `core/` — 配置、浏览器集成、平台客户端等核心运行逻辑
+- `services/` — 业务服务层
+- `models/` / `schemas/` — 持久化模型与 API schema
+- `migrations/` — 数据库迁移
+- `tests/` — 当前有效的自动化测试
+- `main.py` — FastAPI 入口
+
+## 目录边界
+
+下面这些内容不应再被当作 backend repo surface 的一部分：
+
+- 根层 `test_*.py` 调试脚本
+- 根层调试截图 / 页面抓图
+- 本地虚拟环境内容（如 `venv/`）
+- 本地日志、缓存、运行产物
+
+如果需要保留手工排查脚本，请放到明确的手工工具目录，并避免继续使用 `test_*.py` 这类会与自动化测试混淆的命名。
+
+## 运行方式
+
+优先参考 `docs/dev-guide.md` 的当前开发流程。
+
+常见命令示例：
+
+```bash
+cd backend
+python -m pip install -r requirements.txt
+python -m playwright install chromium
+python -m uvicorn main:app --reload --port 8000
 ```
 
-**Windows CMD:**
-```cmd
-.\venv\Scripts\activate.bat
+如本地已经有项目专用虚拟环境，也可以在激活后执行同样命令；但不要把某个固定 `backend/venv/` 路径当作仓库协作前提。
+
+## 测试与验证
+
+当前自动化测试以 `backend/tests/` 为准。
+
+常见命令：
+
+```bash
+pytest backend/tests/test_repo_hygiene_policy.py
+pytest backend/tests/test_epic7_stale_docs.py
+pytest backend/tests/test_generated_artifact_governance.py
+pytest backend/tests
 ```
 
-### 运行命令
-
-使用虚拟环境中的 Python：
-
-```powershell
-# 启动服务
-.\venv\Scripts\python.exe -m uvicorn main:app --reload --port 8000
-
-# 运行脚本
-.\venv\Scripts\python.exe script.py
-
-# 安装依赖
-.\venv\Scripts\pip.exe install package-name
-```
-
-## 项目结构
-
-```
-backend/
-├── api/              # API 路由
-│   ├── account.py    # 账号管理
-│   ├── task.py       # 任务管理
-│   ├── material.py   # 素材管理
-│   ├── publish.py    # 发布控制
-│   ├── system.py     # 系统
-│   └── ai.py         # AI 剪辑
-├── core/             # 核心模块
-│   ├── browser.py    # Patchright 浏览器管理
-│   ├── dewu_client.py # 得物客户端
-│   └── config.py     # 配置
-├── models/           # SQLAlchemy 模型
-├── schemas/          # Pydantic Schema
-├── services/         # 业务服务
-├── utils/            # 工具函数
-│   └── crypto.py     # 加密工具
-├── logs/             # 日志目录
-├── main.py           # FastAPI 入口
-└── venv/             # 虚拟环境 ⭐
-```
-
-## 依赖管理
-
-### PyPI 镜像
-
-**开发期间使用清华镜像加速：**
-```powershell
-# 设置全局镜像
-.\venv\Scripts\pip.exe config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-
-# 或安装时指定
-.\venv\Scripts\pip.exe install -i https://pypi.tuna.tsinghua.edu.cn/simple package-name
-```
-
-### 常用命令
-
-```powershell
-# 导出当前依赖
-.\venv\Scripts\pip.exe freeze > requirements.txt
-
-# 从 requirements 安装（使用镜像）
-.\venv\Scripts\pip.exe install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
-
-# 安装单个包（使用镜像）
-.\venv\Scripts\pip.exe install scrapling -i https://pypi.tuna.tsinghua.edu.cn/simple
-
-# 升级包
-.\venv\Scripts\pip.exe install --upgrade package-name -i https://pypi.tuna.tsinghua.edu.cn/simple
-```
-
-## 数据库
-
-- 类型: SQLite (aiosqlite)
-- 路径: `backend/data/dewugojin.db`
-- 初始化: 启动时自动创建
-
-## Patchright (via Playwright CLI)
-
-```powershell
-# 安装浏览器
-.\venv\Scripts\playwright.exe install chromium
-
-# 安装依赖
-.\venv\Scripts\playwright.exe install-deps
-```
-
-## References
+## 参考文档
 
 | Document | Path | What it answers |
 |----------|------|-----------------|
-| API Reference | `docs/api-reference.md` | API endpoint contracts |
-| Data Model | `docs/data-model.md` | Database schemas |
-| Python Rules | `.claude/rules/python-coding-rules.md` | Coding standards |
-| Security Rules | `.claude/rules/security-rules.md` | Encryption, credentials |
-| Project Memory | `.claude/memory/PROJECT.md` | 项目禁止规则、必做规则 |
-| Session State | `production/session-state/active.md` | 当前任务状态和进度 |
+| Docs Index | `docs/README.md` | 当前文档阅读入口 |
+| Current Architecture | `docs/current-architecture-baseline.md` | 当前系统结构总览 |
+| Current Runtime Truth | `docs/current-runtime-truth.md` | 当前运行事实 / live surfaces |
+| Dev Guide | `docs/dev-guide.md` | 开发环境与启动方式 |
+| Runtime/Local Artifact Policy | `docs/runtime-local-artifact-policy.md` | `.codex/` / `.omx/` / `.omc/` / session artifacts 的边界 |
+| API Reference (stale) | `docs/archive/reference/api-reference.md` | 历史 API 参考，需晚于 current docs 阅读 |
+| Data Model (stale) | `docs/archive/reference/data-model.md` | 历史数据模型参考，需晚于 current docs 阅读 |

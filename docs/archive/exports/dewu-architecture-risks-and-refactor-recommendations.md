@@ -125,7 +125,7 @@
 **现象**
 
 - README 版本与代码版本不一致
-- `docs/data-model.md` 仍把 `Task` 当作单资源模型
+- `docs/archive/reference/data-model.md` 仍把 `Task` 当作单资源模型
 - API 文档未完全反映 `profiles`、`schedule_config`、任务合成接口等当前变化
 - 前端大量出现“生成客户端不够用，直接 Axios 补”的情况
 
@@ -134,8 +134,8 @@
 - `README.md`
 - `frontend/package.json`
 - `backend/main.py`
-- `docs/data-model.md`
-- `docs/api-reference.md`
+- `docs/archive/reference/data-model.md`
+- `docs/archive/reference/api-reference.md`
 - `frontend/src/hooks/useAccount.ts`
 - `frontend/src/pages/ScheduleConfig.tsx`
 

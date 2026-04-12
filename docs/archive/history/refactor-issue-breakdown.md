@@ -502,7 +502,7 @@ Settings 只保留真实能力，例如：
 清查：
 
 - `README.md`
-- `docs/system-architecture.md`
+- `docs/archive/reference/system-architecture.md`
 - 其他偏旧设计文档
 
 **验收标准**
