@@ -86,11 +86,11 @@ def test_doc_inventory_ledger_classifies_major_document_and_runtime_clusters() -
     assert "Inventory Ledger" in ledger or "台账" in ledger
     assert "docs/" in ledger
     assert "design/" in ledger
-    assert "dev-docs/" in ledger
+    assert "docs/archive/dev-docs/" in ledger
     assert "private-docs/" in ledger
-    assert "backend/docs/" in ledger
+    assert "docs/archive/backend-docs/" in ledger
     assert "docs/archive/exports/" in ledger
-    assert "production/" in ledger
+    assert "production/session-*" not in ledger
     assert ".codex/" in ledger
     assert ".omx/" in ledger
     assert ".claude/" not in ledger
@@ -159,10 +159,10 @@ def test_design_and_devdocs_archive_batch_moves_exploratory_docs_out_of_primary_
         "design/archive/Claude Code Hooks.md",
         "design/archive/sprint-intro.md",
         "design/archive/task-breakdown-intro.md",
-        "dev-docs/archive/dewu-login-automation.md",
-        "dev-docs/archive/login-dewu.md",
-        "dev-docs/archive/thinking-x.md",
-        "dev-docs/archive/req-04-02.md",
+        "docs/archive/dev-docs/dewu-login-automation.md",
+        "docs/archive/dev-docs/login-dewu.md",
+        "docs/archive/dev-docs/thinking-x.md",
+        "docs/archive/dev-docs/req-04-02.md",
     ]
 
     for archived_path in archived:
@@ -182,10 +182,10 @@ def test_design_and_devdocs_archive_batch_moves_exploratory_docs_out_of_primary_
 
 def test_backend_docs_archive_batch_moves_legacy_backend_design_docs_out_of_primary_path() -> None:
     archived = [
-        "backend/docs/archive/account-management-design.md",
-        "backend/docs/archive/api-contract-connect.md",
-        "backend/docs/archive/batch-health-check-design.md",
-        "backend/docs/archive/state-machine.md",
+        "docs/archive/backend-docs/account-management-design.md",
+        "docs/archive/backend-docs/api-contract-connect.md",
+        "docs/archive/backend-docs/batch-health-check-design.md",
+        "docs/archive/backend-docs/state-machine.md",
     ]
 
     for archived_path in archived:
@@ -225,7 +225,8 @@ def test_runtime_local_artifact_policy_documents_boundary_and_current_git_state(
     assert ".omx/" in policy
     assert ".claude/" not in policy
     assert "docs/archive/exports/" in policy
-    assert "production/session-logs" in policy or "production/session-state" in policy
+    assert "production/" in policy
+    assert "不再保留" in policy or "已不再保留" in policy
     assert ".gitignore" in policy
     assert "runtime" in policy or "本地" in policy or "运行时" in policy
     assert "committed" in policy or "已提交" in policy

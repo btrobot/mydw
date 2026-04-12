@@ -63,11 +63,11 @@
 当前第三批已归档的 design / dev-docs 历史探索材料位于：
 
 - `design/archive/`
-- `dev-docs/archive/`
+- `docs/archive/dev-docs/`
 
 当前第四批已归档的 backend 局部历史设计文档位于：
 
-- `backend/docs/archive/`
+- `docs/archive/backend-docs/`
 
 当前第五批已归档的 design 栈说明 / 登录架构旧稿位于：
 
@@ -93,7 +93,7 @@
 - `.codex/` — Codex 本地 prompts / skills / sessions / state
 - `.omx/` — OMX runtime state、plans、logs、notepad、session artifacts
 - `.omc/` — OMC/Claude runtime state、sessions、mission memory
-- `production/session-*` — 运行会话产物
+- 本地 session / runtime 输出目录（仓库中已不再保留 `production/`）
 
 它们可能对 agent/runtime 运维有用，但不属于产品/架构主阅读路径。
 

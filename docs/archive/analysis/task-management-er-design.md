@@ -493,5 +493,5 @@ ALTER TABLE composition_jobs ADD CONSTRAINT chk_composition_progress
 
 ### 参考文档
 - [任务管理业务流程分析](./task-management-analysis.md)
-- [数据模型](./data-model.md)
-- [API 参考](./api-reference.md)
+- [数据模型](../reference/data-model.md)
+- [API 参考](../reference/api-reference.md)

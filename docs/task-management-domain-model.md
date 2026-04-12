@@ -415,6 +415,6 @@ Task ──1:N──► PublishLog
 ### 参考文档
 
 - [扣子接入方式](./coze-integration.md)
-- [任务管理业务流程分析](./task-management-analysis.md)
-- [任务管理 ER 设计](./task-management-er-design.md)
-- [任务管理操作清单](./task-management-operations.md)
+- [任务管理业务流程分析](./archive/analysis/task-management-analysis.md)
+- [任务管理 ER 设计](./archive/analysis/task-management-er-design.md)
+- [任务管理操作清单](./archive/analysis/task-management-operations.md)

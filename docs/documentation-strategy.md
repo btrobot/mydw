@@ -53,8 +53,8 @@
 
 ### 3. 平行文档树
 
-- `design/`、`dev-docs/`、`backend/docs/` 可以保留，但默认按 **working / historical** 理解
-- 其中历史内容应逐步向 `archive/` 约定收口
+- `design/` 可以保留，但默认按 **working / historical** 理解
+- 原 `dev-docs/` 与 `backend/docs/` 已进一步并入 `docs/archive/` 子树
 - archive 命名应保持单一，例如 `design/archive/`，不要同时存在 `archive/` 与 `archived/`
 
 ## 多 agent / runtime 边界
@@ -73,7 +73,7 @@
 - `.omc/`
 - `.omx/`
 - `.codex/` 下 history / sqlite / sessions / tmp / shell snapshots
-- `production/session-*`
+- 本地 session / runtime 输出目录
 - 本地 mirror 路径（如 `D:/`）
 
 这些路径可以帮助本地工作流运行，但不应和主文档入口竞争。

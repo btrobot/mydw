@@ -10,9 +10,7 @@
 - `.codex/`
 - `.omx/`
 - `.omc/`
-- `production/session-logs/`
-- `production/session-state/`
-- `production/task-breakdown/`
+- 本地 session / runtime 输出目录（仓库中不再保留 `production/`）
 
 它们可能包含：
 
@@ -31,7 +29,6 @@
 - `.codex/` 中既有 prompts / skills / agents，也有 logs、sqlite、history、sessions、snapshots
 - `.omx/` 中既有 plans/context，也有 runtime state、logs、notepad、metrics
 - `.omc/` 中主要是 Claude/OMC 会话与 mission 运行状态（session、state、project-memory 等）
-- `production/session-*` 中有会话模板与历史产物
 
 这意味着：
 
@@ -43,7 +40,7 @@
 
 当前 `.gitignore` 已经部分表达了这种边界：
 
-- `production/session-state/*.md`、`production/session-logs/*.jsonl` 默认忽略
+- `production/` 目录已不再保留在仓库中；如本地运行仍需产生日志/会话输出，应视作本地 runtime 输出并被 Git 忽略
 - `.omx/` 默认忽略
 - `.omc/` 默认忽略（当前若有已跟踪文件，需单独清理 tracked exceptions）
 - `.codex/*` 默认忽略，但对 `agents/`、`skills/`、`prompts/` 做了例外放行
@@ -79,13 +76,10 @@
 - 这些内容已经从根目录移入 `docs/archive/exports/`
 - 可以作为补充资料，但不应自动被当作 current authoritative docs
 
-### `production/session-*`
-- 运行会话和拆解产物
-- 更接近 runtime artifacts than product docs
-
-### `production/task-breakdown/`
-- 更像历史示例/产物，而不是当前 runtime truth
-- 更适合归档到 `docs/archive/examples/` 一类的非主路径位置
+### Local runtime output directories
+- 仓库中已不再保留 `production/`
+- 如本地工作流仍需要会话日志、状态快照或类似输出，应把它们视为 **local runtime output**，不属于 repo surface
+- 旧的 `production/session-*` 语义现在仅作为历史上下文存在于 archive 文档中
 
 ### `D:` mirror paths
 - 当前它们更像由本地 `MATERIAL_BASE_PATH` 默认值派生出来的本地目录镜像
@@ -117,6 +111,6 @@
 
 在当前这轮目录/文档整理中：
 
-- 不把 `.codex/`、`.omx/`、`.omc/`、`production/session-*` 当作项目主文档簇
+- 不把 `.codex/`、`.omx/`、`.omc/`、本地 runtime 输出目录当作项目主文档簇
 - 先在导航和 inventory 中标明它们的 runtime/local 属性
 - 是否进一步移动、瘦身、ignore 化，放到后续专门的 policy/cleanup PR 决定

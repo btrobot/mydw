@@ -43,21 +43,15 @@ def test_gitignore_covers_transient_runtime_and_test_output_paths() -> None:
         "!.codex/prompts/",
         "!.codex/prompts/**",
         "/D:/",
+        "production/",
         "frontend/logs/",
         "frontend/test-results/",
-        "production/session-state/*.md",
-        "!production/session-state/*.md.template",
-        "production/session-logs/*.jsonl",
-        "production/session-logs/*.md",
-        "!production/session-logs/*.md.template",
     ]:
         assert expected in gitignore, f"missing ignore rule: {expected}"
 
 
-def test_session_logs_are_template_only() -> None:
-    assert (REPO_ROOT / "production/session-logs/.gitkeep").exists()
-    assert (REPO_ROOT / "production/session-logs/session-log.md.template").exists()
-    assert not (REPO_ROOT / "production/session-logs/session-log.md").exists()
+def test_production_directory_is_removed_from_repo_surface() -> None:
+    assert not (REPO_ROOT / "production").exists()
 
 
 def test_frontend_last_run_artifact_is_not_kept_in_repo() -> None:

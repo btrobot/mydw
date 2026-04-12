@@ -27,7 +27,7 @@
 - `.omc/`
 - `.omx/`
 - `.codex/` 下除 `agents/`, `prompts/`, `skills/` 外的历史/状态目录
-- `production/session-*`
+- 本地 session / runtime 输出目录（仓库不保留 `production/`）
 
 ## 什么时候直接做，什么时候多 agent
 

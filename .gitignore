@@ -60,12 +60,8 @@ release/
 # Local data mirror paths
 /D:/
 
-# Session state templates
-production/session-state/*.md
-!production/session-state/*.md.template
-production/session-logs/*.jsonl
-production/session-logs/*.md
-!production/session-logs/*.md.template
+# Local runtime output
+production/
 
 backend/.mypy_cache/
 .pytest_cache/

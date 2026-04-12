@@ -291,9 +291,9 @@ Task.status = uploading → uploaded/failed
 ## 附录
 
 ### 参考文档
-- [系统架构](./system-architecture.md)
-- [数据模型](./data-model.md)
-- [API 参考](./api-reference.md)
+- [系统架构](../reference/system-architecture.md)
+- [数据模型](../reference/data-model.md)
+- [API 参考](../reference/api-reference.md)
 
 ### 相关代码
 - 任务 API: `backend/api/task.py`

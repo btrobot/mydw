@@ -80,7 +80,7 @@ npm run dev
 - 文档导航首页：`docs/README.md`
 - 当前架构总览：`docs/current-architecture-baseline.md`
 - 当前运行事实：`docs/current-runtime-truth.md`
-- runtime/local 资产边界：`docs/runtime-local-artifact-policy.md`（`.codex/`、`.omx/`、`.omc/`、`production/session-*` 不属于主文档入口）
+- runtime/local 资产边界：`docs/runtime-local-artifact-policy.md`（`.codex/`、`.omx/`、`.omc/`、本地 runtime 输出目录不属于主文档入口）
 - 旧的详细架构说明、API 参考、数据模型字典在 Epic 7 / PR2 后会被视为 **stale / archival reference**，位于 `docs/archive/reference/` 下；阅读时请先以当前入口文档为准。
 
 ## 数据安全

@@ -64,16 +64,16 @@ This repository currently centers on a desktop publishing tool for Dewu built as
 - `backend/` — FastAPI service, SQLAlchemy models, migrations, browser automation, and domain services
 - `frontend/` — React UI, Electron runtime, generated API client, frontend scripts, and Playwright E2E assets
 - `docs/` — current architecture/runtime truth, operational guides, refactor plans, ADRs, and generation/governance docs
-- `design/`, `dev-docs/`, `private-docs/` — design notes, exploratory docs, and historical/reference material
+- `design/`, `docs/archive/` — design notes plus archived historical/reference/private docs
 - `.codex/`, `.omx/` — local agent/runtime state, prompts, skills, and orchestration assets
-- `data/`, `logs/`, `production/`, `plans/` — runtime data, logs, production/session artifacts, and planning outputs
+- `data/`, `logs/`, `plans/` — runtime data, logs, and planning outputs
 
 ### Main technologies in use
 - **Backend:** Python, FastAPI, Pydantic, SQLAlchemy, aiosqlite, APScheduler, Loguru, Playwright/Patchright-style browser automation helpers
 - **Frontend:** React 18, TypeScript, Vite, TanStack React Query, Ant Design / Pro Components, Axios
 - **Desktop/runtime:** Electron, TypeScript-compiled Electron main/preload layers, electron-builder
 - **API generation / governance:** `@hey-api/openapi-ts`, local OpenAPI export scripts, tracked generated frontend client artifacts
-- **Testing / verification:** Pytest for backend/docs/runtime contracts, TypeScript typecheck, Playwright for E2E, targeted generated-artifact/version check scripts
+- **Testing / verification:** Pytest for backend/docs-runtime contracts, TypeScript typecheck, Playwright for E2E, targeted generated-artifact/version check scripts
 
 ### Core modules and responsibilities
 - `backend/main.py` — FastAPI app entrypoint, router wiring, startup/shutdown hooks, root/health metadata
