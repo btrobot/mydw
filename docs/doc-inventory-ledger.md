@@ -25,7 +25,7 @@
 | `private-docs/` | 私有/内部分析与评审材料 | `historical` | `archive` | 已移入 `docs/archive/private/`，不再占据根层主路径 |
 | `backend/docs/` | backend 局部设计/状态文档 | `historical` | `archive` | 首批旧 backend 设计/审批稿已移入 `backend/docs/archive/`；若后续新增 docs，应明确其是否仍属于 active engineering docs |
 | `plans/` | 根层零散计划文档 | `historical` | `archive` | 首个根层计划文档已移入 `docs/archive/planning/`，其余同类文件应继续离开根目录 |
-| `.codex-export/` | 导出型项目说明/快照/分析报告 | `runtime` | `keep` with explicit boundary or move out of main browse path | 看起来像文档，但本质是导出产物 |
+| `docs/archive/exports/` | 导出型项目说明/快照/分析报告 | `historical` or `reference-export` | `archive` | 原 `.codex-export/` 已迁入 docs archive，更符合其参考快照属性 |
 | `production/session-*` | 生产/会话状态与拆解产物 | `runtime` | `keep` with explicit boundary | 不属于项目主文档入口 |
 | `production/task-breakdown/` | task breakdown 示例/历史产物 | `historical` or `example` | `archive` | 已开始移到 `docs/archive/examples/`，避免继续停留在 runtime-like 根路径下 |
 | `.codex/` | Codex prompts, skills, sessions, logs, local state | `runtime` | `keep` or revisit policy later | agent/runtime 资产，不是产品文档 |
@@ -84,7 +84,6 @@ Current location:
 ### Runtime-boundary candidates
 - `.codex/`
 - `.omx/`
-- `.codex-export/`
 - `production/session-*`
 
 ### Third archive batch completed in PR-6
@@ -138,6 +137,21 @@ Current location:
 
 - `docs/archive/private/`
 
+### Eighth archive batch completed in current cleanup execution
+- `.codex-export/dewu-architecture-and-dataflow.md`
+- `.codex-export/dewu-architecture-risks-and-refactor-recommendations.md`
+- `.codex-export/dewu-database-models-and-field-responsibilities.md`
+- `.codex-export/dewu-frontend-backend-interface-mapping.md`
+- `.codex-export/dewu-frontend-backend-page-api-mapping.md`
+- `.codex-export/dewu-page-api-mapping.md`
+- `.codex-export/dewu-project-overview.md`
+- `.codex-export/dewu-task-end-to-end-sequence.md`
+- `.codex-export/dewu-task-lifecycle-sequence.md`
+
+Current location:
+
+- `docs/archive/exports/`
+
 ## Follow-up actions supported by this ledger
 
 1. Create a future `docs/archive/` destination and migrate high-noise historical docs there.
@@ -145,7 +159,7 @@ Current location:
    - `docs/` subtrees,
    - `internal/`,
    - or archive-only areas.
-3. Write one explicit runtime/local artifact policy so `.codex/`, `.omx/`, and export/session paths stop competing with human-authored docs.
+3. Write one explicit runtime/local artifact policy so `.codex/`, `.omx/`, and remaining session paths stop competing with human-authored docs.
 4. Only delete documents after they are:
    - classified,
    - confirmed unreferenced or fully superseded,

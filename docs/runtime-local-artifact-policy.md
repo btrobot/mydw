@@ -9,7 +9,6 @@
 
 - `.codex/`
 - `.omx/`
-- `.codex-export/`
 - `production/session-logs/`
 - `production/session-state/`
 - `production/task-breakdown/`
@@ -30,7 +29,6 @@
 
 - `.codex/` 中既有 prompts / skills / agents，也有 logs、sqlite、history、sessions、snapshots
 - `.omx/` 中既有 plans/context，也有 runtime state、logs、notepad、metrics
-- `.codex-export/` 中是导出型项目说明/分析快照
 - `production/session-*` 中有会话模板与历史产物
 
 这意味着：
@@ -68,8 +66,9 @@
 - `plans/`、`context/` 可能帮助理解历史执行路径
 - `state/`、`logs/`、`notepad.md`、`metrics.json` 不应被当作当前产品文档真相
 
-### `.codex-export/`
+### `docs/archive/exports/`
 - 导出型参考材料 / snapshots
+- 这些内容已经从根目录移入 `docs/archive/exports/`
 - 可以作为补充资料，但不应自动被当作 current authoritative docs
 
 ### `production/session-*`
@@ -110,6 +109,6 @@
 
 在当前这轮目录/文档整理中：
 
-- 不把 `.codex/`、`.omx/`、`.codex-export/`、`production/session-*` 当作项目主文档簇
+- 不把 `.codex/`、`.omx/`、`production/session-*` 当作项目主文档簇
 - 先在导航和 inventory 中标明它们的 runtime/local 属性
 - 是否进一步移动、瘦身、ignore 化，放到后续专门的 policy/cleanup PR 决定

@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1775186689552,
-  "projectRoot": "E:\\ais\\aa\\dewugojin",
+  "lastScanned": 1776005095828,
+  "projectRoot": "/home/dev/dw",
   "techStack": {
     "languages": [],
     "frameworks": [],
@@ -27,131 +27,147 @@
     "mainDirectories": [
       "docs"
     ],
-    "gitBranches": null
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
   },
   "customNotes": [],
   "directoryMap": {
+    "D:": {
+      "path": "D:",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1776005095820,
+      "keyFiles": []
+    },
     "backend": {
       "path": "backend",
       "purpose": null,
-      "fileCount": 24,
-      "lastAccessed": 1775186689469,
+      "fileCount": 26,
+      "lastAccessed": 1776005095821,
       "keyFiles": [
         "CLAUDE.md",
+        "backend.spec",
         "explore_dewu_login.py",
         "explore_error.png",
-        "explore_login_page.png",
-        "login_page_raw.png"
+        "explore_login_page.png"
       ]
+    },
+    "data": {
+      "path": "data",
+      "purpose": "Data files",
+      "fileCount": 0,
+      "lastAccessed": 1776005095823,
+      "keyFiles": []
     },
     "design": {
       "path": "design",
       "purpose": null,
-      "fileCount": 7,
-      "lastAccessed": 1775186689470,
+      "fileCount": 1,
+      "lastAccessed": 1776005095823,
       "keyFiles": [
-        "backend-stack.md",
-        "Claude Code Hooks.md",
-        "frontend-stack.md",
-        "login-arch.md",
-        "sprint-intro.md"
+        "用户界面.png"
       ]
     },
     "dev-docs": {
       "path": "dev-docs",
       "purpose": null,
-      "fileCount": 2,
-      "lastAccessed": 1775186689471,
-      "keyFiles": [
-        "dewu-login-automation.md",
-        "login-dewu.md"
-      ]
+      "fileCount": 0,
+      "lastAccessed": 1776005095824,
+      "keyFiles": []
     },
     "docs": {
       "path": "docs",
       "purpose": "Documentation",
-      "fileCount": 2,
-      "lastAccessed": 1775186689472,
+      "fileCount": 57,
+      "lastAccessed": 1776005095824,
       "keyFiles": [
-        "architecture.md",
-        "task-breakdown-cli-tool.md"
+        "README.md",
+        "ai-doc-system-spec.md",
+        "api-reference.md",
+        "backend-launcher-contract.json",
+        "backup-scope.md"
       ]
     },
     "frontend": {
       "path": "frontend",
       "purpose": null,
-      "fileCount": 7,
-      "lastAccessed": 1775186689504,
+      "fileCount": 10,
+      "lastAccessed": 1776005095824,
       "keyFiles": [
+        "CLAUDE.md",
+        "bun.lock",
         "index.html",
         "openapi.config.ts",
-        "package-lock.json",
-        "package.json",
-        "tsconfig.json"
+        "openapi.local.json"
+      ]
+    },
+    "logs": {
+      "path": "logs",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1776005095825,
+      "keyFiles": [
+        "app.log"
       ]
     },
     "production": {
       "path": "production",
       "purpose": null,
       "fileCount": 0,
-      "lastAccessed": 1775186689507,
+      "lastAccessed": 1776005095825,
       "keyFiles": []
     },
-    "backend\\api": {
-      "path": "backend\\api",
+    "backend/api": {
+      "path": "backend/api",
       "purpose": "API routes",
-      "fileCount": 7,
-      "lastAccessed": 1775186689508,
+      "fileCount": 14,
+      "lastAccessed": 1776005095825,
       "keyFiles": [
+        "__init__.py",
         "account.py",
-        "ai.py",
-        "material.py"
+        "ai.py"
       ]
     },
-    "backend\\data": {
-      "path": "backend\\data",
+    "backend/data": {
+      "path": "backend/data",
       "purpose": "Data files",
       "fileCount": 1,
-      "lastAccessed": 1775186689508,
+      "lastAccessed": 1776005095826,
       "keyFiles": [
         "dewugojin.db"
       ]
     },
-    "frontend\\dist": {
-      "path": "frontend\\dist",
+    "backend/docs": {
+      "path": "backend/docs",
+      "purpose": "Documentation",
+      "fileCount": 0,
+      "lastAccessed": 1776005095826,
+      "keyFiles": []
+    },
+    "frontend/data": {
+      "path": "frontend/data",
+      "purpose": "Data files",
+      "fileCount": 0,
+      "lastAccessed": 1776005095826,
+      "keyFiles": []
+    },
+    "frontend/dist": {
+      "path": "frontend/dist",
       "purpose": "Distribution/build output",
       "fileCount": 1,
-      "lastAccessed": 1775186689510,
+      "lastAccessed": 1776005095827,
       "keyFiles": [
         "index.html"
       ]
     },
-    "frontend\\node_modules": {
-      "path": "frontend\\node_modules",
+    "frontend/node_modules": {
+      "path": "frontend/node_modules",
       "purpose": "Dependencies",
       "fileCount": 1,
-      "lastAccessed": 1775186689511,
+      "lastAccessed": 1776005095828,
       "keyFiles": []
-    },
-    "frontend\\scripts": {
-      "path": "frontend\\scripts",
-      "purpose": "Build/utility scripts",
-      "fileCount": 1,
-      "lastAccessed": 1775186689511,
-      "keyFiles": [
-        "build.bat"
-      ]
-    },
-    "frontend\\src": {
-      "path": "frontend\\src",
-      "purpose": "Source code",
-      "fileCount": 4,
-      "lastAccessed": 1775186689511,
-      "keyFiles": [
-        "App.tsx",
-        "index.css",
-        "main.tsx"
-      ]
     }
   },
   "hotPaths": [

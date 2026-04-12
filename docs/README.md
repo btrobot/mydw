@@ -82,13 +82,16 @@
 
 - `docs/archive/private/`
 
+当前第八批已归档的导出型参考快照位于：
+
+- `docs/archive/exports/`
+
 ## Runtime / local artifact boundary
 
 下面这些路径**不是项目主文档入口**，不要把它们当作“先读什么”的答案：
 
 - `.codex/` — Codex 本地 prompts / skills / sessions / state
 - `.omx/` — OMX runtime state、plans、logs、notepad、session artifacts
-- `.codex-export/` — 导出型参考材料 / snapshots
 - `production/session-*` — 运行会话产物
 
 它们可能对 agent/runtime 运维有用，但不属于产品/架构主阅读路径。

@@ -73,6 +73,7 @@ def test_docs_readme_exists_and_separates_current_docs_from_runtime_artifacts() 
     assert "docs/epic-7-doc-authority-matrix.md" in docs_index
     assert "docs/doc-inventory-ledger.md" in docs_index
     assert "docs/runtime-local-artifact-policy.md" in docs_index
+    assert "docs/archive/exports/" in docs_index
     assert ".codex/" in docs_index
     assert ".omx/" in docs_index
     assert ".claude/" not in docs_index
@@ -88,7 +89,7 @@ def test_doc_inventory_ledger_classifies_major_document_and_runtime_clusters() -
     assert "dev-docs/" in ledger
     assert "private-docs/" in ledger
     assert "backend/docs/" in ledger
-    assert ".codex-export/" in ledger
+    assert "docs/archive/exports/" in ledger
     assert "production/" in ledger
     assert ".codex/" in ledger
     assert ".omx/" in ledger
@@ -223,7 +224,7 @@ def test_runtime_local_artifact_policy_documents_boundary_and_current_git_state(
     assert ".codex/" in policy
     assert ".omx/" in policy
     assert ".claude/" not in policy
-    assert ".codex-export/" in policy
+    assert "docs/archive/exports/" in policy
     assert "production/session-logs" in policy or "production/session-state" in policy
     assert ".gitignore" in policy
     assert "runtime" in policy or "本地" in policy or "运行时" in policy
@@ -266,3 +267,22 @@ def test_private_docs_move_into_archive_and_d_mirror_dirs_are_reclassified_as_lo
 
     runtime_policy = _read_repo_file("docs/runtime-local-artifact-policy.md")
     assert "D:" in runtime_policy or "mirror" in runtime_policy
+
+
+def test_export_snapshots_move_under_docs_archive_exports() -> None:
+    archived = [
+        "docs/archive/exports/dewu-architecture-and-dataflow.md",
+        "docs/archive/exports/dewu-architecture-risks-and-refactor-recommendations.md",
+        "docs/archive/exports/dewu-database-models-and-field-responsibilities.md",
+        "docs/archive/exports/dewu-frontend-backend-interface-mapping.md",
+        "docs/archive/exports/dewu-frontend-backend-page-api-mapping.md",
+        "docs/archive/exports/dewu-page-api-mapping.md",
+        "docs/archive/exports/dewu-project-overview.md",
+        "docs/archive/exports/dewu-task-end-to-end-sequence.md",
+        "docs/archive/exports/dewu-task-lifecycle-sequence.md",
+    ]
+
+    for archived_path in archived:
+        assert (REPO_ROOT / archived_path).exists(), f"missing archived export: {archived_path}"
+
+    assert not (REPO_ROOT / ".codex-export").exists(), ".codex-export should no longer remain at repo root"

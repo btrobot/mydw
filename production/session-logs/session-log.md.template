@@ -1,0 +1,60 @@
+# Session Log Template
+
+<!-- Template only. Runtime session logs should not be committed. -->
+
+## Archived Session State: {timestamp}
+# Session State
+
+<!-- Auto-generated. Do not commit sensitive information. -->
+
+<!-- STATUS -->
+Epic:
+Feature:
+Task:
+Owner:
+<!-- /STATUS -->
+
+## Current Context
+
+**Session Started**: {timestamp}
+**Last Updated**: {timestamp}
+
+## Active Task
+
+**Component**: {component-name}
+**Phase**: {current-phase}
+**Status**: {in-progress|completed|blocked}
+
+## Progress
+
+- [ ] Task item 1
+- [ ] Task item 2
+- [ ] Task item 3
+
+## Key Decisions
+
+| Decision | Rationale | Date |
+|----------|-----------|------|
+| - | - | - |
+
+## Files Being Worked On
+
+- None yet
+
+## Open Questions
+
+- None
+
+## Blocker Notes
+
+- None
+
+## Agent Invocations
+
+| Agent | Timestamp | Status | Result |
+|-------|-----------|--------|--------|
+| (No agent invocations yet) | - | - | - |
+
+## Session Log
+
+- (Session created)

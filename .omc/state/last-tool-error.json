@@ -1,7 +1,0 @@
-{
-  "tool_name": "Read",
-  "tool_input_preview": "{\"file_path\":\"E:\\\\ais\\\\aa\\\\dewugojin\\\\frontend\\\\electron\\\\main.js\"}",
-  "error": "File does not exist. Note: your current working directory is E:\\ais\\aa\\dewugojin. Did you mean main.ts?",
-  "timestamp": "2026-04-03T03:31:03.990Z",
-  "retry_count": 1
-}
