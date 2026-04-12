@@ -20,4 +20,4 @@
 3. **找当前代码真实行为** → 看 `current-runtime-truth.md`
 4. **找历史长文架构说明** → `system-architecture.md` 只作参考，不是默认 truth source
 5. `runtime-truth.md` 如果存在，只允许做入口，不允许复制出第二份 competing truth
-6. `.codex/`、`.omx/`、`.claude/` 等 runtime/local 路径不属于项目主文档入口
+6. `.codex/`、`.omx/` 等 runtime/local 路径不属于项目主文档入口

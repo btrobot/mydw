@@ -18,7 +18,7 @@ def test_gitignore_covers_transient_runtime_and_test_output_paths() -> None:
 
     for expected in [
         ".pytest_cache/",
-        ".claude/settings.local.json",
+        ".claude/",
         "frontend/logs/",
         "frontend/test-results/",
         "production/session-logs/*.md",
@@ -39,3 +39,23 @@ def test_frontend_last_run_artifact_is_not_kept_in_repo() -> None:
 
 def test_claude_local_settings_are_not_kept_in_repo() -> None:
     assert not (REPO_ROOT / ".claude/settings.local.json").exists()
+
+
+def test_claude_directory_is_removed_from_repo_surface() -> None:
+    assert not (REPO_ROOT / ".claude").exists()
+
+
+def test_current_docs_no_longer_rely_on_claude_paths() -> None:
+    for relative_path in [
+        "README.md",
+        "AGENTS.md",
+        "docs/README.md",
+        "docs/runtime-local-artifact-policy.md",
+        "docs/doc-inventory-ledger.md",
+        "docs/epic-7-doc-authority-matrix.md",
+        "docs/dev-guide.md",
+        "docs/documentation-strategy.md",
+        "docs/doc-checklist.md",
+        "docs/multi-agent-guide.md",
+    ]:
+        assert ".claude/" not in _read(relative_path), f"active doc should not reference .claude/: {relative_path}"

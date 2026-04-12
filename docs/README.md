@@ -88,7 +88,6 @@
 
 - `.codex/` — Codex 本地 prompts / skills / sessions / state
 - `.omx/` — OMX runtime state、plans、logs、notepad、session artifacts
-- `.claude/` — Claude Code 本地规则、hooks、memory、skills
 - `.codex-export/` — 导出型参考材料 / snapshots
 - `production/session-*` — 运行会话产物
 

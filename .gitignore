@@ -69,6 +69,6 @@ backend/.mypy_cache/
 !.codex/prompts/
 !.codex/prompts/**
 
-.claude/settings.local.json
+.claude/
 frontend/logs/
 frontend/test-results/

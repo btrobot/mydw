@@ -26,8 +26,8 @@
 
 ```
 [ ] CLAUDE.md References 表中的每个路径指向的文件都存在
-[ ] 每个 .claude/agents/*.md 有 ## Key References 节
-[ ] Agent Key References 中的路径都存在
+[ ] 当前 `AGENTS.md` / `.codex/skills/` / `.codex/prompts/` 所引用的关键路径都存在
+[ ] OMX/Codex 当前工作流入口没有悬空引用
 ```
 
 ### 1.3 ADR 覆盖度
@@ -213,7 +213,7 @@ if abs(code_count - doc_count) > 2:
 
 ## 6. 与 Agent 框架集成
 
-在 `.claude/agents/qa-lead.md` 的职责中增加：
+在当前 OMX/Codex 的 QA / verification 工作流中增加：
 
 ```markdown
 ## 文档质量检查
@@ -221,4 +221,4 @@ if abs(code_count - doc_count) > 2:
 - 发现漂移时创建修复任务
 ```
 
-在 `/release-checklist` skill 中增加文档检查步骤。
+在相关 release / review workflow 中增加文档检查步骤。

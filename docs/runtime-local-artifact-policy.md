@@ -9,7 +9,6 @@
 
 - `.codex/`
 - `.omx/`
-- `.claude/`
 - `.codex-export/`
 - `production/session-logs/`
 - `production/session-state/`
@@ -31,7 +30,6 @@
 
 - `.codex/` 中既有 prompts / skills / agents，也有 logs、sqlite、history、sessions、snapshots
 - `.omx/` 中既有 plans/context，也有 runtime state、logs、notepad、metrics
-- `.claude/` 中既有 rules/skills/hooks，也有本地 memory/settings
 - `.codex-export/` 中是导出型项目说明/分析快照
 - `production/session-*` 中有会话模板与历史产物
 
@@ -70,10 +68,6 @@
 - `plans/`、`context/` 可能帮助理解历史执行路径
 - `state/`、`logs/`、`notepad.md`、`metrics.json` 不应被当作当前产品文档真相
 
-### `.claude/`
-- 主要是 Claude Code 本地规则/skills/hooks 资产
-- 对 agent 运行有帮助，但不是产品文档主入口
-
 ### `.codex-export/`
 - 导出型参考材料 / snapshots
 - 可以作为补充资料，但不应自动被当作 current authoritative docs
@@ -90,6 +84,12 @@
 - 当前它们更像由本地 `MATERIAL_BASE_PATH` 默认值派生出来的本地目录镜像
 - 在现有配置仍默认指向 `D:/系统/桌面/得物剪辑/待上传数据` 的前提下，不应把“目录存在”本身当成仓库结构真相
 - 当前治理目标是：**不让这些路径被 Git 跟踪，也不让它们出现在项目主文档入口中**
+
+## Claude Code retirement note
+
+仓库当前已迁移到 **OMX + Codex surfaces**（`AGENTS.md`, `.codex/skills/`, `.codex/prompts/`, `.omx/plans/` 等），不再把旧的 Claude Code 工作区作为活跃工作流目录。
+
+如在历史文档中仍看到 Claude Code 或旧工作区引用，应按**历史上下文**理解，而不是当前执行面。
 
 ## Future policy direction / 后续策略
 
@@ -110,6 +110,6 @@
 
 在当前这轮目录/文档整理中：
 
-- 不把 `.codex/`、`.omx/`、`.claude/`、`.codex-export/`、`production/session-*` 当作项目主文档簇
+- 不把 `.codex/`、`.omx/`、`.codex-export/`、`production/session-*` 当作项目主文档簇
 - 先在导航和 inventory 中标明它们的 runtime/local 属性
 - 是否进一步移动、瘦身、ignore 化，放到后续专门的 policy/cleanup PR 决定

@@ -186,7 +186,7 @@ Backend `.env` file (in `backend/` directory):
 | TypeScript | Strict mode, no `any`, functional components, Zustand for state |
 | Security | AES-256-GCM for credentials, no secrets in code, Pydantic validation |
 
-See `.claude/rules/` for detailed coding standards.
+See `AGENTS.md`, `backend/CLAUDE.md`, and the current OMX/Codex workflow surfaces for detailed coding and collaboration conventions.
 
 ---
 
@@ -197,4 +197,4 @@ See `.claude/rules/` for detailed coding standards.
 | API Reference | `docs/api-reference.md` | All endpoints |
 | Data Model | `docs/data-model.md` | Database schemas |
 | System Architecture | `docs/system-architecture.md` | Component diagram |
-| Coding Rules | `.claude/rules/` | Language-specific standards |
+| Coding & Workflow Conventions | `AGENTS.md`, `backend/CLAUDE.md` | Current repo-wide coding and collaboration expectations |

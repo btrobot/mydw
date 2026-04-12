@@ -75,7 +75,7 @@ def test_docs_readme_exists_and_separates_current_docs_from_runtime_artifacts() 
     assert "docs/runtime-local-artifact-policy.md" in docs_index
     assert ".codex/" in docs_index
     assert ".omx/" in docs_index
-    assert ".claude/" in docs_index
+    assert ".claude/" not in docs_index
     assert "runtime" in docs_index or "本地" in docs_index or "运行时" in docs_index
 
 
@@ -92,7 +92,7 @@ def test_doc_inventory_ledger_classifies_major_document_and_runtime_clusters() -
     assert "production/" in ledger
     assert ".codex/" in ledger
     assert ".omx/" in ledger
-    assert ".claude/" in ledger
+    assert ".claude/" not in ledger
     assert "current" in ledger
     assert "working" in ledger
     assert "historical" in ledger or "archival" in ledger
@@ -222,7 +222,7 @@ def test_runtime_local_artifact_policy_documents_boundary_and_current_git_state(
 
     assert ".codex/" in policy
     assert ".omx/" in policy
-    assert ".claude/" in policy
+    assert ".claude/" not in policy
     assert ".codex-export/" in policy
     assert "production/session-logs" in policy or "production/session-state" in policy
     assert ".gitignore" in policy

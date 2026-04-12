@@ -30,7 +30,6 @@
 | `production/task-breakdown/` | task breakdown 示例/历史产物 | `historical` or `example` | `archive` | 已开始移到 `docs/archive/examples/`，避免继续停留在 runtime-like 根路径下 |
 | `.codex/` | Codex prompts, skills, sessions, logs, local state | `runtime` | `keep` or revisit policy later | agent/runtime 资产，不是产品文档 |
 | `.omx/` | OMX state, plans, logs, context snapshots, notepad | `runtime` | `keep` or revisit policy later | orchestration/runtime 资产 |
-| `.claude/` | Claude Code rules, hooks, memory, skills | `runtime` | `keep` or revisit policy later | 本地 agent/runtime 资产 |
 
 Runtime/local boundary policy:
 
@@ -85,7 +84,6 @@ Current location:
 ### Runtime-boundary candidates
 - `.codex/`
 - `.omx/`
-- `.claude/`
 - `.codex-export/`
 - `production/session-*`
 
@@ -147,7 +145,7 @@ Current location:
    - `docs/` subtrees,
    - `internal/`,
    - or archive-only areas.
-3. Write one explicit runtime/local artifact policy so `.codex/`, `.omx/`, `.claude/`, and export/session paths stop competing with human-authored docs.
+3. Write one explicit runtime/local artifact policy so `.codex/`, `.omx/`, and export/session paths stop competing with human-authored docs.
 4. Only delete documents after they are:
    - classified,
    - confirmed unreferenced or fully superseded,

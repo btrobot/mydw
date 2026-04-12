@@ -65,7 +65,7 @@ This repository currently centers on a desktop publishing tool for Dewu built as
 - `frontend/` — React UI, Electron runtime, generated API client, frontend scripts, and Playwright E2E assets
 - `docs/` — current architecture/runtime truth, operational guides, refactor plans, ADRs, and generation/governance docs
 - `design/`, `dev-docs/`, `private-docs/` — design notes, exploratory docs, and historical/reference material
-- `.codex/`, `.omx/`, `.claude/` — local agent/runtime state, prompts, skills, and orchestration assets
+- `.codex/`, `.omx/` — local agent/runtime state, prompts, skills, and orchestration assets
 - `data/`, `logs/`, `production/`, `plans/` — runtime data, logs, production/session artifacts, and planning outputs
 
 ### Main technologies in use

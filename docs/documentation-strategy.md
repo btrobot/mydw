@@ -24,8 +24,8 @@
 | **任务分解** | `docs/task-breakdown-*.md` | 中 | 有分解但缺 phase2 |
 | **ADR** | `docs/adr/ADR-007,008,015` | 中 | 只有 3 条，编号跳跃（7→8→15），缺少早期决策记录 |
 | **原始需求** | `docs/init-req.md`, `docs/chat-req.md` | 参考 | 原始输入，已被 requirements-spec 整合 |
-| **Agent 框架** | `.claude/docs/*.md` | 好 | DSL 规范、使用指南，面向 Agent 开发 |
-| **编码规范** | `.claude/rules/*.md` | 好 | 9 个规则文件，覆盖全面 |
+| **Agent / OMX 执行面** | `AGENTS.md`, `.codex/skills/*.md`, `.codex/prompts/*.md` | 好 | 当前 Codex/OMX 协作入口、技能与角色面 |
+| **编码规范 / 协作约束** | `AGENTS.md`, `backend/CLAUDE.md` | 中 | 当前以 AGENTS 和子目录说明为主，不再依赖旧的 Claude Code 规则树 |
 
 ### 1.2 覆盖度评分
 
@@ -215,7 +215,7 @@ npm run electron:dev
 ## 添加新功能的流程
 1. 后端：models → schemas → services → api
 2. 前端：重新生成 SDK → hooks → pages
-3. 参考 .claude/docs/usage-guide.md 的 Agent 协作流程
+3. 参考 `AGENTS.md` 与 `.codex/skills/` 中的当前协作流程
 ```
 
 ### 3.4 ADR 补录建议
@@ -305,11 +305,11 @@ npm run electron:dev
 
 ## 七、与 Agent 框架的关系
 
-当前 `.claude/` 下的文档体系（agents、rules、skills、docs）服务于 Agent 协作，做得很好。本策略补充的是**项目本身的技术文档**，两者互补：
+当前仓库的 Agent / OMX 文档体系主要由 `AGENTS.md`、`.codex/skills/`、`.codex/prompts/` 承担。本策略补充的是**项目本身的技术文档**，两者互补：
 
 | 文档体系 | 服务对象 | 位置 |
 |----------|----------|------|
-| Agent 框架文档 | Agent 协作流程 | `.claude/docs/`, `.claude/rules/` |
+| Agent / OMX 协作文档 | Agent 协作流程 | `AGENTS.md`, `.codex/skills/`, `.codex/prompts/` |
 | 项目技术文档 | 开发者（人和 Agent 都用） | `docs/`, `README.md`, `CHANGELOG.md` |
 
 Agent 在执行任务时，会同时参考两套文档：框架文档告诉它"怎么协作"，技术文档告诉它"系统长什么样"。
