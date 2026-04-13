@@ -56,47 +56,6 @@ Keep runtime marker contracts stable and non-destructive when overlays are appli
 - Run lint, typecheck, tests, and static analysis after changes.
 - Final reports must include changed files, simplifications made, and remaining risks.
 
-## Verified workspace snapshot
-
-This repository currently centers on a desktop publishing tool for Dewu built as a **FastAPI backend + React/Vite frontend + Electron shell**.
-
-### High-signal top-level directories
-- `backend/` — FastAPI service, SQLAlchemy models, migrations, browser automation, and domain services
-- `frontend/` — React UI, Electron runtime, generated API client, frontend scripts, and Playwright E2E assets
-- `docs/` — current architecture/runtime truth, operational guides, refactor plans, ADRs, and generation/governance docs
-- `design/`, `docs/archive/` — design notes plus archived historical/reference/private docs
-- `.codex/`, `.omx/` — local agent/runtime state, prompts, skills, and orchestration assets
-- `data/`, `logs/`, `plans/` — runtime data, logs, and planning outputs
-
-### Main technologies in use
-- **Backend:** Python, FastAPI, Pydantic, SQLAlchemy, aiosqlite, APScheduler, Loguru, Playwright/Patchright-style browser automation helpers
-- **Frontend:** React 18, TypeScript, Vite, TanStack React Query, Ant Design / Pro Components, Axios
-- **Desktop/runtime:** Electron, TypeScript-compiled Electron main/preload layers, electron-builder
-- **API generation / governance:** `@hey-api/openapi-ts`, local OpenAPI export scripts, tracked generated frontend client artifacts
-- **Testing / verification:** Pytest for backend/docs-runtime contracts, TypeScript typecheck, Playwright for E2E, targeted generated-artifact/version check scripts
-
-### Core modules and responsibilities
-- `backend/main.py` — FastAPI app entrypoint, router wiring, startup/shutdown hooks, root/health metadata
-- `backend/api/` — HTTP route layer for accounts, tasks, publish, schedule config, system, AI/media, topics, profiles, and products
-- `backend/services/` — core business/domain logic such as task assembly, publishing, scheduler flow, AI clip/composition, topic relations, and system backup/config
-- `backend/models/` + `backend/schemas/` — persistence model layer and API/schema contracts
-- `backend/migrations/` — incremental SQLite/schema migration history
-- `backend/core/` — application config, browser/dewu/coze integration helpers, and shared backend runtime setup
-- `frontend/src/pages/` — main UI screens such as dashboard, accounts, tasks, schedules, settings, AI clip, and profile management
-- `frontend/src/hooks/` — React Query/data-access hooks grouped by backend resource domain
-- `frontend/src/components/` — reusable UI building blocks for layout, selection, modals, baskets, and status views
-- `frontend/src/api/` — tracked generated API SDK/types consumed by hooks and services
-- `frontend/electron/` — Electron main/preload/runtime launcher layer plus generated JS mirrors and launcher scripts
-- `frontend/scripts/` — OpenAPI export/generation checks, version sync/check scripts, and CLI support
-- `frontend/scripts/cli/` — standalone API-testing CLI with its own package metadata and build flow
-
-### Current documentation entrypoints
-- `docs/current-architecture-baseline.md` — primary architecture overview
-- `docs/current-runtime-truth.md` — current verified runtime/canonical fact inventory
-- `docs/epic-7-doc-authority-matrix.md` — documentation responsibility boundaries
-- `docs/dev-guide.md` — developer setup/runbook
-- `docs/openapi-generation-workflow.md` and `docs/generated-artifact-policy.md` — generated artifact and client regeneration rules
-
 <lore_commit_protocol>
 ## Lore Commit Protocol
 
@@ -210,7 +169,7 @@ Rules:
 <invocation_conventions>
 - `$name` — invoke a workflow skill
 - `/skills` — browse available skills
-- `/prompts:name` — advanced specialist role surface when the task already needs a specific agent
+- Prefer skill invocation and keyword routing as the primary user-facing workflow surface
 </invocation_conventions>
 
 <model_routing>
@@ -233,7 +192,7 @@ Key roles:
 - `executor` — implementation and refactoring
 - `verifier` — completion evidence and validation
 
-Specialists remain available through advanced role surfaces such as `/prompts:*` when the task clearly benefits from them.
+Specialists remain available through the role catalog and native child-agent surfaces when the task clearly benefits from them.
 </agent_catalog>
 
 ---
@@ -250,7 +209,7 @@ The `deep-interview` skill is the Socratic deep interview workflow and includes 
 Runtime availability gate:
 - Treat `autopilot`, `ralph`, `ultrawork`, `ultraqa`, `team`/`swarm`, and `ecomode` as **OMX runtime workflows**, not generic prompt aliases.
 - Auto-activate those runtime workflows only when the current session is actually running under OMX CLI/runtime (for example, launched via `omx`, with OMX session overlay/runtime state available, or when the user explicitly asks to run `omx ...` in the shell).
-- In Codex App or plain Codex sessions without OMX runtime, do **not** treat those keywords alone as activation. Explain that they require OMX CLI runtime support, and continue with the nearest App-safe surface (`deep-interview`, `ralplan`, `plan`, `/prompts:*`, or native subagents) unless the user explicitly wants you to launch OMX from the shell.
+- In Codex App or plain Codex sessions without OMX runtime, do **not** treat those keywords alone as activation. Explain that they require OMX CLI runtime support, and continue with the nearest App-safe surface (`deep-interview`, `ralplan`, `plan`, or native subagents) unless the user explicitly wants you to launch OMX from the shell.
 
 | Keyword(s) | Skill | Action |
 |-------------|-------|--------|
@@ -276,7 +235,6 @@ Detection rules:
 - Explicit `$name` invocations run left-to-right and override non-explicit keyword resolution.
 - If multiple non-explicit keywords match, use the most specific match.
 - Runtime-only keywords must pass the runtime availability gate before activation.
-- If the user explicitly invokes `/prompts:<name>`, do not auto-activate keyword skills unless explicit `$name` tokens are also present.
 - The rest of the user message becomes the task description.
 
 Ralph / Ralplan execution gate:
