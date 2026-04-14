@@ -13,13 +13,14 @@ from schemas import (
     BackupRequest, BackupResponse, MaterialStatsResponse,
     SystemConfigResponse, SystemConfigUpdateResponse,
 )
+from core.auth_dependencies import ACTIVE_ROUTE_DEPENDENCIES, GRACE_READONLY_ROUTE_DEPENDENCIES
 from services.system_backup_service import SystemBackupService
 from services.system_config_service import SystemConfigService
 
 router = APIRouter()
 
 
-@router.get("/stats", response_model=SystemStats)
+@router.get("/stats", response_model=SystemStats, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def get_system_stats(db: AsyncSession = Depends(get_db)):
     """获取系统统计"""
     # 账号统计
@@ -54,7 +55,7 @@ async def get_system_stats(db: AsyncSession = Depends(get_db)):
     )
 
 
-@router.get("/logs", response_model=SystemLogListResponse)
+@router.get("/logs", response_model=SystemLogListResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def get_system_logs(
     level: str = None,
     limit: int = Query(default=100, le=500),
@@ -74,7 +75,7 @@ async def get_system_logs(
     return SystemLogListResponse(total=len(logs), items=logs)
 
 
-@router.post("/logs")
+@router.post("/logs", dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def add_system_log(
     level: str,
     message: str,
@@ -95,13 +96,13 @@ async def add_system_log(
     return {"success": True}
 
 
-@router.get("/config", response_model=SystemConfigResponse)
+@router.get("/config", response_model=SystemConfigResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def get_system_config():
     """获取系统设置真相：runtime-config + 只读启动期信息。"""
     return SystemConfigService().get_config()
 
 
-@router.put("/config", response_model=SystemConfigUpdateResponse)
+@router.put("/config", response_model=SystemConfigUpdateResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def update_system_config(
     material_base_path: str = Query(
         default=None,
@@ -136,7 +137,7 @@ async def update_system_config(
     )
 
 
-@router.post("/backup", response_model=BackupResponse)
+@router.post("/backup", response_model=BackupResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def backup_data(request: BackupRequest, db: AsyncSession = Depends(get_db)):
     """备份数据"""
     backup_file = await SystemBackupService(db).create_backup(include_logs=request.include_logs)
@@ -146,7 +147,7 @@ async def backup_data(request: BackupRequest, db: AsyncSession = Depends(get_db)
 
 # ─── SP8-05: 素材统计 ────────────────────────────────────────────────────────
 
-@router.get("/material-stats", response_model=MaterialStatsResponse)
+@router.get("/material-stats", response_model=MaterialStatsResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def material_stats(db: AsyncSession = Depends(get_db)):
     """素材统计：各类数量、商品覆盖率"""
     video_count = (await db.execute(select(func.count()).select_from(Video))).scalar() or 0

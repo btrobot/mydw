@@ -1,0 +1,8 @@
+{
+  "error_code": "device_mismatch",
+  "message": "Current device does not match the bound device",
+  "details": {
+    "device_id": "device_other",
+    "minimum_supported_version": "0.2.0"
+  }
+}

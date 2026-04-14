@@ -16,20 +16,21 @@ from schemas import (
     PublishConfigRequest, PublishConfigResponse,
     PublishControlRequest, PublishStatusResponse
 )
+from core.auth_dependencies import ACTIVE_ROUTE_DEPENDENCIES, GRACE_READONLY_ROUTE_DEPENDENCIES
 from services.schedule_config_service import ScheduleConfigService
 from services.scheduler import scheduler
 
 router = APIRouter()
 
 
-@router.get("/config", response_model=PublishConfigResponse)
+@router.get("/config", response_model=PublishConfigResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def get_publish_config(db: AsyncSession = Depends(get_db)):
     """获取发布配置（遗留兼容入口，底层真相已桥接到 ScheduleConfig）。"""
     service = ScheduleConfigService(db)
     return await service.get_or_create_default()
 
 
-@router.put("/config", response_model=PublishConfigResponse)
+@router.put("/config", response_model=PublishConfigResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def update_publish_config(
     config_data: PublishConfigRequest,
     db: AsyncSession = Depends(get_db)
@@ -41,7 +42,7 @@ async def update_publish_config(
     return config
 
 
-@router.get("/status", response_model=PublishStatusResponse)
+@router.get("/status", response_model=PublishStatusResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def get_publish_status(db: AsyncSession = Depends(get_db)):
     """获取发布状态（基于 scheduler runtime truth）。"""
     # 统计任务
@@ -64,7 +65,7 @@ async def get_publish_status(db: AsyncSession = Depends(get_db)):
     )
 
 
-@router.post("/control")
+@router.post("/control", dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def control_publish(
     request: PublishControlRequest,
     db: AsyncSession = Depends(get_db)
@@ -79,25 +80,25 @@ async def control_publish(
         result = await scheduler.start_publishing()
         logger.info("开始发布任务")
 
-        return {"success": True, "action": action, **result}
+        return {"action": action, **result}
 
     elif action == "pause":
         result = await scheduler.pause_publishing()
         logger.info("暂停发布任务")
 
-        return {"success": True, "action": action, **result}
+        return {"action": action, **result}
 
     elif action == "stop":
         result = await scheduler.stop_publishing()
         logger.info("停止发布任务")
 
-        return {"success": True, "action": action, **result}
+        return {"action": action, **result}
 
     else:
         raise HTTPException(status_code=400, detail="未知操作")
 
 
-@router.post("/refresh")
+@router.post("/refresh", dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def refresh_data(db: AsyncSession = Depends(get_db)):
     """刷新数据 - 重新从得物获取账号和任务状态"""
     try:
@@ -123,13 +124,13 @@ async def refresh_data(db: AsyncSession = Depends(get_db)):
         return {"success": False, "message": str(e)}
 
 
-@router.post("/shuffle")
+@router.post("/shuffle", dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def shuffle_tasks(db: AsyncSession = Depends(get_db)):
     """乱序发布 - 打乱待发布任务的顺序"""
     return await scheduler.shuffle_tasks(db)
 
 
-@router.get("/logs")
+@router.get("/logs", dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def get_publish_logs(
     limit: int = 50,
     db: AsyncSession = Depends(get_db)

@@ -7,6 +7,7 @@ from loguru import logger
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.auth_dependencies import ACTIVE_ROUTE_DEPENDENCIES, GRACE_READONLY_ROUTE_DEPENDENCIES
 from models import PublishProfile, get_db
 from schemas import (
     PublishProfileCreate,
@@ -19,7 +20,7 @@ from services.topic_relation_service import get_profile_topic_ids, sync_profile_
 router = APIRouter()
 
 
-@router.post("", response_model=PublishProfileResponse, status_code=201)
+@router.post("", response_model=PublishProfileResponse, status_code=201, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def create_profile(
     data: PublishProfileCreate,
     db: AsyncSession = Depends(get_db),
@@ -55,7 +56,7 @@ async def create_profile(
     return await _build_profile_response(profile, db)
 
 
-@router.get("", response_model=PublishProfileListResponse)
+@router.get("", response_model=PublishProfileListResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def list_profiles(
     db: AsyncSession = Depends(get_db),
 ) -> PublishProfileListResponse:
@@ -74,7 +75,7 @@ async def list_profiles(
     )
 
 
-@router.get("/{profile_id}", response_model=PublishProfileResponse)
+@router.get("/{profile_id}", response_model=PublishProfileResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def get_profile(
     profile_id: int,
     db: AsyncSession = Depends(get_db),
@@ -84,7 +85,7 @@ async def get_profile(
     return await _build_profile_response(profile, db)
 
 
-@router.put("/{profile_id}", response_model=PublishProfileResponse)
+@router.put("/{profile_id}", response_model=PublishProfileResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def update_profile(
     profile_id: int,
     data: PublishProfileUpdate,
@@ -131,7 +132,7 @@ async def update_profile(
     return await _build_profile_response(profile, db)
 
 
-@router.delete("/{profile_id}", status_code=204)
+@router.delete("/{profile_id}", status_code=204, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def delete_profile(
     profile_id: int,
     db: AsyncSession = Depends(get_db),
@@ -145,7 +146,11 @@ async def delete_profile(
     logger.info("配置档删除成功: id={}", profile_id)
 
 
-@router.put("/{profile_id}/set-default", response_model=PublishProfileResponse)
+@router.put(
+    "/{profile_id}/set-default",
+    response_model=PublishProfileResponse,
+    dependencies=ACTIVE_ROUTE_DEPENDENCIES,
+)
 async def set_default_profile(
     profile_id: int,
     db: AsyncSession = Depends(get_db),

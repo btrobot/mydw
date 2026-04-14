@@ -1,4 +1,4 @@
-"""
+﻿"""
 得物掘金工具 - 配置管理
 """
 import os
@@ -67,6 +67,16 @@ class Settings(BaseSettings):
     COZE_POLL_INTERVAL: int = 10
     COZE_MAX_RETRY: int = 3
     COZE_UPLOAD_TIMEOUT: int = 300
+
+    # 远程认证（Step 1 / PR1 foundation）
+    REMOTE_AUTH_BASE_URL: str = ""
+    REMOTE_AUTH_TIMEOUT: int = 15
+    REMOTE_AUTH_ENCRYPT_KEY: str = "your-remote-auth-key-change-in-production"
+    REMOTE_AUTH_DEFAULT_OFFLINE_GRACE_HOURS: int = 24
+    REMOTE_AUTH_SECRET_STORE_PATH: str = "data/remote_auth_secrets.json"
+    REMOTE_AUTH_DEVICE_ID_PATH: str = "data/remote_auth_device.json"
+    # PR2: Proactive refresh buffer (minutes before expiry to trigger refresh)
+    REMOTE_AUTH_PROACTIVE_REFRESH_MINUTES: int = 5
 
 
 # 创建配置实例

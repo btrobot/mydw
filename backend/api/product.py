@@ -9,6 +9,7 @@ from sqlalchemy import select, func, delete
 from sqlalchemy.orm import selectinload
 from loguru import logger
 
+from core.auth_dependencies import ACTIVE_ROUTE_DEPENDENCIES, GRACE_READONLY_ROUTE_DEPENDENCIES
 from models import Product, Video, Cover, Copywriting, Topic, ProductTopic, get_db
 from schemas import (
     ProductCreate, ProductUpdate, ProductResponse, ProductListResponse,
@@ -68,7 +69,7 @@ async def _load_product_detail(db: AsyncSession, product_id: int) -> Optional[Pr
     return result.scalars().first()
 
 
-@router.get("", response_model=ProductListResponse)
+@router.get("", response_model=ProductListResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def list_products(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
@@ -94,7 +95,7 @@ async def list_products(
     return ProductListResponse(total=total, items=list(items))
 
 
-@router.get("/{product_id}", response_model=ProductDetailResponse)
+@router.get("/{product_id}", response_model=ProductDetailResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def get_product(
     product_id: int,
     db: AsyncSession = Depends(get_db),
@@ -106,7 +107,7 @@ async def get_product(
     return _build_detail_response(product)
 
 
-@router.post("", response_model=ProductDetailResponse, status_code=201)
+@router.post("", response_model=ProductDetailResponse, status_code=201, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def create_product(
     data: ProductCreate,
     db: AsyncSession = Depends(get_db),
@@ -150,7 +151,7 @@ async def create_product(
     return _build_detail_response(product)
 
 
-@router.put("/{product_id}", response_model=ProductResponse)
+@router.put("/{product_id}", response_model=ProductResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def update_product(
     product_id: int,
     data: ProductUpdate,
@@ -171,7 +172,7 @@ async def update_product(
     return product
 
 
-@router.delete("/{product_id}", status_code=204)
+@router.delete("/{product_id}", status_code=204, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def delete_product(
     product_id: int,
     db: AsyncSession = Depends(get_db),
@@ -210,7 +211,11 @@ async def delete_product(
     logger.info("商品删除成功: product_id={}", product_id)
 
 
-@router.post("/{product_id}/parse-materials", response_model=ProductDetailResponse)
+@router.post(
+    "/{product_id}/parse-materials",
+    response_model=ProductDetailResponse,
+    dependencies=ACTIVE_ROUTE_DEPENDENCIES,
+)
 async def parse_product_materials(
     product_id: int,
     db: AsyncSession = Depends(get_db),
@@ -244,7 +249,11 @@ async def parse_product_materials(
     return _build_detail_response(product)
 
 
-@router.get("/{product_id}/covers", response_model=list[CoverResponse])
+@router.get(
+    "/{product_id}/covers",
+    response_model=list[CoverResponse],
+    dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES,
+)
 async def get_product_covers(
     product_id: int,
     db: AsyncSession = Depends(get_db),
@@ -282,7 +291,11 @@ async def get_product_covers(
     return all_covers
 
 
-@router.get("/{product_id}/topics", response_model=list[TopicResponse])
+@router.get(
+    "/{product_id}/topics",
+    response_model=list[TopicResponse],
+    dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES,
+)
 async def get_product_topics(
     product_id: int,
     db: AsyncSession = Depends(get_db),
@@ -300,7 +313,11 @@ async def get_product_topics(
     return topics_result.scalars().all()
 
 
-@router.get("/{product_id}/materials", response_model=ProductMaterialsResponse)
+@router.get(
+    "/{product_id}/materials",
+    response_model=ProductMaterialsResponse,
+    dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES,
+)
 async def get_product_materials(
     product_id: int,
     db: AsyncSession = Depends(get_db),

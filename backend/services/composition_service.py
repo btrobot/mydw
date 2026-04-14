@@ -14,7 +14,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.coze_client import CozeClient
+from core.auth_dependencies import require_active_service_session
 from models import CompositionJob, Task
+from schemas.auth import LocalAuthSessionSummary
 from services.task_compat_service import resolve_primary_task_video
 from services.task_service import TaskService
 
@@ -22,9 +24,10 @@ from services.task_service import TaskService
 class CompositionService:
     """合成任务服务"""
 
-    def __init__(self, db: AsyncSession) -> None:
+    def __init__(self, db: AsyncSession, auth_summary: LocalAuthSessionSummary | None = None) -> None:
         self.db = db
-        self._task_service = TaskService(db)
+        self._auth_summary = auth_summary
+        self._task_service = TaskService(db, auth_summary=auth_summary)
 
     # ------------------------------------------------------------------
     # 内部辅助
@@ -53,6 +56,10 @@ class CompositionService:
     # ------------------------------------------------------------------
 
     async def submit_composition(self, task_id: int) -> CompositionJob:
+        await require_active_service_session(
+            self.db,
+            auth_summary=self._auth_summary,
+        )
         """提交合成：上传素材 → 提交工作流 → 创建 CompositionJob → task.status=composing。
 
         Args:
@@ -234,6 +241,10 @@ class CompositionService:
         )
 
     async def batch_submit(self, task_ids: list[int]) -> dict[str, Any]:
+        await require_active_service_session(
+            self.db,
+            auth_summary=self._auth_summary,
+        )
         """批量提交合成任务。
 
         Args:

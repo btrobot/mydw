@@ -12,6 +12,7 @@ from sqlalchemy import select, func
 from loguru import logger
 from pydantic import BaseModel, Field
 
+from core.auth_dependencies import ACTIVE_ROUTE_DEPENDENCIES, GRACE_READONLY_ROUTE_DEPENDENCIES
 from models import Cover, Video, get_db
 from schemas import CoverResponse, BatchDeleteRequest, BatchDeleteResponse
 from core.config import settings
@@ -26,7 +27,7 @@ ALLOWED_COVER_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_COVER_SIZE = 20 * 1024 * 1024  # 20MB
 
 
-@router.post("/upload", response_model=CoverResponse, status_code=201)
+@router.post("/upload", response_model=CoverResponse, status_code=201, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def upload_cover(
     video_id: Optional[int] = Query(None, description="关联的视频ID"),
     file: UploadFile = File(...),
@@ -76,7 +77,7 @@ async def upload_cover(
     return cover
 
 
-@router.get("", response_model=list[CoverResponse])
+@router.get("", response_model=list[CoverResponse], dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def list_covers(
     video_id: Optional[int] = Query(None, description="按视频ID过滤"),
     skip: int = Query(0, ge=0),
@@ -95,7 +96,7 @@ async def list_covers(
     return result.scalars().all()
 
 
-@router.delete("/{cover_id}", status_code=204)
+@router.delete("/{cover_id}", status_code=204, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def delete_cover(
     cover_id: int,
     db: AsyncSession = Depends(get_db),
@@ -127,7 +128,7 @@ async def delete_cover(
 
 # ─── 批量删除 ────────────────────────────────────────────────────────────────
 
-@router.post("/batch-delete", response_model=BatchDeleteResponse)
+@router.post("/batch-delete", response_model=BatchDeleteResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def batch_delete_covers(
     data: BatchDeleteRequest,
     db: AsyncSession = Depends(get_db),
@@ -172,7 +173,7 @@ class ExtractCoverRequest(BaseModel):
     timestamp: float = Field(1.0, ge=0, description="截取时间点（秒）")
 
 
-@router.post("/extract", response_model=CoverResponse, status_code=201)
+@router.post("/extract", response_model=CoverResponse, status_code=201, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def extract_cover(
     data: ExtractCoverRequest,
     db: AsyncSession = Depends(get_db),
@@ -214,7 +215,7 @@ async def extract_cover(
 
 # ─── 封面图片流 ───────────────────────────────────────────────────────────────
 
-@router.get("/{cover_id}/image")
+@router.get("/{cover_id}/image", dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def get_cover_image(
     cover_id: int,
     db: AsyncSession = Depends(get_db),

@@ -5,9 +5,10 @@
  */
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Modal, Form, Input, Button, Space, message, Progress, Alert, Switch } from 'antd'
-import axios from 'axios'
 import { useQueryClient } from '@tanstack/react-query'
-import { API_BASE } from '@/services/api'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '@/features/auth'
+import api, { buildApiUrl } from '@/services/api'
 
 interface ConnectionModalProps {
   accountId: number
@@ -93,6 +94,8 @@ export default function ConnectionModal({
   const [connectionError, setConnectionError] = useState(false)
   const eventSourceRef = useRef<EventSource | null>(null)
   const queryClient = useQueryClient()
+  const { refreshSession } = useAuth()
+  const navigate = useNavigate()
 
   // 订阅 SSE 状态更新
   useEffect(() => {
@@ -110,7 +113,7 @@ export default function ConnectionModal({
     setProgress(0)
 
     // 创建 SSE 连接
-    const eventSource = new EventSource(`${API_BASE}/accounts/connect/${accountId}/stream`)
+    const eventSource = new EventSource(buildApiUrl(`/accounts/connect/${accountId}/stream`))
     eventSourceRef.current = eventSource
 
     // 监听状态更新事件
@@ -146,8 +149,26 @@ export default function ConnectionModal({
     // 错误处理
     eventSource.onerror = (e: Event) => {
       console.error('SSE connection error:', e)
-      setStatusMessage('连接状态服务器失败，请检查网络')
+      setStatusMessage('Connection status stream failed, checking local auth session...')
       setConnectionError(true)
+      void (async () => {
+        const nextSession = await refreshSession()
+        if (!nextSession) {
+          navigate('/login')
+          return
+        }
+        if (nextSession.auth_state === 'revoked') {
+          navigate('/auth/revoked')
+          return
+        }
+        if (nextSession.auth_state === 'device_mismatch') {
+          navigate('/auth/device-mismatch')
+          return
+        }
+        if (nextSession.auth_state === 'expired') {
+          navigate('/auth/expired')
+        }
+      })()
       // 30秒后自动重连
       setTimeout(() => {
         if (eventSourceRef.current === eventSource) {
@@ -216,17 +237,20 @@ export default function ConnectionModal({
         ? {}
         : { phone: form.getFieldValue('phone') as string }
 
-      await axios.post(`${API_BASE}/accounts/connect/${accountId}/send-code`, body)
+      await api.post(`/accounts/connect/${accountId}/send-code`, body)
 
       message.success('验证码已发送')
       setCountdown(COUNTDOWN_SECONDS)
     } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        const status = error.response?.status
+      if (error && typeof error === 'object' && 'isAxiosError' in error) {
+        const axiosError = error as {
+          response?: { status?: number; data?: { detail?: string } }
+        }
+        const status = axiosError.response?.status
         if (status === 409) {
-          message.warning(error.response?.data?.detail || '账号正在连接中，请稍候')
+          message.warning(axiosError.response?.data?.detail || '账号正在连接中，请稍候')
         } else {
-          message.error(error.response?.data?.detail || '发送验证码失败')
+          message.error(axiosError.response?.data?.detail || '发送验证码失败')
         }
       } else if (error instanceof Error) {
         message.error(error.message)
@@ -243,8 +267,8 @@ export default function ConnectionModal({
     setLoading(true)
     try {
       const body: VerifyCodeRequest = { code: values.code }
-      const response = await axios.post<VerifyCodeResponse>(
-        `${API_BASE}/accounts/connect/${accountId}/verify`,
+      const response = await api.post<VerifyCodeResponse>(
+        `/accounts/connect/${accountId}/verify`,
         body
       )
 
@@ -257,12 +281,15 @@ export default function ConnectionModal({
         message.error(data.message || '验证码错误或已过期，请重新获取')
       }
     } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        const status = error.response?.status
+      if (error && typeof error === 'object' && 'isAxiosError' in error) {
+        const axiosError = error as {
+          response?: { status?: number; data?: { detail?: string } }
+        }
+        const status = axiosError.response?.status
         if (status === 422) {
-          message.error(error.response?.data?.detail || '请先发送验证码')
+          message.error(axiosError.response?.data?.detail || '请先发送验证码')
         } else {
-          message.error(error.response?.data?.detail || '连接失败')
+          message.error(axiosError.response?.data?.detail || '连接失败')
         }
       } else if (error instanceof Error) {
         message.error(error.message)

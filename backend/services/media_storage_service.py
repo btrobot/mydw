@@ -15,7 +15,9 @@ from loguru import logger
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.auth_dependencies import require_active_service_session
 from models import Audio, Cover, Video
+from schemas.auth import LocalAuthSessionSummary
 
 # ============ 类型别名 ============
 
@@ -46,6 +48,14 @@ class MediaStorageService:
 
     BASE_DIR = "data/materials"
 
+    def __init__(
+        self,
+        db: AsyncSession | None = None,
+        auth_summary: LocalAuthSessionSummary | None = None,
+    ) -> None:
+        self.db = db
+        self._auth_summary = auth_summary
+
     # ------------------------------------------------------------------
     # 公共接口
     # ------------------------------------------------------------------
@@ -57,6 +67,7 @@ class MediaStorageService:
         下载 URL 到内容寻址存储，返回 (file_path, file_hash, file_size)。
         若目标目录已存在同 hash 文件则跳过下载，直接返回已有路径。
         """
+        await self._require_active()
         ext = self._ext_from_url(url)
         tmp_path: str | None = None
 
@@ -107,6 +118,7 @@ class MediaStorageService:
         将本地文件存入内容寻址存储，返回 (file_path, file_hash, file_size)。
         若目标已存在则跳过复制，直接返回已有路径。
         """
+        await self._require_active()
         ext = Path(source_path).suffix.lower() or ".bin"
         file_hash = await asyncio.to_thread(self._hash_file, source_path)
         target = self._target_path(file_hash, ext, media_type)
@@ -144,6 +156,7 @@ class MediaStorageService:
         异步版本：查询 DB 引用计数，无引用才删除物理文件。
         返回 True 表示文件已删除，False 表示仍有引用或文件不存在。
         """
+        await self._require_active(db)
         ref_count = await self._count_hash_refs(db, file_hash)
         if ref_count > 0:
             logger.info(
@@ -170,6 +183,15 @@ class MediaStorageService:
     # ------------------------------------------------------------------
     # 私有辅助方法
     # ------------------------------------------------------------------
+
+    async def _require_active(self, db: AsyncSession | None = None) -> None:
+        resolved_db = db or self.db
+        if resolved_db is None:
+            raise ValueError("MediaStorageService auth enforcement requires an AsyncSession")
+        await require_active_service_session(
+            resolved_db,
+            auth_summary=self._auth_summary,
+        )
 
     def _hash_file(self, path: str) -> str:
         """计算文件 SHA-256，返回 64 位十六进制字符串。"""

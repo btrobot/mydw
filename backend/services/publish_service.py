@@ -1,7 +1,7 @@
 """
 任务发布服务
 """
-from typing import Optional
+from typing import Awaitable, Callable, Optional
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 from loguru import logger
@@ -12,7 +12,13 @@ from sqlalchemy.orm import selectinload
 
 from models import Task, Account, ScheduleConfig
 from core.browser import browser_manager
+from core.auth_dependencies import (
+    get_runtime_auth_failure_reason,
+    is_runtime_hard_stop_state,
+    require_active_service_session,
+)
 from core.dewu_client import get_dewu_client
+from schemas.auth import LocalAuthSessionSummary
 from services.task_service import TaskService
 from services.task_execution_semantics import (
     PublishabilityError,
@@ -23,9 +29,10 @@ from services.task_execution_semantics import (
 class PublishService:
     """发布服务"""
 
-    def __init__(self, db: AsyncSession) -> None:
+    def __init__(self, db: AsyncSession, auth_summary: LocalAuthSessionSummary | None = None) -> None:
         self.db = db
         self.current_task_id: Optional[int] = None
+        self._auth_summary = auth_summary
 
     async def _get_schedule_config(self) -> Optional[ScheduleConfig]:
         """从 schedule_config 表读取 name=default 配置"""
@@ -68,10 +75,19 @@ class PublishService:
 
         return task
 
-    async def publish_task(self, task: Task) -> tuple[bool, str]:
+    async def publish_task(
+        self,
+        task: Task,
+        *,
+        post_upload_auth_check: Callable[[], Awaitable[LocalAuthSessionSummary]] | None = None,
+    ) -> tuple[bool, str]:
         """发布单个任务"""
+        await require_active_service_session(
+            self.db,
+            auth_summary=self._auth_summary,
+        )
         self.current_task_id = task.id
-        task_svc = TaskService(self.db)
+        task_svc = TaskService(self.db, auth_summary=self._auth_summary)
 
         try:
             # 标记为上传中
@@ -141,6 +157,22 @@ class PublishService:
                 cover_path=execution_view.cover_path,
                 product_link=product_link
             )
+
+            runtime_summary = (
+                await post_upload_auth_check()
+                if post_upload_auth_check is not None
+                else None
+            )
+            if runtime_summary and is_runtime_hard_stop_state(runtime_summary.auth_state):
+                auth_reason = get_runtime_auth_failure_reason(runtime_summary)
+                await task_svc.mark_task_failed(task.id, auth_reason)
+                logger.warning(
+                    "event_name=publish_task_failed_due_to_auth task_id={} auth_state={} reason_code={}",
+                    task.id,
+                    runtime_summary.auth_state,
+                    auth_reason,
+                )
+                return False, auth_reason
 
             if success:
                 await task_svc.mark_task_uploaded(task.id)

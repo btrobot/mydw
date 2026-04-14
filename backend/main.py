@@ -1,24 +1,27 @@
 """
-得物掘金工具 - FastAPI 后端入口
+?????? - FastAPI ????
 """
 import sys
 from pathlib import Path
 
-# 添加项目根目录到 Python 路径
+# ???????? Python ??
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 from sqlalchemy import select
 from loguru import logger
 
-from api import account, task, publish, schedule_config, system, ai, product, video, copywriting, cover, audio, topic, profile
+from api import auth, account, task, publish, schedule_config, system, ai, product, video, copywriting, cover, audio, topic, profile
+from api.auth import admin_router as auth_admin_router
 from api.topic import group_router as topic_group_router
 import models as _models
+from core.auth_metrics import PrometheusMetricsExporter, auth_metrics_collector
 from models import init_db, PublishProfile
 from core.config import settings
 
-# 配置日志
+# ????
 logger.add(
     "logs/app.log",
     rotation="10 MB",
@@ -27,16 +30,16 @@ logger.add(
     format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} - {message}"
 )
 
-# 创建 FastAPI 应用
+# ?? FastAPI ??
 app = FastAPI(
-    title="得物掘金工具 API",
-    description="得物平台自动化发布系统后端服务",
+    title="?????? API",
+    description="???????????????",
     version=settings.APP_VERSION,
     docs_url="/docs",
     redoc_url="/redoc"
 )
 
-# 配置 CORS
+# ?? CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -45,58 +48,64 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 注册路由
-app.include_router(account.router, prefix="/api/accounts", tags=["账号管理"])
-app.include_router(task.router, prefix="/api/tasks", tags=["任务管理"])
-app.include_router(publish.router, prefix="/api/publish", tags=["发布控制"])
-app.include_router(schedule_config.router, prefix="/api", tags=["调度配置"])
-app.include_router(system.router, prefix="/api/system", tags=["系统"])
-app.include_router(ai.router, prefix="/api/ai", tags=["AI剪辑"])
-app.include_router(product.router, prefix="/api/products", tags=["商品管理"])
-app.include_router(video.router, prefix="/api/videos", tags=["视频管理"])
-app.include_router(copywriting.router, prefix="/api/copywritings", tags=["文案管理"])
-app.include_router(cover.router, prefix="/api/covers", tags=["封面管理"])
-app.include_router(audio.router, prefix="/api/audios", tags=["音频管理"])
-app.include_router(topic.router, prefix="/api/topics", tags=["话题管理"])
-app.include_router(topic_group_router, prefix="/api/topic-groups", tags=["话题组管理"])
-app.include_router(profile.router, prefix="/api/profiles", tags=["配置档管理"])
+# ????
+app.include_router(auth.router, prefix="/api/auth", tags=["??"])
+app.include_router(auth_admin_router, prefix="/api", tags=["????"])
+app.include_router(account.router, prefix="/api/accounts", tags=["????"])
+app.include_router(task.router, prefix="/api/tasks", tags=["????"])
+app.include_router(publish.router, prefix="/api/publish", tags=["????"])
+app.include_router(schedule_config.router, prefix="/api", tags=["????"])
+app.include_router(system.router, prefix="/api/system", tags=["??"])
+app.include_router(ai.router, prefix="/api/ai", tags=["AI??"])
+app.include_router(product.router, prefix="/api/products", tags=["????"])
+app.include_router(video.router, prefix="/api/videos", tags=["????"])
+app.include_router(copywriting.router, prefix="/api/copywritings", tags=["????"])
+app.include_router(cover.router, prefix="/api/covers", tags=["????"])
+app.include_router(audio.router, prefix="/api/audios", tags=["????"])
+app.include_router(topic.router, prefix="/api/topics", tags=["????"])
+app.include_router(topic_group_router, prefix="/api/topic-groups", tags=["?????"])
+app.include_router(profile.router, prefix="/api/profiles", tags=["?????"])
+
+metrics_exporter = PrometheusMetricsExporter(auth_metrics_collector)
 
 
 @app.on_event("startup")
 async def startup():
-    """应用启动事件"""
-    logger.info("得物掘金工具后端服务启动中...")
+    """??????"""
+    logger.info("?????????????...")
+    auth_metrics_collector.register()
     await init_db()
-    logger.info("数据库初始化完成")
+    logger.info("????????")
     await _seed_default_publish_profile()
 
 
 async def _seed_default_publish_profile() -> None:
-    """系统启动时确保存在默认合成配置档（幂等）。"""
+    """?????????????????????"""
     async with _models.async_session() as session:
         result = await session.execute(select(PublishProfile))
         if result.scalars().first() is None:
             default_profile = PublishProfile(
-                name="默认配置",
+                name="????",
                 is_default=True,
                 composition_mode="none",
             )
             session.add(default_profile)
             await session.commit()
-            logger.info("已创建默认合成配置档: name=默认配置")
+            logger.info("??????????: name=????")
 
 
 @app.on_event("shutdown")
 async def shutdown():
-    """应用关闭事件"""
-    logger.info("得物掘金工具后端服务关闭")
+    """??????"""
+    auth_metrics_collector.unregister()
+    logger.info("????????????")
 
 
 @app.get("/")
 async def root():
-    """根路径"""
+    """???"""
     return {
-        "name": "得物掘金工具 API",
+        "name": "?????? API",
         "version": settings.APP_VERSION,
         "status": "running"
     }
@@ -104,15 +113,21 @@ async def root():
 
 @app.get("/health")
 async def health():
-    """健康检查"""
+    """????"""
     return {"status": "healthy"}
+
+
+@app.get("/metrics", response_class=PlainTextResponse, include_in_schema=False)
+async def metrics() -> str:
+    """Prometheus metrics endpoint."""
+    return metrics_exporter.export()
 
 
 if __name__ == "__main__":
     import uvicorn
-    # 不使用 reload=True，因为 uvicorn reload 在 Windows 上强制使用 SelectorEventLoop，
-    # 导致 Patchright/Playwright 无法创建子进程 (NotImplementedError)。
-    # 开发时使用 watchfiles 外部热重载:
+    # ??? reload=True??? uvicorn reload ? Windows ????? SelectorEventLoop?
+    # ?? Patchright/Playwright ??????? (NotImplementedError)?
+    # ????? watchfiles ?????:
     #   watchfiles "venv/Scripts/python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000" ./
     uvicorn.run(
         "main:app",

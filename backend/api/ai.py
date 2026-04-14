@@ -7,6 +7,7 @@ from typing import Optional, List
 from pathlib import Path
 from loguru import logger
 
+from core.auth_dependencies import ACTIVE_ROUTE_DEPENDENCIES
 from services.ai_clip_service import AIClipService, ClipSegment, ClipResult
 
 router = APIRouter()
@@ -82,7 +83,7 @@ class ClipResultResponse(BaseModel):
 
 # ============ API 端点 ============
 
-@router.get("/video-info", response_model=VideoInfoResponse)
+@router.get("/video-info", response_model=VideoInfoResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def get_video_info(video_path: str) -> VideoInfoResponse:
     """获取视频信息"""
     info = await ai_clip_service.get_video_info(video_path)
@@ -99,7 +100,7 @@ async def get_video_info(video_path: str) -> VideoInfoResponse:
     )
 
 
-@router.get("/detect-highlights", response_model=DetectHighlightsResponse)
+@router.get("/detect-highlights", response_model=DetectHighlightsResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def detect_highlights(video_path: str) -> DetectHighlightsResponse:
     """检测视频高光片段"""
     segments = await ai_clip_service.detect_highlights(video_path)
@@ -109,7 +110,7 @@ async def detect_highlights(video_path: str) -> DetectHighlightsResponse:
     )
 
 
-@router.post("/smart-clip", response_model=ClipResultResponse)
+@router.post("/smart-clip", response_model=ClipResultResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def smart_clip(request: SmartClipRequest) -> ClipResultResponse:
     """智能剪辑视频"""
     segments = [ClipSegment(**s.model_dump()) for s in request.segments]
@@ -127,7 +128,7 @@ async def smart_clip(request: SmartClipRequest) -> ClipResultResponse:
     )
 
 
-@router.post("/add-audio", response_model=ClipResultResponse)
+@router.post("/add-audio", response_model=ClipResultResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def add_audio(request: AddAudioRequest) -> ClipResultResponse:
     """添加背景音乐"""
     result = await ai_clip_service.add_audio(
@@ -144,7 +145,7 @@ async def add_audio(request: AddAudioRequest) -> ClipResultResponse:
     )
 
 
-@router.post("/add-cover", response_model=ClipResultResponse)
+@router.post("/add-cover", response_model=ClipResultResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def add_cover(request: AddCoverRequest) -> ClipResultResponse:
     """添加视频封面"""
     result = await ai_clip_service.add_cover(
@@ -160,7 +161,7 @@ async def add_cover(request: AddCoverRequest) -> ClipResultResponse:
     )
 
 
-@router.post("/trim", response_model=ClipResultResponse)
+@router.post("/trim", response_model=ClipResultResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def trim_video(request: TrimVideoRequest) -> ClipResultResponse:
     """截取视频片段"""
     result = await ai_clip_service.trim_video(
@@ -177,7 +178,7 @@ async def trim_video(request: TrimVideoRequest) -> ClipResultResponse:
     )
 
 
-@router.post("/full-pipeline", response_model=ClipResultResponse)
+@router.post("/full-pipeline", response_model=ClipResultResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def full_pipeline(request: FullPipelineRequest) -> ClipResultResponse:
     """
     完整 AI 剪辑流程

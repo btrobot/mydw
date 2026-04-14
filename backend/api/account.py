@@ -27,6 +27,7 @@ from schemas import (
     BatchHealthCheckStatusResponse,
     PreviewActionResponse, PreviewCloseRequest, PreviewStatusResponse,
 )
+from core.auth_dependencies import ACTIVE_ROUTE_DEPENDENCIES, GRACE_READONLY_ROUTE_DEPENDENCIES
 from core.browser import browser_manager, preview_manager
 from core.config import settings
 from core.dewu_client import get_dewu_client, get_or_create_client, release_client, _active_clients
@@ -225,7 +226,7 @@ class ConnectionStatusManager:
 connection_status_manager = ConnectionStatusManager()
 
 
-@router.post("/", response_model=AccountResponse, status_code=201)
+@router.post("/", response_model=AccountResponse, status_code=201, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def create_account(
     account_data: AccountCreate,
     db: AsyncSession = Depends(get_db)
@@ -267,7 +268,7 @@ async def create_account(
     return response
 
 
-@router.get("/", response_model=List[AccountResponse])
+@router.get("/", response_model=List[AccountResponse], dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def list_accounts(
     status: str = None,
     tag: Optional[str] = None,
@@ -303,7 +304,7 @@ async def list_accounts(
     return responses
 
 
-@router.get("/stats", response_model=AccountStats)
+@router.get("/stats", response_model=AccountStats, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def get_account_stats(db: AsyncSession = Depends(get_db)):
     """获取账号统计"""
     # 总账号数
@@ -465,7 +466,7 @@ async def _do_single_health_check(
     )
 
 
-@router.post("/batch-health-check", response_model=BatchHealthCheckResponse)
+@router.post("/batch-health-check", response_model=BatchHealthCheckResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def batch_health_check(
     request: BatchHealthCheckRequest,
     db: AsyncSession = Depends(get_db),
@@ -558,7 +559,11 @@ async def batch_health_check(
     )
 
 
-@router.get("/batch-health-check/status", response_model=BatchHealthCheckStatusResponse)
+@router.get(
+    "/batch-health-check/status",
+    response_model=BatchHealthCheckStatusResponse,
+    dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES,
+)
 async def batch_health_check_status() -> BatchHealthCheckStatusResponse:
     """获取批量检测进度"""
     return BatchHealthCheckStatusResponse(
@@ -571,7 +576,7 @@ async def batch_health_check_status() -> BatchHealthCheckStatusResponse:
     )
 
 
-@router.get("/{account_id}", response_model=AccountResponse)
+@router.get("/{account_id}", response_model=AccountResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def get_account(
     account_id: int,
     db: AsyncSession = Depends(get_db)
@@ -589,7 +594,7 @@ async def get_account(
     return response
 
 
-@router.put("/{account_id}", response_model=AccountResponse)
+@router.put("/{account_id}", response_model=AccountResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def update_account(
     account_id: int,
     account_data: AccountUpdate,
@@ -637,7 +642,7 @@ async def update_account(
     return account
 
 
-@router.delete("/{account_id}", status_code=204)
+@router.delete("/{account_id}", status_code=204, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def delete_account(
     account_id: int,
     db: AsyncSession = Depends(get_db)
@@ -671,7 +676,7 @@ async def delete_account(
     return None
 
 
-@router.post("/{account_id}/health-check", response_model=HealthCheckResponse)
+@router.post("/{account_id}/health-check", response_model=HealthCheckResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def health_check(
     account_id: int,
     db: AsyncSession = Depends(get_db),
@@ -732,7 +737,7 @@ async def health_check(
     )
 
 
-@router.get("/preview/status", response_model=PreviewStatusResponse)
+@router.get("/preview/status", response_model=PreviewStatusResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def preview_status() -> PreviewStatusResponse:
     """获取当前预览浏览器状态（供前端轮询）"""
     is_open = preview_manager.is_open
@@ -746,7 +751,7 @@ async def preview_status() -> PreviewStatusResponse:
     )
 
 
-@router.post("/{account_id}/preview", response_model=PreviewActionResponse)
+@router.post("/{account_id}/preview", response_model=PreviewActionResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def preview_account(
     account_id: int,
     db: AsyncSession = Depends(get_db),
@@ -781,7 +786,11 @@ async def preview_account(
     )
 
 
-@router.post("/{account_id}/preview/close", response_model=PreviewActionResponse)
+@router.post(
+    "/{account_id}/preview/close",
+    response_model=PreviewActionResponse,
+    dependencies=ACTIVE_ROUTE_DEPENDENCIES,
+)
 async def close_preview(
     account_id: int,
     request: PreviewCloseRequest,
@@ -825,7 +834,12 @@ async def close_preview(
     )
 
 
-@router.post("/connect/{account_id}", response_model=ConnectionResponse, deprecated=True)
+@router.post(
+    "/connect/{account_id}",
+    response_model=ConnectionResponse,
+    deprecated=True,
+    dependencies=ACTIVE_ROUTE_DEPENDENCIES,
+)
 async def connect_account(
     account_id: int,
     request: ConnectionRequest,
@@ -990,7 +1004,12 @@ async def connect_account(
 
 # ============ 两阶段连接端点 ============
 
-@router.post("/connect/{account_id}/send-code", response_model=SendCodeResponse, status_code=202)
+@router.post(
+    "/connect/{account_id}/send-code",
+    response_model=SendCodeResponse,
+    status_code=202,
+    dependencies=ACTIVE_ROUTE_DEPENDENCIES,
+)
 async def send_sms_code(
     account_id: int,
     request: SendCodeRequest,
@@ -1093,7 +1112,11 @@ async def send_sms_code(
     )
 
 
-@router.post("/connect/{account_id}/verify", response_model=VerifyCodeResponse)
+@router.post(
+    "/connect/{account_id}/verify",
+    response_model=VerifyCodeResponse,
+    dependencies=ACTIVE_ROUTE_DEPENDENCIES,
+)
 async def verify_sms_code(
     account_id: int,
     request: VerifyCodeRequest,
@@ -1228,7 +1251,12 @@ async def verify_sms_code(
 
 # ============ 已弃用端点 (向后兼容) ============
 
-@router.post("/login/{account_id}", response_model=ConnectionResponse, deprecated=True)
+@router.post(
+    "/login/{account_id}",
+    response_model=ConnectionResponse,
+    deprecated=True,
+    dependencies=ACTIVE_ROUTE_DEPENDENCIES,
+)
 async def login_account_deprecated(
     account_id: int,
     request: ConnectionRequest,
@@ -1239,7 +1267,7 @@ async def login_account_deprecated(
     return await connect_account(account_id, request, background_tasks, db)
 
 
-@router.get("/connect/{account_id}/stream")
+@router.get("/connect/{account_id}/stream", dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def connection_status_stream(
     account_id: int,
     db: AsyncSession = Depends(get_db)
@@ -1329,7 +1357,7 @@ async def connection_status_stream(
 
 
 # 已弃用端点 (向后兼容)
-@router.get("/login/{account_id}/stream", deprecated=True)
+@router.get("/login/{account_id}/stream", deprecated=True, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def login_status_stream_deprecated(
     account_id: int,
     db: AsyncSession = Depends(get_db)
@@ -1338,7 +1366,11 @@ async def login_status_stream_deprecated(
     return await connection_status_stream(account_id, db)
 
 
-@router.get("/connect/{account_id}/status", response_model=ConnectionStatusResponse)
+@router.get(
+    "/connect/{account_id}/status",
+    response_model=ConnectionStatusResponse,
+    dependencies=ACTIVE_ROUTE_DEPENDENCIES,
+)
 async def get_connection_status(
     account_id: int,
     db: AsyncSession = Depends(get_db)
@@ -1409,7 +1441,12 @@ async def get_connection_status(
 
 
 # 已弃用端点 (向后兼容)
-@router.get("/login/{account_id}/status", response_model=ConnectionStatusResponse, deprecated=True)
+@router.get(
+    "/login/{account_id}/status",
+    response_model=ConnectionStatusResponse,
+    deprecated=True,
+    dependencies=ACTIVE_ROUTE_DEPENDENCIES,
+)
 async def get_login_status_deprecated(
     account_id: int,
     db: AsyncSession = Depends(get_db)
@@ -1418,7 +1455,7 @@ async def get_login_status_deprecated(
     return await get_connection_status(account_id, db)
 
 
-@router.post("/connect/{account_id}/export")
+@router.post("/connect/{account_id}/export", dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def export_session(
     account_id: int,
     db: AsyncSession = Depends(get_db)
@@ -1450,7 +1487,7 @@ async def export_session(
 
 
 # 已弃用端点 (向后兼容)
-@router.post("/login/{account_id}/export", deprecated=True)
+@router.post("/login/{account_id}/export", deprecated=True, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def export_session_deprecated(
     account_id: int,
     db: AsyncSession = Depends(get_db)
@@ -1459,7 +1496,7 @@ async def export_session_deprecated(
     return await export_session(account_id, db)
 
 
-@router.post("/connect/{account_id}/import")
+@router.post("/connect/{account_id}/import", dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def import_session(
     account_id: int,
     request: dict,
@@ -1494,7 +1531,7 @@ async def import_session(
 
 
 # 已弃用端点 (向后兼容)
-@router.post("/login/{account_id}/import", deprecated=True)
+@router.post("/login/{account_id}/import", deprecated=True, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def import_session_deprecated(
     account_id: int,
     request: dict,
@@ -1504,7 +1541,7 @@ async def import_session_deprecated(
     return await import_session(account_id, request, db)
 
 
-@router.get("/connect/{account_id}/screenshot")
+@router.get("/connect/{account_id}/screenshot", dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def get_connection_screenshot(
     account_id: int,
     db: AsyncSession = Depends(get_db)
@@ -1560,7 +1597,7 @@ async def get_connection_screenshot(
 
 
 # 已弃用端点 (向后兼容)
-@router.get("/login/{account_id}/screenshot", deprecated=True)
+@router.get("/login/{account_id}/screenshot", deprecated=True, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def get_login_screenshot_deprecated(
     account_id: int,
     db: AsyncSession = Depends(get_db)
@@ -1569,7 +1606,7 @@ async def get_login_screenshot_deprecated(
     return await get_connection_screenshot(account_id, db)
 
 
-@router.post("/test/{account_id}")
+@router.post("/test/{account_id}", dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def test_account(
     account_id: int,
     db: AsyncSession = Depends(get_db)
@@ -1623,7 +1660,7 @@ async def test_account(
         }
 
 
-@router.post("/disconnect/{account_id}")
+@router.post("/disconnect/{account_id}", dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def disconnect_account(
     account_id: int,
     db: AsyncSession = Depends(get_db)
@@ -1656,7 +1693,7 @@ async def disconnect_account(
 
 
 # 已弃用端点 (向后兼容)
-@router.post("/logout/{account_id}", deprecated=True)
+@router.post("/logout/{account_id}", deprecated=True, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def logout_account_deprecated(
     account_id: int,
     db: AsyncSession = Depends(get_db)

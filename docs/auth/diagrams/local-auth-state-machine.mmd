@@ -1,0 +1,34 @@
+stateDiagram-v2
+    [*] --> unauthenticated
+
+    unauthenticated --> authorizing: start login
+    authorizing --> authenticated_active: login success
+    authorizing --> unauthenticated: invalid credentials
+    authorizing --> revoked: remote revoke
+    authorizing --> device_mismatch: device mismatch
+
+    authenticated_active --> refresh_required: refresh needed
+    refresh_required --> authenticated_active: refresh success
+    refresh_required --> authenticated_grace: network unavailable + grace valid
+    refresh_required --> expired: network unavailable + no grace
+
+    authenticated_active --> revoked: remote revoke
+    authenticated_active --> device_mismatch: remote device mismatch
+    authenticated_active --> expired: expiry beyond grace
+
+    authenticated_grace --> authenticated_active: connectivity restored + validation success
+    authenticated_grace --> expired: grace exceeded
+
+    unauthenticated --> error: unexpected internal failure
+    authorizing --> error: unexpected internal failure
+    authenticated_active --> error: unexpected internal failure
+    authenticated_grace --> error: unexpected internal failure
+    refresh_required --> error: unexpected internal failure
+
+    authenticated_active --> unauthenticated: logout
+    authenticated_grace --> unauthenticated: logout
+    refresh_required --> unauthenticated: logout
+    revoked --> unauthenticated: logout
+    device_mismatch --> unauthenticated: logout
+    expired --> unauthenticated: logout
+    error --> unauthenticated: logout

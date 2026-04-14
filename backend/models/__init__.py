@@ -425,6 +425,25 @@ class ScheduleConfig(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class RemoteAuthSession(Base):
+    """本地机器授权会话表（仅持久化 non-secret state）"""
+    __tablename__ = "remote_auth_sessions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    auth_state = Column(String(32), default="unauthenticated", nullable=False, index=True)
+    remote_user_id = Column(String(128), nullable=True, index=True)
+    display_name = Column(String(256), nullable=True)
+    license_status = Column(String(32), nullable=True, index=True)
+    entitlements_snapshot = Column(Text, nullable=True)
+    expires_at = Column(DateTime, nullable=True)
+    last_verified_at = Column(DateTime, nullable=True)
+    offline_grace_until = Column(DateTime, nullable=True)
+    denial_reason = Column(String(64), nullable=True)
+    device_id = Column(String(128), nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class TopicGroup(Base):
     """话题组表 (话题模板)"""
     __tablename__ = "topic_groups"
@@ -529,6 +548,8 @@ async def init_db():
     await migration_021.run_migration(engine)
     migration_022 = importlib.import_module("migrations.022_topic_relation_sources")
     await migration_022.run_migration(engine)
+    migration_023 = importlib.import_module("migrations.023_remote_auth_sessions")
+    await migration_023.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

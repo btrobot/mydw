@@ -145,6 +145,7 @@ async def test_delete_guards_block_relation_table_references(
 @pytest.mark.asyncio
 async def test_submit_composition_uses_relation_video_without_legacy_video_id(
     db_session: AsyncSession,
+    active_remote_auth_session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     account = await _create_account(db_session, "composition")

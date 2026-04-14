@@ -14,8 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
 from core.browser import browser_manager
+from core.auth_dependencies import require_active_service_session
 from core.config import settings
 from models import Product, Video, Cover, Copywriting, Topic, ProductTopic
+from schemas.auth import LocalAuthSessionSummary
 from services.media_storage_service import MediaStorageService
 
 
@@ -244,6 +246,7 @@ def _extract_topics(html: str) -> list[str]:
 async def parse_and_create_materials(
     db: AsyncSession,
     product: Product,
+    auth_summary: LocalAuthSessionSummary | None = None,
 ) -> dict:
     """
     完整素材解析流程：
@@ -258,8 +261,10 @@ async def parse_and_create_materials(
     if not product.dewu_url:
         raise ValueError("商品未配置得物商品页 URL")
 
+    await require_active_service_session(db, auth_summary=auth_summary)
+
     product_id = product.id
-    media_storage = MediaStorageService()
+    media_storage = MediaStorageService(db, auth_summary=auth_summary)
 
     # Step 1: 解析页面
     try:

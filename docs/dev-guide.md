@@ -36,8 +36,8 @@ python -m venv venv
 # Install dependencies (with mirror for CN)
 pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-# Install Playwright browser
-playwright install chromium
+# Install Patchright browser runtime (backend automation uses patchright.async_api)
+python -m patchright install chromium
 
 # Create .env file
 cp .env.example .env
@@ -60,7 +60,7 @@ backend/
 ├── services/            # Business logic layer
 ├── core/
 │   ├── config.py        # Settings (pydantic-settings)
-│   ├── browser.py       # Playwright browser manager
+│   ├── browser.py       # Patchright browser manager
 │   └── dewu_client.py   # Dewu platform client
 ├── utils/
 │   └── crypto.py        # AES-256-GCM encryption

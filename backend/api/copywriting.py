@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 from loguru import logger
 from pydantic import BaseModel
 
+from core.auth_dependencies import ACTIVE_ROUTE_DEPENDENCIES, GRACE_READONLY_ROUTE_DEPENDENCIES
 from models import Copywriting, get_db
 from schemas import CopywritingCreate, CopywritingUpdate, CopywritingResponse, CopywritingListResponse
 from services.task_compat_service import count_tasks_referencing_copywriting
@@ -24,7 +25,7 @@ async def _get_copywriting_with_product(db: AsyncSession, copywriting_id: int) -
     return result.scalars().first()
 
 
-@router.get("", response_model=CopywritingListResponse)
+@router.get("", response_model=CopywritingListResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def list_copywritings(
     product_id: Optional[int] = Query(None, description="按商品ID过滤"),
     source_type: Optional[str] = Query(None, description="按来源类型过滤"),
@@ -58,7 +59,11 @@ async def list_copywritings(
     return CopywritingListResponse(total=total, items=list(items))
 
 
-@router.get("/{copywriting_id}", response_model=CopywritingResponse)
+@router.get(
+    "/{copywriting_id}",
+    response_model=CopywritingResponse,
+    dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES,
+)
 async def get_copywriting(
     copywriting_id: int,
     db: AsyncSession = Depends(get_db),
@@ -70,7 +75,7 @@ async def get_copywriting(
     return copywriting
 
 
-@router.post("", response_model=CopywritingResponse, status_code=201)
+@router.post("", response_model=CopywritingResponse, status_code=201, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def create_copywriting(
     data: CopywritingCreate,
     db: AsyncSession = Depends(get_db),
@@ -91,7 +96,7 @@ async def create_copywriting(
     return copywriting
 
 
-@router.put("/{copywriting_id}", response_model=CopywritingResponse)
+@router.put("/{copywriting_id}", response_model=CopywritingResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def update_copywriting(
     copywriting_id: int,
     data: CopywritingUpdate,
@@ -112,7 +117,7 @@ async def update_copywriting(
     return copywriting
 
 
-@router.delete("/{copywriting_id}", status_code=204)
+@router.delete("/{copywriting_id}", status_code=204, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def delete_copywriting(
     copywriting_id: int,
     db: AsyncSession = Depends(get_db),
@@ -145,7 +150,7 @@ class BatchDeleteResponse(BaseModel):
     skipped_ids: List[int]
 
 
-@router.post("/batch-delete", response_model=BatchDeleteResponse)
+@router.post("/batch-delete", response_model=BatchDeleteResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def batch_delete_copywritings(
     data: BatchDeleteRequest,
     db: AsyncSession = Depends(get_db),
@@ -181,7 +186,7 @@ class ImportResult(BaseModel):
     skipped_empty: int = 0
 
 
-@router.post("/import", response_model=ImportResult)
+@router.post("/import", response_model=ImportResult, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def import_copywritings(
     product_id: Optional[int] = Query(None, description="关联的商品ID"),
     file: UploadFile = File(...),

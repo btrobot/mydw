@@ -7,6 +7,7 @@ Provides:
 - Mock browser manager and DewuClient
 """
 import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -22,8 +23,16 @@ backend_root = str(Path(__file__).parent.parent)
 if backend_root not in sys.path:
     sys.path.insert(0, backend_root)
 
-from models import Base, Account, get_db
+from core.auth_dependencies import (
+    set_current_auth_summary,
+    get_machine_session_summary,
+    require_active_machine_session,
+    require_grace_readonly_machine_session,
+)
+import models
+from models import Base, Account, RemoteAuthSession, get_db
 from main import app
+from schemas.auth import LocalAuthSessionSummary
 
 
 # ============ Database Fixtures ============
@@ -53,6 +62,23 @@ async def db_session(engine) -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture()
+async def active_remote_auth_session(db_session: AsyncSession) -> RemoteAuthSession:
+    session = RemoteAuthSession(
+        auth_state="authenticated_active",
+        remote_user_id="test-user",
+        display_name="Test User",
+        license_status="active",
+        expires_at=datetime.now(UTC) + timedelta(hours=1),
+        offline_grace_until=datetime.now(UTC) + timedelta(hours=2),
+        device_id="test-device",
+    )
+    db_session.add(session)
+    await db_session.commit()
+    await db_session.refresh(session)
+    return session
+
+
+@pytest_asyncio.fixture()
 async def client(engine) -> AsyncGenerator[AsyncClient, None]:
     """
     Provide an httpx AsyncClient with the FastAPI app,
@@ -67,12 +93,45 @@ async def client(engine) -> AsyncGenerator[AsyncClient, None]:
             finally:
                 await session.close()
 
+    def _active_session_override() -> LocalAuthSessionSummary:
+        summary = LocalAuthSessionSummary(
+            auth_state="authenticated_active",
+            remote_user_id="test-user",
+            display_name="Test User",
+            license_status="active",
+            entitlements=["dashboard:view"],
+            device_id="test-device",
+        )
+        set_current_auth_summary(summary)
+        return summary
+
     app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[require_active_machine_session] = _active_session_override
+    app.dependency_overrides[require_grace_readonly_machine_session] = _active_session_override
+    app.dependency_overrides[get_machine_session_summary] = _active_session_override
+
+    async with _session_factory() as seeded_session:
+        seeded_session.add(
+            RemoteAuthSession(
+                auth_state="authenticated_active",
+                remote_user_id="test-user",
+                display_name="Test User",
+                license_status="active",
+                expires_at=datetime.now(UTC) + timedelta(hours=1),
+                offline_grace_until=datetime.now(UTC) + timedelta(hours=2),
+                device_id="test-device",
+            )
+        )
+        await seeded_session.commit()
+
+    original_async_session = models.async_session
+    models.async_session = _session_factory
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as ac:
         yield ac
 
+    models.async_session = original_async_session
     app.dependency_overrides.clear()
 
 

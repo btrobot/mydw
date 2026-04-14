@@ -16,8 +16,10 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.auth_dependencies import require_active_service_session
 from core.config import settings
 from models import Account, Product, Task, Video, Copywriting, Cover, Audio, Topic
+from schemas.auth import LocalAuthSessionSummary
 import services.system_config_service as system_config_service
 from services.system_config_service import SystemConfigService
 
@@ -33,11 +35,21 @@ def resolve_sqlite_path(database_url: str) -> Path | None:
 
 
 class SystemBackupService:
-    def __init__(self, db: AsyncSession, backup_root: Path | None = None) -> None:
+    def __init__(
+        self,
+        db: AsyncSession,
+        backup_root: Path | None = None,
+        auth_summary: LocalAuthSessionSummary | None = None,
+    ) -> None:
         self.db = db
         self.backup_root = backup_root or BACKUP_ROOT
+        self._auth_summary = auth_summary
 
     async def create_backup(self, *, include_logs: bool) -> Path:
+        await require_active_service_session(
+            self.db,
+            auth_summary=self._auth_summary,
+        )
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_dir = self.backup_root / f"backup_{timestamp}"
         backup_dir.mkdir(parents=True, exist_ok=True)

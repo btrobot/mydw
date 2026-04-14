@@ -23,6 +23,7 @@ from models import (
     Topic,
     Video,
 )
+from schemas.auth import LocalAuthSessionSummary
 from services.publish_service import PublishService
 from services.task_execution_semantics import (
     PublishabilityError,
@@ -143,6 +144,7 @@ async def test_resolve_publish_execution_view_rejects_multiple_videos_without_fi
 @pytest.mark.asyncio
 async def test_publish_task_marks_failed_for_invalid_direct_publish_combo(
     db_session: AsyncSession,
+    active_remote_auth_session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     account = await _create_account(db_session, "invalid_publish")
@@ -172,6 +174,7 @@ async def test_publish_task_marks_failed_for_invalid_direct_publish_combo(
 @pytest.mark.asyncio
 async def test_publish_task_uses_final_video_path_for_composed_task(
     db_session: AsyncSession,
+    active_remote_auth_session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     account = await _create_account(db_session, "final_video")
@@ -221,3 +224,69 @@ async def test_publish_task_uses_final_video_path_for_composed_task(
     assert kwargs["content"] == copywriting.content
     assert kwargs["cover_path"] == cover.file_path
     assert kwargs["topic"] == topic.name
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("auth_state", "denial_reason", "expected_reason"),
+    [
+        ("revoked", "remote_auth_revoked", "remote_auth_revoked"),
+        ("expired", "remote_auth_expired", "remote_auth_expired"),
+        (
+            "device_mismatch",
+            "remote_auth_device_mismatch",
+            "remote_auth_device_mismatch",
+        ),
+    ],
+)
+async def test_publish_task_marks_failed_with_canonical_auth_reason_after_upload_checkpoint(
+    db_session: AsyncSession,
+    active_remote_auth_session,
+    monkeypatch: pytest.MonkeyPatch,
+    auth_state: str,
+    denial_reason: str,
+    expected_reason: str,
+) -> None:
+    account = await _create_account(db_session, "runtime_auth")
+    video = await _create_video(db_session, "runtime_auth")
+    task = await _create_raw_task_with_resources(
+        db_session,
+        account_id=account.id,
+        video_ids=[video.id],
+        status="ready",
+    )
+
+    mock_client = MagicMock()
+    mock_client.check_login_status = AsyncMock(return_value=(True, "ok"))
+    mock_client.upload_video = AsyncMock(return_value=(True, "ok"))
+    monkeypatch.setattr("services.publish_service.get_dewu_client", AsyncMock(return_value=mock_client))
+    monkeypatch.setattr(
+        "services.publish_service.browser_manager",
+        SimpleNamespace(
+            get_or_create_context=AsyncMock(return_value=SimpleNamespace(pages=[MagicMock()])),
+            new_page=AsyncMock(return_value=MagicMock()),
+        ),
+    )
+
+    service = PublishService(db_session)
+    async def _post_upload_auth_check():
+        return LocalAuthSessionSummary(
+            auth_state=auth_state,
+            remote_user_id="u_123",
+            display_name="Alice",
+            license_status="active",
+            entitlements=["dashboard:view"],
+            denial_reason=denial_reason,
+            device_id="device-1",
+        )
+
+    success, message = await service.publish_task(
+        task,
+        post_upload_auth_check=_post_upload_auth_check,
+    )
+
+    assert success is False
+    assert message == expected_reason
+    persisted = await _get_task(db_session, task.id)
+    assert persisted.status == "failed"
+    assert persisted.error_msg == expected_reason

@@ -23,6 +23,7 @@ from services.task_distributor import TaskDistributor
 from services.scheduler import scheduler
 from services.composition_service import CompositionService
 from services.task_execution_semantics import TaskSemanticsError
+from core.auth_dependencies import ACTIVE_ROUTE_DEPENDENCIES, GRACE_READONLY_ROUTE_DEPENDENCIES
 
 router = APIRouter()
 
@@ -47,7 +48,7 @@ class BatchSubmitCompositionRequest(BaseModel):
 
 # ============ API 端点 ============
 
-@router.post("/", response_model=List[TaskResponse], status_code=201)
+@router.post("/", response_model=List[TaskResponse], status_code=201, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def create_tasks(
     request: TaskCreateRequest,
     db: AsyncSession = Depends(get_db)
@@ -101,7 +102,7 @@ async def create_tasks(
     return tasks
 
 
-@router.get("/", response_model=TaskListResponse)
+@router.get("/", response_model=TaskListResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def list_tasks(
     status: Optional[str] = None,
     account_id: Optional[int] = None,
@@ -136,7 +137,7 @@ async def list_tasks(
     return TaskListResponse(total=total_count, items=list(tasks))
 
 
-@router.get("/stats", response_model=TaskStatsResponse)
+@router.get("/stats", response_model=TaskStatsResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def get_task_stats(db: AsyncSession = Depends(get_db)):
     """获取任务统计"""
     service = TaskService(db)
@@ -144,7 +145,7 @@ async def get_task_stats(db: AsyncSession = Depends(get_db)):
     return TaskStatsResponse(**stats)
 
 
-@router.get("/{task_id}", response_model=TaskResponse)
+@router.get("/{task_id}", response_model=TaskResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def get_task(task_id: int, db: AsyncSession = Depends(get_db)):
     """获取任务详情"""
     result = await db.execute(
@@ -163,7 +164,7 @@ async def get_task(task_id: int, db: AsyncSession = Depends(get_db)):
     return task
 
 
-@router.put("/{task_id}", response_model=TaskResponse)
+@router.put("/{task_id}", response_model=TaskResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def update_task(
     task_id: int,
     task_data: TaskUpdate,
@@ -182,7 +183,7 @@ async def update_task(
     return task
 
 
-@router.delete("/{task_id}", status_code=204)
+@router.delete("/{task_id}", status_code=204, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def delete_task(task_id: int, db: AsyncSession = Depends(get_db)):
     """删除任务"""
     service = TaskService(db)
@@ -192,7 +193,7 @@ async def delete_task(task_id: int, db: AsyncSession = Depends(get_db)):
     return None
 
 
-@router.delete("/", status_code=204)
+@router.delete("/", status_code=204, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def delete_all_tasks(
     status: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
@@ -203,7 +204,7 @@ async def delete_all_tasks(
     return None
 
 
-@router.post("/{task_id}/cancel", response_model=TaskResponse)
+@router.post("/{task_id}/cancel", response_model=TaskResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def cancel_task(task_id: int, db: AsyncSession = Depends(get_db)):
     """取消任务（非终态 → cancelled）"""
     service = TaskService(db)
@@ -213,7 +214,7 @@ async def cancel_task(task_id: int, db: AsyncSession = Depends(get_db)):
     return task
 
 
-@router.post("/{task_id}/retry", response_model=TaskResponse)
+@router.post("/{task_id}/retry", response_model=TaskResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def quick_retry_task(task_id: int, db: AsyncSession = Depends(get_db)):
     """快速重试：failed → failed_at_status 对应状态"""
     service = TaskService(db)
@@ -227,7 +228,7 @@ async def quick_retry_task(task_id: int, db: AsyncSession = Depends(get_db)):
     return result
 
 
-@router.post("/{task_id}/edit-retry", response_model=TaskResponse)
+@router.post("/{task_id}/edit-retry", response_model=TaskResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def edit_retry_task(task_id: int, db: AsyncSession = Depends(get_db)):
     """编辑重试：failed → draft"""
     service = TaskService(db)
@@ -241,7 +242,7 @@ async def edit_retry_task(task_id: int, db: AsyncSession = Depends(get_db)):
     return result
 
 
-@router.post("/{task_id}/publish")
+@router.post("/{task_id}/publish", dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def publish_task(
     task_id: int,
     db: AsyncSession = Depends(get_db)
@@ -259,7 +260,7 @@ async def publish_task(
     return {"success": True, "message": "任务已添加到发布队列"}
 
 
-@router.post("/batch", response_model=List[TaskResponse], status_code=201)
+@router.post("/batch", response_model=List[TaskResponse], status_code=201, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def batch_create_tasks(
     batch_data: TaskBatchCreateRequest,
     db: AsyncSession = Depends(get_db)
@@ -278,13 +279,13 @@ async def batch_create_tasks(
     return tasks
 
 
-@router.post("/shuffle")
+@router.post("/shuffle", dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def shuffle_tasks(db: AsyncSession = Depends(get_db)):
     """打乱任务顺序"""
     return await scheduler.shuffle_tasks(db)
 
 
-@router.post("/assemble", response_model=List[TaskResponse], status_code=201)
+@router.post("/assemble", response_model=List[TaskResponse], status_code=201, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def assemble_tasks(
     request: AssembleTasksRequest,
     db: AsyncSession = Depends(get_db)
@@ -302,7 +303,7 @@ async def assemble_tasks(
     return tasks
 
 
-@router.post("/batch-assemble", response_model=List[TaskResponse], status_code=201)
+@router.post("/batch-assemble", response_model=List[TaskResponse], status_code=201, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def batch_assemble_tasks(
     request: BatchAssembleRequest,
     db: AsyncSession = Depends(get_db)
@@ -325,7 +326,12 @@ async def batch_assemble_tasks(
 
 # ============ 合成端点 (BE-TM-13) ============
 
-@router.post("/{task_id}/submit-composition", response_model=CompositionJobResponse, status_code=201)
+@router.post(
+    "/{task_id}/submit-composition",
+    response_model=CompositionJobResponse,
+    status_code=201,
+    dependencies=ACTIVE_ROUTE_DEPENDENCIES,
+)
 async def submit_composition(
     task_id: int,
     db: AsyncSession = Depends(get_db),
@@ -343,7 +349,7 @@ async def submit_composition(
         raise HTTPException(status_code=500, detail="服务器内部错误")
 
 
-@router.post("/batch-submit-composition")
+@router.post("/batch-submit-composition", dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def batch_submit_composition(
     request: BatchSubmitCompositionRequest,
     db: AsyncSession = Depends(get_db),
@@ -360,7 +366,11 @@ async def batch_submit_composition(
     return result
 
 
-@router.post("/{task_id}/cancel-composition", response_model=CompositionJobResponse)
+@router.post(
+    "/{task_id}/cancel-composition",
+    response_model=CompositionJobResponse,
+    dependencies=ACTIVE_ROUTE_DEPENDENCIES,
+)
 async def cancel_composition(
     task_id: int,
     db: AsyncSession = Depends(get_db),
@@ -398,7 +408,11 @@ async def cancel_composition(
     return job
 
 
-@router.get("/{task_id}/composition-status", response_model=CompositionJobResponse)
+@router.get(
+    "/{task_id}/composition-status",
+    response_model=CompositionJobResponse,
+    dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES,
+)
 async def get_composition_status(
     task_id: int,
     db: AsyncSession = Depends(get_db),

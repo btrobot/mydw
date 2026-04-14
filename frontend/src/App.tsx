@@ -5,8 +5,8 @@ import dayjs from 'dayjs'
 
 import 'dayjs/locale/zh-cn'
 
+import { AuthBootstrapProvider, AuthErrorBoundary, AuthStatusPage, LoginPage, ProtectedAppShell, PublicLoginRoute, SessionAdmin } from '@/features/auth'
 import { QueryProvider } from '@/providers/QueryProvider'
-import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Account from './pages/Account'
 import TaskList from './pages/TaskList'
@@ -49,42 +49,56 @@ function App() {
     <ConfigProvider theme={theme} locale={zhCN}>
       <AntApp>
         <QueryProvider>
-        <HashRouter>
-          <Routes>
-            <Route path="/" element={<Layout />}>
-              <Route index element={<Navigate to="/dashboard" replace />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="account" element={<Account />} />
-              <Route path="task" element={<Navigate to="/task/list" replace />} />
-              <Route path="task/list" element={<TaskList />} />
-              <Route path="task/create" element={<TaskCreate />} />
+          <AuthBootstrapProvider>
+            <AuthErrorBoundary>
+              <HashRouter>
+                <Routes>
+                  <Route element={<PublicLoginRoute />}>
+                    <Route path="login" element={<LoginPage />} />
+                  </Route>
 
-              <Route path="task/:id" element={<TaskDetail />} />
+                  <Route path="auth/revoked" element={<AuthStatusPage variant="revoked" />} />
+                  <Route path="auth/device-mismatch" element={<AuthStatusPage variant="device_mismatch" />} />
+                  <Route path="auth/expired" element={<AuthStatusPage variant="expired" />} />
+                  <Route path="auth/grace" element={<AuthStatusPage variant="grace" />} />
 
-              {/* 素材中心 */}
-              <Route path="material" element={<MaterialOverview />} />
-              <Route path="material/overview" element={<MaterialOverview />} />
-              <Route path="material/video" element={<VideoList />} />
-              <Route path="material/video/:id" element={<VideoDetail />} />
-              <Route path="material/copywriting" element={<CopywritingList />} />
-              <Route path="material/cover" element={<CoverList />} />
-              <Route path="material/audio" element={<AudioList />} />
-              <Route path="material/topic-group" element={<TopicGroupList />} />
-              <Route path="material/topic-group/:id" element={<TopicGroupDetail />} />
-              <Route path="material/topic" element={<TopicList />} />
+                  <Route path="/" element={<ProtectedAppShell />}>
+                    <Route index element={<Navigate to="/dashboard" replace />} />
+                    <Route path="dashboard" element={<Dashboard />} />
+                    <Route path="account" element={<Account />} />
+                    <Route path="task" element={<Navigate to="/task/list" replace />} />
+                    <Route path="task/list" element={<TaskList />} />
+                    <Route path="task/create" element={<TaskCreate />} />
 
-              {/* 商品管理 */}
-              <Route path="material/product" element={<ProductList />} />
-              <Route path="material/product/:id" element={<ProductDetail />} />
+                    <Route path="task/:id" element={<TaskDetail />} />
 
-              <Route path="ai-clip" element={<AIClip />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="schedule-config" element={<ScheduleConfig />} />
-              <Route path="profile-management" element={<ProfileManagement />} />
-            </Route>
-          </Routes>
-        </HashRouter>
-      </QueryProvider>
+                    {/* ???? */}
+                    <Route path="material" element={<MaterialOverview />} />
+                    <Route path="material/overview" element={<MaterialOverview />} />
+                    <Route path="material/video" element={<VideoList />} />
+                    <Route path="material/video/:id" element={<VideoDetail />} />
+                    <Route path="material/copywriting" element={<CopywritingList />} />
+                    <Route path="material/cover" element={<CoverList />} />
+                    <Route path="material/audio" element={<AudioList />} />
+                    <Route path="material/topic-group" element={<TopicGroupList />} />
+                    <Route path="material/topic-group/:id" element={<TopicGroupDetail />} />
+                    <Route path="material/topic" element={<TopicList />} />
+
+                    {/* ???? */}
+                    <Route path="material/product" element={<ProductList />} />
+                    <Route path="material/product/:id" element={<ProductDetail />} />
+
+                    <Route path="ai-clip" element={<AIClip />} />
+                    <Route path="settings" element={<Settings />} />
+                    <Route path="settings/auth-admin" element={<SessionAdmin />} />
+                    <Route path="schedule-config" element={<ScheduleConfig />} />
+                    <Route path="profile-management" element={<ProfileManagement />} />
+                  </Route>
+                </Routes>
+              </HashRouter>
+            </AuthErrorBoundary>
+          </AuthBootstrapProvider>
+        </QueryProvider>
       </AntApp>
     </ConfigProvider>
   )

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from loguru import logger
 
+from core.auth_dependencies import ACTIVE_ROUTE_DEPENDENCIES, GRACE_READONLY_ROUTE_DEPENDENCIES
 from models import Topic, TopicGroup, get_db
 from schemas import (
     TopicCreate, TopicResponse, TopicListResponse,
@@ -27,7 +28,7 @@ router = APIRouter(tags=["话题管理"])
 group_router = APIRouter(tags=["话题组管理"])
 
 
-@router.get("", response_model=TopicListResponse)
+@router.get("", response_model=TopicListResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def list_topics(
     sort: str = Query("created_at", description="排序字段: created_at | heat"),
     skip: int = Query(0, ge=0),
@@ -61,7 +62,7 @@ async def list_topics(
     return TopicListResponse(total=total, items=list(items))
 
 
-@router.post("", response_model=TopicResponse, status_code=201)
+@router.post("", response_model=TopicResponse, status_code=201, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def create_topic(
     data: TopicCreate,
     db: AsyncSession = Depends(get_db),
@@ -83,7 +84,7 @@ async def create_topic(
     return topic
 
 
-@router.put("/global", response_model=GlobalTopicResponse)
+@router.put("/global", response_model=GlobalTopicResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def set_global_topics(
     data: GlobalTopicRequest,
     db: AsyncSession = Depends(get_db),
@@ -107,7 +108,7 @@ async def set_global_topics(
     return GlobalTopicResponse(topic_ids=normalized, topics=list(found_topics))
 
 
-@router.get("/global", response_model=GlobalTopicResponse)
+@router.get("/global", response_model=GlobalTopicResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def get_global_topics(
     db: AsyncSession = Depends(get_db),
 ) -> GlobalTopicResponse:
@@ -119,7 +120,7 @@ async def get_global_topics(
     return GlobalTopicResponse(topic_ids=topic_ids, topics=topics)
 
 
-@router.get("/search", response_model=TopicListResponse)
+@router.get("/search", response_model=TopicListResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def search_topics(
     keyword: str = Query(..., min_length=1, description="搜索关键词"),
     db: AsyncSession = Depends(get_db),
@@ -161,7 +162,7 @@ async def search_topics(
     return TopicListResponse(total=len(topics), items=topics)
 
 
-@router.delete("/{topic_id}", status_code=204)
+@router.delete("/{topic_id}", status_code=204, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def delete_topic(
     topic_id: int,
     db: AsyncSession = Depends(get_db),
@@ -179,7 +180,7 @@ async def delete_topic(
 
 # ─── 批量删除 ────────────────────────────────────────────────────────────────
 
-@router.post("/batch-delete", response_model=BatchDeleteResponse)
+@router.post("/batch-delete", response_model=BatchDeleteResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def batch_delete_topics(
     data: BatchDeleteRequest,
     db: AsyncSession = Depends(get_db),
@@ -205,7 +206,7 @@ async def batch_delete_topics(
 
 # ─── 话题组 CRUD ──────────────────────────────────────────────────────────────
 
-@group_router.get("", response_model=TopicGroupListResponse)
+@group_router.get("", response_model=TopicGroupListResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def list_topic_groups(
     db: AsyncSession = Depends(get_db),
 ) -> TopicGroupListResponse:
@@ -216,7 +217,7 @@ async def list_topic_groups(
     return TopicGroupListResponse(total=len(groups), items=items)
 
 
-@group_router.post("", response_model=TopicGroupResponse, status_code=201)
+@group_router.post("", response_model=TopicGroupResponse, status_code=201, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def create_topic_group(
     data: TopicGroupCreate,
     db: AsyncSession = Depends(get_db),
@@ -246,7 +247,7 @@ async def create_topic_group(
     return await _build_group_response(group, db)
 
 
-@group_router.get("/{group_id}", response_model=TopicGroupResponse)
+@group_router.get("/{group_id}", response_model=TopicGroupResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def get_topic_group(
     group_id: int,
     db: AsyncSession = Depends(get_db),
@@ -259,7 +260,7 @@ async def get_topic_group(
     return await _build_group_response(group, db)
 
 
-@group_router.put("/{group_id}", response_model=TopicGroupResponse)
+@group_router.put("/{group_id}", response_model=TopicGroupResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def update_topic_group(
     group_id: int,
     data: TopicGroupUpdate,
@@ -292,7 +293,7 @@ async def update_topic_group(
     return await _build_group_response(group, db)
 
 
-@group_router.delete("/{group_id}", status_code=204)
+@group_router.delete("/{group_id}", status_code=204, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def delete_topic_group(
     group_id: int,
     db: AsyncSession = Depends(get_db),

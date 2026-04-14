@@ -8,7 +8,12 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from loguru import logger
 
+from core.auth_dependencies import (
+    require_active_service_session,
+    require_grace_readonly_service_session,
+)
 from models import Task, PublishLog, PublishProfile
+from schemas.auth import LocalAuthSessionSummary
 
 
 # 合法状态转换表
@@ -34,14 +39,28 @@ def validate_transition(current: str, target: str) -> bool:
 class TaskService:
     """任务服务"""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, auth_summary: LocalAuthSessionSummary | None = None):
         self.db = db
+        self._auth_summary = auth_summary
+
+    async def _require_active(self) -> LocalAuthSessionSummary:
+        return await require_active_service_session(
+            self.db,
+            auth_summary=self._auth_summary,
+        )
+
+    async def _require_grace_readonly(self) -> LocalAuthSessionSummary:
+        return await require_grace_readonly_service_session(
+            self.db,
+            auth_summary=self._auth_summary,
+        )
 
     async def resolve_profile(self, task: Task) -> Optional[PublishProfile]:
         """
         解析任务关联的 PublishProfile。
         优先使用 task.profile_id，无则查 is_default=True 的档案。
         """
+        await self._require_grace_readonly()
         if task.profile_id:
             result = await self.db.execute(
                 select(PublishProfile).where(PublishProfile.id == task.profile_id)
@@ -58,6 +77,7 @@ class TaskService:
 
     async def create_task(self, task_data: dict) -> Task:
         """创建单个任务"""
+        await self._require_active()
         task = Task(**task_data)
         self.db.add(task)
         await self.db.commit()
@@ -77,6 +97,7 @@ class TaskService:
 
     async def create_tasks_batch(self, tasks_data: List[dict]) -> Tuple[int, List[Task]]:
         """批量创建任务"""
+        await self._require_active()
         tasks = [Task(**data) for data in tasks_data]
         self.db.add_all(tasks)
         await self.db.commit()
@@ -100,6 +121,7 @@ class TaskService:
 
     async def get_task(self, task_id: int) -> Optional[Task]:
         """获取任务"""
+        await self._require_grace_readonly()
         result = await self.db.execute(select(Task).where(Task.id == task_id))
         return result.scalar_one_or_none()
 
@@ -111,6 +133,7 @@ class TaskService:
         offset: int = 0
     ) -> Tuple[int, List[Task]]:
         """获取任务列表"""
+        await self._require_grace_readonly()
         query = select(Task)
 
         if status:
@@ -139,6 +162,7 @@ class TaskService:
 
     async def update_task(self, task_id: int, update_data: dict) -> Optional[Task]:
         """更新任务"""
+        await self._require_active()
         task = await self.get_task(task_id)
         if not task:
             return None
@@ -154,6 +178,7 @@ class TaskService:
 
     async def delete_task(self, task_id: int) -> bool:
         """删除任务"""
+        await self._require_active()
         task = await self.get_task(task_id)
         if not task:
             return False
@@ -164,6 +189,7 @@ class TaskService:
 
     async def delete_all_tasks(self, status: Optional[str] = None) -> int:
         """删除所有任务"""
+        await self._require_active()
         query = select(Task)
         if status:
             query = query.where(Task.status == status)
@@ -257,6 +283,7 @@ class TaskService:
 
     async def get_task_stats(self) -> dict:
         """获取任务统计（7 状态）"""
+        await self._require_grace_readonly()
         stats: dict = {}
 
         for status in ["draft", "composing", "ready", "uploading", "uploaded", "failed", "cancelled"]:
@@ -281,6 +308,7 @@ class TaskService:
 
     async def quick_retry(self, task_id: int) -> Optional[Task]:
         """快速重试：failed → failed_at_status 对应状态，retry_count += 1，清空 failed_at_status 和 error_msg"""
+        await self._require_active()
         task = await self.get_task(task_id)
         if not task:
             return None
@@ -308,6 +336,7 @@ class TaskService:
 
     async def edit_retry(self, task_id: int) -> Optional[Task]:
         """编辑重试：failed → draft，清空 failed_at_status 和 error_msg"""
+        await self._require_active()
         task = await self.get_task(task_id)
         if not task:
             return None
@@ -337,4 +366,3 @@ class TaskService:
         count = result.scalar() or 0
 
         return count >= limit
-

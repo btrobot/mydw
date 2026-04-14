@@ -6,15 +6,18 @@ from typing import List, Optional
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.auth_dependencies import require_active_service_session
 from models import Task
+from schemas.auth import LocalAuthSessionSummary
 from services.task_assembler import TaskAssembler
 
 
 class TaskDistributor:
     """为每个账号创建一个 Task，关联相同的素材集合"""
 
-    def __init__(self, db: AsyncSession) -> None:
+    def __init__(self, db: AsyncSession, auth_summary: LocalAuthSessionSummary | None = None) -> None:
         self.db = db
+        self._auth_summary = auth_summary
 
     async def distribute(
         self,
@@ -27,10 +30,14 @@ class TaskDistributor:
         profile_id: Optional[int] = None,
         name: Optional[str] = None,
     ) -> List[Task]:
+        await require_active_service_session(
+            self.db,
+            auth_summary=self._auth_summary,
+        )
         if not video_ids or not account_ids:
             return []
 
-        assembler = TaskAssembler(self.db)
+        assembler = TaskAssembler(self.db, auth_summary=self._auth_summary)
         tasks: List[Task] = []
 
         for acct_id in account_ids:

@@ -10,6 +10,8 @@ import {
   SettingOutlined,
 } from '@ant-design/icons'
 
+import { AuthSessionHeader } from '@/features/auth'
+
 const { Header, Sider, Content } = Layout
 const { Title } = Typography
 
@@ -50,6 +52,7 @@ const items = [
     label: '系统设置',
     children: [
       { key: '/settings', label: '基本设置' },
+      { key: '/settings/auth-admin', label: '授权会话' },
     ],
   },
 ]
@@ -67,6 +70,7 @@ const subMenuKeys = [
   '/task/create',
   '/schedule-config',
   '/profile-management',
+  '/settings/auth-admin',
 ]
 
 export default function LayoutComponent() {
@@ -77,7 +81,7 @@ export default function LayoutComponent() {
   } = theme.useToken()
 
   const isMaterialRoute = location.pathname.startsWith('/material')
-  const isSettingsRoute = location.pathname === '/settings'
+  const isSettingsRoute = location.pathname.startsWith('/settings')
   const isTaskRoute = location.pathname.startsWith('/task') || ['/schedule-config', '/profile-management'].includes(location.pathname)
   const initialOpenKeys = [
     ...(isMaterialRoute ? ['material-group'] : []),
@@ -95,6 +99,9 @@ export default function LayoutComponent() {
         <Title level={4} style={{ color: 'white', margin: 0, flexShrink: 0 }}>
           得物掘金工具
         </Title>
+        <div style={{ marginLeft: 'auto' }}>
+          <AuthSessionHeader />
+        </div>
       </Header>
       <Layout>
         <Sider width={200} style={{ background: colorBgContainer }}>

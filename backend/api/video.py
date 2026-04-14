@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 from loguru import logger
 from pydantic import BaseModel
 
+from core.auth_dependencies import ACTIVE_ROUTE_DEPENDENCIES, GRACE_READONLY_ROUTE_DEPENDENCIES
 from models import Video, Product, get_db
 from schemas import VideoCreate, VideoUpdate, VideoResponse, VideoListResponse, BatchDeleteRequest, BatchDeleteResponse
 from core.config import settings
@@ -30,7 +31,7 @@ async def _get_video_with_product(db: AsyncSession, video_id: int) -> Video | No
     return result.scalars().first()
 
 
-@router.get("", response_model=VideoListResponse)
+@router.get("", response_model=VideoListResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def list_videos(
     product_id: Optional[int] = Query(None, description="按商品ID过滤"),
     keyword: Optional[str] = Query(None, description="按名称搜索"),
@@ -65,7 +66,7 @@ async def list_videos(
     return VideoListResponse(total=total, items=responses)
 
 
-@router.get("/{video_id}", response_model=VideoResponse)
+@router.get("/{video_id}", response_model=VideoResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def get_video(
     video_id: int,
     db: AsyncSession = Depends(get_db),
@@ -77,7 +78,7 @@ async def get_video(
     return video
 
 
-@router.post("", response_model=VideoResponse, status_code=201)
+@router.post("", response_model=VideoResponse, status_code=201, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def create_video(
     data: VideoCreate,
     db: AsyncSession = Depends(get_db),
@@ -97,7 +98,7 @@ async def create_video(
     return video
 
 
-@router.put("/{video_id}", response_model=VideoResponse)
+@router.put("/{video_id}", response_model=VideoResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def update_video(
     video_id: int,
     data: VideoUpdate,
@@ -119,7 +120,7 @@ async def update_video(
     return video
 
 
-@router.delete("/{video_id}", status_code=204)
+@router.delete("/{video_id}", status_code=204, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def delete_video(
     video_id: int,
     db: AsyncSession = Depends(get_db),
@@ -155,7 +156,7 @@ async def delete_video(
 
 # ─── 批量删除 ────────────────────────────────────────────────────────────────
 
-@router.post("/batch-delete", response_model=BatchDeleteResponse)
+@router.post("/batch-delete", response_model=BatchDeleteResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def batch_delete_videos(
     data: BatchDeleteRequest,
     db: AsyncSession = Depends(get_db),
@@ -202,7 +203,7 @@ ALLOWED_VIDEO_TYPES = {"video/mp4", "video/quicktime"}
 MAX_VIDEO_SIZE = 500 * 1024 * 1024  # 500MB
 
 
-@router.post("/upload", response_model=VideoResponse, status_code=201)
+@router.post("/upload", response_model=VideoResponse, status_code=201, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def upload_video(
     product_id: Optional[int] = Query(None, description="关联的商品ID"),
     file: UploadFile = File(...),
@@ -302,7 +303,7 @@ class ScanResult(BaseModel):
     details: List[str] = []
 
 
-@router.post("/scan", response_model=ScanResult)
+@router.post("/scan", response_model=ScanResult, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def scan_videos(
     skip_metadata: bool = Query(False, description="跳过 FFprobe 和 hash 计算，仅快速入库"),
     db: AsyncSession = Depends(get_db),
@@ -401,7 +402,7 @@ class ValidateResult(BaseModel):
     missing_ids: List[int] = []
 
 
-@router.post("/validate", response_model=ValidateResult)
+@router.post("/validate", response_model=ValidateResult, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def validate_videos(
     db: AsyncSession = Depends(get_db),
 ) -> ValidateResult:
@@ -420,7 +421,7 @@ async def validate_videos(
 
 # ─── 视频流 ───────────────────────────────────────────────────────────────────
 
-@router.get("/{video_id}/stream")
+@router.get("/{video_id}/stream", dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def stream_video(
     video_id: int,
     db: AsyncSession = Depends(get_db),

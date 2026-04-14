@@ -10,10 +10,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from core.auth_dependencies import require_active_service_session
 from models import (
     PublishProfile, Task,
     TaskVideo, TaskCopywriting, TaskCover, TaskAudio, TaskTopic,
 )
+from schemas.auth import LocalAuthSessionSummary
 from services.task_execution_semantics import validate_task_resource_inputs
 from services.topic_semantics import merge_task_topic_ids
 from services.topic_relation_service import get_profile_topic_ids
@@ -22,8 +24,9 @@ from services.topic_relation_service import get_profile_topic_ids
 class TaskAssembler:
     """任务组装器：创建任务并批量插入资源关联"""
 
-    def __init__(self, db: AsyncSession) -> None:
+    def __init__(self, db: AsyncSession, auth_summary: LocalAuthSessionSummary | None = None) -> None:
         self.db = db
+        self._auth_summary = auth_summary
 
     async def assemble(
         self,
@@ -42,6 +45,10 @@ class TaskAssembler:
         Returns:
             创建的 Task（已预加载关系）
         """
+        await require_active_service_session(
+            self.db,
+            auth_summary=self._auth_summary,
+        )
         # 查询一次 profile，复用
         profile = await self._get_profile(profile_id)
         initial_status = "ready" if (profile is None or profile.composition_mode == "none") else "draft"
@@ -126,4 +133,3 @@ class TaskAssembler:
             select(PublishProfile).where(PublishProfile.is_default.is_(True)).limit(1)
         )
         return result.scalars().first()
-

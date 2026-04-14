@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from loguru import logger
 
+from core.auth_dependencies import ACTIVE_ROUTE_DEPENDENCIES, GRACE_READONLY_ROUTE_DEPENDENCIES
 from models import Audio, get_db
 from schemas import AudioResponse, BatchDeleteRequest, BatchDeleteResponse
 from core.config import settings
@@ -23,7 +24,7 @@ ALLOWED_AUDIO_TYPES = {"audio/mpeg", "audio/mp3", "audio/wav", "audio/aac", "aud
 MAX_AUDIO_SIZE = 100 * 1024 * 1024  # 100MB
 
 
-@router.post("/upload", response_model=AudioResponse, status_code=201)
+@router.post("/upload", response_model=AudioResponse, status_code=201, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def upload_audio(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
@@ -72,7 +73,7 @@ async def upload_audio(
     return audio
 
 
-@router.get("", response_model=list[AudioResponse])
+@router.get("", response_model=list[AudioResponse], dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def list_audios(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
@@ -87,7 +88,7 @@ async def list_audios(
     return result.scalars().all()
 
 
-@router.delete("/{audio_id}", status_code=204)
+@router.delete("/{audio_id}", status_code=204, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def delete_audio(
     audio_id: int,
     db: AsyncSession = Depends(get_db),
@@ -119,7 +120,7 @@ async def delete_audio(
 
 # ─── 批量删除 ────────────────────────────────────────────────────────────────
 
-@router.post("/batch-delete", response_model=BatchDeleteResponse)
+@router.post("/batch-delete", response_model=BatchDeleteResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def batch_delete_audios(
     data: BatchDeleteRequest,
     db: AsyncSession = Depends(get_db),

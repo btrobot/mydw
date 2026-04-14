@@ -33,6 +33,7 @@
 - sprint / phase / migration / refactor 相关文档
 - 专题设计说明（如 settings、topic、task semantics、generation governance）
 - `docs/adr/` 中的决策记录
+- `docs/auth/README.md`（远程认证 / 本地授权门禁冻结文档入口；Step 0 artifacts）
 
 ## Historical / archival references
 
