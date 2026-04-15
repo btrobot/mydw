@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from datetime import datetime
-
-from sqlalchemy import select
+from sqlalchemy import String, cast, func, literal, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.models import AdminSession, AdminUser, AuditLog, Device, EndUserSession, License, User, UserDevice, UserEntitlement
@@ -48,17 +46,45 @@ class AdminRepository:
     def touch_admin_session(self, session: AdminSession) -> None:
         session.last_seen_at = datetime.utcnow()
 
-    def list_users(self) -> list[User]:
-        return list(
-            self.db.execute(
-                select(User).options(
-                    joinedload(User.license),
-                    joinedload(User.entitlements),
-                    joinedload(User.bindings).joinedload(UserDevice.device),
-                    joinedload(User.sessions),
-                )
-            ).unique().scalars().all()
+    def list_users(
+        self,
+        *,
+        q: str | None = None,
+        status: str | None = None,
+        license_status: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[User]:
+        query = (
+            select(User)
+            .outerjoin(License)
+            .options(
+                joinedload(User.license),
+                joinedload(User.entitlements),
+                joinedload(User.bindings).joinedload(UserDevice.device),
+                joinedload(User.sessions),
+            )
+            .order_by(User.updated_at.desc(), User.id.desc())
         )
+        if q:
+            pattern = f'%{q.lower()}%'
+            query = query.where(
+                or_(
+                    func.lower(User.username).like(pattern),
+                    func.lower(func.coalesce(User.display_name, '')).like(pattern),
+                    func.lower(func.coalesce(User.email, '')).like(pattern),
+                    func.lower(literal('u_') + cast(User.id, String)).like(pattern),
+                )
+            )
+        if status:
+            query = query.where(User.status == status)
+        if license_status:
+            query = query.where(License.license_status == license_status)
+        if offset:
+            query = query.offset(offset)
+        if limit is not None:
+            query = query.limit(limit)
+        return list(self.db.execute(query).unique().scalars().all())
 
     def get_user_detail(self, user_id: int) -> User | None:
         return self.db.execute(
@@ -72,12 +98,42 @@ class AdminRepository:
             .where(User.id == user_id)
         ).unique().scalars().first()
 
-    def list_devices(self) -> list[Device]:
-        return list(
-            self.db.execute(
-                select(Device).options(joinedload(Device.bindings).joinedload(UserDevice.user))
-            ).unique().scalars().all()
+    def list_devices(
+        self,
+        *,
+        q: str | None = None,
+        device_status: str | None = None,
+        user_id: int | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[Device]:
+        query = (
+            select(Device)
+            .outerjoin(UserDevice)
+            .outerjoin(User)
+            .options(joinedload(Device.bindings).joinedload(UserDevice.user))
+            .order_by(Device.updated_at.desc(), Device.id.desc())
         )
+        if q:
+            pattern = f'%{q.lower()}%'
+            query = query.where(
+                or_(
+                    func.lower(Device.device_id).like(pattern),
+                    func.lower(func.coalesce(Device.client_version, '')).like(pattern),
+                    func.lower(func.coalesce(User.username, '')).like(pattern),
+                    func.lower(func.coalesce(User.display_name, '')).like(pattern),
+                    func.lower(literal('u_') + cast(User.id, String)).like(pattern),
+                )
+            )
+        if device_status:
+            query = query.where(Device.status == device_status)
+        if user_id is not None:
+            query = query.where(UserDevice.binding_status == 'bound', User.id == user_id)
+        if offset:
+            query = query.offset(offset)
+        if limit is not None:
+            query = query.limit(limit)
+        return list(self.db.execute(query).unique().scalars().all())
 
     def get_device_detail(self, device_id: str) -> Device | None:
         return self.db.execute(
@@ -86,12 +142,44 @@ class AdminRepository:
             .where(Device.device_id == device_id)
         ).unique().scalars().first()
 
-    def list_sessions(self) -> list[EndUserSession]:
-        return list(
-            self.db.execute(
-                select(EndUserSession).options(joinedload(EndUserSession.user), joinedload(EndUserSession.device))
-            ).unique().scalars().all()
+    def list_sessions(
+        self,
+        *,
+        q: str | None = None,
+        auth_state: str | None = None,
+        user_id: int | None = None,
+        device_id: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[EndUserSession]:
+        query = (
+            select(EndUserSession)
+            .join(User)
+            .join(Device)
+            .options(joinedload(EndUserSession.user), joinedload(EndUserSession.device))
+            .order_by(EndUserSession.last_seen_at.desc(), EndUserSession.id.desc())
         )
+        if q:
+            pattern = f'%{q.lower()}%'
+            query = query.where(
+                or_(
+                    func.lower(EndUserSession.session_id).like(pattern),
+                    func.lower(Device.device_id).like(pattern),
+                    func.lower(User.username).like(pattern),
+                    func.lower(literal('u_') + cast(User.id, String)).like(pattern),
+                )
+            )
+        if auth_state:
+            query = query.where(EndUserSession.auth_state == auth_state)
+        if user_id is not None:
+            query = query.where(User.id == user_id)
+        if device_id:
+            query = query.where(Device.device_id == device_id)
+        if offset:
+            query = query.offset(offset)
+        if limit is not None:
+            query = query.limit(limit)
+        return list(self.db.execute(query).unique().scalars().all())
 
     def get_session_detail(self, session_id: str) -> EndUserSession | None:
         return self.db.execute(
@@ -107,6 +195,7 @@ class AdminRepository:
         actor_id: str | None = None,
         target_user_id: str | None = None,
         target_device_id: str | None = None,
+        target_session_id: str | None = None,
         created_from: datetime | None = None,
         created_to: datetime | None = None,
     ) -> list[AuditLog]:
@@ -119,6 +208,8 @@ class AdminRepository:
             query = query.where(AuditLog.target_user_id == target_user_id)
         if target_device_id:
             query = query.where(AuditLog.target_device_id == target_device_id)
+        if target_session_id:
+            query = query.where(AuditLog.target_session_id == target_session_id)
         if created_from:
             query = query.where(AuditLog.created_at >= created_from)
         if created_to:

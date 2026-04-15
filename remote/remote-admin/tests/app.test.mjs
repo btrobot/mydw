@@ -2,6 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  buildAuditLogQuery,
+  buildDevicesQuery,
+  buildSessionsQuery,
+  buildUsersQuery,
   canEditUsers,
   createDeviceEditor,
   createInitialState,
@@ -76,12 +80,28 @@ const auditLogs = [
   {
     id: '1',
     event_type: 'authorization_user_revoked',
+    actor_type: 'admin',
     actor_id: 'admin_1',
     target_user_id: 'u_1',
     target_device_id: null,
     target_session_id: null,
+    request_id: 'req-1',
+    trace_id: 'trace-1',
     created_at: '2026-04-30T00:00:00Z',
-    details: { reason: 'authorization_revoked' },
+    details: { reason: 'authorization_revoked', changed_fields: { license_status: 'revoked' } },
+  },
+  {
+    id: '2',
+    event_type: 'auth_login_failed',
+    actor_type: 'end_user',
+    actor_id: 'alice',
+    target_user_id: 'u_1',
+    target_device_id: 'device_1',
+    target_session_id: null,
+    request_id: 'req-2',
+    trace_id: 'trace-2',
+    created_at: '2026-04-30T01:00:00Z',
+    details: { reason: 'invalid_credentials' },
   },
 ];
 
@@ -108,11 +128,17 @@ test('dashboard placeholder renders authenticated shell content', () => {
   state.dashboardMetrics.loginFailures = 2;
   state.dashboardMetrics.deviceMismatches = 1;
   state.dashboardMetrics.destructiveActions = 4;
+  state.dashboardMetrics.generatedAt = '2026-04-30T02:00:00Z';
+  state.dashboardMetrics.recentFailures = [auditLogs[1]];
+  state.dashboardMetrics.recentDestructiveActions = [auditLogs[0]];
   const html = renderApp(state);
   assert.match(html, /Remote Admin/);
-  assert.match(html, /Dashboard operations snapshot/);
+  assert.match(html, /Recent critical events/);
+  assert.match(html, /Operator follow-up queue/);
   assert.match(html, /admin_sess_123/);
   assert.match(html, /Destructive actions/);
+  assert.match(html, /#\/audit-logs/);
+  assert.match(html, /auth_login_failed/);
 });
 
 test('users page renders real user control layout', () => {
@@ -126,6 +152,9 @@ test('users page renders real user control layout', () => {
   const html = renderApp(state);
   assert.match(html, /Users/);
   assert.match(html, /Alice/);
+  assert.match(html, /Apply filters/);
+  assert.match(html, /All licenses/);
+  assert.match(html, /Entitlements:/);
   assert.match(html, /Revoke user/);
   assert.match(html, /Restore user/);
 });
@@ -163,6 +192,10 @@ test('sessions page renders session control layout', () => {
   const html = renderApp(state);
   assert.match(html, /Sessions/);
   assert.match(html, /sess_1/);
+  assert.match(html, /Apply filters/);
+  assert.match(html, /Session detail/);
+  assert.match(html, /authenticated_active/);
+  assert.match(html, /Issued at/);
   assert.match(html, /Revoke session/);
 });
 
@@ -182,6 +215,8 @@ test('devices page renders device control layout', () => {
   const html = renderApp(state);
   assert.match(html, /Devices/);
   assert.match(html, /device_1/);
+  assert.match(html, /Bound user/);
+  assert.match(html, /Apply filters/);
   assert.match(html, /Unbind device/);
   assert.match(html, /Disable device/);
   assert.match(html, /Rebind device/);
@@ -192,8 +227,74 @@ test('audit page renders audit log list layout', () => {
   state.session = session;
   state.status = 'ready';
   state.auditPage.items = auditLogs;
+  state.auditPage.total = auditLogs.length;
+  state.auditPage.selectedAuditId = '1';
+  state.auditPage.filters.eventType = 'authorization_user_revoked';
+  state.auditPage.filters.actorId = 'admin_1';
+  state.auditPage.filters.targetUserId = 'u_1';
+  state.auditPage.filters.targetDeviceId = 'device_1';
+  state.auditPage.filters.targetSessionId = 'sess_1';
+  state.auditPage.filters.createdFrom = '2026-04-01T00:00';
+  state.auditPage.filters.createdTo = '2026-04-30T23:59';
   const html = renderApp(state);
   assert.match(html, /Audit logs/);
   assert.match(html, /authorization_user_revoked/);
   assert.match(html, /Refresh audit logs/);
+  assert.match(html, /Clear filters/);
+  assert.match(html, /Previous page/);
+  assert.match(html, /Target session/);
+  assert.match(html, /Request ID:/);
+  assert.match(html, /trace-1/);
+  assert.match(html, /changed_fields/);
+});
+
+test('buildAuditLogQuery keeps filter ordering stable', () => {
+  const query = buildAuditLogQuery({
+    eventType: 'authorization_user_revoked',
+    actorId: 'admin_1',
+    targetUserId: 'u_1',
+    targetDeviceId: 'device_1',
+    targetSessionId: 'sess_1',
+    createdFrom: '2026-04-01T00:00',
+    createdTo: '2026-04-30T23:59',
+    limit: 25,
+    offset: 50,
+  });
+
+  const params = new URLSearchParams(query.slice(1));
+  const createdFrom = params.get('created_from');
+  const createdTo = params.get('created_to');
+
+  assert.equal(params.get('event_type'), 'authorization_user_revoked');
+  assert.equal(params.get('actor_id'), 'admin_1');
+  assert.equal(params.get('target_user_id'), 'u_1');
+  assert.equal(params.get('target_device_id'), 'device_1');
+  assert.equal(params.get('target_session_id'), 'sess_1');
+  assert.equal(params.get('limit'), '25');
+  assert.equal(params.get('offset'), '50');
+  assert.ok(createdFrom?.endsWith('Z'));
+  assert.ok(createdTo?.endsWith('Z'));
+  assert.equal(new Date(createdFrom).getUTCSeconds(), 0);
+  assert.equal(new Date(createdFrom).getUTCMilliseconds(), 0);
+  assert.equal(new Date(createdTo).getUTCSeconds(), 59);
+  assert.equal(new Date(createdTo).getUTCMilliseconds(), 999);
+});
+
+test('buildUsersQuery, buildDevicesQuery, and buildSessionsQuery encode filter state', () => {
+  assert.equal(buildUsersQuery({ query: 'alice', status: 'active', licenseStatus: 'revoked' }), '?q=alice&status=active&license_status=revoked');
+  assert.equal(buildDevicesQuery({ query: 'device_1', status: 'disabled', userId: 'u_1' }), '?q=device_1&device_status=disabled&user_id=u_1');
+  assert.equal(buildSessionsQuery({ query: 'sess_1', authState: 'authenticated_active', userId: 'u_1', deviceId: 'device_1' }), '?q=sess_1&auth_state=authenticated_active&user_id=u_1&device_id=device_1');
+});
+
+test('audit page renders empty and loading operational states', () => {
+  const state = createInitialState('audit-logs');
+  state.session = session;
+  state.status = 'ready';
+  state.auditPage.loading = true;
+  let html = renderApp(state);
+  assert.match(html, /Loading audit logs/);
+
+  state.auditPage.loading = false;
+  html = renderApp(state);
+  assert.match(html, /No audit events matched the current filters/);
 });

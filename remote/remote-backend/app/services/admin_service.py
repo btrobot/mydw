@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.core.config import get_settings
 from app.core.observability import get_request_context
@@ -27,10 +27,20 @@ from app.schemas.admin import (
     AdminUserResponse,
     AdminUserUpdateRequest,
 )
+from app.services.admin_authz import (
+    ADMIN_PERMISSION_AUDIT_READ,
+    ADMIN_PERMISSION_DEVICES_READ,
+    ADMIN_PERMISSION_DEVICES_WRITE,
+    ADMIN_PERMISSION_METRICS_READ,
+    ADMIN_PERMISSION_SESSIONS_READ,
+    ADMIN_PERMISSION_SESSIONS_REVOKE,
+    ADMIN_PERMISSION_SESSION_READ,
+    ADMIN_PERMISSION_USERS_READ,
+    ADMIN_PERMISSION_USERS_WRITE,
+    AdminPermissionError,
+    require_permission,
+)
 from app.services.control_service import DeviceControlService, SessionControlService, UserControlService
-
-READ_ROLES = {'super_admin', 'auth_admin', 'support_readonly'}
-WRITE_ROLES = {'super_admin', 'auth_admin'}
 
 
 class AdminServiceError(Exception):
@@ -51,7 +61,7 @@ class AdminService:
         self.device_control = DeviceControlService(self.auth_repository, self.session_control)
 
     def ensure_seed_admin(self) -> None:
-        if self.settings.APP_ENV.lower() == 'production':
+        if self.settings.APP_ENV.lower() not in {'development', 'test'}:
             return
         seed_users = [
             (self.settings.ADMIN_BOOTSTRAP_USERNAME, self.settings.ADMIN_BOOTSTRAP_PASSWORD, 'super_admin'),
@@ -119,7 +129,7 @@ class AdminService:
         )
 
     def get_session(self, access_token: str) -> AdminCurrentSessionResponse:
-        admin_user, session = self._require_admin_session(access_token, allowed_roles=READ_ROLES)
+        admin_user, session = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_SESSION_READ)
         self.repository.touch_admin_session(session)
         self._write_audit(
             'admin_session_checked',
@@ -135,19 +145,44 @@ class AdminService:
             user=self._build_identity(admin_user),
         )
 
-    def list_users(self, access_token: str) -> AdminUserListResponse:
-        admin_user, _ = self._require_admin_session(access_token, allowed_roles=READ_ROLES)
-        items = [self._build_user_response(user) for user in self.repository.list_users()]
+    def list_users(
+        self,
+        access_token: str,
+        *,
+        q: str | None = None,
+        status: str | None = None,
+        license_status: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> AdminUserListResponse:
+        admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_USERS_READ)
+        total = len(
+            self.repository.list_users(
+                q=q,
+                status=status,
+                license_status=license_status,
+            )
+        )
+        items = [
+            self._build_user_response(user)
+            for user in self.repository.list_users(
+                q=q,
+                status=status,
+                license_status=license_status,
+                limit=limit,
+                offset=offset,
+            )
+        ]
         self._write_audit(
             'admin_users_listed',
             actor_id=f'admin_{admin_user.id}',
-            details={'count': len(items)},
+            details={'count': len(items), 'total': total, 'q': q, 'status': status, 'license_status': license_status, 'limit': limit, 'offset': offset},
         )
         self.repository.db.commit()
-        return AdminUserListResponse(items=items, total=len(items))
+        return AdminUserListResponse(items=items, total=total)
 
     def get_user(self, access_token: str, user_id: str) -> AdminUserResponse:
-        admin_user, _ = self._require_admin_session(access_token, allowed_roles=READ_ROLES)
+        admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_USERS_READ)
         target = self._load_target_user(user_id)
         self._write_audit(
             'admin_user_detail_viewed',
@@ -159,8 +194,9 @@ class AdminService:
         return self._build_user_response(target)
 
     def update_user(self, access_token: str, user_id: str, payload: AdminUserUpdateRequest) -> AdminUserResponse:
-        admin_user, _ = self._require_admin_session(access_token, allowed_roles=WRITE_ROLES)
+        admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_USERS_WRITE)
         target = self._load_target_user(user_id)
+        changed_fields = payload.model_dump(exclude_none=True)
 
         if payload.display_name is not None:
             target.display_name = payload.display_name
@@ -175,44 +211,69 @@ class AdminService:
         if payload.license_status is not None:
             self._apply_license_status(target.id, payload.license_status, actor_id=f'admin_{admin_user.id}')
             target = self._load_target_user(user_id)
-        else:
-            self._write_audit(
-                'admin_user_updated',
-                actor_id=f'admin_{admin_user.id}',
-                target_user_id=str(target.id),
-                details={'user_id': user_id, 'fields': payload.model_dump(exclude_none=True)},
-            )
+        self._write_audit(
+            'admin_user_updated',
+            actor_id=f'admin_{admin_user.id}',
+            target_user_id=str(target.id),
+            details={'user_id': user_id, 'fields': changed_fields},
+        )
 
         self.repository.db.commit()
         return self._build_user_response(target)
 
     def revoke_user(self, access_token: str, user_id: str) -> AdminActionResponse:
-        admin_user, _ = self._require_admin_session(access_token, allowed_roles=WRITE_ROLES)
+        admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_USERS_WRITE)
         target = self._load_target_user(user_id)
         self.user_control.revoke_user(target.id, actor_type='admin', actor_id=f'admin_{admin_user.id}')
         self.repository.db.commit()
         return AdminActionResponse(success=True)
 
     def restore_user(self, access_token: str, user_id: str) -> AdminActionResponse:
-        admin_user, _ = self._require_admin_session(access_token, allowed_roles=WRITE_ROLES)
+        admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_USERS_WRITE)
         target = self._load_target_user(user_id)
         self.user_control.restore_user(target.id, actor_type='admin', actor_id=f'admin_{admin_user.id}')
         self.repository.db.commit()
         return AdminActionResponse(success=True)
 
-    def list_devices(self, access_token: str) -> AdminDeviceListResponse:
-        admin_user, _ = self._require_admin_session(access_token, allowed_roles=READ_ROLES)
-        items = [self._build_device_response(device) for device in self.repository.list_devices()]
+    def list_devices(
+        self,
+        access_token: str,
+        *,
+        q: str | None = None,
+        device_status: str | None = None,
+        user_id: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> AdminDeviceListResponse:
+        admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_DEVICES_READ)
+        normalized_user_id = self._normalize_optional_user_filter(user_id)
+        total = len(
+            self.repository.list_devices(
+                q=q,
+                device_status=device_status,
+                user_id=normalized_user_id,
+            )
+        )
+        items = [
+            self._build_device_response(device)
+            for device in self.repository.list_devices(
+                q=q,
+                device_status=device_status,
+                user_id=normalized_user_id,
+                limit=limit,
+                offset=offset,
+            )
+        ]
         self._write_audit(
             'admin_devices_listed',
             actor_id=f'admin_{admin_user.id}',
-            details={'count': len(items)},
+            details={'count': len(items), 'total': total, 'q': q, 'device_status': device_status, 'user_id': user_id, 'limit': limit, 'offset': offset},
         )
         self.repository.db.commit()
-        return AdminDeviceListResponse(items=items, total=len(items))
+        return AdminDeviceListResponse(items=items, total=total)
 
     def get_device(self, access_token: str, device_id: str) -> AdminDeviceResponse:
-        admin_user, _ = self._require_admin_session(access_token, allowed_roles=READ_ROLES)
+        admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_DEVICES_READ)
         device = self._load_target_device(device_id)
         self._write_audit(
             'admin_device_detail_viewed',
@@ -224,7 +285,7 @@ class AdminService:
         return self._build_device_response(device)
 
     def unbind_device(self, access_token: str, device_id: str) -> AdminActionResponse:
-        admin_user, _ = self._require_admin_session(access_token, allowed_roles=WRITE_ROLES)
+        admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_DEVICES_WRITE)
         device = self._load_target_device(device_id)
         current_user_id = self._current_bound_user_id(device)
         if current_user_id is None:
@@ -234,14 +295,14 @@ class AdminService:
         return AdminActionResponse(success=True)
 
     def disable_device(self, access_token: str, device_id: str) -> AdminActionResponse:
-        admin_user, _ = self._require_admin_session(access_token, allowed_roles=WRITE_ROLES)
+        admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_DEVICES_WRITE)
         self._load_target_device(device_id)
         self.device_control.disable_device(device_id, actor_type='admin', actor_id=f'admin_{admin_user.id}')
         self.repository.db.commit()
         return AdminActionResponse(success=True)
 
     def rebind_device(self, access_token: str, device_id: str, payload: AdminDeviceRebindRequest) -> AdminActionResponse:
-        admin_user, _ = self._require_admin_session(access_token, allowed_roles=WRITE_ROLES)
+        admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_DEVICES_WRITE)
         self._load_target_device(device_id)
         target_user = self._load_target_user(payload.user_id)
         self.device_control.rebind_device(
@@ -254,19 +315,48 @@ class AdminService:
         self.repository.db.commit()
         return AdminActionResponse(success=True)
 
-    def list_sessions(self, access_token: str) -> AdminSessionListResponse:
-        admin_user, _ = self._require_admin_session(access_token, allowed_roles=READ_ROLES)
-        items = [self._build_session_response(session) for session in self.repository.list_sessions()]
+    def list_sessions(
+        self,
+        access_token: str,
+        *,
+        q: str | None = None,
+        auth_state: str | None = None,
+        user_id: str | None = None,
+        device_id: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> AdminSessionListResponse:
+        admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_SESSIONS_READ)
+        normalized_user_id = self._normalize_optional_user_filter(user_id)
+        total = len(
+            self.repository.list_sessions(
+                q=q,
+                auth_state=auth_state,
+                user_id=normalized_user_id,
+                device_id=device_id,
+            )
+        )
+        items = [
+            self._build_session_response(session)
+            for session in self.repository.list_sessions(
+                q=q,
+                auth_state=auth_state,
+                user_id=normalized_user_id,
+                device_id=device_id,
+                limit=limit,
+                offset=offset,
+            )
+        ]
         self._write_audit(
             'admin_sessions_listed',
             actor_id=f'admin_{admin_user.id}',
-            details={'count': len(items)},
+            details={'count': len(items), 'total': total, 'q': q, 'auth_state': auth_state, 'user_id': user_id, 'device_id': device_id, 'limit': limit, 'offset': offset},
         )
         self.repository.db.commit()
-        return AdminSessionListResponse(items=items, total=len(items))
+        return AdminSessionListResponse(items=items, total=total)
 
     def revoke_session(self, access_token: str, session_id: str) -> AdminActionResponse:
-        admin_user, _ = self._require_admin_session(access_token, allowed_roles=WRITE_ROLES)
+        admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_SESSIONS_REVOKE)
         session = self.auth_repository.get_session_by_session_id(session_id)
         if session is None:
             raise AdminServiceError('not_found', 'Requested admin resource missing', status_code=404, details={'session_id': session_id})
@@ -289,38 +379,49 @@ class AdminService:
         actor_id: str | None = None,
         target_user_id: str | None = None,
         target_device_id: str | None = None,
+        target_session_id: str | None = None,
         created_from: datetime | None = None,
         created_to: datetime | None = None,
+        limit: int = 50,
+        offset: int = 0,
     ) -> AuditLogListResponse:
-        admin_user, _ = self._require_admin_session(access_token, allowed_roles=READ_ROLES)
-        items = [
-            self._build_audit_response(row)
-            for row in self.repository.list_audit_logs(
-                event_type=event_type,
-                actor_id=actor_id,
-                target_user_id=target_user_id,
-                target_device_id=target_device_id,
-                created_from=created_from,
-                created_to=created_to,
-            )
-        ]
+        admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_AUDIT_READ)
+        normalized_created_from = self._normalize_audit_filter_datetime(created_from)
+        normalized_created_to = self._normalize_audit_filter_datetime(created_to)
+        audit_rows = self.repository.list_audit_logs(
+            event_type=event_type,
+            actor_id=actor_id,
+            target_user_id=target_user_id,
+            target_device_id=target_device_id,
+            target_session_id=target_session_id,
+            created_from=normalized_created_from,
+            created_to=normalized_created_to,
+        )
+        items = [self._build_audit_response(row) for row in audit_rows[offset : offset + limit]]
         self._write_audit(
             'admin_audit_logs_listed',
             actor_id=f'admin_{admin_user.id}',
             details={
                 'count': len(items),
+                'total': len(audit_rows),
                 'event_type': event_type,
                 'actor_id': actor_id,
                 'target_user_id': target_user_id,
                 'target_device_id': target_device_id,
+                'target_session_id': target_session_id,
+                'created_from': normalized_created_from.isoformat() if normalized_created_from else None,
+                'created_to': normalized_created_to.isoformat() if normalized_created_to else None,
+                'limit': limit,
+                'offset': offset,
             },
         )
         self.repository.db.commit()
-        return AuditLogListResponse(items=items, total=len(items))
+        return AuditLogListResponse(items=items, total=len(audit_rows))
 
     def get_metrics_summary(self, access_token: str) -> AdminMetricsSummaryResponse:
-        admin_user, _ = self._require_admin_session(access_token, allowed_roles=READ_ROLES)
+        admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_METRICS_READ)
         audit_rows = self.repository.list_audit_logs()
+        generated_at = datetime.utcnow()
         login_failures = sum(1 for row in audit_rows if row.event_type in {'auth_login_failed', 'admin_login_failed'})
         device_mismatches = sum(1 for row in audit_rows if row.event_type in {'auth_login_failed', 'auth_refresh_failed', 'auth_logout_failed', 'auth_me_failed'} and self._details_reason(row) == 'device_mismatch')
         destructive_actions = sum(
@@ -352,6 +453,19 @@ class AdminService:
             login_failures=login_failures,
             device_mismatches=device_mismatches,
             destructive_actions=destructive_actions,
+            generated_at=generated_at,
+            recent_failures=self._select_recent_audit_rows(audit_rows, {'auth_login_failed', 'admin_login_failed'}),
+            recent_destructive_actions=self._select_recent_audit_rows(
+                audit_rows,
+                {
+                    'authorization_user_revoked',
+                    'authorization_user_disabled',
+                    'authorization_device_unbound',
+                    'authorization_device_disabled',
+                    'authorization_device_rebound',
+                    'admin_session_revoked',
+                },
+            ),
         )
 
     def _apply_license_status(self, user_id: int, status: str, *, actor_id: str) -> None:
@@ -381,13 +495,22 @@ class AdminService:
         return target
 
     @staticmethod
+    def _normalize_optional_user_filter(user_id: str | None) -> int | None:
+        if user_id is None or not user_id.strip():
+            return None
+        try:
+            return int(user_id.strip().removeprefix('u_'))
+        except ValueError as exc:
+            raise AdminServiceError('not_found', 'Requested admin resource missing', status_code=404, details={'user_id': user_id}) from exc
+
+    @staticmethod
     def _current_bound_user_id(device) -> int | None:
         for binding in device.bindings:
             if binding.binding_status == 'bound' and binding.user is not None:
                 return binding.user.id
         return None
 
-    def _require_admin_session(self, access_token: str, *, allowed_roles: set[str]) -> tuple[AdminUser, AdminSession]:
+    def _require_admin_session(self, access_token: str, *, permission: str) -> tuple[AdminUser, AdminSession]:
         if not access_token:
             self._raise_with_audit(
                 event_type='admin_session_failed',
@@ -431,7 +554,9 @@ class AdminService:
                 target_session_id=session.session_id,
                 details={'reason': 'forbidden'},
             )
-        if admin_user.role not in allowed_roles:
+        try:
+            policy = require_permission(admin_user.role, permission)
+        except AdminPermissionError:
             self._raise_with_audit(
                 event_type='admin_authorization_failed',
                 error_code='forbidden',
@@ -440,8 +565,15 @@ class AdminService:
                 actor_id=f'admin_{admin_user.id}',
                 target_user_id=f'admin_{admin_user.id}',
                 target_session_id=session.session_id,
-                details={'reason': 'forbidden', 'required_roles': sorted(allowed_roles)},
+                details={'reason': 'forbidden', 'required_permission': permission},
             )
+        self._write_audit(
+            'admin_authorization_checked',
+            actor_id=f'admin_{admin_user.id}',
+            target_user_id=f'admin_{admin_user.id}',
+            target_session_id=session.session_id,
+            details={'permission': permission, 'role': policy.role},
+        )
         return admin_user, session
 
     @staticmethod
@@ -514,9 +646,14 @@ class AdminService:
             target_user_id=row.target_user_id,
             target_device_id=row.target_device_id,
             target_session_id=row.target_session_id,
+            request_id=row.request_id,
+            trace_id=row.trace_id,
             created_at=row.created_at,
             details=details,
         )
+
+    def _select_recent_audit_rows(self, audit_rows, event_types: set[str], *, limit: int = 5) -> list[AuditLogResponse]:
+        return [self._build_audit_response(row) for row in audit_rows if row.event_type in event_types][:limit]
 
     @staticmethod
     def _details_reason(row) -> str | None:
@@ -527,6 +664,14 @@ class AdminService:
         except json.JSONDecodeError:
             return None
         return details.get('reason')
+
+    @staticmethod
+    def _normalize_audit_filter_datetime(value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            return value
+        return value.astimezone(timezone.utc).replace(tzinfo=None)
 
     def _raise_with_audit(
         self,

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Request, Security
+from fastapi import APIRouter, Depends, Query, Request, Security
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
@@ -91,11 +91,23 @@ def admin_session(
 
 @router.get('/users', response_model=AdminUserListResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}})
 def list_users(
+    q: str | None = None,
+    status: str | None = None,
+    license_status: str | None = None,
+    limit: int | None = Query(default=None, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
     service: AdminService = Depends(get_admin_service),
 ) -> AdminUserListResponse | JSONResponse:
     try:
-        return service.list_users(_extract_bearer_token(credentials))
+        return service.list_users(
+            _extract_bearer_token(credentials),
+            q=q,
+            status=status,
+            license_status=license_status,
+            limit=limit,
+            offset=offset,
+        )
     except AdminServiceError as exc:
         return _error_response(exc)
 
@@ -151,11 +163,23 @@ def restore_user(
 
 @router.get('/devices', response_model=AdminDeviceListResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}})
 def list_devices(
+    q: str | None = None,
+    device_status: str | None = None,
+    user_id: str | None = None,
+    limit: int | None = Query(default=None, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
     service: AdminService = Depends(get_admin_service),
 ) -> AdminDeviceListResponse | JSONResponse:
     try:
-        return service.list_devices(_extract_bearer_token(credentials))
+        return service.list_devices(
+            _extract_bearer_token(credentials),
+            q=q,
+            device_status=device_status,
+            user_id=user_id,
+            limit=limit,
+            offset=offset,
+        )
     except AdminServiceError as exc:
         return _error_response(exc)
 
@@ -211,11 +235,25 @@ def rebind_device(
 
 @router.get('/sessions', response_model=AdminSessionListResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}})
 def list_sessions(
+    q: str | None = None,
+    auth_state: str | None = None,
+    user_id: str | None = None,
+    device_id: str | None = None,
+    limit: int | None = Query(default=None, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
     service: AdminService = Depends(get_admin_service),
 ) -> AdminSessionListResponse | JSONResponse:
     try:
-        return service.list_sessions(_extract_bearer_token(credentials))
+        return service.list_sessions(
+            _extract_bearer_token(credentials),
+            q=q,
+            auth_state=auth_state,
+            user_id=user_id,
+            device_id=device_id,
+            limit=limit,
+            offset=offset,
+        )
     except AdminServiceError as exc:
         return _error_response(exc)
 
@@ -238,8 +276,11 @@ def list_audit_logs(
     actor_id: str | None = None,
     target_user_id: str | None = None,
     target_device_id: str | None = None,
+    target_session_id: str | None = None,
     created_from: datetime | None = None,
     created_to: datetime | None = None,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
     service: AdminService = Depends(get_admin_service),
 ) -> AuditLogListResponse | JSONResponse:
@@ -250,8 +291,11 @@ def list_audit_logs(
             actor_id=actor_id,
             target_user_id=target_user_id,
             target_device_id=target_device_id,
+            target_session_id=target_session_id,
             created_from=created_from,
             created_to=created_to,
+            limit=limit,
+            offset=offset,
         )
     except AdminServiceError as exc:
         return _error_response(exc)

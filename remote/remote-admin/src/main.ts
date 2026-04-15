@@ -1,4 +1,8 @@
 import {
+  buildAuditLogQuery,
+  buildDevicesQuery,
+  buildSessionsQuery,
+  buildUsersQuery,
   canEditUsers,
   createDeviceEditor,
   createInitialState,
@@ -139,20 +143,26 @@ async function ensureDashboardMetricsLoaded(): Promise<void> {
       login_failures: number;
       device_mismatches: number;
       destructive_actions: number;
+      generated_at: string;
+      recent_failures: AdminAuditRecord[];
+      recent_destructive_actions: AdminAuditRecord[];
     }>('/admin/metrics/summary', {
       method: 'GET',
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     state = {
       ...state,
-      dashboardMetrics: {
-        activeSessions: metrics.active_sessions,
-        loginFailures: metrics.login_failures,
-        deviceMismatches: metrics.device_mismatches,
-        destructiveActions: metrics.destructive_actions,
-        loading: false,
-        errorMessage: null,
-      },
+        dashboardMetrics: {
+          activeSessions: metrics.active_sessions,
+          loginFailures: metrics.login_failures,
+          deviceMismatches: metrics.device_mismatches,
+          destructiveActions: metrics.destructive_actions,
+          generatedAt: metrics.generated_at,
+          recentFailures: metrics.recent_failures,
+          recentDestructiveActions: metrics.recent_destructive_actions,
+          loading: false,
+          errorMessage: null,
+        },
     };
   } catch (error) {
     state = {
@@ -183,17 +193,21 @@ async function ensureUsersLoaded(): Promise<void> {
   };
   render();
   try {
-    const listing = await request<{ items: AdminUserRecord[]; total: number }>('/admin/users', {
+    const listing = await request<{ items: AdminUserRecord[]; total: number }>(`/admin/users${buildUsersQuery(state.usersPage.filters)}`, {
       method: 'GET',
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    const selectedUserId = state.usersPage.selectedUserId ?? listing.items[0]?.id ?? null;
+    const selectedUserId =
+      listing.items.find((item) => item.id === state.usersPage.selectedUserId)?.id ??
+      listing.items[0]?.id ??
+      null;
     state = {
       ...state,
       usersPage: {
         ...state.usersPage,
         items: listing.items,
         selectedUserId,
+        detail: selectedUserId ? state.usersPage.detail : null,
         loading: false,
         errorMessage: null,
       },
@@ -278,17 +292,21 @@ async function ensureDevicesLoaded(): Promise<void> {
   };
   render();
   try {
-    const listing = await request<{ items: AdminDeviceRecord[]; total: number }>('/admin/devices', {
+    const listing = await request<{ items: AdminDeviceRecord[]; total: number }>(`/admin/devices${buildDevicesQuery(state.devicesPage.filters)}`, {
       method: 'GET',
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    const selectedDeviceId = state.devicesPage.selectedDeviceId ?? listing.items[0]?.device_id ?? null;
+    const selectedDeviceId =
+      listing.items.find((item) => item.device_id === state.devicesPage.selectedDeviceId)?.device_id ??
+      listing.items[0]?.device_id ??
+      null;
     state = {
       ...state,
       devicesPage: {
         ...state.devicesPage,
         items: listing.items,
         selectedDeviceId,
+        detail: selectedDeviceId ? state.devicesPage.detail : null,
         loading: false,
         errorMessage: null,
       },
@@ -374,7 +392,7 @@ async function ensureSessionsLoaded(): Promise<void> {
   };
   render();
   try {
-    const listing = await request<{ items: AdminSessionRecord[]; total: number }>('/admin/sessions', {
+    const listing = await request<{ items: AdminSessionRecord[]; total: number }>(`/admin/sessions${buildSessionsQuery(state.sessionsPage.filters)}`, {
       method: 'GET',
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -385,7 +403,10 @@ async function ensureSessionsLoaded(): Promise<void> {
         items: listing.items,
         loading: false,
         errorMessage: null,
-        selectedSessionId: listing.items[0]?.session_id ?? null,
+        selectedSessionId:
+          listing.items.find((item) => item.session_id === state.sessionsPage.selectedSessionId)?.session_id ??
+          listing.items[0]?.session_id ??
+          null,
       },
     };
   } catch (error) {
@@ -417,11 +438,7 @@ async function ensureAuditLogsLoaded(): Promise<void> {
   };
   render();
   try {
-    const query = new URLSearchParams();
-    if (state.auditPage.filterEventType.trim()) {
-      query.set('event_type', state.auditPage.filterEventType.trim());
-    }
-    const suffix = query.toString() ? `?${query.toString()}` : '';
+    const suffix = buildAuditLogQuery(state.auditPage.filters);
     const result = await request<{ items: AdminAuditRecord[]; total: number }>(`/admin/audit-logs${suffix}`, {
       method: 'GET',
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -431,6 +448,8 @@ async function ensureAuditLogsLoaded(): Promise<void> {
       auditPage: {
         ...state.auditPage,
         items: result.items,
+        total: result.total,
+        selectedAuditId: result.items[0]?.id ?? null,
         loading: false,
         errorMessage: null,
       },
@@ -452,12 +471,17 @@ function render(): void {
   root.innerHTML = renderApp(state);
   bindLoginForm();
   bindLogout();
+  bindUsersFilters();
   bindUserCards();
   bindUserForm();
+  bindDevicesFilters();
   bindDeviceCards();
   bindDeviceForm();
-  bindSessionCards();
+  bindSessionsFilters();
+  bindSessionSelection();
+  bindSessionActions();
   bindAuditForm();
+  bindAuditCards();
 }
 
 function bindLoginForm(): void {
@@ -542,6 +566,42 @@ function bindLogout(): void {
   });
 }
 
+function bindUsersFilters(): void {
+  const form = document.getElementById('users-filter-form') as HTMLFormElement | null;
+  if (!form) {
+    return;
+  }
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    state = {
+      ...state,
+      usersPage: {
+        ...state.usersPage,
+        filters: {
+          query: (document.getElementById('users-query') as HTMLInputElement | null)?.value.trim() ?? '',
+          status: (document.getElementById('users-status-filter') as HTMLSelectElement | null)?.value ?? '',
+          licenseStatus: (document.getElementById('users-license-filter') as HTMLSelectElement | null)?.value ?? '',
+        },
+      },
+    };
+    await ensureUsersLoaded();
+  });
+
+  const clearButton = document.getElementById('users-filter-clear');
+  if (clearButton) {
+    clearButton.addEventListener('click', async () => {
+      state = {
+        ...state,
+        usersPage: {
+          ...state.usersPage,
+          filters: createInitialState('users').usersPage.filters,
+        },
+      };
+      await ensureUsersLoaded();
+    });
+  }
+}
+
 function bindUserCards(): void {
   for (const element of Array.from(document.querySelectorAll<HTMLButtonElement>('[data-user-id]'))) {
     element.addEventListener('click', async () => {
@@ -550,6 +610,42 @@ function bindUserCards(): void {
         return;
       }
       await loadUserDetail(userId);
+    });
+  }
+}
+
+function bindDevicesFilters(): void {
+  const form = document.getElementById('devices-filter-form') as HTMLFormElement | null;
+  if (!form) {
+    return;
+  }
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    state = {
+      ...state,
+      devicesPage: {
+        ...state.devicesPage,
+        filters: {
+          query: (document.getElementById('devices-query') as HTMLInputElement | null)?.value.trim() ?? '',
+          status: (document.getElementById('devices-status-filter') as HTMLSelectElement | null)?.value ?? '',
+          userId: (document.getElementById('devices-user-filter') as HTMLInputElement | null)?.value.trim() ?? '',
+        },
+      },
+    };
+    await ensureDevicesLoaded();
+  });
+
+  const clearButton = document.getElementById('devices-filter-clear');
+  if (clearButton) {
+    clearButton.addEventListener('click', async () => {
+      state = {
+        ...state,
+        devicesPage: {
+          ...state.devicesPage,
+          filters: createInitialState('devices').devicesPage.filters,
+        },
+      };
+      await ensureDevicesLoaded();
     });
   }
 }
@@ -566,14 +662,70 @@ function bindDeviceCards(): void {
   }
 }
 
-function bindSessionCards(): void {
+function bindSessionsFilters(): void {
+  const form = document.getElementById('sessions-filter-form') as HTMLFormElement | null;
+  if (!form) {
+    return;
+  }
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    state = {
+      ...state,
+      sessionsPage: {
+        ...state.sessionsPage,
+        filters: {
+          query: (document.getElementById('sessions-query') as HTMLInputElement | null)?.value.trim() ?? '',
+          authState: (document.getElementById('sessions-auth-state-filter') as HTMLSelectElement | null)?.value ?? '',
+          userId: (document.getElementById('sessions-user-filter') as HTMLInputElement | null)?.value.trim() ?? '',
+          deviceId: (document.getElementById('sessions-device-filter') as HTMLInputElement | null)?.value.trim() ?? '',
+        },
+      },
+    };
+    await ensureSessionsLoaded();
+  });
+
+  const clearButton = document.getElementById('sessions-filter-clear');
+  if (clearButton) {
+    clearButton.addEventListener('click', async () => {
+      state = {
+        ...state,
+        sessionsPage: {
+          ...state.sessionsPage,
+          filters: createInitialState('sessions').sessionsPage.filters,
+        },
+      };
+      await ensureSessionsLoaded();
+    });
+  }
+}
+
+function bindSessionSelection(): void {
+  for (const element of Array.from(document.querySelectorAll<HTMLButtonElement>('[data-session-select-id]'))) {
+    element.addEventListener('click', () => {
+      const sessionId = element.dataset.sessionSelectId;
+      if (!sessionId) {
+        return;
+      }
+      state = {
+        ...state,
+        sessionsPage: {
+          ...state.sessionsPage,
+          selectedSessionId: sessionId,
+        },
+      };
+      render();
+    });
+  }
+}
+
+function bindSessionActions(): void {
   for (const element of Array.from(document.querySelectorAll<HTMLButtonElement>('[data-session-id]'))) {
     element.addEventListener('click', async () => {
       if (!canEditUsers(state.session)) {
         return;
       }
       const sessionId = element.dataset.sessionId;
-      if (!sessionId || !window.confirm('Revoke this session now?')) {
+      if (!sessionId || !confirmAdminAction('sessionRevoke', sessionId)) {
         return;
       }
       await runSessionRevoke(sessionId);
@@ -589,15 +741,106 @@ function bindAuditForm(): void {
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const eventType = (document.getElementById('audit-event-type') as HTMLInputElement | null)?.value.trim() ?? '';
+    const actorId = (document.getElementById('audit-actor-id') as HTMLInputElement | null)?.value.trim() ?? '';
+    const targetUserId = (document.getElementById('audit-target-user-id') as HTMLInputElement | null)?.value.trim() ?? '';
+    const targetDeviceId = (document.getElementById('audit-target-device-id') as HTMLInputElement | null)?.value.trim() ?? '';
+    const targetSessionId = (document.getElementById('audit-target-session-id') as HTMLInputElement | null)?.value.trim() ?? '';
+    const createdFrom = (document.getElementById('audit-created-from') as HTMLInputElement | null)?.value ?? '';
+    const createdTo = (document.getElementById('audit-created-to') as HTMLInputElement | null)?.value ?? '';
+    const limit = Number((document.getElementById('audit-limit') as HTMLInputElement | null)?.value ?? state.auditPage.filters.limit);
+    const offset = Number((document.getElementById('audit-offset') as HTMLInputElement | null)?.value ?? 0);
     state = {
       ...state,
       auditPage: {
         ...state.auditPage,
-        filterEventType: eventType,
+        filters: {
+          eventType,
+          actorId,
+          targetUserId,
+          targetDeviceId,
+          targetSessionId,
+          createdFrom,
+          createdTo,
+          limit: Number.isFinite(limit) && limit > 0 ? limit : state.auditPage.filters.limit,
+          offset: Number.isFinite(offset) && offset >= 0 ? offset : 0,
+        },
       },
     };
     await ensureAuditLogsLoaded();
   });
+
+  const clearButton = document.getElementById('audit-clear');
+  if (clearButton) {
+    clearButton.addEventListener('click', async () => {
+      state = {
+        ...state,
+        auditPage: {
+          ...createInitialState('audit-logs').auditPage,
+          items: state.auditPage.items,
+        },
+      };
+      await ensureAuditLogsLoaded();
+    });
+  }
+
+  const previousPageButton = document.getElementById('audit-prev-page');
+  if (previousPageButton) {
+    previousPageButton.addEventListener('click', async () => {
+      if (state.auditPage.filters.offset <= 0) {
+        return;
+      }
+      state = {
+        ...state,
+        auditPage: {
+          ...state.auditPage,
+          filters: {
+            ...state.auditPage.filters,
+            offset: Math.max(0, state.auditPage.filters.offset - state.auditPage.filters.limit),
+          },
+        },
+      };
+      await ensureAuditLogsLoaded();
+    });
+  }
+
+  const nextPageButton = document.getElementById('audit-next-page');
+  if (nextPageButton) {
+    nextPageButton.addEventListener('click', async () => {
+      if (state.auditPage.filters.offset + state.auditPage.items.length >= state.auditPage.total) {
+        return;
+      }
+      state = {
+        ...state,
+        auditPage: {
+          ...state.auditPage,
+          filters: {
+            ...state.auditPage.filters,
+            offset: state.auditPage.filters.offset + state.auditPage.filters.limit,
+          },
+        },
+      };
+      await ensureAuditLogsLoaded();
+    });
+  }
+}
+
+function bindAuditCards(): void {
+  for (const element of Array.from(document.querySelectorAll<HTMLButtonElement>('[data-audit-id]'))) {
+    element.addEventListener('click', () => {
+      const auditId = element.dataset.auditId;
+      if (!auditId) {
+        return;
+      }
+      state = {
+        ...state,
+        auditPage: {
+          ...state.auditPage,
+          selectedAuditId: auditId,
+        },
+      };
+      render();
+    });
+  }
 }
 
 function bindUserForm(): void {
@@ -638,7 +881,7 @@ function bindUserForm(): void {
         },
         body: JSON.stringify(payload),
       });
-      applyUpdatedUser(updated, 'User authorization updated.');
+      await refreshUsersAfterMutation(updated.id, 'User authorization updated.');
     } catch (error) {
       updateUserEditorFailure(error);
     }
@@ -647,7 +890,8 @@ function bindUserForm(): void {
   const revokeButton = document.getElementById('user-revoke');
   if (revokeButton) {
     revokeButton.addEventListener('click', async () => {
-      if (!canEditUsers(state.session) || !window.confirm('Revoke this user authorization now?')) {
+      const target = state.usersPage.detail;
+      if (!target || !canEditUsers(state.session) || !confirmAdminAction('userRevoke', target.id)) {
         return;
       }
       await runUserAction('revoke', 'User authorization revoked.');
@@ -657,7 +901,8 @@ function bindUserForm(): void {
   const restoreButton = document.getElementById('user-restore');
   if (restoreButton) {
     restoreButton.addEventListener('click', async () => {
-      if (!canEditUsers(state.session) || !window.confirm('Restore this user authorization now?')) {
+      const target = state.usersPage.detail;
+      if (!target || !canEditUsers(state.session) || !confirmAdminAction('userRestore', target.id)) {
         return;
       }
       await runUserAction('restore', 'User authorization restored.');
@@ -677,13 +922,7 @@ async function runUserAction(action: 'revoke' | 'restore', feedback: string): Pr
         Authorization: `Bearer ${getStoredAccessToken()}`,
       },
     });
-    const refreshed = await request<AdminUserRecord>(`/admin/users/${detail.id}`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${getStoredAccessToken()}`,
-      },
-    });
-    applyUpdatedUser(refreshed, feedback);
+    await refreshUsersAfterMutation(detail.id, feedback);
   } catch (error) {
     updateUserEditorFailure(error);
   }
@@ -701,7 +940,7 @@ function bindDeviceForm(): void {
       return;
     }
     const detail = state.devicesPage.detail;
-    if (!detail || !window.confirm('Rebind this device to the specified user now?')) {
+    if (!detail || !confirmAdminAction('deviceRebind', detail.device_id)) {
       return;
     }
     const payload = readDeviceEditorPayload();
@@ -727,13 +966,7 @@ function bindDeviceForm(): void {
         },
         body: JSON.stringify(payload),
       });
-      const refreshed = await request<AdminDeviceRecord>(`/admin/devices/${detail.device_id}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${getStoredAccessToken()}`,
-        },
-      });
-      applyUpdatedDevice(refreshed, 'Device rebound.');
+      await refreshDevicesAfterMutation(detail.device_id, 'Device rebound.');
     } catch (error) {
       updateDeviceEditorFailure(error);
     }
@@ -742,7 +975,8 @@ function bindDeviceForm(): void {
   const unbindButton = document.getElementById('device-unbind');
   if (unbindButton) {
     unbindButton.addEventListener('click', async () => {
-      if (!canEditUsers(state.session) || !window.confirm('Unbind this device now?')) {
+      const target = state.devicesPage.detail;
+      if (!target || !canEditUsers(state.session) || !confirmAdminAction('deviceUnbind', target.device_id)) {
         return;
       }
       await runDeviceAction('unbind', 'Device unbound.');
@@ -752,7 +986,8 @@ function bindDeviceForm(): void {
   const disableButton = document.getElementById('device-disable');
   if (disableButton) {
     disableButton.addEventListener('click', async () => {
-      if (!canEditUsers(state.session) || !window.confirm('Disable this device now?')) {
+      const target = state.devicesPage.detail;
+      if (!target || !canEditUsers(state.session) || !confirmAdminAction('deviceDisable', target.device_id)) {
         return;
       }
       await runDeviceAction('disable', 'Device disabled.');
@@ -772,32 +1007,29 @@ async function runDeviceAction(action: 'unbind' | 'disable', feedback: string): 
         Authorization: `Bearer ${getStoredAccessToken()}`,
       },
     });
-    const refreshed = await request<AdminDeviceRecord>(`/admin/devices/${detail.device_id}`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${getStoredAccessToken()}`,
-      },
-    });
-    applyUpdatedDevice(refreshed, feedback);
+    await refreshDevicesAfterMutation(detail.device_id, feedback);
   } catch (error) {
     updateDeviceEditorFailure(error);
   }
 }
 
-function applyUpdatedDevice(updated: AdminDeviceRecord, feedback: string): void {
-  state = {
-    ...state,
-    devicesPage: {
-      ...state.devicesPage,
-      items: state.devicesPage.items.map((item) => (item.device_id === updated.device_id ? updated : item)),
-      detail: updated,
-      editor: {
-        ...createDeviceEditor(updated),
-        feedback,
+async function refreshDevicesAfterMutation(deviceId: string, feedback: string): Promise<void> {
+  await ensureDevicesLoaded();
+  if (state.devicesPage.selectedDeviceId === deviceId && state.devicesPage.detail) {
+    state = {
+      ...state,
+      devicesPage: {
+        ...state.devicesPage,
+        editor: {
+          ...state.devicesPage.editor,
+          saving: false,
+          feedback,
+          errorMessage: null,
+        },
       },
-    },
-  };
-  render();
+    };
+    render();
+  }
 }
 
 function updateDeviceEditorFailure(error: unknown): void {
@@ -816,20 +1048,23 @@ function updateDeviceEditorFailure(error: unknown): void {
   render();
 }
 
-function applyUpdatedUser(updated: AdminUserRecord, feedback: string): void {
-  state = {
-    ...state,
-    usersPage: {
-      ...state.usersPage,
-      items: state.usersPage.items.map((item) => (item.id === updated.id ? updated : item)),
-      detail: updated,
-      editor: {
-        ...createUserEditor(updated),
-        feedback,
+async function refreshUsersAfterMutation(userId: string, feedback: string): Promise<void> {
+  await ensureUsersLoaded();
+  if (state.usersPage.selectedUserId === userId && state.usersPage.detail) {
+    state = {
+      ...state,
+      usersPage: {
+        ...state.usersPage,
+        editor: {
+          ...state.usersPage.editor,
+          saving: false,
+          feedback,
+          errorMessage: null,
+        },
       },
-    },
-  };
-  render();
+    };
+    render();
+  }
 }
 
 function updateUserEditorFailure(error: unknown): void {
@@ -883,14 +1118,11 @@ async function runSessionRevoke(sessionId: string): Promise<void> {
         Authorization: `Bearer ${getStoredAccessToken()}`,
       },
     });
+    await ensureSessionsLoaded();
     state = {
       ...state,
       sessionsPage: {
         ...state.sessionsPage,
-        items: state.sessionsPage.items.map((item) =>
-          item.session_id === sessionId ? { ...item, auth_state: 'revoked:admin_session_revoked' } : item,
-        ),
-        selectedSessionId: sessionId,
         feedback: 'Session revoked.',
         errorMessage: null,
       },
@@ -935,6 +1167,21 @@ function getRootElement(): HTMLElement {
     throw new Error('Missing #app root element for remote-admin');
   }
   return element;
+}
+
+type ConfirmActionKind = 'userRevoke' | 'userRestore' | 'deviceRebind' | 'deviceUnbind' | 'deviceDisable' | 'sessionRevoke';
+
+const CONFIRMATION_COPY: Record<ConfirmActionKind, string> = {
+  userRevoke: 'Revoke this user authorization now?',
+  userRestore: 'Restore this user authorization now?',
+  deviceRebind: 'Rebind this device to the specified user now?',
+  deviceUnbind: 'Unbind this device now?',
+  deviceDisable: 'Disable this device now?',
+  sessionRevoke: 'Revoke this session now?',
+};
+
+function confirmAdminAction(kind: ConfirmActionKind, target: string): boolean {
+  return window.confirm(`${CONFIRMATION_COPY[kind]}\n\nTarget: ${target}\nThis action is audited.`);
 }
 
 class ApiError extends Error {

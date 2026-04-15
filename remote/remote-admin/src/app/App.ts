@@ -51,6 +51,11 @@ export interface UsersPageState {
   loading: boolean;
   errorMessage: string | null;
   detailLoading: boolean;
+  filters: {
+    query: string;
+    status: string;
+    licenseStatus: string;
+  };
   editor: UserEditorState;
 }
 
@@ -78,6 +83,11 @@ export interface DevicesPageState {
   loading: boolean;
   errorMessage: string | null;
   detailLoading: boolean;
+  filters: {
+    query: string;
+    status: string;
+    userId: string;
+  };
   editor: DeviceEditorState;
 }
 
@@ -97,6 +107,12 @@ export interface SessionsPageState {
   errorMessage: string | null;
   selectedSessionId: string | null;
   feedback: string | null;
+  filters: {
+    query: string;
+    authState: string;
+    userId: string;
+    deviceId: string;
+  };
 }
 
 export interface AdminAuditRecord {
@@ -107,15 +123,31 @@ export interface AdminAuditRecord {
   target_user_id?: string | null;
   target_device_id?: string | null;
   target_session_id?: string | null;
+  request_id?: string | null;
+  trace_id?: string | null;
   created_at: string;
   details: Record<string, unknown>;
 }
 
+export interface AuditFiltersState {
+  eventType: string;
+  actorId: string;
+  targetUserId: string;
+  targetDeviceId: string;
+  targetSessionId: string;
+  createdFrom: string;
+  createdTo: string;
+  limit: number;
+  offset: number;
+}
+
 export interface AuditPageState {
   items: AdminAuditRecord[];
+  total: number;
+  selectedAuditId: string | null;
   loading: boolean;
   errorMessage: string | null;
-  filterEventType: string;
+  filters: AuditFiltersState;
 }
 
 export interface DashboardMetricsState {
@@ -123,6 +155,9 @@ export interface DashboardMetricsState {
   loginFailures: number;
   deviceMismatches: number;
   destructiveActions: number;
+  generatedAt: string | null;
+  recentFailures: AdminAuditRecord[];
+  recentDestructiveActions: AdminAuditRecord[];
   loading: boolean;
   errorMessage: string | null;
 }
@@ -203,6 +238,11 @@ export function createInitialState(route: RouteId): AppState {
       loading: false,
       errorMessage: null,
       detailLoading: false,
+      filters: {
+        query: '',
+        status: '',
+        licenseStatus: '',
+      },
       editor: {
         displayName: '',
         licenseStatus: 'active',
@@ -220,6 +260,11 @@ export function createInitialState(route: RouteId): AppState {
       loading: false,
       errorMessage: null,
       detailLoading: false,
+      filters: {
+        query: '',
+        status: '',
+        userId: '',
+      },
       editor: {
         rebindUserId: '',
         rebindClientVersion: '0.2.0',
@@ -234,18 +279,39 @@ export function createInitialState(route: RouteId): AppState {
       errorMessage: null,
       selectedSessionId: null,
       feedback: null,
+      filters: {
+        query: '',
+        authState: '',
+        userId: '',
+        deviceId: '',
+      },
     },
     auditPage: {
       items: [],
+      total: 0,
+      selectedAuditId: null,
       loading: false,
       errorMessage: null,
-      filterEventType: '',
+      filters: {
+        eventType: '',
+        actorId: '',
+        targetUserId: '',
+        targetDeviceId: '',
+        targetSessionId: '',
+        createdFrom: '',
+        createdTo: '',
+        limit: 25,
+        offset: 0,
+      },
     },
     dashboardMetrics: {
       activeSessions: 0,
       loginFailures: 0,
       deviceMismatches: 0,
       destructiveActions: 0,
+      generatedAt: null,
+      recentFailures: [],
+      recentDestructiveActions: [],
       loading: false,
       errorMessage: null,
     },
@@ -324,6 +390,62 @@ export function canEditUsers(session: AdminSession | null): boolean {
   return session?.user.role === 'super_admin' || session?.user.role === 'auth_admin';
 }
 
+export function buildAuditLogQuery(filters: AuditFiltersState): string {
+  const params = new URLSearchParams();
+  if (filters.eventType) params.set('event_type', filters.eventType);
+  if (filters.actorId) params.set('actor_id', filters.actorId);
+  if (filters.targetUserId) params.set('target_user_id', filters.targetUserId);
+  if (filters.targetDeviceId) params.set('target_device_id', filters.targetDeviceId);
+  if (filters.targetSessionId) params.set('target_session_id', filters.targetSessionId);
+  if (filters.createdFrom) params.set('created_from', toUtcAuditFilterTimestamp(filters.createdFrom, 'start'));
+  if (filters.createdTo) params.set('created_to', toUtcAuditFilterTimestamp(filters.createdTo, 'end'));
+  params.set('limit', String(filters.limit));
+  params.set('offset', String(filters.offset));
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
+export function buildUsersQuery(filters: UsersPageState['filters']): string {
+  const params = new URLSearchParams();
+  if (filters.query) params.set('q', filters.query);
+  if (filters.status) params.set('status', filters.status);
+  if (filters.licenseStatus) params.set('license_status', filters.licenseStatus);
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
+export function buildDevicesQuery(filters: DevicesPageState['filters']): string {
+  const params = new URLSearchParams();
+  if (filters.query) params.set('q', filters.query);
+  if (filters.status) params.set('device_status', filters.status);
+  if (filters.userId) params.set('user_id', filters.userId);
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
+export function buildSessionsQuery(filters: SessionsPageState['filters']): string {
+  const params = new URLSearchParams();
+  if (filters.query) params.set('q', filters.query);
+  if (filters.authState) params.set('auth_state', filters.authState);
+  if (filters.userId) params.set('user_id', filters.userId);
+  if (filters.deviceId) params.set('device_id', filters.deviceId);
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
+function toUtcAuditFilterTimestamp(localValue: string, boundary: 'start' | 'end'): string {
+  const date = new Date(localValue);
+  if (Number.isNaN(date.getTime())) {
+    return localValue;
+  }
+  if (boundary === 'end') {
+    date.setSeconds(59, 999);
+  } else {
+    date.setSeconds(0, 0);
+  }
+  return date.toISOString();
+}
+
 export function renderApp(state: AppState): string {
   if (state.status === 'loading') {
     return wrapDocument(renderLoadingState());
@@ -373,6 +495,7 @@ function wrapDocument(content: string): string {
         .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
         .metric { background: #fff; border-radius: 14px; padding: 18px; border: 1px solid #e5e7eb; }
         .metric strong { display: block; font-size: 28px; margin-bottom: 8px; }
+        .metric a { color: inherit; text-decoration: none; display: block; }
         .placeholder { display: grid; gap: 12px; }
         .placeholder ul { margin: 0; padding-left: 18px; color: #4b5563; }
         .users-layout { display: grid; grid-template-columns: minmax(280px, 360px) 1fr; gap: 20px; align-items: start; }
@@ -383,6 +506,20 @@ function wrapDocument(content: string): string {
         .tag { background: #f3f4f6; color: #374151; border-radius: 999px; padding: 4px 8px; font-size: 12px; font-weight: 600; }
         .toolbar { display: flex; gap: 10px; flex-wrap: wrap; }
         .detail-grid { display: grid; gap: 16px; }
+        .filters-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+        .list-toolbar { display: grid; gap: 12px; margin-bottom: 12px; }
+        .stack { display: grid; gap: 16px; }
+        .summary-list, .detail-list { display: grid; gap: 10px; }
+        .summary-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+        .summary-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; display: grid; gap: 6px; }
+        .summary-item strong { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #64748b; }
+        .detail-list pre { margin: 0; background: #111827; color: #f9fafb; padding: 12px; border-radius: 12px; overflow: auto; }
+        .empty-state { border: 1px dashed #cbd5e1; border-radius: 14px; padding: 16px; color: #64748b; background: #f8fafc; }
+        .inline-meta { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
+        .muted-link { color: #4f46e5; font-weight: 600; text-decoration: none; }
+        .tag-success { background: #dcfce7; color: #166534; }
+        .tag-warning { background: #fef3c7; color: #92400e; }
+        .tag-danger { background: #fee2e2; color: #b91c1c; }
       </style>
       ${content}
     </div>
@@ -435,7 +572,7 @@ function renderShell(state: AppState): string {
       <aside class="sidebar">
         <div class="brand">
           <strong>Remote Admin</strong>
-          <span>Phase 2 thin admin operations</span>
+          <span>Phase 3 operational console</span>
         </div>
         <nav class="nav">
           ${(['dashboard', 'users', 'devices', 'sessions', 'audit-logs'] as const)
@@ -465,37 +602,7 @@ function renderShell(state: AppState): string {
 
 function renderRouteBody(route: Exclude<RouteId, 'login'>, state: AppState): string {
   if (route === 'dashboard') {
-    const metrics = state.dashboardMetrics;
-    return `
-      <section class="grid">
-        ${[
-          { label: 'Active sessions', value: String(metrics.activeSessions), hint: 'Live active end-user sessions.' },
-          { label: 'Login failures', value: String(metrics.loginFailures), hint: 'Aggregated auth + admin login failures.' },
-          { label: 'Device mismatches', value: String(metrics.deviceMismatches), hint: 'Detected mismatch denials from the audit stream.' },
-          { label: 'Destructive actions', value: String(metrics.destructiveActions), hint: 'Admin revoke/unbind/disable/rebind/session revoke actions.' },
-        ]
-          .map(
-            (metric) => `
-              <article class="metric">
-                <span class="eyebrow">${metric.label}</span>
-                <strong>${metric.value}</strong>
-                <p>${metric.hint}</p>
-              </article>
-            `,
-          )
-          .join('')}
-      </section>
-      ${metrics.errorMessage ? `<div class="error">${escapeHtml(metrics.errorMessage)}</div>` : ''}
-      <section class="card placeholder">
-        <h2>Dashboard operations snapshot</h2>
-        <p>Phase 2.5 turns the dashboard into a lightweight supportability surface backed by real metrics.</p>
-        <ul>
-          <li>Current admin: ${escapeHtml(state.session?.user.display_name ?? state.session?.user.username ?? 'admin')}</li>
-          <li>Session ID: <code>${escapeHtml(state.session?.session_id ?? '')}</code></li>
-          <li>Expires at: ${escapeHtml(state.session?.expires_at ?? '')}</li>
-        </ul>
-      </section>
-    `;
+    return renderDashboardRoute(state);
   }
   if (route === 'users') {
     return renderUsersRoute(state);
@@ -526,10 +633,50 @@ function renderUsersRoute(state: AppState): string {
       <article class="card">
         <div class="eyebrow">Admin users API</div>
         <h2>Users</h2>
-        <p>Review current authorization state, then open detail to update or execute revoke / restore.</p>
+        <p>Search by username, display name, email, or user id, then inspect the selected user in the detail panel.</p>
         ${usersPage.errorMessage ? `<div class="error">${escapeHtml(usersPage.errorMessage)}</div>` : ''}
+        <form id="users-filter-form" class="list-toolbar">
+          <div class="filters-grid">
+            <label>
+              Search
+              <input id="users-query" value="${escapeHtml(usersPage.filters.query)}" placeholder="alice / alice@example.com / u_1" />
+            </label>
+            <label>
+              Status
+              <select id="users-status-filter">
+                ${renderSelectOptions(
+                  [
+                    { value: '', label: 'All statuses' },
+                    { value: 'active', label: 'active' },
+                    { value: 'disabled', label: 'disabled' },
+                  ],
+                  usersPage.filters.status,
+                )}
+              </select>
+            </label>
+            <label>
+              License
+              <select id="users-license-filter">
+                ${renderSelectOptions(
+                  [
+                    { value: '', label: 'All licenses' },
+                    { value: 'active', label: 'active' },
+                    { value: 'disabled', label: 'disabled' },
+                    { value: 'revoked', label: 'revoked' },
+                  ],
+                  usersPage.filters.licenseStatus,
+                )}
+              </select>
+            </label>
+          </div>
+          <div class="toolbar">
+            <button id="users-filter-submit" class="primary" type="submit">Apply filters</button>
+            <button id="users-filter-clear" class="secondary" type="button">Clear filters</button>
+          </div>
+        </form>
+        <p class="hint">Showing ${String(usersPage.items.length)} users from the current filtered result set.</p>
         <div class="users-list" data-testid="users-list">
-          ${usersPage.loading ? '<p>Loading users…</p>' : ''}
+          ${usersPage.loading ? '<p>Loading users...</p>' : ''}
           ${!usersPage.loading && usersPage.items.length === 0 ? '<p>No managed users were returned.</p>' : ''}
           ${usersPage.items
             .map((user) => {
@@ -552,7 +699,7 @@ function renderUsersRoute(state: AppState): string {
       <article class="card detail-grid">
         <div class="eyebrow">Authorization detail</div>
         <h2>${usersPage.detail ? escapeHtml(usersPage.detail.username) : 'Select a user'}</h2>
-        ${usersPage.detailLoading ? '<p>Loading detail…</p>' : ''}
+        ${usersPage.detailLoading ? '<p>Loading detail...</p>' : ''}
         ${!usersPage.detail && !usersPage.detailLoading ? '<p>Select a user from the list to inspect and control authorization.</p>' : ''}
         ${usersPage.detail ? renderUserDetail(usersPage.detail, usersPage.editor, canWrite) : ''}
       </article>
@@ -568,10 +715,41 @@ function renderDevicesRoute(state: AppState): string {
       <article class="card">
         <div class="eyebrow">Admin devices API</div>
         <h2>Devices</h2>
-        <p>Inspect the current binding, then unbind, disable, or rebind the device to a managed user.</p>
+        <p>Search by device id, user id, or version, then inspect the selected device before changing its binding state.</p>
         ${devicesPage.errorMessage ? `<div class="error">${escapeHtml(devicesPage.errorMessage)}</div>` : ''}
+        <form id="devices-filter-form" class="list-toolbar">
+          <div class="filters-grid">
+            <label>
+              Search
+              <input id="devices-query" value="${escapeHtml(devicesPage.filters.query)}" placeholder="device_1 / u_1 / 0.2.0" />
+            </label>
+            <label>
+              Device status
+              <select id="devices-status-filter">
+                ${renderSelectOptions(
+                  [
+                    { value: '', label: 'All device states' },
+                    { value: 'bound', label: 'bound' },
+                    { value: 'unbound', label: 'unbound' },
+                    { value: 'disabled', label: 'disabled' },
+                  ],
+                  devicesPage.filters.status,
+                )}
+              </select>
+            </label>
+            <label>
+              Bound user
+              <input id="devices-user-filter" value="${escapeHtml(devicesPage.filters.userId)}" placeholder="u_1" />
+            </label>
+          </div>
+          <div class="toolbar">
+            <button id="devices-filter-submit" class="primary" type="submit">Apply filters</button>
+            <button id="devices-filter-clear" class="secondary" type="button">Clear filters</button>
+          </div>
+        </form>
+        <p class="hint">Showing ${String(devicesPage.items.length)} devices from the current filtered result set.</p>
         <div class="users-list" data-testid="devices-list">
-          ${devicesPage.loading ? '<p>Loading devices…</p>' : ''}
+          ${devicesPage.loading ? '<p>Loading devices...</p>' : ''}
           ${!devicesPage.loading && devicesPage.items.length === 0 ? '<p>No devices were returned.</p>' : ''}
           ${devicesPage.items
             .map((device) => {
@@ -593,7 +771,7 @@ function renderDevicesRoute(state: AppState): string {
       <article class="card detail-grid">
         <div class="eyebrow">Device control</div>
         <h2>${devicesPage.detail ? escapeHtml(devicesPage.detail.device_id) : 'Select a device'}</h2>
-        ${devicesPage.detailLoading ? '<p>Loading detail…</p>' : ''}
+        ${devicesPage.detailLoading ? '<p>Loading detail...</p>' : ''}
         ${!devicesPage.detail && !devicesPage.detailLoading ? '<p>Select a device from the list to inspect and control binding state.</p>' : ''}
         ${devicesPage.detail ? renderDeviceDetail(devicesPage.detail, devicesPage.editor, canWrite) : ''}
       </article>
@@ -606,9 +784,21 @@ function renderUserDetail(detail: AdminUserRecord, editor: UserEditorState, canW
     <div class="detail-grid" data-testid="user-detail">
       ${editor.feedback ? `<div class="success">${escapeHtml(editor.feedback)}</div>` : ''}
       ${editor.errorMessage ? `<div class="error">${escapeHtml(editor.errorMessage)}</div>` : ''}
-      <div class="user-meta">
-        <span class="tag">tenant:${escapeHtml(detail.tenant_id ?? 'n/a')}</span>
-        <span class="tag">last seen:${escapeHtml(detail.last_seen_at ?? 'n/a')}</span>
+      ${renderSummaryGrid([
+        { label: 'User ID', value: detail.id },
+        { label: 'Email', value: detail.email ?? 'n/a' },
+        { label: 'Tenant', value: detail.tenant_id ?? 'n/a' },
+        { label: 'Status', value: detail.status ?? 'n/a' },
+        { label: 'License', value: detail.license_status ?? 'n/a' },
+        { label: 'License expiry', value: detail.license_expires_at ?? 'n/a' },
+        { label: 'Device count', value: String(detail.device_count ?? 0) },
+        { label: 'Last seen', value: detail.last_seen_at ?? 'n/a' },
+      ])}
+      <div class="detail-list">
+        <p><strong>Entitlements:</strong></p>
+        <div class="user-meta">
+          ${detail.entitlements.length > 0 ? detail.entitlements.map((entitlement) => `<span class="tag">${escapeHtml(entitlement)}</span>`).join('') : '<span class="tag">none</span>'}
+        </div>
       </div>
       <form id="admin-user-form">
         <label>
@@ -630,11 +820,12 @@ function renderUserDetail(detail: AdminUserRecord, editor: UserEditorState, canW
           <textarea id="user-entitlements" ${canWrite ? '' : 'disabled'}>${escapeHtml(editor.entitlementsCsv)}</textarea>
         </label>
         <div class="toolbar">
-          <button id="user-save" class="primary" type="submit" ${canWrite && !editor.saving ? '' : 'disabled'}>${editor.saving ? 'Saving…' : 'Save changes'}</button>
+          <button id="user-save" class="primary" type="submit" ${canWrite && !editor.saving ? '' : 'disabled'}>${editor.saving ? 'Saving...' : 'Save changes'}</button>
           <button id="user-revoke" class="danger" type="button" ${canWrite ? '' : 'disabled'}>Revoke user</button>
           <button id="user-restore" class="secondary" type="button" ${canWrite ? '' : 'disabled'}>Restore user</button>
         </div>
       </form>
+      <div class="empty-state">Danger-zone actions are audited and affect downstream sign-in, refresh, and device authorization immediately.</div>
       ${!canWrite ? '<p class="hint">This admin role is read-only. Destructive and update actions are disabled.</p>' : ''}
     </div>
   `;
@@ -645,10 +836,14 @@ function renderDeviceDetail(detail: AdminDeviceRecord, editor: DeviceEditorState
     <div class="detail-grid" data-testid="device-detail">
       ${editor.feedback ? `<div class="success">${escapeHtml(editor.feedback)}</div>` : ''}
       ${editor.errorMessage ? `<div class="error">${escapeHtml(editor.errorMessage)}</div>` : ''}
-      <div class="user-meta">
-        <span class="tag">bound user:${escapeHtml(detail.user_id ?? 'unbound')}</span>
-        <span class="tag">last seen:${escapeHtml(detail.last_seen_at ?? 'n/a')}</span>
-      </div>
+      ${renderSummaryGrid([
+        { label: 'Device ID', value: detail.device_id },
+        { label: 'Bound user', value: detail.user_id ?? 'unbound' },
+        { label: 'Device status', value: detail.device_status },
+        { label: 'Client version', value: detail.client_version ?? 'n/a' },
+        { label: 'First bound', value: detail.first_bound_at ?? 'n/a' },
+        { label: 'Last seen', value: detail.last_seen_at ?? 'n/a' },
+      ])}
       <form id="admin-device-form">
         <label>
           Target user id
@@ -661,9 +856,10 @@ function renderDeviceDetail(detail: AdminDeviceRecord, editor: DeviceEditorState
         <div class="toolbar">
           <button id="device-unbind" class="secondary" type="button" ${canWrite ? '' : 'disabled'}>Unbind device</button>
           <button id="device-disable" class="danger" type="button" ${canWrite ? '' : 'disabled'}>Disable device</button>
-          <button id="device-rebind" class="primary" type="submit" ${canWrite && !editor.saving ? '' : 'disabled'}>${editor.saving ? 'Rebinding…' : 'Rebind device'}</button>
+          <button id="device-rebind" class="primary" type="submit" ${canWrite && !editor.saving ? '' : 'disabled'}>${editor.saving ? 'Rebinding...' : 'Rebind device'}</button>
         </div>
       </form>
+      <div class="empty-state">Binding changes are audited and can immediately force device mismatch or revoke existing session continuity.</div>
       ${!canWrite ? '<p class="hint">This admin role is read-only. Device actions are disabled.</p>' : ''}
     </div>
   `;
@@ -672,80 +868,389 @@ function renderDeviceDetail(detail: AdminDeviceRecord, editor: DeviceEditorState
 function renderSessionsRoute(state: AppState): string {
   const canWrite = canEditUsers(state.session);
   const sessionsPage = state.sessionsPage;
+  const selectedSession = selectSessionRecord(sessionsPage);
   return `
-    <section class="card detail-grid">
-      <div class="eyebrow">Admin sessions API</div>
-      <h2>Sessions</h2>
-      <p>Review active authorization sessions and revoke them when a controlled cut-off is required.</p>
-      ${sessionsPage.feedback ? `<div class="success">${escapeHtml(sessionsPage.feedback)}</div>` : ''}
-      ${sessionsPage.errorMessage ? `<div class="error">${escapeHtml(sessionsPage.errorMessage)}</div>` : ''}
-      ${sessionsPage.loading ? '<p>Loading sessions…</p>' : ''}
-      ${!sessionsPage.loading && sessionsPage.items.length === 0 ? '<p>No sessions were returned.</p>' : ''}
-      <div class="users-list" data-testid="sessions-list">
-        ${sessionsPage.items
-          .map((session) => {
-            const active = session.session_id === sessionsPage.selectedSessionId ? 'active' : '';
-            return `
-              <div class="user-card ${active}">
-                <strong>${escapeHtml(session.session_id)}</strong>
-                <span>${escapeHtml(session.user_id ?? 'unknown user')}</span>
-                <div class="user-meta">
-                  <span class="tag">device:${escapeHtml(session.device_id ?? 'unknown')}</span>
-                  <span class="tag">state:${escapeHtml(session.auth_state)}</span>
-                  <span class="tag">last seen:${escapeHtml(session.last_seen_at)}</span>
-                </div>
-                <div class="toolbar">
-                  <button class="danger" data-session-id="${session.session_id}" ${canWrite ? '' : 'disabled'}>Revoke session</button>
-                </div>
-              </div>
-            `;
-          })
-          .join('')}
-      </div>
-      ${!canWrite ? '<p class="hint">This admin role is read-only. Session revoke actions are disabled.</p>' : ''}
+    <section class="users-layout">
+      <article class="card detail-grid">
+        <div class="eyebrow">Admin sessions API</div>
+        <h2>Sessions</h2>
+        <p>Search by session, user, or device and inspect one session at a time before forcing revocation.</p>
+        ${sessionsPage.feedback ? `<div class="success">${escapeHtml(sessionsPage.feedback)}</div>` : ''}
+        ${sessionsPage.errorMessage ? `<div class="error">${escapeHtml(sessionsPage.errorMessage)}</div>` : ''}
+        <form id="sessions-filter-form" class="list-toolbar">
+          <div class="filters-grid">
+            <label>
+              Search
+              <input id="sessions-query" value="${escapeHtml(sessionsPage.filters.query)}" placeholder="sess_1 / u_1 / device_1" />
+            </label>
+            <label>
+              Auth state
+              <select id="sessions-auth-state-filter">
+                ${renderSelectOptions(
+                  [
+                    { value: '', label: 'All states' },
+                    { value: 'authenticated_active', label: 'authenticated_active' },
+                    { value: 'authorization_disabled', label: 'authorization_disabled' },
+                    { value: 'device_unbound', label: 'device_unbound' },
+                    { value: 'device_disabled', label: 'device_disabled' },
+                  ],
+                  sessionsPage.filters.authState,
+                )}
+              </select>
+            </label>
+            <label>
+              User
+              <input id="sessions-user-filter" value="${escapeHtml(sessionsPage.filters.userId)}" placeholder="u_1" />
+            </label>
+            <label>
+              Device
+              <input id="sessions-device-filter" value="${escapeHtml(sessionsPage.filters.deviceId)}" placeholder="device_1" />
+            </label>
+          </div>
+          <div class="toolbar">
+            <button id="sessions-filter-submit" class="primary" type="submit">Apply filters</button>
+            <button id="sessions-filter-clear" class="secondary" type="button">Clear filters</button>
+          </div>
+        </form>
+        ${sessionsPage.loading ? '<p>Loading sessions...</p>' : ''}
+        ${!sessionsPage.loading && sessionsPage.items.length === 0 ? '<p>No sessions were returned.</p>' : ''}
+        <div class="users-list" data-testid="sessions-list">
+          ${sessionsPage.items
+            .map((session) => {
+              const active = session.session_id === sessionsPage.selectedSessionId ? 'active' : '';
+              return `
+                <button class="user-card ${active}" type="button" data-session-select-id="${session.session_id}">
+                  <strong>${escapeHtml(session.session_id)}</strong>
+                  <span>${escapeHtml(session.user_id ?? 'unknown user')}</span>
+                  <div class="user-meta">
+                    <span class="tag">device:${escapeHtml(session.device_id ?? 'unknown')}</span>
+                    ${renderSessionStateBadge(session.auth_state)}
+                  </div>
+                  <div class="user-meta">
+                    <span class="tag">issued:${escapeHtml(session.issued_at)}</span>
+                    <span class="tag">expires:${escapeHtml(session.expires_at)}</span>
+                    <span class="tag">last seen:${escapeHtml(session.last_seen_at)}</span>
+                  </div>
+                </button>
+              `;
+            })
+            .join('')}
+        </div>
+        ${!canWrite ? '<p class="hint">This admin role is read-only. Session revoke actions are disabled.</p>' : ''}
+      </article>
+      <article class="card detail-grid">
+        <div class="eyebrow">Session detail</div>
+        <h2>${selectedSession ? escapeHtml(selectedSession.session_id) : 'Select a session'}</h2>
+        ${selectedSession ? renderSessionDetail(selectedSession, canWrite) : '<div class="empty-state">Choose a session from the list to inspect auth state, timestamps, and revoke controls.</div>'}
+      </article>
     </section>
+  `;
+}
+
+function renderSummaryGrid(items: Array<{ label: string; value: string }>): string {
+  return `
+    <div class="summary-grid">
+      ${items
+        .map(
+          (item) => `
+            <div class="summary-item">
+              <strong>${escapeHtml(item.label)}</strong>
+              <span>${escapeHtml(item.value)}</span>
+            </div>
+          `,
+        )
+        .join('')}
+    </div>
+  `;
+}
+
+function renderSelectOptions(options: Array<{ value: string; label: string }>, selected: string): string {
+  return options
+    .map((option) => `<option value="${option.value}" ${option.value === selected ? 'selected' : ''}>${option.label}</option>`)
+    .join('');
+}
+
+function selectSessionRecord(sessionsPage: SessionsPageState): AdminSessionRecord | null {
+  return sessionsPage.items.find((session) => session.session_id === sessionsPage.selectedSessionId) ?? sessionsPage.items[0] ?? null;
+}
+
+function renderSessionDetail(detail: AdminSessionRecord, canWrite: boolean): string {
+  return `
+    <div class="detail-grid" data-testid="session-detail">
+      ${renderSummaryGrid([
+        { label: 'Session ID', value: detail.session_id },
+        { label: 'User', value: detail.user_id ?? 'n/a' },
+        { label: 'Device', value: detail.device_id ?? 'n/a' },
+        { label: 'Auth state', value: detail.auth_state },
+        { label: 'Issued at', value: detail.issued_at },
+        { label: 'Expires at', value: detail.expires_at },
+        { label: 'Last seen', value: detail.last_seen_at },
+      ])}
+      <div class="user-meta">
+        ${renderSessionStateBadge(detail.auth_state)}
+      </div>
+      <div class="toolbar">
+        <button id="session-revoke" class="danger" type="button" data-session-id="${detail.session_id}" ${canWrite ? '' : 'disabled'}>Revoke session</button>
+      </div>
+      <div class="empty-state">Session revoke is audited and immediately invalidates subsequent me/refresh continuity for the affected session.</div>
+    </div>
+  `;
+}
+
+function renderSessionStateBadge(authState: string): string {
+  return `<span class="tag ${sessionStateTone(authState)}">state:${escapeHtml(authState)}</span>`;
+}
+
+function sessionStateTone(authState: string): string {
+  if (authState === 'authenticated_active') return 'tag-success';
+  if (authState.startsWith('revoked:')) return 'tag-danger';
+  return 'tag-warning';
+}
+
+function renderDashboardRoute(state: AppState): string {
+  const metrics = state.dashboardMetrics;
+  const cards = [
+    { label: 'Active sessions', value: String(metrics.activeSessions), hint: 'Live active end-user sessions.', href: routeHref('sessions') },
+    { label: 'Login failures', value: String(metrics.loginFailures), hint: 'Aggregated auth + admin login failures.', href: routeHref('audit-logs') },
+    { label: 'Device mismatches', value: String(metrics.deviceMismatches), hint: 'Mismatch denials detected from the audit stream.', href: routeHref('audit-logs') },
+    { label: 'Destructive actions', value: String(metrics.destructiveActions), hint: 'Admin revoke/unbind/disable/rebind/session revoke actions.', href: routeHref('audit-logs') },
+  ];
+  return `
+    <section class="stack">
+      <section class="grid">
+        ${cards
+          .map(
+            (metric) => `
+              <article class="metric">
+                <a href="${metric.href}">
+                  <span class="eyebrow">${metric.label}</span>
+                  <strong>${metric.value}</strong>
+                  <p>${metric.hint}</p>
+                </a>
+              </article>
+            `,
+          )
+          .join('')}
+      </section>
+      ${metrics.errorMessage ? `<div class="error">${escapeHtml(metrics.errorMessage)}</div>` : ''}
+      <section class="users-layout">
+        <article class="card detail-grid">
+          <div class="inline-meta">
+            <div>
+              <div class="eyebrow">Recent failed events</div>
+              <h2>Recent critical events</h2>
+            </div>
+            <a class="muted-link" href="${routeHref('audit-logs')}">Open audit logs</a>
+          </div>
+          ${
+            metrics.recentFailures.length > 0
+              ? renderDashboardAuditSummary(metrics.recentFailures, 'No recent failed events.')
+              : '<div class="empty-state">No recent failed events were returned by the current metrics snapshot.</div>'
+          }
+        </article>
+        <article class="card detail-grid">
+          <div class="eyebrow">Recent destructive actions</div>
+          <h2>Operator follow-up queue</h2>
+          ${
+            metrics.recentDestructiveActions.length > 0
+              ? renderDashboardAuditSummary(metrics.recentDestructiveActions, 'No destructive actions recorded.')
+              : '<div class="empty-state">No destructive actions were returned by the current metrics snapshot.</div>'
+          }
+        </article>
+      </section>
+      <section class="card placeholder">
+        <h2>Dashboard operations snapshot</h2>
+        <p>Use the dashboard to spot incident patterns quickly, then drill directly into audit logs or affected control-plane surfaces.</p>
+        <ul>
+          <li>Current admin: ${escapeHtml(state.session?.user.display_name ?? state.session?.user.username ?? 'admin')}</li>
+          <li>Session ID: <code>${escapeHtml(state.session?.session_id ?? '')}</code></li>
+          <li>Expires at: ${escapeHtml(state.session?.expires_at ?? '')}</li>
+          <li>Last generated: ${escapeHtml(metrics.generatedAt ?? 'n/a')}</li>
+        </ul>
+      </section>
+    </section>
+  `;
+}
+
+function renderDashboardAuditSummary(items: AdminAuditRecord[], emptyMessage: string): string {
+  if (items.length === 0) {
+    return `<div class="empty-state">${escapeHtml(emptyMessage)}</div>`;
+  }
+  return `
+    <div class="summary-list">
+      ${items
+        .map(
+          (item) => `
+            <div class="user-card">
+              <strong>${escapeHtml(item.event_type)}</strong>
+              <span>${escapeHtml(item.created_at)}</span>
+              <div class="user-meta">
+                <span class="tag">actor:${escapeHtml(item.actor_id ?? 'n/a')}</span>
+                <span class="tag">request:${escapeHtml(item.request_id ?? 'n/a')}</span>
+                <span class="tag">trace:${escapeHtml(item.trace_id ?? 'n/a')}</span>
+              </div>
+            </div>
+          `,
+        )
+        .join('')}
+    </div>
   `;
 }
 
 function renderAuditLogsRoute(state: AppState): string {
   const auditPage = state.auditPage;
+  const selectedAudit = selectAuditRecord(auditPage);
+  const queryPreview = buildAuditLogQuery(auditPage.filters);
   return `
-    <section class="card detail-grid">
-      <div class="eyebrow">Admin audit API</div>
-      <h2>Audit logs</h2>
-      <p>Inspect destructive actions and auth failures with a lightweight event filter.</p>
-      ${auditPage.errorMessage ? `<div class="error">${escapeHtml(auditPage.errorMessage)}</div>` : ''}
-      <form id="admin-audit-form">
-        <label>
-          Event type
-          <input id="audit-event-type" value="${escapeHtml(auditPage.filterEventType)}" placeholder="e.g. authorization_user_revoked" />
-        </label>
-        <div class="toolbar">
-          <button id="audit-refresh" class="primary" type="submit">Refresh audit logs</button>
+    <section class="users-layout">
+      <article class="card detail-grid">
+        <div class="eyebrow">Admin audit API</div>
+        <h2>Audit logs</h2>
+        <p>Filter operator-visible events by actor, target, session, and time range to isolate the incident you need.</p>
+        ${auditPage.errorMessage ? `<div class="error">${escapeHtml(auditPage.errorMessage)}</div>` : ''}
+        <form id="admin-audit-form" class="detail-grid">
+          <div class="filters-grid">
+            <label>
+              Event type
+              <input id="audit-event-type" value="${escapeHtml(auditPage.filters.eventType)}" placeholder="authorization_user_revoked" />
+            </label>
+            <label>
+              Actor id
+              <input id="audit-actor-id" value="${escapeHtml(auditPage.filters.actorId)}" placeholder="admin_1" />
+            </label>
+            <label>
+              Target user
+              <input id="audit-target-user-id" value="${escapeHtml(auditPage.filters.targetUserId)}" placeholder="1 or admin_1" />
+            </label>
+            <label>
+              Target device
+              <input id="audit-target-device-id" value="${escapeHtml(auditPage.filters.targetDeviceId)}" placeholder="device_123" />
+            </label>
+            <label>
+              Target session
+              <input id="audit-target-session-id" value="${escapeHtml(auditPage.filters.targetSessionId)}" placeholder="sess_123" />
+            </label>
+            <label>
+              Created from
+              <input id="audit-created-from" type="datetime-local" value="${escapeHtml(auditPage.filters.createdFrom)}" />
+            </label>
+            <label>
+              Created to
+              <input id="audit-created-to" type="datetime-local" value="${escapeHtml(auditPage.filters.createdTo)}" />
+            </label>
+            <label>
+              Limit
+              <input id="audit-limit" type="number" min="1" value="${String(auditPage.filters.limit)}" />
+            </label>
+            <label>
+              Offset
+              <input id="audit-offset" type="number" min="0" value="${String(auditPage.filters.offset)}" />
+            </label>
+          </div>
+          <div class="toolbar">
+            <button id="audit-refresh" class="primary" type="submit">Refresh audit logs</button>
+            <button id="audit-clear" class="secondary" type="button">Clear filters</button>
+            <button id="audit-prev-page" class="secondary" type="button" ${auditPage.filters.offset > 0 ? '' : 'disabled'}>Previous page</button>
+            <button
+              id="audit-next-page"
+              class="secondary"
+              type="button"
+              ${(auditPage.filters.offset + auditPage.items.length) < auditPage.total ? '' : 'disabled'}
+            >Next page</button>
+          </div>
+        </form>
+        <div class="inline-meta">
+          <p class="hint">Showing ${String(auditPage.items.length)} of ${String(auditPage.total)} filtered audit events.</p>
+          ${queryPreview ? `<code data-testid="audit-query-preview">${escapeHtml(queryPreview)}</code>` : ''}
         </div>
-      </form>
-      ${auditPage.loading ? '<p>Loading audit logs…</p>' : ''}
-      ${!auditPage.loading && auditPage.items.length === 0 ? '<p>No audit events were returned.</p>' : ''}
-      <div class="users-list" data-testid="audit-list">
-        ${auditPage.items
-          .map(
-            (row) => `
-              <div class="user-card">
-                <strong>${escapeHtml(row.event_type)}</strong>
-                <span>${escapeHtml(row.created_at)}</span>
-                <div class="user-meta">
-                  <span class="tag">actor:${escapeHtml(row.actor_id ?? 'n/a')}</span>
-                  <span class="tag">user:${escapeHtml(row.target_user_id ?? 'n/a')}</span>
-                  <span class="tag">device:${escapeHtml(row.target_device_id ?? 'n/a')}</span>
-                  <span class="tag">session:${escapeHtml(row.target_session_id ?? 'n/a')}</span>
-                </div>
-              </div>
-            `,
-          )
-          .join('')}
-      </div>
+        ${auditPage.loading ? '<p>Loading audit logs…</p>' : ''}
+        ${!auditPage.loading && auditPage.items.length === 0 ? '<div class="empty-state">No audit events matched the current filters. Adjust the filters or retry the query.</div>' : ''}
+        <div class="users-list" data-testid="audit-list">
+          ${auditPage.items
+            .map(
+              (row) => `
+                <button class="user-card ${row.id === auditPage.selectedAuditId ? 'active' : ''}" type="button" data-audit-id="${row.id}">
+                  <strong>${escapeHtml(row.event_type)}</strong>
+                  <span>${escapeHtml(row.created_at)}</span>
+                  <div class="user-meta">
+                    <span class="tag">actor:${escapeHtml(row.actor_id ?? 'n/a')}</span>
+                    <span class="tag">user:${escapeHtml(row.target_user_id ?? 'n/a')}</span>
+                    <span class="tag">device:${escapeHtml(row.target_device_id ?? 'n/a')}</span>
+                    <span class="tag">session:${escapeHtml(row.target_session_id ?? 'n/a')}</span>
+                  </div>
+                </button>
+              `,
+            )
+            .join('')}
+        </div>
+      </article>
+      <article class="card detail-grid audit-detail">
+        <div class="eyebrow">Selected event</div>
+        <h2>${selectedAudit ? escapeHtml(selectedAudit.event_type) : 'Select an audit event'}</h2>
+        ${selectedAudit ? renderAuditDetail(selectedAudit) : '<div class="empty-state">Choose an audit event to inspect request tracing and normalized details.</div>'}
+      </article>
     </section>
   `;
+}
+
+function selectAuditRecord(auditPage: AuditPageState): AdminAuditRecord | null {
+  return auditPage.items.find((row) => row.id === auditPage.selectedAuditId) ?? auditPage.items[0] ?? null;
+}
+
+function renderAuditDetail(row: AdminAuditRecord): string {
+  return `
+    <div class="detail-list" data-testid="audit-detail">
+      <div class="user-meta">
+        <span class="tag">actor:${escapeHtml(row.actor_id ?? 'n/a')}</span>
+        <span class="tag">user:${escapeHtml(row.target_user_id ?? 'n/a')}</span>
+        <span class="tag">device:${escapeHtml(row.target_device_id ?? 'n/a')}</span>
+        <span class="tag">session:${escapeHtml(row.target_session_id ?? 'n/a')}</span>
+      </div>
+      <p><strong>Request ID:</strong> ${escapeHtml(row.request_id ?? 'n/a')}</p>
+      <p><strong>Trace ID:</strong> ${escapeHtml(row.trace_id ?? 'n/a')}</p>
+      <p><strong>Created at:</strong> ${escapeHtml(row.created_at)}</p>
+      ${renderAuditDetailEntries(row.details)}
+    </div>
+  `;
+}
+
+function renderAuditDetailEntries(details: Record<string, unknown>): string {
+  const entries = Object.entries(details);
+  if (entries.length === 0) {
+    return '<div class="empty-state">No structured detail payload was attached to this event.</div>';
+  }
+  const highlightedKeys = ['reason', 'required_permission', 'user_id', 'device_id', 'session_id'];
+  const highlighted = entries.filter(([key]) => highlightedKeys.includes(key));
+  const remaining = entries.filter(([key]) => !highlightedKeys.includes(key));
+
+  return `
+    ${highlighted.length > 0
+      ? `<div class="detail-list">
+          ${highlighted
+            .map(
+              ([key, value]) => `
+                <p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(formatAuditValue(value))}</p>
+              `,
+            )
+            .join('')}
+        </div>`
+      : ''}
+    ${
+      remaining.length > 0
+        ? `<pre data-testid="audit-detail-json">${escapeHtml(JSON.stringify(Object.fromEntries(remaining), null, 2))}</pre>`
+        : ''
+    }
+  `;
+}
+
+function formatAuditValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return 'n/a';
+  }
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  return JSON.stringify(value);
 }
 
 function escapeHtml(value: string): string {

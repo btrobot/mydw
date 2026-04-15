@@ -103,6 +103,8 @@ class AuditLogResponse(BaseModel):
     target_user_id: str | None = None
     target_device_id: str | None = None
     target_session_id: str | None = None
+    request_id: str | None = None
+    trace_id: str | None = None
     created_at: datetime
     details: dict = Field(default_factory=dict)
 
@@ -117,3 +119,6 @@ class AdminMetricsSummaryResponse(BaseModel):
     login_failures: int
     device_mismatches: int
     destructive_actions: int
+    generated_at: datetime
+    recent_failures: list[AuditLogResponse] = Field(default_factory=list)
+    recent_destructive_actions: list[AuditLogResponse] = Field(default_factory=list)

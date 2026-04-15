@@ -6,9 +6,13 @@
   },
   "openapi_runtime": {
     "file": "remote-auth-runtime.json",
-    "sha256": "c3b9a5250a3a01efabf2fe07a02d22b4d4bb772f1fc6f7dbd9caeb43a3a9b7c9"
+    "sha256": "d2f102d5f0bee7b976a68362d486a2ae81fc7b92296c2128cdaf526b5f75b727"
   },
   "docs": [
+    {
+      "file": "admin-bootstrap-runbook.md",
+      "sha256": "c64652077b85192ca34a747fc10bd839a71c387d6575404c34b5281d74aabcb7"
+    },
     {
       "file": "admin-mvp-api-contract-v1.md",
       "sha256": "b758c5fe3a0fe955b28a844d7df4eef8203425e938dcc96a9715f5b46a84c2e7"
@@ -50,8 +54,20 @@
       "sha256": "b5338c62c2b211f535216ecc229390f37d21d07f88cf9e8af6fba1bff12e08c7"
     },
     {
+      "file": "phase3-release-gate.md",
+      "sha256": "34925422b2ba7ff56f2d9159c4999a9a97ed1290b99e230c7089d3df6e6b4c5a"
+    },
+    {
       "file": "schema-freeze-migration-policy.md",
       "sha256": "fce89904bf9941b7e7e5928327353164ef7767924346ae90393835c897953c4a"
+    },
+    {
+      "file": "staging-deploy-checklist.md",
+      "sha256": "e8fdb6700be2c8a3bcb1c61bb14180c46d9def6bd5c6b928e43f9e2ac666be9e"
+    },
+    {
+      "file": "support-runbook.md",
+      "sha256": "04544240257f1c960560a081ec7f9e052a8112f41e0fe59d0ba880043a4a23a8"
     },
     {
       "file": "token-session-model.md",
