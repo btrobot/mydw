@@ -11,6 +11,7 @@ ready to promote toward release.
 - staging admin console points to the correct backend base URL
 - bootstrap admin has been created or rotated safely
 - compatibility harness credentials are set
+- candidate identifier / build reference is known
 
 ## Checklist
 
@@ -34,23 +35,31 @@ ready to promote toward release.
 - run `validate_phase1_gate.py` against staging
 - confirm PASS
 
-### 4. Control-plane smoke
+### 4. Deployment smoke
+
+- confirm the deployed backend/admin artifacts match the candidate identifier
+- confirm reverse-proxy or routing bindings target the intended candidate
+- confirm release evidence bundle is attached or linked
+
+### 5. Control-plane smoke
 
 - inspect at least one user detail
 - inspect at least one device detail
 - inspect at least one session detail
 - confirm audit query works with filters
 
-### 5. Risk review
+### 6. Risk review
 
 - verify no default credentials remain
 - verify current rollback notes are still valid
+- verify `restore-recovery-runbook.md` is still valid for the candidate
 - verify support operator escalation path is still accurate
 
-### 6. Sign-off
+### 7. Sign-off
 
 Record:
 
+- candidate identifier / build reference
 - environment name / URL
 - operator name
 - timestamp

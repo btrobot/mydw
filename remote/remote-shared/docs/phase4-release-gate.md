@@ -11,6 +11,7 @@ The Phase 4 gate is green only when all of the following hold:
 
 - backend regression through Phase 4 implemented PRs passes
 - Phase 0 / Phase 1 compatibility gates remain green
+- contract gates green status is recorded for the candidate
 - remote-admin typecheck/build/test remains green
 - bootstrap admin smoke remains green
 - staging promotion checklist has been completed for the candidate build
@@ -78,18 +79,33 @@ Before promotion, an operator must complete:
 - `staging-promotion-checklist.md`
 - `staging-deploy-checklist.md`
 - `rollback-runbook.md`
+- `restore-recovery-runbook.md`
 - `support-runbook.md`
 
-## Required release evidence
+## Prod promotion baseline
+
+Promotion must be tied to a specific candidate build / environment identifier.
+
+Production-style promotion is blocked unless the same candidate has:
+
+- completed staging promotion review
+- attached rollback and restore references
+- attached release evidence bundle for audit/review
+
+## Required release evidence bundle
 
 Attach or record:
 
 - backend regression output
+- contract gates green status record
 - compatibility gate output
 - remote-admin gate output
 - bootstrap smoke output
+- deploy smoke output
 - staging candidate URL / environment identifier
-- operator sign-off that promotion and rollback checklists were reviewed
+- candidate build / environment identifier
+- operator sign-off that promotion, rollback, and restore runbooks were reviewed
+- portal smoke placeholder for Program B (recorded as pending until Program B lands)
 
 ## Failure policy
 

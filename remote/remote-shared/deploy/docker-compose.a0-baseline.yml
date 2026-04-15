@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  reverse-proxy:
+    image: nginx:1.27-alpine
+    depends_on:
+      - remote-backend
+      - remote-admin
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.remote-full-system-a0.conf:/etc/nginx/conf.d/default.conf:ro
+
+  remote-backend:
+    image: ghcr.io/example/remote-backend:baseline
+    env_file:
+      - ../../../.env
+    environment:
+      REMOTE_BACKEND_APP_ENV: ${REMOTE_BACKEND_APP_ENV:-staging}
+      REMOTE_BACKEND_HOST: 0.0.0.0
+      REMOTE_BACKEND_PORT: 8100
+    expose:
+      - "8100"
+
+  remote-admin:
+    image: nginx:1.27-alpine
+    depends_on:
+      - remote-backend
+    volumes:
+      - ../../remote-admin/dist:/usr/share/nginx/html:ro
+
+  remote-portal:
+    image: nginx:1.27-alpine
+    profiles:
+      - portal
+    depends_on:
+      - remote-backend
+    # This service is reserved for the future portal artifact.
+    # Enable only after B0/B work lands and a static build exists.
+

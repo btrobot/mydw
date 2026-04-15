@@ -40,7 +40,14 @@ Rollback should be considered when:
 - users/devices/sessions/audit all load
 - compatibility harness passes against the rolled-back environment
 
-### 5. Record the rollback
+### 5. Post-rollback validation checklist
+
+- confirm current backend artifact matches the rollback target
+- confirm current admin artifact matches the rollback target
+- record whether a restore is still required
+- if rollback is insufficient, escalate to `restore-recovery-runbook.md`
+
+### 6. Record the rollback
 
 Capture:
 
@@ -52,3 +59,4 @@ Capture:
 ## Important note
 
 Rollback assets must be reviewed before release promotion, not after failure.
+Restore/recovery is a separate path documented in `restore-recovery-runbook.md`.

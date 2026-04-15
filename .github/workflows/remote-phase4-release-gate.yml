@@ -6,6 +6,7 @@ on:
     paths:
       - 'remote/**'
       - '.github/workflows/remote-phase4-release-gate.yml'
+      - 'backend/tests/test_remote_a0_pr*.py'
       - 'backend/tests/test_remote_phase0_*.py'
       - 'backend/tests/test_remote_phase1_pr*.py'
       - 'backend/tests/test_remote_phase2_pr*.py'
@@ -57,6 +58,10 @@ jobs:
           backend/tests/test_remote_phase4_pr1_contract_hardening.py
           backend/tests/test_remote_phase4_pr2_runtime_reliability.py
           backend/tests/test_remote_phase4_pr4_gate.py
+          backend/tests/test_remote_a0_pr1_operating_model.py
+          backend/tests/test_remote_a0_pr2_env_discipline.py
+          backend/tests/test_remote_a0_pr3_topology_health.py
+          backend/tests/test_remote_a0_pr4_release_governance.py
           -q
 
   remote-admin-phase4-gate:
