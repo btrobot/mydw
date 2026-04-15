@@ -51,6 +51,7 @@ export interface UsersPageState {
   loading: boolean;
   errorMessage: string | null;
   detailLoading: boolean;
+  detailErrorMessage: string | null;
   filters: {
     query: string;
     status: string;
@@ -83,6 +84,7 @@ export interface DevicesPageState {
   loading: boolean;
   errorMessage: string | null;
   detailLoading: boolean;
+  detailErrorMessage: string | null;
   filters: {
     query: string;
     status: string;
@@ -107,6 +109,7 @@ export interface SessionsPageState {
   errorMessage: string | null;
   selectedSessionId: string | null;
   feedback: string | null;
+  actionInFlightId: string | null;
   filters: {
     query: string;
     authState: string;
@@ -238,6 +241,7 @@ export function createInitialState(route: RouteId): AppState {
       loading: false,
       errorMessage: null,
       detailLoading: false,
+      detailErrorMessage: null,
       filters: {
         query: '',
         status: '',
@@ -260,6 +264,7 @@ export function createInitialState(route: RouteId): AppState {
       loading: false,
       errorMessage: null,
       detailLoading: false,
+      detailErrorMessage: null,
       filters: {
         query: '',
         status: '',
@@ -279,6 +284,7 @@ export function createInitialState(route: RouteId): AppState {
       errorMessage: null,
       selectedSessionId: null,
       feedback: null,
+      actionInFlightId: null,
       filters: {
         query: '',
         authState: '',
@@ -516,6 +522,7 @@ function wrapDocument(content: string): string {
         .detail-list pre { margin: 0; background: #111827; color: #f9fafb; padding: 12px; border-radius: 12px; overflow: auto; }
         .empty-state { border: 1px dashed #cbd5e1; border-radius: 14px; padding: 16px; color: #64748b; background: #f8fafc; }
         .inline-meta { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
+        .inline-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
         .muted-link { color: #4f46e5; font-weight: 600; text-decoration: none; }
         .tag-success { background: #dcfce7; color: #166534; }
         .tag-warning { background: #fef3c7; color: #92400e; }
@@ -634,7 +641,6 @@ function renderUsersRoute(state: AppState): string {
         <div class="eyebrow">Admin users API</div>
         <h2>Users</h2>
         <p>Search by username, display name, email, or user id, then inspect the selected user in the detail panel.</p>
-        ${usersPage.errorMessage ? `<div class="error">${escapeHtml(usersPage.errorMessage)}</div>` : ''}
         <form id="users-filter-form" class="list-toolbar">
           <div class="filters-grid">
             <label>
@@ -675,9 +681,10 @@ function renderUsersRoute(state: AppState): string {
           </div>
         </form>
         <p class="hint">Showing ${String(usersPage.items.length)} users from the current filtered result set.</p>
+        ${usersPage.errorMessage ? renderRetryableError(usersPage.errorMessage, 'users-retry') : ''}
         <div class="users-list" data-testid="users-list">
           ${usersPage.loading ? '<p>Loading users...</p>' : ''}
-          ${!usersPage.loading && usersPage.items.length === 0 ? '<p>No managed users were returned.</p>' : ''}
+          ${!usersPage.loading && !usersPage.errorMessage && usersPage.items.length === 0 ? '<div class="empty-state">No managed users matched the current filters.</div>' : ''}
           ${usersPage.items
             .map((user) => {
               const active = user.id === usersPage.selectedUserId ? 'active' : '';
@@ -700,6 +707,7 @@ function renderUsersRoute(state: AppState): string {
         <div class="eyebrow">Authorization detail</div>
         <h2>${usersPage.detail ? escapeHtml(usersPage.detail.username) : 'Select a user'}</h2>
         ${usersPage.detailLoading ? '<p>Loading detail...</p>' : ''}
+        ${usersPage.detailErrorMessage ? renderRetryableError(usersPage.detailErrorMessage, 'user-detail-retry') : ''}
         ${!usersPage.detail && !usersPage.detailLoading ? '<p>Select a user from the list to inspect and control authorization.</p>' : ''}
         ${usersPage.detail ? renderUserDetail(usersPage.detail, usersPage.editor, canWrite) : ''}
       </article>
@@ -716,7 +724,6 @@ function renderDevicesRoute(state: AppState): string {
         <div class="eyebrow">Admin devices API</div>
         <h2>Devices</h2>
         <p>Search by device id, user id, or version, then inspect the selected device before changing its binding state.</p>
-        ${devicesPage.errorMessage ? `<div class="error">${escapeHtml(devicesPage.errorMessage)}</div>` : ''}
         <form id="devices-filter-form" class="list-toolbar">
           <div class="filters-grid">
             <label>
@@ -748,9 +755,10 @@ function renderDevicesRoute(state: AppState): string {
           </div>
         </form>
         <p class="hint">Showing ${String(devicesPage.items.length)} devices from the current filtered result set.</p>
+        ${devicesPage.errorMessage ? renderRetryableError(devicesPage.errorMessage, 'devices-retry') : ''}
         <div class="users-list" data-testid="devices-list">
           ${devicesPage.loading ? '<p>Loading devices...</p>' : ''}
-          ${!devicesPage.loading && devicesPage.items.length === 0 ? '<p>No devices were returned.</p>' : ''}
+          ${!devicesPage.loading && !devicesPage.errorMessage && devicesPage.items.length === 0 ? '<div class="empty-state">No devices matched the current filters.</div>' : ''}
           ${devicesPage.items
             .map((device) => {
               const active = device.device_id === devicesPage.selectedDeviceId ? 'active' : '';
@@ -772,6 +780,7 @@ function renderDevicesRoute(state: AppState): string {
         <div class="eyebrow">Device control</div>
         <h2>${devicesPage.detail ? escapeHtml(devicesPage.detail.device_id) : 'Select a device'}</h2>
         ${devicesPage.detailLoading ? '<p>Loading detail...</p>' : ''}
+        ${devicesPage.detailErrorMessage ? renderRetryableError(devicesPage.detailErrorMessage, 'device-detail-retry') : ''}
         ${!devicesPage.detail && !devicesPage.detailLoading ? '<p>Select a device from the list to inspect and control binding state.</p>' : ''}
         ${devicesPage.detail ? renderDeviceDetail(devicesPage.detail, devicesPage.editor, canWrite) : ''}
       </article>
@@ -869,6 +878,10 @@ function renderSessionsRoute(state: AppState): string {
   const canWrite = canEditUsers(state.session);
   const sessionsPage = state.sessionsPage;
   const selectedSession = selectSessionRecord(sessionsPage);
+  const revokeLabel =
+    sessionsPage.actionInFlightId && selectedSession?.session_id === sessionsPage.actionInFlightId
+      ? 'Revoking session...'
+      : 'Revoke session';
   return `
     <section class="users-layout">
       <article class="card detail-grid">
@@ -876,7 +889,6 @@ function renderSessionsRoute(state: AppState): string {
         <h2>Sessions</h2>
         <p>Search by session, user, or device and inspect one session at a time before forcing revocation.</p>
         ${sessionsPage.feedback ? `<div class="success">${escapeHtml(sessionsPage.feedback)}</div>` : ''}
-        ${sessionsPage.errorMessage ? `<div class="error">${escapeHtml(sessionsPage.errorMessage)}</div>` : ''}
         <form id="sessions-filter-form" class="list-toolbar">
           <div class="filters-grid">
             <label>
@@ -912,8 +924,9 @@ function renderSessionsRoute(state: AppState): string {
             <button id="sessions-filter-clear" class="secondary" type="button">Clear filters</button>
           </div>
         </form>
+        ${sessionsPage.errorMessage ? renderRetryableError(sessionsPage.errorMessage, 'sessions-retry') : ''}
         ${sessionsPage.loading ? '<p>Loading sessions...</p>' : ''}
-        ${!sessionsPage.loading && sessionsPage.items.length === 0 ? '<p>No sessions were returned.</p>' : ''}
+        ${!sessionsPage.loading && !sessionsPage.errorMessage && sessionsPage.items.length === 0 ? '<div class="empty-state">No sessions matched the current filters.</div>' : ''}
         <div class="users-list" data-testid="sessions-list">
           ${sessionsPage.items
             .map((session) => {
@@ -941,7 +954,7 @@ function renderSessionsRoute(state: AppState): string {
       <article class="card detail-grid">
         <div class="eyebrow">Session detail</div>
         <h2>${selectedSession ? escapeHtml(selectedSession.session_id) : 'Select a session'}</h2>
-        ${selectedSession ? renderSessionDetail(selectedSession, canWrite) : '<div class="empty-state">Choose a session from the list to inspect auth state, timestamps, and revoke controls.</div>'}
+        ${selectedSession ? renderSessionDetail(selectedSession, canWrite, revokeLabel, sessionsPage.actionInFlightId === selectedSession.session_id) : '<div class="empty-state">Choose a session from the list to inspect auth state, timestamps, and revoke controls.</div>'}
       </article>
     </section>
   `;
@@ -974,7 +987,7 @@ function selectSessionRecord(sessionsPage: SessionsPageState): AdminSessionRecor
   return sessionsPage.items.find((session) => session.session_id === sessionsPage.selectedSessionId) ?? sessionsPage.items[0] ?? null;
 }
 
-function renderSessionDetail(detail: AdminSessionRecord, canWrite: boolean): string {
+function renderSessionDetail(detail: AdminSessionRecord, canWrite: boolean, revokeLabel: string, isRevoking: boolean): string {
   return `
     <div class="detail-grid" data-testid="session-detail">
       ${renderSummaryGrid([
@@ -990,7 +1003,7 @@ function renderSessionDetail(detail: AdminSessionRecord, canWrite: boolean): str
         ${renderSessionStateBadge(detail.auth_state)}
       </div>
       <div class="toolbar">
-        <button id="session-revoke" class="danger" type="button" data-session-id="${detail.session_id}" ${canWrite ? '' : 'disabled'}>Revoke session</button>
+        <button id="session-revoke" class="danger" type="button" data-session-id="${detail.session_id}" ${canWrite && !isRevoking ? '' : 'disabled'}>${revokeLabel}</button>
       </div>
       <div class="empty-state">Session revoke is audited and immediately invalidates subsequent me/refresh continuity for the affected session.</div>
     </div>
@@ -1032,7 +1045,7 @@ function renderDashboardRoute(state: AppState): string {
           )
           .join('')}
       </section>
-      ${metrics.errorMessage ? `<div class="error">${escapeHtml(metrics.errorMessage)}</div>` : ''}
+      ${metrics.errorMessage ? renderRetryableError(metrics.errorMessage, 'dashboard-retry') : ''}
       <section class="users-layout">
         <article class="card detail-grid">
           <div class="inline-meta">
@@ -1107,7 +1120,7 @@ function renderAuditLogsRoute(state: AppState): string {
         <div class="eyebrow">Admin audit API</div>
         <h2>Audit logs</h2>
         <p>Filter operator-visible events by actor, target, session, and time range to isolate the incident you need.</p>
-        ${auditPage.errorMessage ? `<div class="error">${escapeHtml(auditPage.errorMessage)}</div>` : ''}
+        ${auditPage.errorMessage ? renderRetryableError(auditPage.errorMessage, 'audit-retry') : ''}
         <form id="admin-audit-form" class="detail-grid">
           <div class="filters-grid">
             <label>
@@ -1164,7 +1177,7 @@ function renderAuditLogsRoute(state: AppState): string {
           ${queryPreview ? `<code data-testid="audit-query-preview">${escapeHtml(queryPreview)}</code>` : ''}
         </div>
         ${auditPage.loading ? '<p>Loading audit logs…</p>' : ''}
-        ${!auditPage.loading && auditPage.items.length === 0 ? '<div class="empty-state">No audit events matched the current filters. Adjust the filters or retry the query.</div>' : ''}
+        ${!auditPage.loading && !auditPage.errorMessage && auditPage.items.length === 0 ? '<div class="empty-state">No audit events matched the current filters. Adjust the filters or retry the query.</div>' : ''}
         <div class="users-list" data-testid="audit-list">
           ${auditPage.items
             .map(
@@ -1190,6 +1203,17 @@ function renderAuditLogsRoute(state: AppState): string {
         ${selectedAudit ? renderAuditDetail(selectedAudit) : '<div class="empty-state">Choose an audit event to inspect request tracing and normalized details.</div>'}
       </article>
     </section>
+  `;
+}
+
+function renderRetryableError(message: string, retryId: string): string {
+  return `
+    <div class="error">
+      <div class="inline-actions">
+        <span>${escapeHtml(message)}</span>
+        <button id="${retryId}" class="secondary" type="button">Retry</button>
+      </div>
+    </div>
   `;
 }
 

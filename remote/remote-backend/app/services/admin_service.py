@@ -156,12 +156,10 @@ class AdminService:
         offset: int = 0,
     ) -> AdminUserListResponse:
         admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_USERS_READ)
-        total = len(
-            self.repository.list_users(
-                q=q,
-                status=status,
-                license_status=license_status,
-            )
+        total = self.repository.count_users(
+            q=q,
+            status=status,
+            license_status=license_status,
         )
         items = [
             self._build_user_response(user)
@@ -247,12 +245,10 @@ class AdminService:
     ) -> AdminDeviceListResponse:
         admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_DEVICES_READ)
         normalized_user_id = self._normalize_optional_user_filter(user_id)
-        total = len(
-            self.repository.list_devices(
-                q=q,
-                device_status=device_status,
-                user_id=normalized_user_id,
-            )
+        total = self.repository.count_devices(
+            q=q,
+            device_status=device_status,
+            user_id=normalized_user_id,
         )
         items = [
             self._build_device_response(device)
@@ -328,13 +324,11 @@ class AdminService:
     ) -> AdminSessionListResponse:
         admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_SESSIONS_READ)
         normalized_user_id = self._normalize_optional_user_filter(user_id)
-        total = len(
-            self.repository.list_sessions(
-                q=q,
-                auth_state=auth_state,
-                user_id=normalized_user_id,
-                device_id=device_id,
-            )
+        total = self.repository.count_sessions(
+            q=q,
+            auth_state=auth_state,
+            user_id=normalized_user_id,
+            device_id=device_id,
         )
         items = [
             self._build_session_response(session)
@@ -388,7 +382,7 @@ class AdminService:
         admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_AUDIT_READ)
         normalized_created_from = self._normalize_audit_filter_datetime(created_from)
         normalized_created_to = self._normalize_audit_filter_datetime(created_to)
-        audit_rows = self.repository.list_audit_logs(
+        total = self.repository.count_audit_logs(
             event_type=event_type,
             actor_id=actor_id,
             target_user_id=target_user_id,
@@ -397,13 +391,24 @@ class AdminService:
             created_from=normalized_created_from,
             created_to=normalized_created_to,
         )
-        items = [self._build_audit_response(row) for row in audit_rows[offset : offset + limit]]
+        audit_rows = self.repository.list_audit_logs(
+            event_type=event_type,
+            actor_id=actor_id,
+            target_user_id=target_user_id,
+            target_device_id=target_device_id,
+            target_session_id=target_session_id,
+            created_from=normalized_created_from,
+            created_to=normalized_created_to,
+            limit=limit,
+            offset=offset,
+        )
+        items = [self._build_audit_response(row) for row in audit_rows]
         self._write_audit(
             'admin_audit_logs_listed',
             actor_id=f'admin_{admin_user.id}',
             details={
                 'count': len(items),
-                'total': len(audit_rows),
+                'total': total,
                 'event_type': event_type,
                 'actor_id': actor_id,
                 'target_user_id': target_user_id,
@@ -416,18 +421,18 @@ class AdminService:
             },
         )
         self.repository.db.commit()
-        return AuditLogListResponse(items=items, total=len(audit_rows))
+        return AuditLogListResponse(items=items, total=total)
 
     def get_metrics_summary(self, access_token: str) -> AdminMetricsSummaryResponse:
         admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_METRICS_READ)
-        audit_rows = self.repository.list_audit_logs()
         generated_at = datetime.utcnow()
-        login_failures = sum(1 for row in audit_rows if row.event_type in {'auth_login_failed', 'admin_login_failed'})
-        device_mismatches = sum(1 for row in audit_rows if row.event_type in {'auth_login_failed', 'auth_refresh_failed', 'auth_logout_failed', 'auth_me_failed'} and self._details_reason(row) == 'device_mismatch')
-        destructive_actions = sum(
-            1
-            for row in audit_rows
-            if row.event_type in {
+        login_failures = self.repository.count_audit_logs(event_types={'auth_login_failed', 'admin_login_failed'})
+        device_mismatches = self.repository.count_audit_logs(
+            event_types={'auth_login_failed', 'auth_refresh_failed', 'auth_logout_failed', 'auth_me_failed'},
+            detail_reason='device_mismatch',
+        )
+        destructive_actions = self.repository.count_audit_logs(
+            event_types={
                 'authorization_user_revoked',
                 'authorization_user_disabled',
                 'authorization_device_unbound',
@@ -454,17 +459,20 @@ class AdminService:
             device_mismatches=device_mismatches,
             destructive_actions=destructive_actions,
             generated_at=generated_at,
-            recent_failures=self._select_recent_audit_rows(audit_rows, {'auth_login_failed', 'admin_login_failed'}),
-            recent_destructive_actions=self._select_recent_audit_rows(
-                audit_rows,
-                {
-                    'authorization_user_revoked',
-                    'authorization_user_disabled',
-                    'authorization_device_unbound',
-                    'authorization_device_disabled',
-                    'authorization_device_rebound',
-                    'admin_session_revoked',
-                },
+            recent_failures=self._build_audit_rows(
+                self.repository.list_recent_audit_logs(event_types={'auth_login_failed', 'admin_login_failed'})
+            ),
+            recent_destructive_actions=self._build_audit_rows(
+                self.repository.list_recent_audit_logs(
+                    event_types={
+                        'authorization_user_revoked',
+                        'authorization_user_disabled',
+                        'authorization_device_unbound',
+                        'authorization_device_disabled',
+                        'authorization_device_rebound',
+                        'admin_session_revoked',
+                    }
+                )
             ),
         )
 
@@ -652,8 +660,8 @@ class AdminService:
             details=details,
         )
 
-    def _select_recent_audit_rows(self, audit_rows, event_types: set[str], *, limit: int = 5) -> list[AuditLogResponse]:
-        return [self._build_audit_response(row) for row in audit_rows if row.event_type in event_types][:limit]
+    def _build_audit_rows(self, audit_rows) -> list[AuditLogResponse]:
+        return [self._build_audit_response(row) for row in audit_rows]
 
     @staticmethod
     def _details_reason(row) -> str | None:

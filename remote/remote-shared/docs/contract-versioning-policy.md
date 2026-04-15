@@ -25,6 +25,21 @@ The following are breaking changes:
 - changing device binding semantics
 - changing `license_status` or `device_status` meaning
 
+## Additive `v1` changes
+
+The following are allowed within `v1` when kept optional and documented:
+
+- adding optional response fields
+- adding optional query parameters
+- adding optional `details` keys to `ErrorResponse`
+- adding optional audit / metrics fields used by admin operations
+
+These changes still require:
+
+- source OpenAPI update
+- runtime OpenAPI regeneration
+- compatibility or gate test updates when the implemented surface changes
+
 ## Required follow-up for a breaking change
 
 When a breaking change happens, the change must include:

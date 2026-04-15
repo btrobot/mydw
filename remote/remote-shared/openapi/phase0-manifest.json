@@ -2,7 +2,7 @@
   "version": "phase0-v1",
   "openapi": {
     "file": "remote-auth-v1.yaml",
-    "sha256": "d08ea5f3b2261369411399e742f16b2767cb77e6ae115afa18a0ac57c836a35c"
+    "sha256": "50348cc7b35d019840f2dd82ff954e4ed5ee584bc0e49cb3706f7d5e21aee07a"
   },
   "docs": [
     {
@@ -11,7 +11,7 @@
     },
     {
       "file": "admin-mvp-api-contract-v1.md",
-      "sha256": "b758c5fe3a0fe955b28a844d7df4eef8203425e938dcc96a9715f5b46a84c2e7"
+      "sha256": "c9480e9d35ee621b82f98165a58c48b4f8d1ca83cc65cb2c7ede116a8177018b"
     },
     {
       "file": "auth-domain-boundaries.md",
@@ -19,11 +19,11 @@
     },
     {
       "file": "compatibility-gate.md",
-      "sha256": "ffb07b4c0ca7c7765faf18e2b9686cd8ab11f2ed7aab3c9431e40022d0e20916"
+      "sha256": "ef9d6da5739e1880935be3386a5bf665289bf1a76eceb4628a00916216db3d4d"
     },
     {
       "file": "contract-versioning-policy.md",
-      "sha256": "2bd23a86077a8d11129482a6fbe8809a380d8cf51a20d335110df9a109cb926c"
+      "sha256": "b0fc33038fb2fca3f8a0e14eac2660bd7c37cc5b23c8e33dd9f4908f22cd4d44"
     },
     {
       "file": "db-schema-draft.md",
@@ -35,7 +35,7 @@
     },
     {
       "file": "error-code-matrix.md",
-      "sha256": "06d8566ff9fdd2cdabd238e0c284775b0690c688241066ca33a4ac5b36048b3c"
+      "sha256": "1268d8c3dfc5b99fc8dd88b01c3c30c55a45d6beb38507d9712150878458b57d"
     },
     {
       "file": "offline-grace-boundary.md",
@@ -54,12 +54,24 @@
       "sha256": "34925422b2ba7ff56f2d9159c4999a9a97ed1290b99e230c7089d3df6e6b4c5a"
     },
     {
+      "file": "phase4-release-gate.md",
+      "sha256": "92afb89a10df08f40dd9503da9b6c8825a83e3d70f5edbf8fc1ceea83db6765f"
+    },
+    {
+      "file": "rollback-runbook.md",
+      "sha256": "e3b8baf05628e8e0a1dbfd00c69808b28858ec4a90b641b1450c8830dcaff24f"
+    },
+    {
       "file": "schema-freeze-migration-policy.md",
       "sha256": "fce89904bf9941b7e7e5928327353164ef7767924346ae90393835c897953c4a"
     },
     {
       "file": "staging-deploy-checklist.md",
       "sha256": "e8fdb6700be2c8a3bcb1c61bb14180c46d9def6bd5c6b928e43f9e2ac666be9e"
+    },
+    {
+      "file": "staging-promotion-checklist.md",
+      "sha256": "7dba6e90dc2b73a8f650b4e5e8e1708f5551220633ebf637ce3e6d8c485f82c1"
     },
     {
       "file": "support-runbook.md",

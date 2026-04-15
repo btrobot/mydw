@@ -141,6 +141,16 @@ test('dashboard placeholder renders authenticated shell content', () => {
   assert.match(html, /auth_login_failed/);
 });
 
+test('dashboard error renders retry affordance', () => {
+  const state = createInitialState('dashboard');
+  state.session = session;
+  state.status = 'ready';
+  state.dashboardMetrics.errorMessage = 'Failed to load dashboard metrics.';
+  const html = renderApp(state);
+  assert.match(html, /dashboard-retry/);
+  assert.match(html, /Retry/);
+});
+
 test('users page renders real user control layout', () => {
   const state = createInitialState('users');
   state.session = session;
@@ -157,6 +167,26 @@ test('users page renders real user control layout', () => {
   assert.match(html, /Entitlements:/);
   assert.match(html, /Revoke user/);
   assert.match(html, /Restore user/);
+});
+
+test('users and devices render retryable detail errors', () => {
+  const usersState = createInitialState('users');
+  usersState.session = session;
+  usersState.status = 'ready';
+  usersState.usersPage.items = users;
+  usersState.usersPage.selectedUserId = 'u_1';
+  usersState.usersPage.detailErrorMessage = 'Failed to load the selected user.';
+  let html = renderApp(usersState);
+  assert.match(html, /user-detail-retry/);
+
+  const devicesState = createInitialState('devices');
+  devicesState.session = session;
+  devicesState.status = 'ready';
+  devicesState.devicesPage.items = devices;
+  devicesState.devicesPage.selectedDeviceId = 'device_1';
+  devicesState.devicesPage.detailErrorMessage = 'Failed to load the selected device.';
+  html = renderApp(devicesState);
+  assert.match(html, /device-detail-retry/);
 });
 
 test('readonly role disables destructive controls', () => {
@@ -189,6 +219,7 @@ test('sessions page renders session control layout', () => {
   state.status = 'ready';
   state.sessionsPage.items = sessions;
   state.sessionsPage.selectedSessionId = 'sess_1';
+  state.sessionsPage.actionInFlightId = 'sess_1';
   const html = renderApp(state);
   assert.match(html, /Sessions/);
   assert.match(html, /sess_1/);
@@ -196,7 +227,7 @@ test('sessions page renders session control layout', () => {
   assert.match(html, /Session detail/);
   assert.match(html, /authenticated_active/);
   assert.match(html, /Issued at/);
-  assert.match(html, /Revoke session/);
+  assert.match(html, /Revoking session.../);
 });
 
 test('session action error mapping keeps session UX stable', () => {
@@ -296,5 +327,65 @@ test('audit page renders empty and loading operational states', () => {
 
   state.auditPage.loading = false;
   html = renderApp(state);
+  assert.match(html, /No audit events matched the current filters/);
+});
+
+test('users, devices, and sessions render retryable collection errors without empty-state conflicts', () => {
+  const usersState = createInitialState('users');
+  usersState.session = session;
+  usersState.status = 'ready';
+  usersState.usersPage.errorMessage = 'Failed to load admin users.';
+  let html = renderApp(usersState);
+  assert.match(html, /users-retry/);
+  assert.doesNotMatch(html, /No managed users matched the current filters/);
+
+  const devicesState = createInitialState('devices');
+  devicesState.session = session;
+  devicesState.status = 'ready';
+  devicesState.devicesPage.errorMessage = 'Failed to load devices.';
+  html = renderApp(devicesState);
+  assert.match(html, /devices-retry/);
+  assert.doesNotMatch(html, /No devices matched the current filters/);
+
+  const sessionsState = createInitialState('sessions');
+  sessionsState.session = session;
+  sessionsState.status = 'ready';
+  sessionsState.sessionsPage.errorMessage = 'Failed to load sessions.';
+  html = renderApp(sessionsState);
+  assert.match(html, /sessions-retry/);
+  assert.doesNotMatch(html, /No sessions matched the current filters/);
+
+  const auditState = createInitialState('audit-logs');
+  auditState.session = session;
+  auditState.status = 'ready';
+  auditState.auditPage.errorMessage = 'Failed to load audit logs.';
+  html = renderApp(auditState);
+  assert.match(html, /audit-retry/);
+  assert.doesNotMatch(html, /No audit events matched the current filters/);
+});
+
+test('users, devices, sessions, and audit keep empty states for true empty results', () => {
+  const usersState = createInitialState('users');
+  usersState.session = session;
+  usersState.status = 'ready';
+  let html = renderApp(usersState);
+  assert.match(html, /No managed users matched the current filters/);
+
+  const devicesState = createInitialState('devices');
+  devicesState.session = session;
+  devicesState.status = 'ready';
+  html = renderApp(devicesState);
+  assert.match(html, /No devices matched the current filters/);
+
+  const sessionsState = createInitialState('sessions');
+  sessionsState.session = session;
+  sessionsState.status = 'ready';
+  html = renderApp(sessionsState);
+  assert.match(html, /No sessions matched the current filters/);
+
+  const auditState = createInitialState('audit-logs');
+  auditState.session = session;
+  auditState.status = 'ready';
+  html = renderApp(auditState);
   assert.match(html, /No audit events matched the current filters/);
 });

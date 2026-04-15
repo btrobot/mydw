@@ -46,26 +46,8 @@ class AdminRepository:
     def touch_admin_session(self, session: AdminSession) -> None:
         session.last_seen_at = datetime.utcnow()
 
-    def list_users(
-        self,
-        *,
-        q: str | None = None,
-        status: str | None = None,
-        license_status: str | None = None,
-        limit: int | None = None,
-        offset: int | None = None,
-    ) -> list[User]:
-        query = (
-            select(User)
-            .outerjoin(License)
-            .options(
-                joinedload(User.license),
-                joinedload(User.entitlements),
-                joinedload(User.bindings).joinedload(UserDevice.device),
-                joinedload(User.sessions),
-            )
-            .order_by(User.updated_at.desc(), User.id.desc())
-        )
+    @staticmethod
+    def _apply_user_filters(query, *, q: str | None = None, status: str | None = None, license_status: str | None = None):
         if q:
             pattern = f'%{q.lower()}%'
             query = query.where(
@@ -80,11 +62,53 @@ class AdminRepository:
             query = query.where(User.status == status)
         if license_status:
             query = query.where(License.license_status == license_status)
+        return query
+
+    def list_users(
+        self,
+        *,
+        q: str | None = None,
+        status: str | None = None,
+        license_status: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[User]:
+        query = self._apply_user_filters(
+            (
+            select(User)
+            .outerjoin(License)
+            .options(
+                joinedload(User.license),
+                joinedload(User.entitlements),
+                joinedload(User.bindings).joinedload(UserDevice.device),
+                joinedload(User.sessions),
+            )
+            .order_by(User.updated_at.desc(), User.id.desc())
+            ),
+            q=q,
+            status=status,
+            license_status=license_status,
+        )
         if offset:
             query = query.offset(offset)
         if limit is not None:
             query = query.limit(limit)
         return list(self.db.execute(query).unique().scalars().all())
+
+    def count_users(
+        self,
+        *,
+        q: str | None = None,
+        status: str | None = None,
+        license_status: str | None = None,
+    ) -> int:
+        filtered = self._apply_user_filters(
+            select(User.id).outerjoin(License),
+            q=q,
+            status=status,
+            license_status=license_status,
+        ).distinct().subquery()
+        return self.db.execute(select(func.count()).select_from(filtered)).scalar_one()
 
     def get_user_detail(self, user_id: int) -> User | None:
         return self.db.execute(
@@ -98,22 +122,8 @@ class AdminRepository:
             .where(User.id == user_id)
         ).unique().scalars().first()
 
-    def list_devices(
-        self,
-        *,
-        q: str | None = None,
-        device_status: str | None = None,
-        user_id: int | None = None,
-        limit: int | None = None,
-        offset: int | None = None,
-    ) -> list[Device]:
-        query = (
-            select(Device)
-            .outerjoin(UserDevice)
-            .outerjoin(User)
-            .options(joinedload(Device.bindings).joinedload(UserDevice.user))
-            .order_by(Device.updated_at.desc(), Device.id.desc())
-        )
+    @staticmethod
+    def _apply_device_filters(query, *, q: str | None = None, device_status: str | None = None, user_id: int | None = None):
         if q:
             pattern = f'%{q.lower()}%'
             query = query.where(
@@ -129,11 +139,49 @@ class AdminRepository:
             query = query.where(Device.status == device_status)
         if user_id is not None:
             query = query.where(UserDevice.binding_status == 'bound', User.id == user_id)
+        return query
+
+    def list_devices(
+        self,
+        *,
+        q: str | None = None,
+        device_status: str | None = None,
+        user_id: int | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[Device]:
+        query = self._apply_device_filters(
+            (
+            select(Device)
+            .outerjoin(UserDevice)
+            .outerjoin(User)
+            .options(joinedload(Device.bindings).joinedload(UserDevice.user))
+            .order_by(Device.updated_at.desc(), Device.id.desc())
+            ),
+            q=q,
+            device_status=device_status,
+            user_id=user_id,
+        )
         if offset:
             query = query.offset(offset)
         if limit is not None:
             query = query.limit(limit)
         return list(self.db.execute(query).unique().scalars().all())
+
+    def count_devices(
+        self,
+        *,
+        q: str | None = None,
+        device_status: str | None = None,
+        user_id: int | None = None,
+    ) -> int:
+        filtered = self._apply_device_filters(
+            select(Device.id).outerjoin(UserDevice).outerjoin(User),
+            q=q,
+            device_status=device_status,
+            user_id=user_id,
+        ).distinct().subquery()
+        return self.db.execute(select(func.count()).select_from(filtered)).scalar_one()
 
     def get_device_detail(self, device_id: str) -> Device | None:
         return self.db.execute(
@@ -142,23 +190,8 @@ class AdminRepository:
             .where(Device.device_id == device_id)
         ).unique().scalars().first()
 
-    def list_sessions(
-        self,
-        *,
-        q: str | None = None,
-        auth_state: str | None = None,
-        user_id: int | None = None,
-        device_id: str | None = None,
-        limit: int | None = None,
-        offset: int | None = None,
-    ) -> list[EndUserSession]:
-        query = (
-            select(EndUserSession)
-            .join(User)
-            .join(Device)
-            .options(joinedload(EndUserSession.user), joinedload(EndUserSession.device))
-            .order_by(EndUserSession.last_seen_at.desc(), EndUserSession.id.desc())
-        )
+    @staticmethod
+    def _apply_session_filters(query, *, q: str | None = None, auth_state: str | None = None, user_id: int | None = None, device_id: str | None = None):
         if q:
             pattern = f'%{q.lower()}%'
             query = query.where(
@@ -175,11 +208,53 @@ class AdminRepository:
             query = query.where(User.id == user_id)
         if device_id:
             query = query.where(Device.device_id == device_id)
+        return query
+
+    def list_sessions(
+        self,
+        *,
+        q: str | None = None,
+        auth_state: str | None = None,
+        user_id: int | None = None,
+        device_id: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[EndUserSession]:
+        query = self._apply_session_filters(
+            (
+            select(EndUserSession)
+            .join(User)
+            .join(Device)
+            .options(joinedload(EndUserSession.user), joinedload(EndUserSession.device))
+            .order_by(EndUserSession.last_seen_at.desc(), EndUserSession.id.desc())
+            ),
+            q=q,
+            auth_state=auth_state,
+            user_id=user_id,
+            device_id=device_id,
+        )
         if offset:
             query = query.offset(offset)
         if limit is not None:
             query = query.limit(limit)
         return list(self.db.execute(query).unique().scalars().all())
+
+    def count_sessions(
+        self,
+        *,
+        q: str | None = None,
+        auth_state: str | None = None,
+        user_id: int | None = None,
+        device_id: str | None = None,
+    ) -> int:
+        filtered = self._apply_session_filters(
+            select(EndUserSession.id).join(User).join(Device),
+            q=q,
+            auth_state=auth_state,
+            user_id=user_id,
+            device_id=device_id,
+        ).subquery()
+        return self.db.execute(select(func.count()).select_from(filtered)).scalar_one()
 
     def get_session_detail(self, session_id: str) -> EndUserSession | None:
         return self.db.execute(
@@ -198,10 +273,43 @@ class AdminRepository:
         target_session_id: str | None = None,
         created_from: datetime | None = None,
         created_to: datetime | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
     ) -> list[AuditLog]:
-        query = select(AuditLog).order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
+        query = self._apply_audit_filters(
+            select(AuditLog),
+            event_type=event_type,
+            actor_id=actor_id,
+            target_user_id=target_user_id,
+            target_device_id=target_device_id,
+            target_session_id=target_session_id,
+            created_from=created_from,
+            created_to=created_to,
+        ).order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
+        if offset:
+            query = query.offset(offset)
+        if limit is not None:
+            query = query.limit(limit)
+        return list(self.db.execute(query).scalars().all())
+
+    @staticmethod
+    def _apply_audit_filters(
+        query,
+        *,
+        event_type: str | None = None,
+        actor_id: str | None = None,
+        target_user_id: str | None = None,
+        target_device_id: str | None = None,
+        target_session_id: str | None = None,
+        created_from: datetime | None = None,
+        created_to: datetime | None = None,
+        detail_reason: str | None = None,
+        event_types: set[str] | None = None,
+    ):
         if event_type:
             query = query.where(AuditLog.event_type == event_type)
+        if event_types:
+            query = query.where(AuditLog.event_type.in_(sorted(event_types)))
         if actor_id:
             query = query.where(AuditLog.actor_id == actor_id)
         if target_user_id:
@@ -214,14 +322,55 @@ class AdminRepository:
             query = query.where(AuditLog.created_at >= created_from)
         if created_to:
             query = query.where(AuditLog.created_at <= created_to)
+        if detail_reason:
+            query = query.where(AuditLog.details_json.contains(f'"reason": "{detail_reason}"'))
+        return query
+
+    def count_audit_logs(
+        self,
+        *,
+        event_type: str | None = None,
+        actor_id: str | None = None,
+        target_user_id: str | None = None,
+        target_device_id: str | None = None,
+        target_session_id: str | None = None,
+        created_from: datetime | None = None,
+        created_to: datetime | None = None,
+        detail_reason: str | None = None,
+        event_types: set[str] | None = None,
+    ) -> int:
+        filtered = self._apply_audit_filters(
+            select(AuditLog.id),
+            event_type=event_type,
+            actor_id=actor_id,
+            target_user_id=target_user_id,
+            target_device_id=target_device_id,
+            target_session_id=target_session_id,
+            created_from=created_from,
+            created_to=created_to,
+            detail_reason=detail_reason,
+            event_types=event_types,
+        ).subquery()
+        return self.db.execute(select(func.count()).select_from(filtered)).scalar_one()
+
+    def list_recent_audit_logs(
+        self,
+        *,
+        event_types: set[str],
+        limit: int = 5,
+    ) -> list[AuditLog]:
+        query = self._apply_audit_filters(
+            select(AuditLog),
+            event_types=event_types,
+        ).order_by(AuditLog.created_at.desc(), AuditLog.id.desc()).limit(limit)
         return list(self.db.execute(query).scalars().all())
 
     def count_active_sessions(self) -> int:
-        return sum(
-            1
-            for session in self.list_sessions()
-            if session.revoked_at is None and session.auth_state == 'authenticated_active'
+        query = select(func.count()).select_from(EndUserSession).where(
+            EndUserSession.revoked_at.is_(None),
+            EndUserSession.auth_state == 'authenticated_active',
         )
+        return self.db.execute(query).scalar_one()
 
     def replace_entitlements(self, user_id: int, entitlements: list[str]) -> None:
         existing = self.db.execute(select(UserEntitlement).where(UserEntitlement.user_id == user_id)).scalars().all()

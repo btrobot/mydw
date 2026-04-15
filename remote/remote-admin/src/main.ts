@@ -189,6 +189,7 @@ async function ensureUsersLoaded(): Promise<void> {
       ...state.usersPage,
       loading: state.usersPage.items.length === 0,
       errorMessage: null,
+      detailErrorMessage: null,
     },
   };
   render();
@@ -210,6 +211,7 @@ async function ensureUsersLoaded(): Promise<void> {
         detail: selectedUserId ? state.usersPage.detail : null,
         loading: false,
         errorMessage: null,
+        detailErrorMessage: null,
       },
     };
     if (selectedUserId) {
@@ -239,9 +241,12 @@ async function loadUserDetail(userId: string): Promise<void> {
     usersPage: {
       ...state.usersPage,
       selectedUserId: userId,
+      detail: null,
       detailLoading: true,
+      detailErrorMessage: null,
+      errorMessage: null,
       editor: {
-        ...state.usersPage.editor,
+        ...createUserEditor(null),
         feedback: null,
         errorMessage: null,
       },
@@ -260,6 +265,7 @@ async function loadUserDetail(userId: string): Promise<void> {
         selectedUserId: userId,
         detail,
         detailLoading: false,
+        detailErrorMessage: null,
         editor: createUserEditor(detail),
       },
     };
@@ -268,8 +274,10 @@ async function loadUserDetail(userId: string): Promise<void> {
       ...state,
       usersPage: {
         ...state.usersPage,
+        detail: null,
         detailLoading: false,
-        errorMessage: error instanceof ApiError ? mapAdminActionError(error.errorCode) : 'Failed to load the selected user.',
+        detailErrorMessage: error instanceof ApiError ? mapAdminActionError(error.errorCode) : 'Failed to load the selected user.',
+        editor: createUserEditor(null),
       },
     };
   }
@@ -288,6 +296,7 @@ async function ensureDevicesLoaded(): Promise<void> {
       ...state.devicesPage,
       loading: state.devicesPage.items.length === 0,
       errorMessage: null,
+      detailErrorMessage: null,
     },
   };
   render();
@@ -309,6 +318,7 @@ async function ensureDevicesLoaded(): Promise<void> {
         detail: selectedDeviceId ? state.devicesPage.detail : null,
         loading: false,
         errorMessage: null,
+        detailErrorMessage: null,
       },
     };
     if (selectedDeviceId) {
@@ -338,9 +348,12 @@ async function loadDeviceDetail(deviceId: string): Promise<void> {
     devicesPage: {
       ...state.devicesPage,
       selectedDeviceId: deviceId,
+      detail: null,
       detailLoading: true,
+      detailErrorMessage: null,
+      errorMessage: null,
       editor: {
-        ...state.devicesPage.editor,
+        ...createDeviceEditor(null),
         feedback: null,
         errorMessage: null,
       },
@@ -359,6 +372,7 @@ async function loadDeviceDetail(deviceId: string): Promise<void> {
         selectedDeviceId: deviceId,
         detail,
         detailLoading: false,
+        detailErrorMessage: null,
         editor: createDeviceEditor(detail),
       },
     };
@@ -367,8 +381,10 @@ async function loadDeviceDetail(deviceId: string): Promise<void> {
       ...state,
       devicesPage: {
         ...state.devicesPage,
+        detail: null,
         detailLoading: false,
-        errorMessage: error instanceof ApiError ? mapDeviceActionError(error.errorCode) : 'Failed to load the selected device.',
+        detailErrorMessage: error instanceof ApiError ? mapDeviceActionError(error.errorCode) : 'Failed to load the selected device.',
+        editor: createDeviceEditor(null),
       },
     };
   }
@@ -388,6 +404,7 @@ async function ensureSessionsLoaded(): Promise<void> {
       loading: true,
       errorMessage: null,
       feedback: null,
+      actionInFlightId: null,
     },
   };
   render();
@@ -403,6 +420,7 @@ async function ensureSessionsLoaded(): Promise<void> {
         items: listing.items,
         loading: false,
         errorMessage: null,
+        actionInFlightId: null,
         selectedSessionId:
           listing.items.find((item) => item.session_id === state.sessionsPage.selectedSessionId)?.session_id ??
           listing.items[0]?.session_id ??
@@ -471,6 +489,7 @@ function render(): void {
   root.innerHTML = renderApp(state);
   bindLoginForm();
   bindLogout();
+  bindRetryButtons();
   bindUsersFilters();
   bindUserCards();
   bindUserForm();
@@ -482,6 +501,44 @@ function render(): void {
   bindSessionActions();
   bindAuditForm();
   bindAuditCards();
+}
+
+function bindRetryButtons(): void {
+  bindButton('dashboard-retry', async () => {
+    await ensureDashboardMetricsLoaded();
+  });
+  bindButton('users-retry', async () => {
+    await ensureUsersLoaded();
+  });
+  bindButton('user-detail-retry', async () => {
+    if (state.usersPage.selectedUserId) {
+      await loadUserDetail(state.usersPage.selectedUserId);
+    }
+  });
+  bindButton('devices-retry', async () => {
+    await ensureDevicesLoaded();
+  });
+  bindButton('device-detail-retry', async () => {
+    if (state.devicesPage.selectedDeviceId) {
+      await loadDeviceDetail(state.devicesPage.selectedDeviceId);
+    }
+  });
+  bindButton('sessions-retry', async () => {
+    await ensureSessionsLoaded();
+  });
+  bindButton('audit-retry', async () => {
+    await ensureAuditLogsLoaded();
+  });
+}
+
+function bindButton(id: string, handler: () => void | Promise<void>): void {
+  const button = document.getElementById(id);
+  if (!button) {
+    return;
+  }
+  button.addEventListener('click', () => {
+    void handler();
+  });
 }
 
 function bindLoginForm(): void {
@@ -679,6 +736,7 @@ function bindSessionsFilters(): void {
           userId: (document.getElementById('sessions-user-filter') as HTMLInputElement | null)?.value.trim() ?? '',
           deviceId: (document.getElementById('sessions-device-filter') as HTMLInputElement | null)?.value.trim() ?? '',
         },
+        feedback: null,
       },
     };
     await ensureSessionsLoaded();
@@ -1112,6 +1170,16 @@ function readDeviceEditorPayload(): Record<string, unknown> {
 
 async function runSessionRevoke(sessionId: string): Promise<void> {
   try {
+    state = {
+      ...state,
+      sessionsPage: {
+        ...state.sessionsPage,
+        actionInFlightId: sessionId,
+        feedback: null,
+        errorMessage: null,
+      },
+    };
+    render();
     await request(`/admin/sessions/${sessionId}/revoke`, {
       method: 'POST',
       headers: {
@@ -1125,6 +1193,7 @@ async function runSessionRevoke(sessionId: string): Promise<void> {
         ...state.sessionsPage,
         feedback: 'Session revoked.',
         errorMessage: null,
+        actionInFlightId: null,
       },
     };
   } catch (error) {
@@ -1134,6 +1203,7 @@ async function runSessionRevoke(sessionId: string): Promise<void> {
         ...state.sessionsPage,
         feedback: null,
         errorMessage: error instanceof ApiError ? mapSessionActionError(error.errorCode) : 'The session action failed.',
+        actionInFlightId: null,
       },
     };
   }

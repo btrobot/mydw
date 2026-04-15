@@ -28,3 +28,15 @@ Freeze the first release error semantics for the remote auth system.
   - OpenAPI update
   - fixture update
   - compatibility harness update
+
+## Validation payload rule
+
+- `422` validation failures use the FastAPI validation payload shape (`HTTPValidationError`).
+- They are intentionally **not** part of the `error_code` matrix above.
+- Converting a validation failure into an `ErrorResponse` with a new `error_code` is a breaking change for `v1`.
+
+## Admin details semantics
+
+- `forbidden` may include `details.required_permission` for admin authorization failures.
+- `not_found` may include a target identifier such as `user_id`, `device_id`, or `session_id`.
+- These `details` keys are additive diagnostics; callers must not depend on every key being present in every response.

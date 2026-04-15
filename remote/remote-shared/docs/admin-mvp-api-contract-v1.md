@@ -22,6 +22,42 @@ Phase 0 freezes only the admin MVP surface, not the full admin platform.
 - `POST /admin/sessions/{session_id}/revoke`
 - `GET /admin/audit-logs`
 
+## Additive list query contract in `v1`
+
+The following optional query parameters are part of the implemented `v1` admin surface:
+
+- `GET /admin/users`
+  - `q`
+  - `status`
+  - `license_status`
+  - `limit`
+  - `offset`
+- `GET /admin/devices`
+  - `q`
+  - `device_status`
+  - `user_id`
+  - `limit`
+  - `offset`
+- `GET /admin/sessions`
+  - `q`
+  - `auth_state`
+  - `user_id`
+  - `device_id`
+  - `limit`
+  - `offset`
+- `GET /admin/audit-logs`
+  - `event_type`
+  - `actor_id`
+  - `target_user_id`
+  - `target_device_id`
+  - `target_session_id`
+  - `created_from`
+  - `created_to`
+  - `limit`
+  - `offset`
+
+These query parameters are optional additive `v1` extensions and must stay source/runtime aligned.
+
 ## Admin auth mechanism freeze
 
 Admin APIs must be protected by an admin-operator auth domain that is independent from managed-user auth.

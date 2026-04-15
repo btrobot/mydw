@@ -106,6 +106,7 @@ def validate_openapi_drift(source_spec: dict, runtime_spec: dict) -> None:
     for path, response_codes in endpoint_responses.items():
         operation = next(iter(source_spec["paths"][path]))
         source_codes = sorted(source_spec["paths"][path][operation]["responses"].keys())
+        source_codes = [code for code in source_codes if code != "422"]
         runtime_codes = sorted(
             code
             for code in runtime_spec["paths"][path][operation]["responses"].keys()

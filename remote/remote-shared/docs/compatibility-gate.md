@@ -39,3 +39,14 @@ The Phase 1 gate adds:
 - source-vs-runtime drift detection for implemented endpoints
 - fixture-vs-runtime compatibility validation against the real FastAPI app
 - remote-admin build/typecheck/test release checks
+
+## Phase 4 contract-hardening rule
+
+Once Phase 2 / Phase 3 admin filters and metrics/audit expansions exist, the gate must also keep these additive surfaces aligned:
+
+- optional query parameters on implemented admin list endpoints
+- `HTTPValidationError` coverage for validation-backed routes
+- additive audit fields such as `request_id` / `trace_id`
+- additive metrics fields such as `generated_at` / recent summary lists
+
+Phase 4 hardening should close drift, not silently redefine the existing runtime contract.

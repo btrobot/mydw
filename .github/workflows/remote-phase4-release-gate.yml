@@ -1,0 +1,75 @@
+name: remote-phase4-release-gate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'remote/**'
+      - '.github/workflows/remote-phase4-release-gate.yml'
+      - 'backend/tests/test_remote_phase0_*.py'
+      - 'backend/tests/test_remote_phase1_pr*.py'
+      - 'backend/tests/test_remote_phase2_pr*.py'
+      - 'backend/tests/test_remote_phase3_pr*.py'
+      - 'backend/tests/test_remote_phase4_pr*.py'
+
+jobs:
+  remote-backend-phase4-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install backend + gate dependencies
+        run: python -m pip install fastapi uvicorn sqlalchemy pydantic pydantic-settings pyyaml pytest httpx
+      - name: Run compatibility/export gate
+        run: |
+          python remote/remote-shared/scripts/compat-harness/export_phase1_openapi.py
+          python remote/remote-shared/scripts/compat-harness/build_phase1_manifest.py
+          python remote/remote-shared/scripts/compat-harness/build_phase0_manifest.py
+          python remote/remote-shared/scripts/compat-harness/validate_phase0_gate.py
+          python remote/remote-shared/scripts/compat-harness/validate_phase1_gate.py
+      - name: Bootstrap admin smoke
+        env:
+          BOOTSTRAP_ADMIN_PASSWORD: ci-secret
+        run: |
+          python remote/remote-backend/scripts/bootstrap_admin.py --migrate --username ci-admin --password-env BOOTSTRAP_ADMIN_PASSWORD --role super_admin --display-name "CI Admin"
+      - name: Run backend regression through phase4
+        run: >
+          pytest
+          backend/tests/test_remote_phase0_bootstrap.py
+          backend/tests/test_remote_phase0_contract_freeze.py
+          backend/tests/test_remote_phase0_compatibility_gate.py
+          backend/tests/test_remote_phase1_pr1_login.py
+          backend/tests/test_remote_phase1_pr2_lifecycle.py
+          backend/tests/test_remote_phase1_pr3_admin.py
+          backend/tests/test_remote_phase1_pr4_gate.py
+          backend/tests/test_remote_phase2_pr1_control_backbone.py
+          backend/tests/test_remote_phase2_pr2_admin_users.py
+          backend/tests/test_remote_phase2_pr3_admin_devices.py
+          backend/tests/test_remote_phase2_pr4_admin_sessions.py
+          backend/tests/test_remote_phase2_pr5_supportability.py
+          backend/tests/test_remote_phase2_pr5_gate.py
+          backend/tests/test_remote_phase3_pr1_admin_rbac.py
+          backend/tests/test_remote_phase3_pr2_dashboard_audit.py
+          backend/tests/test_remote_phase3_pr3_operations_ux.py
+          backend/tests/test_remote_phase3_pr4_gate.py
+          backend/tests/test_remote_phase4_pr1_contract_hardening.py
+          backend/tests/test_remote_phase4_pr2_runtime_reliability.py
+          backend/tests/test_remote_phase4_pr4_gate.py
+          -q
+
+  remote-admin-phase4-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install frontend toolchain dependency
+        run: npm --prefix frontend ci
+      - name: Run remote-admin gate
+        run: |
+          npm --prefix remote/remote-admin run typecheck
+          npm --prefix remote/remote-admin run build
+          npm --prefix remote/remote-admin run test

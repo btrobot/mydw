@@ -37,6 +37,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422': &id001
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /refresh:
     post:
       summary: End-user refresh
@@ -71,6 +77,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422': *id001
   /logout:
     post:
       summary: End-user logout
@@ -99,11 +106,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422': *id001
   /me:
     get:
       summary: Current auth context
       security:
-        - BearerAuth: []
+      - BearerAuth: []
       responses:
         '200':
           description: Current user context
@@ -127,7 +135,7 @@ paths:
     get:
       summary: Admin list users
       security:
-        - BearerAuth: []
+      - BearerAuth: []
       responses:
         '200':
           description: User list
@@ -147,13 +155,57 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422': *id001
+      parameters:
+      - in: query
+        name: q
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - in: query
+        name: status
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+      - in: query
+        name: license_status
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: License Status
+      - in: query
+        name: limit
+        required: false
+        schema:
+          anyOf:
+          - maximum: 200
+            minimum: 1
+            type: integer
+          - type: 'null'
+          title: Limit
+      - in: query
+        name: offset
+        required: false
+        schema:
+          default: 0
+          minimum: 0
+          title: Offset
+          type: integer
   /admin/users/{user_id}:
     get:
       summary: Admin get user
       security:
-        - BearerAuth: []
+      - BearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/UserId'
+      - $ref: '#/components/parameters/UserId'
       responses:
         '200':
           description: User detail
@@ -179,10 +231,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422': *id001
     patch:
       summary: Admin update user
       security:
-        - BearerAuth: []
+      - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -190,7 +243,7 @@ paths:
             schema:
               $ref: '#/components/schemas/AdminUserUpdateRequest'
       parameters:
-        - $ref: '#/components/parameters/UserId'
+      - $ref: '#/components/parameters/UserId'
       responses:
         '200':
           description: User updated
@@ -216,13 +269,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422': *id001
   /admin/users/{user_id}/revoke:
     post:
       summary: Admin revoke user
       security:
-        - BearerAuth: []
+      - BearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/UserId'
+      - $ref: '#/components/parameters/UserId'
       responses:
         '200':
           description: User revoked
@@ -248,13 +302,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422': *id001
   /admin/users/{user_id}/restore:
     post:
       summary: Admin restore user
       security:
-        - BearerAuth: []
+      - BearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/UserId'
+      - $ref: '#/components/parameters/UserId'
       responses:
         '200':
           description: User restored
@@ -280,11 +335,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422': *id001
   /admin/devices:
     get:
       summary: Admin list devices
       security:
-        - BearerAuth: []
+      - BearerAuth: []
       responses:
         '200':
           description: Device list
@@ -304,13 +360,57 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422': *id001
+      parameters:
+      - in: query
+        name: q
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - in: query
+        name: device_status
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Device Status
+      - in: query
+        name: user_id
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: User Id
+      - in: query
+        name: limit
+        required: false
+        schema:
+          anyOf:
+          - maximum: 200
+            minimum: 1
+            type: integer
+          - type: 'null'
+          title: Limit
+      - in: query
+        name: offset
+        required: false
+        schema:
+          default: 0
+          minimum: 0
+          title: Offset
+          type: integer
   /admin/devices/{device_id}:
     get:
       summary: Admin get device
       security:
-        - BearerAuth: []
+      - BearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/DeviceId'
       responses:
         '200':
           description: Device detail
@@ -336,13 +436,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422': *id001
   /admin/devices/{device_id}/unbind:
     post:
       summary: Admin unbind device
       security:
-        - BearerAuth: []
+      - BearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/DeviceId'
       responses:
         '200':
           description: Device unbound
@@ -368,13 +469,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422': *id001
   /admin/devices/{device_id}/disable:
     post:
       summary: Admin disable device
       security:
-        - BearerAuth: []
+      - BearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/DeviceId'
       responses:
         '200':
           description: Device disabled
@@ -400,11 +502,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422': *id001
   /admin/devices/{device_id}/rebind:
     post:
       summary: Admin rebind device
       security:
-        - BearerAuth: []
+      - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -412,7 +515,7 @@ paths:
             schema:
               $ref: '#/components/schemas/AdminDeviceRebindRequest'
       parameters:
-        - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/DeviceId'
       responses:
         '200':
           description: Device rebound
@@ -438,11 +541,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422': *id001
   /admin/sessions:
     get:
       summary: Admin list sessions
       security:
-        - BearerAuth: []
+      - BearerAuth: []
       responses:
         '200':
           description: Session list
@@ -462,13 +566,65 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422': *id001
+      parameters:
+      - in: query
+        name: q
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - in: query
+        name: auth_state
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Auth State
+      - in: query
+        name: user_id
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: User Id
+      - in: query
+        name: device_id
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Device Id
+      - in: query
+        name: limit
+        required: false
+        schema:
+          anyOf:
+          - maximum: 200
+            minimum: 1
+            type: integer
+          - type: 'null'
+          title: Limit
+      - in: query
+        name: offset
+        required: false
+        schema:
+          default: 0
+          minimum: 0
+          title: Offset
+          type: integer
   /admin/sessions/{session_id}/revoke:
     post:
       summary: Admin revoke session
       security:
-        - BearerAuth: []
+      - BearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/SessionId'
+      - $ref: '#/components/parameters/SessionId'
       responses:
         '200':
           description: Session revoked
@@ -494,36 +650,88 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422': *id001
   /admin/audit-logs:
     get:
       summary: Admin list audit logs
       security:
-        - BearerAuth: []
+      - BearerAuth: []
       parameters:
-        - name: event_type
-          in: query
-          required: false
-          schema: { type: string }
-        - name: actor_id
-          in: query
-          required: false
-          schema: { type: string }
-        - name: target_user_id
-          in: query
-          required: false
-          schema: { type: string }
-        - name: target_device_id
-          in: query
-          required: false
-          schema: { type: string }
-        - name: created_from
-          in: query
-          required: false
-          schema: { type: string, format: date-time }
-        - name: created_to
-          in: query
-          required: false
-          schema: { type: string, format: date-time }
+      - in: query
+        name: event_type
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Event Type
+      - in: query
+        name: actor_id
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Actor Id
+      - in: query
+        name: target_user_id
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Target User Id
+      - in: query
+        name: target_device_id
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Target Device Id
+      - in: query
+        name: target_session_id
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Target Session Id
+      - in: query
+        name: created_from
+        required: false
+        schema:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Created From
+      - in: query
+        name: created_to
+        required: false
+        schema:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Created To
+      - in: query
+        name: limit
+        required: false
+        schema:
+          default: 50
+          maximum: 200
+          minimum: 1
+          title: Limit
+          type: integer
+      - in: query
+        name: offset
+        required: false
+        schema:
+          default: 0
+          minimum: 0
+          title: Offset
+          type: integer
       responses:
         '200':
           description: Audit log list
@@ -543,17 +751,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '422':
-          description: Invalid query parameters
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+        '422': *id001
   /admin/metrics/summary:
     get:
       summary: Admin metrics summary
       security:
-        - BearerAuth: []
+      - BearerAuth: []
       responses:
         '200':
           description: Metrics summary
@@ -607,11 +810,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422': *id001
   /admin/session:
     get:
       summary: Current admin session
       security:
-        - BearerAuth: []
+      - BearerAuth: []
       responses:
         '200':
           description: Admin session context
@@ -659,219 +863,376 @@ components:
   schemas:
     LoginRequest:
       type: object
-      required: [username, password, device_id, client_version]
+      required:
+      - username
+      - password
+      - device_id
+      - client_version
       properties:
-        username: { type: string }
-        password: { type: string }
-        device_id: { type: string }
-        client_version: { type: string }
+        username:
+          type: string
+        password:
+          type: string
+        device_id:
+          type: string
+        client_version:
+          type: string
     RefreshRequest:
       type: object
-      required: [refresh_token, device_id, client_version]
+      required:
+      - refresh_token
+      - device_id
+      - client_version
       properties:
-        refresh_token: { type: string }
-        device_id: { type: string }
-        client_version: { type: string }
+        refresh_token:
+          type: string
+        device_id:
+          type: string
+        client_version:
+          type: string
     LogoutRequest:
       type: object
-      required: [refresh_token, device_id]
+      required:
+      - refresh_token
+      - device_id
       properties:
-        refresh_token: { type: string }
-        device_id: { type: string }
+        refresh_token:
+          type: string
+        device_id:
+          type: string
     UserIdentity:
       type: object
-      required: [id, username]
+      required:
+      - id
+      - username
       properties:
-        id: { type: string }
-        username: { type: string }
-        display_name: { type: string }
-        tenant_id: { type: string }
+        id:
+          type: string
+        username:
+          type: string
+        display_name:
+          type: string
+        tenant_id:
+          type: string
     AuthSuccessResponse:
       type: object
       required:
-        [access_token, refresh_token, expires_at, token_type, user, license_status, entitlements, device_id, device_status]
+      - access_token
+      - refresh_token
+      - expires_at
+      - token_type
+      - user
+      - license_status
+      - entitlements
+      - device_id
+      - device_status
       properties:
-        access_token: { type: string }
-        refresh_token: { type: string }
-        expires_at: { type: string, format: date-time }
-        token_type: { type: string }
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        token_type:
+          type: string
         user:
           $ref: '#/components/schemas/UserIdentity'
-        license_status: { type: string }
+        license_status:
+          type: string
         entitlements:
           type: array
-          items: { type: string }
-        device_id: { type: string }
-        device_status: { type: string }
-        offline_grace_until: { type: string, format: date-time }
-        minimum_supported_version: { type: string }
+          items:
+            type: string
+        device_id:
+          type: string
+        device_status:
+          type: string
+        offline_grace_until:
+          type: string
+          format: date-time
+        minimum_supported_version:
+          type: string
     MeResponse:
       type: object
-      required: [user, license_status, entitlements, device_id, device_status]
+      required:
+      - user
+      - license_status
+      - entitlements
+      - device_id
+      - device_status
       properties:
         user:
           $ref: '#/components/schemas/UserIdentity'
-        license_status: { type: string }
+        license_status:
+          type: string
         entitlements:
           type: array
-          items: { type: string }
-        device_id: { type: string }
-        device_status: { type: string }
-        offline_grace_until: { type: string, format: date-time }
-        minimum_supported_version: { type: string }
+          items:
+            type: string
+        device_id:
+          type: string
+        device_status:
+          type: string
+        offline_grace_until:
+          type: string
+          format: date-time
+        minimum_supported_version:
+          type: string
     LogoutResponse:
       type: object
-      required: [success]
+      required:
+      - success
       properties:
-        success: { type: boolean }
+        success:
+          type: boolean
     ErrorResponse:
       type: object
-      required: [error_code, message]
+      required:
+      - error_code
+      - message
       properties:
-        error_code: { type: string }
-        message: { type: string }
+        error_code:
+          type: string
+        message:
+          type: string
         details:
           type: object
           additionalProperties: true
     AdminUserResponse:
       type: object
-      required: [id, username]
+      required:
+      - id
+      - username
       properties:
-        id: { type: string }
-        username: { type: string }
-        display_name: { type: string }
-        email: { type: string }
-        tenant_id: { type: string }
-        status: { type: string }
-        license_status: { type: string }
-        license_expires_at: { type: string, format: date-time }
+        id:
+          type: string
+        username:
+          type: string
+        display_name:
+          type: string
+        email:
+          type: string
+        tenant_id:
+          type: string
+        status:
+          type: string
+        license_status:
+          type: string
+        license_expires_at:
+          type: string
+          format: date-time
         entitlements:
           type: array
-          items: { type: string }
-        device_count: { type: integer }
-        last_seen_at: { type: string, format: date-time }
+          items:
+            type: string
+        device_count:
+          type: integer
+        last_seen_at:
+          type: string
+          format: date-time
     AdminUserListResponse:
       type: object
-      required: [items, total]
+      required:
+      - items
+      - total
       properties:
         items:
           type: array
           items:
             $ref: '#/components/schemas/AdminUserResponse'
-        total: { type: integer }
+        total:
+          type: integer
     AdminUserUpdateRequest:
       type: object
       properties:
-        display_name: { type: string }
-        license_status: { type: string }
-        license_expires_at: { type: string, format: date-time }
+        display_name:
+          type: string
+        license_status:
+          type: string
+        license_expires_at:
+          type: string
+          format: date-time
         entitlements:
           type: array
-          items: { type: string }
+          items:
+            type: string
     AdminDeviceResponse:
       type: object
-      required: [device_id]
+      required:
+      - device_id
       properties:
-        device_id: { type: string }
-        user_id: { type: string }
-        device_status: { type: string }
-        first_bound_at: { type: string, format: date-time }
-        last_seen_at: { type: string, format: date-time }
-        client_version: { type: string }
+        device_id:
+          type: string
+        user_id:
+          type: string
+        device_status:
+          type: string
+        first_bound_at:
+          type: string
+          format: date-time
+        last_seen_at:
+          type: string
+          format: date-time
+        client_version:
+          type: string
     AdminDeviceListResponse:
       type: object
-      required: [items, total]
+      required:
+      - items
+      - total
       properties:
         items:
           type: array
           items:
             $ref: '#/components/schemas/AdminDeviceResponse'
-        total: { type: integer }
+        total:
+          type: integer
     AdminDeviceRebindRequest:
       type: object
-      required: [user_id]
+      required:
+      - user_id
       properties:
-        user_id: { type: string }
-        client_version: { type: string }
+        user_id:
+          type: string
+        client_version:
+          type: string
     AdminSessionResponse:
       type: object
-      required: [session_id]
+      required:
+      - session_id
       properties:
-        session_id: { type: string }
-        user_id: { type: string }
-        device_id: { type: string }
-        auth_state: { type: string }
-        issued_at: { type: string, format: date-time }
-        expires_at: { type: string, format: date-time }
-        last_seen_at: { type: string, format: date-time }
+        session_id:
+          type: string
+        user_id:
+          type: string
+        device_id:
+          type: string
+        auth_state:
+          type: string
+        issued_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        last_seen_at:
+          type: string
+          format: date-time
     AdminSessionListResponse:
       type: object
-      required: [items, total]
+      required:
+      - items
+      - total
       properties:
         items:
           type: array
           items:
             $ref: '#/components/schemas/AdminSessionResponse'
-        total: { type: integer }
+        total:
+          type: integer
     AuditLogResponse:
       type: object
-      required: [id, event_type, created_at]
+      required:
+      - id
+      - event_type
+      - created_at
       properties:
-        id: { type: string }
-        event_type: { type: string }
+        id:
+          type: string
+        event_type:
+          type: string
         actor_type:
           anyOf:
-            - { type: string }
-            - { type: 'null' }
+          - type: string
+          - type: 'null'
         actor_id:
           anyOf:
-            - { type: string }
-            - { type: 'null' }
+          - type: string
+          - type: 'null'
         target_user_id:
           anyOf:
-            - { type: string }
-            - { type: 'null' }
+          - type: string
+          - type: 'null'
         target_device_id:
           anyOf:
-            - { type: string }
-            - { type: 'null' }
+          - type: string
+          - type: 'null'
         target_session_id:
           anyOf:
-            - { type: string }
-            - { type: 'null' }
-        created_at: { type: string, format: date-time }
+          - type: string
+          - type: 'null'
+        created_at:
+          type: string
+          format: date-time
         details:
           type: object
           additionalProperties: true
+        request_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+        trace_id:
+          anyOf:
+          - type: string
+          - type: 'null'
     AuditLogListResponse:
       type: object
-      required: [items, total]
+      required:
+      - items
+      - total
       properties:
         items:
           type: array
           items:
             $ref: '#/components/schemas/AuditLogResponse'
-        total: { type: integer }
+        total:
+          type: integer
     AdminMetricsSummaryResponse:
       type: object
-      required: [active_sessions, login_failures, device_mismatches, destructive_actions]
+      required:
+      - active_sessions
+      - login_failures
+      - device_mismatches
+      - destructive_actions
+      - generated_at
       properties:
-        active_sessions: { type: integer }
-        login_failures: { type: integer }
-        device_mismatches: { type: integer }
-        destructive_actions: { type: integer }
+        active_sessions:
+          type: integer
+        login_failures:
+          type: integer
+        device_mismatches:
+          type: integer
+        destructive_actions:
+          type: integer
+        generated_at:
+          type: string
+          format: date-time
+        recent_failures:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLogResponse'
+        recent_destructive_actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLogResponse'
     ValidationError:
       type: object
-      required: [loc, msg, type]
+      required:
+      - loc
+      - msg
+      - type
       properties:
         loc:
           type: array
           items:
             anyOf:
-              - { type: string }
-              - { type: integer }
-        msg: { type: string }
-        type: { type: string }
+            - type: string
+            - type: integer
+        msg:
+          type: string
+        type:
+          type: string
     HTTPValidationError:
       type: object
       properties:
@@ -881,38 +1242,67 @@ components:
             $ref: '#/components/schemas/ValidationError'
     AdminActionResponse:
       type: object
-      required: [success]
+      required:
+      - success
       properties:
-        success: { type: boolean }
+        success:
+          type: boolean
     AdminLoginRequest:
       type: object
-      required: [username, password]
+      required:
+      - username
+      - password
       properties:
-        username: { type: string }
-        password: { type: string }
+        username:
+          type: string
+        password:
+          type: string
     AdminIdentity:
       type: object
-      required: [id, username, role]
+      required:
+      - id
+      - username
+      - role
       properties:
-        id: { type: string }
-        username: { type: string }
-        display_name: { type: string }
-        role: { type: string }
+        id:
+          type: string
+        username:
+          type: string
+        display_name:
+          type: string
+        role:
+          type: string
     AdminLoginResponse:
       type: object
-      required: [access_token, session_id, expires_at, token_type, user]
+      required:
+      - access_token
+      - session_id
+      - expires_at
+      - token_type
+      - user
       properties:
-        access_token: { type: string }
-        session_id: { type: string }
-        expires_at: { type: string, format: date-time }
-        token_type: { type: string }
+        access_token:
+          type: string
+        session_id:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        token_type:
+          type: string
         user:
           $ref: '#/components/schemas/AdminIdentity'
     AdminCurrentSessionResponse:
       type: object
-      required: [session_id, expires_at, user]
+      required:
+      - session_id
+      - expires_at
+      - user
       properties:
-        session_id: { type: string }
-        expires_at: { type: string, format: date-time }
+        session_id:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
         user:
           $ref: '#/components/schemas/AdminIdentity'
