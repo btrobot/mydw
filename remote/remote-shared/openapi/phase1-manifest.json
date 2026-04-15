@@ -1,0 +1,107 @@
+{
+  "version": "phase1-v1",
+  "openapi_source": {
+    "file": "remote-auth-v1.yaml",
+    "sha256": "d08ea5f3b2261369411399e742f16b2767cb77e6ae115afa18a0ac57c836a35c"
+  },
+  "openapi_runtime": {
+    "file": "remote-auth-runtime.json",
+    "sha256": "c3b9a5250a3a01efabf2fe07a02d22b4d4bb772f1fc6f7dbd9caeb43a3a9b7c9"
+  },
+  "docs": [
+    {
+      "file": "admin-mvp-api-contract-v1.md",
+      "sha256": "b758c5fe3a0fe955b28a844d7df4eef8203425e938dcc96a9715f5b46a84c2e7"
+    },
+    {
+      "file": "auth-domain-boundaries.md",
+      "sha256": "b98751f0f53ab9f160d6944c74530409bf6bc05e3265136364553e5e8ff27009"
+    },
+    {
+      "file": "compatibility-gate.md",
+      "sha256": "ffb07b4c0ca7c7765faf18e2b9686cd8ab11f2ed7aab3c9431e40022d0e20916"
+    },
+    {
+      "file": "contract-versioning-policy.md",
+      "sha256": "2bd23a86077a8d11129482a6fbe8809a380d8cf51a20d335110df9a109cb926c"
+    },
+    {
+      "file": "db-schema-draft.md",
+      "sha256": "b92b83f19fdf6d0f1ecc72621ce02297a10f657c928700141ecc72ad5ac827f0"
+    },
+    {
+      "file": "end-user-auth-api-contract-v1.md",
+      "sha256": "0d04a2b91fdbecf75e4adc112c0552fb8d1ac3cd4cade17ca6b77f7125af05e0"
+    },
+    {
+      "file": "error-code-matrix.md",
+      "sha256": "06d8566ff9fdd2cdabd238e0c284775b0690c688241066ca33a4ac5b36048b3c"
+    },
+    {
+      "file": "offline-grace-boundary.md",
+      "sha256": "a0beab9088d35f613e646605f3d1b5a3f81871a43ad2c2b60f86b891ec2a8d1f"
+    },
+    {
+      "file": "phase1-release-gate.md",
+      "sha256": "7e838fff1440bb56ffb9d8a21edf30389c072e7873262237fa3eca68d88fd2ff"
+    },
+    {
+      "file": "phase2-release-gate.md",
+      "sha256": "b5338c62c2b211f535216ecc229390f37d21d07f88cf9e8af6fba1bff12e08c7"
+    },
+    {
+      "file": "schema-freeze-migration-policy.md",
+      "sha256": "fce89904bf9941b7e7e5928327353164ef7767924346ae90393835c897953c4a"
+    },
+    {
+      "file": "token-session-model.md",
+      "sha256": "7f1df1dc8f47d327de6741fa23fdb10b0581be94ad4ee2ea4168ae8bdb451465"
+    }
+  ],
+  "fixtures": [
+    {
+      "file": "error-device-mismatch.json",
+      "sha256": "442d3ac58197e2cf83031ef2bb3609775e83b3a727f101044b9b11a181e95cc3"
+    },
+    {
+      "file": "error-disabled.json",
+      "sha256": "f13c7a2c40429509b58a397d4f7b1a4d723e18a55b9c51d0c338628b5e3830ab"
+    },
+    {
+      "file": "error-invalid-credentials.json",
+      "sha256": "00d8bb87d7fd63e4d9f93ea96553bb495e2d864535768f9057bb63125bcdb2d7"
+    },
+    {
+      "file": "error-minimum-version-required.json",
+      "sha256": "59d9f8e544d05adc7e8bb44b30eab735f1a013b7fc0e80d17431669cbcb7989f"
+    },
+    {
+      "file": "error-revoked.json",
+      "sha256": "9c787428735466c2c62e7f9a23412fec8a13096e2cb06016bc5f154f52a75315"
+    },
+    {
+      "file": "error-too-many-requests.json",
+      "sha256": "b9608dee89d86fd67cfae1fc691274a8a1576a3f26fc4517debda940979d344b"
+    },
+    {
+      "file": "login-success.json",
+      "sha256": "1cc698dcaf2fa73a8f853791050262a4dd8f0819bb52e06ec3ae05b180643c08"
+    },
+    {
+      "file": "logout-success.json",
+      "sha256": "5c7c84728d8ae2f2cb437ba7e26e60bdfd59e872c9fc3f179150670d5cc313fb"
+    },
+    {
+      "file": "me-success.json",
+      "sha256": "724ef03db2a4d44fd537aac6c07cda690bd2908b26459a4bbcd82d833cc3c45e"
+    },
+    {
+      "file": "refresh-success.json",
+      "sha256": "e387c0e6078daa197d61e59d8efbcb1b6f06fa5b2634dc208ac70ddda8caf4cc"
+    }
+  ],
+  "error_code_matrix": {
+    "file": "error-codes.json",
+    "sha256": "245f6ac10420906da50f84b5ff060a08c702f849ac6a488b9c3dd3e93cbaf40a"
+  }
+}

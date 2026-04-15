@@ -1,0 +1,5 @@
+{
+  "error_code": "too_many_requests",
+  "message": "Too many login attempts, please retry later.",
+  "details": {}
+}

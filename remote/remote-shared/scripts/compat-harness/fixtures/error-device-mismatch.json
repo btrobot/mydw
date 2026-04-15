@@ -1,0 +1,7 @@
+{
+  "error_code": "device_mismatch",
+  "message": "Device does not match remote binding",
+  "details": {
+    "device_id": "device_abc"
+  }
+}

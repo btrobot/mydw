@@ -1,0 +1,14 @@
+{
+  "name": "remote-admin",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Phase 1 protected remote admin shell with independent admin auth",
+  "scripts": {
+    "dev": "node -e \"console.log('Build remote-admin, then open index.html (optionally ?apiBase=http://127.0.0.1:8100). Default backend base is http://127.0.0.1:8100.')\"",
+    "typecheck": "node ../../frontend/node_modules/typescript/bin/tsc -p tsconfig.json --noEmit",
+    "build": "node ../../frontend/node_modules/typescript/bin/tsc -p tsconfig.json",
+    "test": "node --test tests/app.test.mjs",
+    "lint": "node -e \"process.exit(0)\""
+  }
+}

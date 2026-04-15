@@ -1,0 +1,7 @@
+{
+  "error_code": "minimum_version_required",
+  "message": "Client version too old",
+  "details": {
+    "minimum_supported_version": "0.2.0"
+  }
+}

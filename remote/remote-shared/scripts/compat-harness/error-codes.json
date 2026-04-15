@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "error_codes": [
+    "invalid_credentials",
+    "token_expired",
+    "revoked",
+    "disabled",
+    "device_mismatch",
+    "minimum_version_required",
+    "network_timeout",
+    "too_many_requests",
+    "forbidden",
+    "not_found"
+  ]
+}

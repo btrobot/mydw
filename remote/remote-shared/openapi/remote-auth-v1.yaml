@@ -1,0 +1,918 @@
+openapi: 3.1.0
+info:
+  title: Remote Auth API
+  version: v1
+paths:
+  /login:
+    post:
+      summary: End-user login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Authorization blocked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /refresh:
+    post:
+      summary: End-user refresh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Refresh success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '401':
+          description: Expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Authorization blocked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /logout:
+    post:
+      summary: End-user logout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+      responses:
+        '200':
+          description: Logout success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutResponse'
+        '401':
+          description: Expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Authorization blocked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me:
+    get:
+      summary: Current auth context
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current user context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '401':
+          description: Expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Authorization blocked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/users:
+    get:
+      summary: Admin list users
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserListResponse'
+        '401':
+          description: Expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Admin access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/users/{user_id}:
+    get:
+      summary: Admin get user
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: User detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserResponse'
+        '401':
+          description: Expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Admin access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Requested resource missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      summary: Admin update user
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUserUpdateRequest'
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserResponse'
+        '401':
+          description: Expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Admin access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Requested resource missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/users/{user_id}/revoke:
+    post:
+      summary: Admin revoke user
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: User revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminActionResponse'
+        '401':
+          description: Expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Admin access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Requested resource missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/users/{user_id}/restore:
+    post:
+      summary: Admin restore user
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: User restored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminActionResponse'
+        '401':
+          description: Expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Admin access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Requested resource missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/devices:
+    get:
+      summary: Admin list devices
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Device list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDeviceListResponse'
+        '401':
+          description: Expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Admin access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/devices/{device_id}:
+    get:
+      summary: Admin get device
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '200':
+          description: Device detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDeviceResponse'
+        '401':
+          description: Expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Admin access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Requested resource missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/devices/{device_id}/unbind:
+    post:
+      summary: Admin unbind device
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '200':
+          description: Device unbound
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminActionResponse'
+        '401':
+          description: Expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Admin access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Requested resource missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/devices/{device_id}/disable:
+    post:
+      summary: Admin disable device
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '200':
+          description: Device disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminActionResponse'
+        '401':
+          description: Expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Admin access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Requested resource missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/devices/{device_id}/rebind:
+    post:
+      summary: Admin rebind device
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminDeviceRebindRequest'
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '200':
+          description: Device rebound
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminActionResponse'
+        '401':
+          description: Expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Admin access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Requested resource missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/sessions:
+    get:
+      summary: Admin list sessions
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Session list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSessionListResponse'
+        '401':
+          description: Expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Admin access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/sessions/{session_id}/revoke:
+    post:
+      summary: Admin revoke session
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: Session revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminActionResponse'
+        '401':
+          description: Expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Admin access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Requested resource missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/audit-logs:
+    get:
+      summary: Admin list audit logs
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: event_type
+          in: query
+          required: false
+          schema: { type: string }
+        - name: actor_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: target_user_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: target_device_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: created_from
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+        - name: created_to
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Audit log list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogListResponse'
+        '401':
+          description: Expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Admin access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /admin/metrics/summary:
+    get:
+      summary: Admin metrics summary
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Metrics summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminMetricsSummaryResponse'
+        '401':
+          description: Expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Admin access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/login:
+    post:
+      summary: Admin login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminLoginRequest'
+      responses:
+        '200':
+          description: Admin login success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminLoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Admin access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/session:
+    get:
+      summary: Current admin session
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Admin session context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminCurrentSessionResponse'
+        '401':
+          description: Expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Admin access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    UserId:
+      name: user_id
+      in: path
+      required: true
+      schema:
+        type: string
+    DeviceId:
+      name: device_id
+      in: path
+      required: true
+      schema:
+        type: string
+    SessionId:
+      name: session_id
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    LoginRequest:
+      type: object
+      required: [username, password, device_id, client_version]
+      properties:
+        username: { type: string }
+        password: { type: string }
+        device_id: { type: string }
+        client_version: { type: string }
+    RefreshRequest:
+      type: object
+      required: [refresh_token, device_id, client_version]
+      properties:
+        refresh_token: { type: string }
+        device_id: { type: string }
+        client_version: { type: string }
+    LogoutRequest:
+      type: object
+      required: [refresh_token, device_id]
+      properties:
+        refresh_token: { type: string }
+        device_id: { type: string }
+    UserIdentity:
+      type: object
+      required: [id, username]
+      properties:
+        id: { type: string }
+        username: { type: string }
+        display_name: { type: string }
+        tenant_id: { type: string }
+    AuthSuccessResponse:
+      type: object
+      required:
+        [access_token, refresh_token, expires_at, token_type, user, license_status, entitlements, device_id, device_status]
+      properties:
+        access_token: { type: string }
+        refresh_token: { type: string }
+        expires_at: { type: string, format: date-time }
+        token_type: { type: string }
+        user:
+          $ref: '#/components/schemas/UserIdentity'
+        license_status: { type: string }
+        entitlements:
+          type: array
+          items: { type: string }
+        device_id: { type: string }
+        device_status: { type: string }
+        offline_grace_until: { type: string, format: date-time }
+        minimum_supported_version: { type: string }
+    MeResponse:
+      type: object
+      required: [user, license_status, entitlements, device_id, device_status]
+      properties:
+        user:
+          $ref: '#/components/schemas/UserIdentity'
+        license_status: { type: string }
+        entitlements:
+          type: array
+          items: { type: string }
+        device_id: { type: string }
+        device_status: { type: string }
+        offline_grace_until: { type: string, format: date-time }
+        minimum_supported_version: { type: string }
+    LogoutResponse:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean }
+    ErrorResponse:
+      type: object
+      required: [error_code, message]
+      properties:
+        error_code: { type: string }
+        message: { type: string }
+        details:
+          type: object
+          additionalProperties: true
+    AdminUserResponse:
+      type: object
+      required: [id, username]
+      properties:
+        id: { type: string }
+        username: { type: string }
+        display_name: { type: string }
+        email: { type: string }
+        tenant_id: { type: string }
+        status: { type: string }
+        license_status: { type: string }
+        license_expires_at: { type: string, format: date-time }
+        entitlements:
+          type: array
+          items: { type: string }
+        device_count: { type: integer }
+        last_seen_at: { type: string, format: date-time }
+    AdminUserListResponse:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminUserResponse'
+        total: { type: integer }
+    AdminUserUpdateRequest:
+      type: object
+      properties:
+        display_name: { type: string }
+        license_status: { type: string }
+        license_expires_at: { type: string, format: date-time }
+        entitlements:
+          type: array
+          items: { type: string }
+    AdminDeviceResponse:
+      type: object
+      required: [device_id]
+      properties:
+        device_id: { type: string }
+        user_id: { type: string }
+        device_status: { type: string }
+        first_bound_at: { type: string, format: date-time }
+        last_seen_at: { type: string, format: date-time }
+        client_version: { type: string }
+    AdminDeviceListResponse:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminDeviceResponse'
+        total: { type: integer }
+    AdminDeviceRebindRequest:
+      type: object
+      required: [user_id]
+      properties:
+        user_id: { type: string }
+        client_version: { type: string }
+    AdminSessionResponse:
+      type: object
+      required: [session_id]
+      properties:
+        session_id: { type: string }
+        user_id: { type: string }
+        device_id: { type: string }
+        auth_state: { type: string }
+        issued_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        last_seen_at: { type: string, format: date-time }
+    AdminSessionListResponse:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminSessionResponse'
+        total: { type: integer }
+    AuditLogResponse:
+      type: object
+      required: [id, event_type, created_at]
+      properties:
+        id: { type: string }
+        event_type: { type: string }
+        actor_type:
+          anyOf:
+            - { type: string }
+            - { type: 'null' }
+        actor_id:
+          anyOf:
+            - { type: string }
+            - { type: 'null' }
+        target_user_id:
+          anyOf:
+            - { type: string }
+            - { type: 'null' }
+        target_device_id:
+          anyOf:
+            - { type: string }
+            - { type: 'null' }
+        target_session_id:
+          anyOf:
+            - { type: string }
+            - { type: 'null' }
+        created_at: { type: string, format: date-time }
+        details:
+          type: object
+          additionalProperties: true
+    AuditLogListResponse:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLogResponse'
+        total: { type: integer }
+    AdminMetricsSummaryResponse:
+      type: object
+      required: [active_sessions, login_failures, device_mismatches, destructive_actions]
+      properties:
+        active_sessions: { type: integer }
+        login_failures: { type: integer }
+        device_mismatches: { type: integer }
+        destructive_actions: { type: integer }
+    ValidationError:
+      type: object
+      required: [loc, msg, type]
+      properties:
+        loc:
+          type: array
+          items:
+            anyOf:
+              - { type: string }
+              - { type: integer }
+        msg: { type: string }
+        type: { type: string }
+    HTTPValidationError:
+      type: object
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+    AdminActionResponse:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean }
+    AdminLoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string }
+    AdminIdentity:
+      type: object
+      required: [id, username, role]
+      properties:
+        id: { type: string }
+        username: { type: string }
+        display_name: { type: string }
+        role: { type: string }
+    AdminLoginResponse:
+      type: object
+      required: [access_token, session_id, expires_at, token_type, user]
+      properties:
+        access_token: { type: string }
+        session_id: { type: string }
+        expires_at: { type: string, format: date-time }
+        token_type: { type: string }
+        user:
+          $ref: '#/components/schemas/AdminIdentity'
+    AdminCurrentSessionResponse:
+      type: object
+      required: [session_id, expires_at, user]
+      properties:
+        session_id: { type: string }
+        expires_at: { type: string, format: date-time }
+        user:
+          $ref: '#/components/schemas/AdminIdentity'

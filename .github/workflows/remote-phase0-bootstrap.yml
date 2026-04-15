@@ -1,0 +1,35 @@
+name: remote-phase0-bootstrap
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'remote/**'
+      - '.github/workflows/remote-phase0-bootstrap.yml'
+      - 'backend/tests/test_remote_phase0_bootstrap.py'
+      - 'backend/tests/test_remote_phase0_contract_freeze.py'
+      - 'backend/tests/test_remote_phase0_compatibility_gate.py'
+
+jobs:
+  backend-skeleton:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate remote-backend pyproject
+        run: python -c "import tomllib, pathlib; tomllib.loads(pathlib.Path('remote/remote-backend/pyproject.toml').read_text(encoding='utf-8'))"
+
+  admin-skeleton:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate remote-admin package.json
+        run: node -e "JSON.parse(require('fs').readFileSync('remote/remote-admin/package.json','utf8')); console.log('package ok')"
+
+  phase0-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Python dependency for YAML parsing
+        run: python -m pip install pyyaml
+      - name: Run Phase 0 bootstrap/freeze/gate tests
+        run: pytest backend/tests/test_remote_phase0_bootstrap.py backend/tests/test_remote_phase0_contract_freeze.py backend/tests/test_remote_phase0_compatibility_gate.py -q

@@ -1,0 +1,21 @@
+{
+  "access_token": "access-token",
+  "refresh_token": "refresh-token",
+  "expires_at": "2026-04-20T10:00:00Z",
+  "token_type": "Bearer",
+  "user": {
+    "id": "u_123",
+    "username": "alice",
+    "display_name": "Alice",
+    "tenant_id": "tenant_1"
+  },
+  "license_status": "active",
+  "entitlements": [
+    "dashboard:view",
+    "publish:run"
+  ],
+  "device_id": "device_abc",
+  "device_status": "bound",
+  "offline_grace_until": "2026-04-21T10:00:00Z",
+  "minimum_supported_version": "0.2.0"
+}
