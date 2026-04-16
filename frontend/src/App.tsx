@@ -26,6 +26,8 @@ import ProductList from './pages/product/ProductList'
 import ProductDetail from './pages/product/ProductDetail'
 import VideoDetail from './pages/material/VideoDetail'
 import TaskDetail from './pages/task/TaskDetail'
+import CreativeWorkbench from './features/creative/pages/CreativeWorkbench'
+import CreativeDetail from './features/creative/pages/CreativeDetail'
 
 import TaskCreate from './pages/task/TaskCreate'
 
@@ -66,6 +68,9 @@ function App() {
                     <Route index element={<Navigate to="/dashboard" replace />} />
                     <Route path="dashboard" element={<Dashboard />} />
                     <Route path="account" element={<Account />} />
+                    <Route path="creative" element={<Navigate to="/creative/workbench" replace />} />
+                    <Route path="creative/workbench" element={<CreativeWorkbench />} />
+                    <Route path="creative/:id" element={<CreativeDetail />} />
                     <Route path="task" element={<Navigate to="/task/list" replace />} />
                     <Route path="task/list" element={<TaskList />} />
                     <Route path="task/create" element={<TaskCreate />} />
