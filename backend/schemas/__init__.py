@@ -487,6 +487,47 @@ class CreativeItemResponse(BaseModel):
     updated_at: datetime
 
 
+class CreativeWorkbenchItemResponse(BaseModel):
+    """Creative workbench list item for Phase A."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    creative_no: str
+    title: Optional[str] = None
+    status: CreativeStatus
+    current_version_id: Optional[int] = None
+    updated_at: datetime
+
+
+class CreativeWorkbenchListResponse(BaseModel):
+    """Paginated Creative workbench list response for Phase A."""
+
+    total: int
+    items: List[CreativeWorkbenchItemResponse]
+
+
+class CreativeCurrentVersionResponse(BaseModel):
+    """Current-version projection for the Creative detail endpoint."""
+
+    id: int
+    version_no: int
+    title: Optional[str] = None
+    package_record_id: Optional[int] = None
+
+
+class CreativeDetailResponse(BaseModel):
+    """Creative detail response for the Phase A workbench/detail flow."""
+
+    id: int
+    creative_no: str
+    title: Optional[str] = None
+    status: CreativeStatus
+    current_version_id: Optional[int] = None
+    current_version: Optional[CreativeCurrentVersionResponse] = None
+    linked_task_ids: List[int] = Field(default_factory=list)
+    updated_at: datetime
+
+
 # ============ CompositionJob Schema (BE-TM-02) ============
 
 class CompositionJobResponse(BaseModel):

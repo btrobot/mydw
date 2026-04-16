@@ -95,6 +95,23 @@ async def test_task_create_and_update_openapi_do_not_expose_task_kind(
 
 
 @pytest.mark.asyncio
+async def test_creative_openapi_exposes_phase_a_workbench_and_detail_contracts(
+    client: AsyncClient,
+) -> None:
+    response = await client.get("/openapi.json")
+    assert response.status_code == 200
+
+    spec = response.json()
+    paths = spec["paths"]
+    schemas = spec["components"]["schemas"]
+
+    assert paths["/api/creatives"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeWorkbenchListResponse")
+    assert paths["/api/creatives/{creative_id}"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeDetailResponse")
+    assert schemas["CreativeCurrentVersionResponse"]["properties"]["package_record_id"]["anyOf"][0]["type"] == "integer"
+    assert schemas["CreativeDetailResponse"]["properties"]["linked_task_ids"]["type"] == "array"
+
+
+@pytest.mark.asyncio
 async def test_product_create_openapi_requires_name_and_share_text(
     client: AsyncClient,
 ) -> None:
