@@ -62,3 +62,54 @@ async def test_task_response_openapi_remains_collection_based(
     assert "cover_ids" in task_response
     assert "audio_ids" in task_response
     assert "topic_ids" in task_response
+
+
+@pytest.mark.asyncio
+async def test_task_response_openapi_includes_phase_a_creative_fields(
+    client: AsyncClient,
+) -> None:
+    response = await client.get("/openapi.json")
+    assert response.status_code == 200
+
+    task_response = response.json()["components"]["schemas"]["TaskResponse"]["properties"]
+
+    assert task_response["creative_item_id"]["anyOf"][0]["type"] == "integer"
+    assert task_response["creative_version_id"]["anyOf"][0]["type"] == "integer"
+    assert task_response["task_kind"]["anyOf"][0]["$ref"].endswith("/TaskKind")
+
+    task_kind = response.json()["components"]["schemas"]["TaskKind"]
+    assert task_kind["type"] == "string"
+    assert task_kind["enum"] == ["composition", "publish"]
+
+
+@pytest.mark.asyncio
+async def test_task_create_and_update_openapi_do_not_expose_task_kind(
+    client: AsyncClient,
+) -> None:
+    response = await client.get("/openapi.json")
+    assert response.status_code == 200
+
+    spec = response.json()["components"]["schemas"]
+    assert "task_kind" not in spec["TaskCreateRequest"]["properties"]
+    assert "task_kind" not in spec["TaskUpdate"]["properties"]
+
+
+@pytest.mark.asyncio
+async def test_product_create_openapi_requires_name_and_share_text(
+    client: AsyncClient,
+) -> None:
+    response = await client.get("/openapi.json")
+    assert response.status_code == 200
+
+    spec = response.json()
+    product_create = spec["components"]["schemas"]["ProductCreate"]
+    properties = product_create["properties"]
+
+    assert set(product_create["required"]) == {"name", "share_text"}
+    assert properties["name"]["maxLength"] == 256
+    assert properties["share_text"]["maxLength"] == 2048
+
+    request_body_schema = (
+        spec["paths"]["/api/products"]["post"]["requestBody"]["content"]["application/json"]["schema"]
+    )
+    assert request_body_schema["$ref"].endswith("/ProductCreate")

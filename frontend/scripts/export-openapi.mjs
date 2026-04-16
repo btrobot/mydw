@@ -29,7 +29,7 @@ for (const candidate of candidates) {
     process.exit(0)
   }
 
-  process.exit(result.status ?? 1)
+  lastError = new Error(`Command exited with status ${result.status ?? 1}: ${candidate.cmd}`)
 }
 
 if (lastError) {

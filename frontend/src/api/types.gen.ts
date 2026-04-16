@@ -218,6 +218,88 @@ export type AddCoverRequest = {
 };
 
 /**
+ * AdminSessionResponse
+ *
+ * Admin-facing view of a persisted local auth session.
+ */
+export type AdminSessionResponse = {
+    /**
+     * Session Id
+     */
+    session_id: number;
+    /**
+     * Auth State
+     */
+    auth_state: string;
+    /**
+     * Remote User Id
+     */
+    remote_user_id?: string | null;
+    /**
+     * Display Name
+     */
+    display_name?: string | null;
+    /**
+     * License Status
+     */
+    license_status?: string | null;
+    /**
+     * Device Id
+     */
+    device_id?: string | null;
+    /**
+     * Denial Reason
+     */
+    denial_reason?: string | null;
+    /**
+     * Expires At
+     */
+    expires_at?: string | null;
+    /**
+     * Last Verified At
+     */
+    last_verified_at?: string | null;
+    /**
+     * Offline Grace Until
+     */
+    offline_grace_until?: string | null;
+    /**
+     * Has Access Token
+     */
+    has_access_token?: boolean;
+    /**
+     * Has Refresh Token
+     */
+    has_refresh_token?: boolean;
+    /**
+     * Is Current Session
+     */
+    is_current_session?: boolean;
+    /**
+     * Created At
+     */
+    created_at?: string | null;
+    /**
+     * Updated At
+     */
+    updated_at?: string | null;
+};
+
+/**
+ * AdminSessionRevokeResponse
+ *
+ * Response after revoking a local auth session.
+ */
+export type AdminSessionRevokeResponse = {
+    /**
+     * Success
+     */
+    success: boolean;
+    revoked_session: AdminSessionResponse;
+    current_session: LocalAuthSessionSummary;
+};
+
+/**
  * AssembleTasksRequest
  *
  * 组装任务请求（已废弃，保留兼容；authoritative 语义以 TaskCreateRequest 为准）
@@ -267,6 +349,174 @@ export type AudioResponse = {
      * Created At
      */
     created_at: string;
+};
+
+/**
+ * AuthHealthResponse
+ *
+ * Health-oriented auth status for diagnostics and support.
+ */
+export type AuthHealthResponse = {
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Auth State
+     */
+    auth_state: string;
+    /**
+     * Denial Reason
+     */
+    denial_reason?: string | null;
+    /**
+     * Has Access Token
+     */
+    has_access_token: boolean;
+    /**
+     * Has Refresh Token
+     */
+    has_refresh_token: boolean;
+    /**
+     * Token Expires In Seconds
+     */
+    token_expires_in_seconds?: number | null;
+    /**
+     * Grace Remaining Seconds
+     */
+    grace_remaining_seconds?: number | null;
+    /**
+     * Last Verified At
+     */
+    last_verified_at?: string | null;
+    /**
+     * Can Read Local Data
+     */
+    can_read_local_data: boolean;
+    /**
+     * Can Run Protected Actions
+     */
+    can_run_protected_actions: boolean;
+    /**
+     * Can Run Background Tasks
+     */
+    can_run_background_tasks: boolean;
+};
+
+/**
+ * AuthLoginRequest
+ *
+ * 本地 auth login 请求。
+ */
+export type AuthLoginRequest = {
+    /**
+     * Username
+     */
+    username: string;
+    /**
+     * Password
+     */
+    password: string;
+    /**
+     * Device Id
+     */
+    device_id: string;
+    /**
+     * Client Version
+     */
+    client_version: string;
+};
+
+/**
+ * AuthRefreshRequest
+ *
+ * 本地 auth refresh 请求。
+ */
+export type AuthRefreshRequest = {
+    /**
+     * Client Version
+     */
+    client_version: string;
+};
+
+/**
+ * AuthStatusResponse
+ *
+ * Detailed local auth status for frontend/admin polling.
+ */
+export type AuthStatusResponse = {
+    /**
+     * Auth State
+     */
+    auth_state: string;
+    /**
+     * Remote User Id
+     */
+    remote_user_id?: string | null;
+    /**
+     * Display Name
+     */
+    display_name?: string | null;
+    /**
+     * License Status
+     */
+    license_status?: string | null;
+    /**
+     * Device Id
+     */
+    device_id?: string | null;
+    /**
+     * Denial Reason
+     */
+    denial_reason?: string | null;
+    /**
+     * Expires At
+     */
+    expires_at?: string | null;
+    /**
+     * Last Verified At
+     */
+    last_verified_at?: string | null;
+    /**
+     * Offline Grace Until
+     */
+    offline_grace_until?: string | null;
+    /**
+     * Token Expires In Seconds
+     */
+    token_expires_in_seconds?: number | null;
+    /**
+     * Grace Remaining Seconds
+     */
+    grace_remaining_seconds?: number | null;
+    /**
+     * Is Authenticated
+     */
+    is_authenticated: boolean;
+    /**
+     * Is Active
+     */
+    is_active: boolean;
+    /**
+     * Is Grace
+     */
+    is_grace: boolean;
+    /**
+     * Requires Reauth
+     */
+    requires_reauth: boolean;
+    /**
+     * Can Read Local Data
+     */
+    can_read_local_data: boolean;
+    /**
+     * Can Run Protected Actions
+     */
+    can_run_protected_actions: boolean;
+    /**
+     * Can Run Background Tasks
+     */
+    can_run_background_tasks: boolean;
 };
 
 /**
@@ -1026,6 +1276,54 @@ export type ImportResult = {
 };
 
 /**
+ * LocalAuthSessionSummary
+ *
+ * 本地 machine-session 摘要。
+ */
+export type LocalAuthSessionSummary = {
+    /**
+     * Auth State
+     */
+    auth_state: string;
+    /**
+     * Remote User Id
+     */
+    remote_user_id?: string | null;
+    /**
+     * Display Name
+     */
+    display_name?: string | null;
+    /**
+     * License Status
+     */
+    license_status?: string | null;
+    /**
+     * Entitlements
+     */
+    entitlements?: Array<string>;
+    /**
+     * Expires At
+     */
+    expires_at?: string | null;
+    /**
+     * Last Verified At
+     */
+    last_verified_at?: string | null;
+    /**
+     * Offline Grace Until
+     */
+    offline_grace_until?: string | null;
+    /**
+     * Denial Reason
+     */
+    denial_reason?: string | null;
+    /**
+     * Device Id
+     */
+    device_id?: string | null;
+};
+
+/**
  * MaterialStatsResponse
  *
  * 素材统计响应
@@ -1120,9 +1418,13 @@ export type PreviewStatusResponse = {
 /**
  * ProductCreate
  *
- * 创建商品 — 仅接受分享文本，后端解析 dewu_url
+ * 创建商品，请求中必须同时提供商品名称和分享文本。
  */
 export type ProductCreate = {
+    /**
+     * Name
+     */
+    name: string;
     /**
      * Share Text
      */
@@ -1281,7 +1583,7 @@ export type ProductResponse = {
 /**
  * ProductUpdate
  *
- * 更新商品 — 仅允许修改名称
+ * 更新商品，目前只允许修改商品名称。
  */
 export type ProductUpdate = {
     /**
@@ -1556,6 +1858,63 @@ export type PublishStatusResponse = {
 };
 
 /**
+ * RemoteAuthMePayload
+ *
+ * 远程认证 /me 成功负载。
+ */
+export type RemoteAuthMePayload = {
+    user: RemoteAuthUser;
+    /**
+     * License Status
+     */
+    license_status: string;
+    /**
+     * Entitlements
+     */
+    entitlements?: Array<string>;
+    /**
+     * Device Id
+     */
+    device_id: string;
+    /**
+     * Device Status
+     */
+    device_status: string;
+    /**
+     * Offline Grace Until
+     */
+    offline_grace_until?: string | null;
+    /**
+     * Minimum Supported Version
+     */
+    minimum_supported_version?: string | null;
+};
+
+/**
+ * RemoteAuthUser
+ *
+ * 远程认证用户信息。
+ */
+export type RemoteAuthUser = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Username
+     */
+    username: string;
+    /**
+     * Display Name
+     */
+    display_name?: string | null;
+    /**
+     * Tenant Id
+     */
+    tenant_id?: string | null;
+};
+
+/**
  * ScanResult
  *
  * 扫描导入结果
@@ -1707,6 +2066,74 @@ export type SendCodeResponse = {
      * Status
      */
     status?: string;
+};
+
+/**
+ * SessionDetailsResponse
+ *
+ * Full persisted machine-session details plus secret presence metadata.
+ */
+export type SessionDetailsResponse = {
+    /**
+     * Session Id
+     */
+    session_id?: number | null;
+    /**
+     * Auth State
+     */
+    auth_state: string;
+    /**
+     * Remote User Id
+     */
+    remote_user_id?: string | null;
+    /**
+     * Display Name
+     */
+    display_name?: string | null;
+    /**
+     * License Status
+     */
+    license_status?: string | null;
+    /**
+     * Entitlements
+     */
+    entitlements?: Array<string>;
+    /**
+     * Expires At
+     */
+    expires_at?: string | null;
+    /**
+     * Last Verified At
+     */
+    last_verified_at?: string | null;
+    /**
+     * Offline Grace Until
+     */
+    offline_grace_until?: string | null;
+    /**
+     * Denial Reason
+     */
+    denial_reason?: string | null;
+    /**
+     * Device Id
+     */
+    device_id?: string | null;
+    /**
+     * Has Access Token
+     */
+    has_access_token?: boolean;
+    /**
+     * Has Refresh Token
+     */
+    has_refresh_token?: boolean;
+    /**
+     * Created At
+     */
+    created_at?: string | null;
+    /**
+     * Updated At
+     */
+    updated_at?: string | null;
 };
 
 /**
@@ -2008,9 +2435,14 @@ export type TaskCreateRequest = {
 };
 
 /**
+ * TaskKind
+ */
+export type TaskKind = 'composition' | 'publish';
+
+/**
  * TaskListResponse
  *
- * 任务列表响应
+ * ??????
  */
 export type TaskListResponse = {
     /**
@@ -2037,6 +2469,15 @@ export type TaskResponse = {
      * Account Id
      */
     account_id: number;
+    /**
+     * Creative Item Id
+     */
+    creative_item_id?: number | null;
+    /**
+     * Creative Version Id
+     */
+    creative_version_id?: number | null;
+    task_kind?: TaskKind | null;
     /**
      * Video Ids
      */
@@ -2695,7 +3136,7 @@ export type SchemasBatchDeleteResponse = {
 /**
  * TaskListResponse
  *
- * 任务列表响应
+ * ??????
  */
 export type TaskListResponseWritable = {
     /**
@@ -2722,6 +3163,15 @@ export type TaskResponseWritable = {
      * Account Id
      */
     account_id: number;
+    /**
+     * Creative Item Id
+     */
+    creative_item_id?: number | null;
+    /**
+     * Creative Version Id
+     */
+    creative_version_id?: number | null;
+    task_kind?: TaskKind | null;
     /**
      * Video Ids
      */
@@ -2822,6 +3272,200 @@ export type TaskResponseWritable = {
      */
     updated_at: string;
 };
+
+export type LoginAuthApiAuthLoginPostData = {
+    body: AuthLoginRequest;
+    path?: never;
+    query?: never;
+    url: '/api/auth/login';
+};
+
+export type LoginAuthApiAuthLoginPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type LoginAuthApiAuthLoginPostError = LoginAuthApiAuthLoginPostErrors[keyof LoginAuthApiAuthLoginPostErrors];
+
+export type LoginAuthApiAuthLoginPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: LocalAuthSessionSummary;
+};
+
+export type LoginAuthApiAuthLoginPostResponse = LoginAuthApiAuthLoginPostResponses[keyof LoginAuthApiAuthLoginPostResponses];
+
+export type RefreshAuthApiAuthRefreshPostData = {
+    body: AuthRefreshRequest;
+    path?: never;
+    query?: never;
+    url: '/api/auth/refresh';
+};
+
+export type RefreshAuthApiAuthRefreshPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RefreshAuthApiAuthRefreshPostError = RefreshAuthApiAuthRefreshPostErrors[keyof RefreshAuthApiAuthRefreshPostErrors];
+
+export type RefreshAuthApiAuthRefreshPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: LocalAuthSessionSummary;
+};
+
+export type RefreshAuthApiAuthRefreshPostResponse = RefreshAuthApiAuthRefreshPostResponses[keyof RefreshAuthApiAuthRefreshPostResponses];
+
+export type LogoutAuthApiAuthLogoutPostData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/auth/logout';
+};
+
+export type LogoutAuthApiAuthLogoutPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: LocalAuthSessionSummary;
+};
+
+export type LogoutAuthApiAuthLogoutPostResponse = LogoutAuthApiAuthLogoutPostResponses[keyof LogoutAuthApiAuthLogoutPostResponses];
+
+export type GetAuthSessionApiAuthSessionGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/auth/session';
+};
+
+export type GetAuthSessionApiAuthSessionGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: LocalAuthSessionSummary;
+};
+
+export type GetAuthSessionApiAuthSessionGetResponse = GetAuthSessionApiAuthSessionGetResponses[keyof GetAuthSessionApiAuthSessionGetResponses];
+
+export type GetAuthMeApiAuthMeGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/auth/me';
+};
+
+export type GetAuthMeApiAuthMeGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: RemoteAuthMePayload;
+};
+
+export type GetAuthMeApiAuthMeGetResponse = GetAuthMeApiAuthMeGetResponses[keyof GetAuthMeApiAuthMeGetResponses];
+
+export type GetAuthStatusApiAuthStatusGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/auth/status';
+};
+
+export type GetAuthStatusApiAuthStatusGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: AuthStatusResponse;
+};
+
+export type GetAuthStatusApiAuthStatusGetResponse = GetAuthStatusApiAuthStatusGetResponses[keyof GetAuthStatusApiAuthStatusGetResponses];
+
+export type GetAuthHealthApiAuthHealthGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/auth/health';
+};
+
+export type GetAuthHealthApiAuthHealthGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: AuthHealthResponse;
+};
+
+export type GetAuthHealthApiAuthHealthGetResponse = GetAuthHealthApiAuthHealthGetResponses[keyof GetAuthHealthApiAuthHealthGetResponses];
+
+export type GetAuthSessionDetailsApiAuthSessionDetailsGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/auth/session/details';
+};
+
+export type GetAuthSessionDetailsApiAuthSessionDetailsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: SessionDetailsResponse;
+};
+
+export type GetAuthSessionDetailsApiAuthSessionDetailsGetResponse = GetAuthSessionDetailsApiAuthSessionDetailsGetResponses[keyof GetAuthSessionDetailsApiAuthSessionDetailsGetResponses];
+
+export type ListAdminSessionsApiAdminSessionsGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/admin/sessions';
+};
+
+export type ListAdminSessionsApiAdminSessionsGetResponses = {
+    /**
+     * Response List Admin Sessions Api Admin Sessions Get
+     *
+     * Successful Response
+     */
+    200: Array<AdminSessionResponse>;
+};
+
+export type ListAdminSessionsApiAdminSessionsGetResponse = ListAdminSessionsApiAdminSessionsGetResponses[keyof ListAdminSessionsApiAdminSessionsGetResponses];
+
+export type RevokeAdminSessionApiAdminSessionsSessionIdRevokePostData = {
+    body?: never;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: number;
+    };
+    query?: never;
+    url: '/api/admin/sessions/{session_id}/revoke';
+};
+
+export type RevokeAdminSessionApiAdminSessionsSessionIdRevokePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RevokeAdminSessionApiAdminSessionsSessionIdRevokePostError = RevokeAdminSessionApiAdminSessionsSessionIdRevokePostErrors[keyof RevokeAdminSessionApiAdminSessionsSessionIdRevokePostErrors];
+
+export type RevokeAdminSessionApiAdminSessionsSessionIdRevokePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: AdminSessionRevokeResponse;
+};
+
+export type RevokeAdminSessionApiAdminSessionsSessionIdRevokePostResponse = RevokeAdminSessionApiAdminSessionsSessionIdRevokePostResponses[keyof RevokeAdminSessionApiAdminSessionsSessionIdRevokePostResponses];
 
 export type ListAccountsApiAccountsGetData = {
     body?: never;

@@ -16,6 +16,7 @@ import { handleApiError } from '@/utils/error'
 const { Link } = Typography
 
 interface ProductCreateValues {
+  name: string
   share_text: string
 }
 
@@ -48,7 +49,7 @@ export default function ProductList() {
         message.success('更新商品成功')
       } else {
         const values = await form.validateFields() as ProductCreateValues
-        await createProduct.mutateAsync({ share_text: values.share_text })
+        await createProduct.mutateAsync({ name: values.name, share_text: values.share_text })
         message.success('添加商品成功')
       }
       setModalOpen(false)
@@ -241,13 +242,22 @@ export default function ProductList() {
               <Input placeholder="请输入商品名称" />
             </Form.Item>
           ) : (
-            <Form.Item
-              name="share_text"
-              label="分享文本"
-              rules={[{ required: true, message: '请输入分享文本' }]}
-            >
-              <Input.TextArea placeholder="粘贴得物分享文本或链接" rows={3} />
-            </Form.Item>
+            <>
+              <Form.Item
+                name="name"
+                label="商品名称"
+                rules={[{ required: true, message: '请输入商品名称' }]}
+              >
+                <Input placeholder="请输入商品名称" />
+              </Form.Item>
+              <Form.Item
+                name="share_text"
+                label="分享文本"
+                rules={[{ required: true, message: '请输入分享文本' }]}
+              >
+                <Input.TextArea placeholder="粘贴得物分享文本或链接" rows={3} />
+              </Form.Item>
+            </>
           )}
         </Form>
       </Modal>

@@ -367,15 +367,17 @@ def _insert_new_covers(
     db: AsyncSession,
     product_id: int,
     first_video_id: Optional[int],
+    product_name: str,
     pack: MaterialPack,
     cover_results: list[tuple[str, str, int]],
 ) -> None:
     """写入新封面记录。"""
+    cover_name = pack.title if pack.title and pack.title != "未知商品" else product_name
     for file_path, file_hash, file_size in cover_results:
         c = Cover(
             video_id=first_video_id,
             product_id=product_id,
-            name=pack.title,
+            name=cover_name,
             file_path=file_path,
             file_hash=file_hash,
             file_size=file_size,
@@ -388,7 +390,7 @@ def _insert_copywriting(
     product: Product,
     pack: MaterialPack,
 ) -> int:
-    """写入标题文案，更新 product.name，返回写入数量（0 或 1）。"""
+    """写入解析标题对应的文案记录，返回写入数量（0 或 1）。"""
     if not pack.title or pack.title == "未知商品":
         return 0
     cw = Copywriting(
@@ -399,7 +401,6 @@ def _insert_copywriting(
         source_ref=product.dewu_url,
     )
     db.add(cw)
-    product.name = pack.title
     return 1
 
 
@@ -440,7 +441,7 @@ async def _replace_product_materials(
     new_video_orm = await _insert_new_videos(db, product_id, pack, product.name, video_results)
 
     first_video_id = new_video_orm[0].id if new_video_orm else None
-    _insert_new_covers(db, product_id, first_video_id, pack, cover_results)
+    _insert_new_covers(db, product_id, first_video_id, product.name, pack, cover_results)
 
     copywriting_count = _insert_copywriting(db, product, pack)
 

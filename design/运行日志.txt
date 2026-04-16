@@ -1,0 +1,334 @@
+2026-04-10 15:10:58  主线任务处理进度：9/1
+
+2026-04-10 15:10:58  视频地址：https://videocdn.poizon.com/sns-og/mf/dw264_720p_60fps/acee4de9-6a9e-4c71-9f7f-a0b3ab59bf3a/_dur46649dur_c9a3d26a0b0811f199d200163e539558_iOS_w1080h1920.mp4
+
+2026-04-10 15:10:58  下载1
+
+2026-04-10 15:11:19  处理结果ffmpeg version git-2020-03-11-36aaee2 Copyright (c) 2000-2020 the FFmpeg developers
+  built with gcc 9.2.1 (GCC) 20200122
+  configuration: --enable-gpl --enable-version3 --enable-sdl2 --enable-fontconfig --enable-gnutls --enable-iconv --enable-libass --enable-libdav1d --enable-libbluray --enable-libfreetype --enable-libmp3lame --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenjpeg --enable-libopus --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libtheora --enable-libtwolame --enable-libvpx --enable-libwavpack --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxml2 --enable-libzimg --enable-lzma --enable-zlib --enable-gmp --enable-libvidstab --enable-libvorbis --enable-libvo-amrwbenc --enable-libmysofa --enable-libspeex --enable-libxvid --enable-libaom --enable-libmfx --enable-ffnvcodec --enable-cuda-llvm --enable-cuvid --enable-d3d11va --enable-nvenc --enable-nvdec --enable-dxva2 --enable-avisynth --enable-libopenmpt --enable-amf
+  libavutil      56. 42.100 / 56. 42.100
+  libavcodec     58. 75.100 / 58. 75.100
+  libavformat    58. 41.100 / 58. 41.100
+  libavdevice    58.  9.103 / 58.  9.103
+  libavfilter     7. 77.100 /  7. 77.100
+  libswscale      5.  6.100 /  5.  6.100
+  libswresample   3.  6.100 /  3.  6.100
+  libpostproc    55.  6.100 / 55.  6.100
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'E:\得物4\临时目录\1.mp4':
+  Metadata:
+    Hw              : 1
+    moov_pos        : 128687760
+    maxrate         : 0
+    major_brand     : qt  
+    bitrate         : 22020096
+    mdat_pos        : 28
+    compatible_brands: qt  
+    minor_version   : 512
+    comment         : dewu-encoder-dmp-1771226984363
+    creation_time   : 2026-02-16T07:21:19Z
+    te_is_reencode  : 1
+    DreaminaMetaInfo: {"data":{}}
+    encoder         : Lavf61.7.100
+  Duration: 00:00:46.60, start: 0.000000, bitrate: 2122 kb/s
+    Stream #0:0(eng): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709), 720x1280, 1985 kb/s, 57 fps, 57 tbr, 14592 tbn, 114 tbc (default)
+    Metadata:
+      creation_time   : 2026-02-16T07:21:19.000000Z
+      handler_name    : VideoHandler
+      encoder         : Lavc61.19.101 libx264
+    Stream #0:1(eng): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 125 kb/s (default)
+    Metadata:
+      creation_time   : 2026-02-16T07:21:19.000000Z
+      handler_name    : SoundHandler
+tream mapping:
+  Stream #0:0 -> #0:0 (h264 (native) -> h264 (libx264))
+  Stream #0:1 -> #0:1 (aac (native) -> aac (native))
+Press [q] to stop, [?] for help
+[libx264 @ 000001a3536ce080] using cpu capabilities: MMX2 SSE2Fast SSSE3 SSE4.2 AVX FMA3 BMI2 AVX2 AVX512
+[libx264 @ 000001a3536ce080] profile High, level 3.1, 4:2:0, 8-bit
+[libx264 @ 000001a3536ce080] 264 - core 159 - H.264/MPEG-4 AVC codec - Copyleft 2003-2019 - http://www.videolan.org/x264.html - options: cabac=1 ref=5 deblock=1:0:0 analyse=0x3:0x113 me=hex subme=8 psy=1 psy_rd=1.00:0.00 mixed_ref=1 me_range=16 chroma_me=1 trellis=2 8x8dct=1 cqm=0 deadzone=21,11 fast_pskip=1 chroma_qp_offset=-2 threads=18 lookahead_threads=3 sliced_threads=0 nr=0 decimate=1 interlaced=0 bluray_compat=0 constrained_intra=0 bframes=3 b_pyramid=2 b_adapt=1 b_bias=0 direct=3 weightb=1 open_gop=0 weightp=2 keyint=60 keyint_min=6 scenecut=0 intra_refresh=0 rc_lookahead=50 rc=crf mbtree=1 crf=18.0 qcomp=0.60 qpmin=0 qpmax=69 qpstep=4 ip_ratio=1.40 aq=1:1.00
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_00.mp4' for writing
+Output #0, segment, to 'E:\得物4\临时目录\输出1_d.mp4':
+  Metadata:
+    Hw              : 1
+    moov_pos        : 128687760
+    maxrate         : 0
+    major_brand     : qt  
+    bitrate         : 22020096
+    mdat_pos        : 28
+    compatible_brands: qt  
+    minor_version   : 512
+    comment         : dewu-encoder-dmp-1771226984363
+    DreaminaMetaInfo: {"data":{}}
+    te_is_reencode  : 1
+    encoder         : Lavf58.41.100
+    Stream #0:0(eng): Video: h264 (libx264), yuv420p, 720x1280, q=-1--1, 30 fps, 15360 tbn, 30 tbc (default)
+    Metadata:
+      creation_time   : 2026-02-16T07:21:19.000000Z
+      handler_name    : VideoHandler
+      encoder         : Lavc58.75.100 libx264
+    Side data:
+      cpb: bitrate max/min/avg: 0/0/0 buffer size: 0 vbv_delay: N/A
+    Stream #0:1(eng): Audio: aac (LC), 44100 Hz, stereo, fltp, 192 kb/s (default)
+    Metadata:
+      creation_time   : 2026-02-16T07:21:19.000000Z
+      handler_name    : SoundHandler
+      encoder         : Lavc58.75.100 aac
+frame=   86 fps=0.0 q=24.0 size=N/A time=00:00:02.97 bitrate=N/A dup=0 drop=73 speed=5.51x    
+frame=  127 fps=121 q=24.0 size=N/A time=00:00:04.34 bitrate=N/A dup=0 drop=110 speed=4.14x    
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_01.mp4' for writing
+frame=  169 fps=109 q=24.0 size=N/A time=00:00:05.73 bitrate=N/A dup=0 drop=148 speed= 3.7x    
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_02.mp4' for writing
+frame=  208 fps=101 q=24.0 size=N/A time=00:00:07.05 bitrate=N/A dup=0 drop=183 speed=3.44x    
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_03.mp4' for writing
+frame=  253 fps= 99 q=24.0 size=N/A time=00:00:08.52 bitrate=N/A dup=0 drop=223 speed=3.34x    
+frame=  290 fps= 95 q=24.0 size=N/A time=00:00:09.75 bitrate=N/A dup=0 drop=257 speed=3.19x    
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_04.mp4' for writing
+frame=  326 fps= 91 q=24.0 size=N/A time=00:00:10.95 bitrate=N/A dup=0 drop=289 speed=3.05x    
+frame=  368 fps= 90 q=24.0 size=N/A time=00:00:12.37 bitrate=N/A dup=0 drop=327 speed=3.03x    
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_05.mp4' for writing
+frame=  415 fps= 90 q=24.0 size=N/A time=00:00:13.90 bitrate=N/A dup=0 drop=369 speed=3.03x    
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_06.mp4' for writing
+frame=  453 fps= 89 q=24.0 size=N/A time=00:00:15.18 bitrate=N/A dup=0 drop=403 speed=2.98x    
+segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_07.mp4' for writing
+frame=  495 fps= 88 q=24.0 size=N/A time=00:00:16.60 bitrate=N/A dup=0 drop=441 speed=2.97x    
+frame=  538 fps= 87 q=24.0 size=N/A time=00:00:18.04 bitrate=N/A dup=0 drop=480 speed= 2.9x    
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_08.mp4' for writing
+frame=  580 fps= 86 q=24.0 size=N/A time=00:00:19.43 bitrate=N/A dup=0 drop=518 speed=2.89x    
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_09.mp4' for writing
+frame=  636 fps= 86 q=24.0 size=N/A time=00:00:21.29 bitrate=N/A dup=0 drop=568 speed=2.89x    
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_10.mp4' for writing
+frame=  694 fps= 88 q=24.0 size=N/A time=00:00:23.21 bitrate=N/A dup=0 drop=620 speed=2.94x    
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_11.mp4' for writing
+frame=  742 fps= 88 q=24.0 size=N/A time=00:00:24.82 bitrate=N/A dup=0 drop=663 speed=2.95x    
+frame=  777 fps= 87 q=24.0 size=N/A time=00:00:26.00 bitrate=N/A dup=0 drop=695 speed=2.91x    
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_12.mp4' for writing
+frame=  821 fps= 86 q=24.0 size=N/A time=00:00:27.46 bitrate=N/A dup=0 drop=735 speed=2.88x    
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_13.mp4' for writing
+frame=  867 fps= 86 q=24.0 size=N/A time=00:00:29.00 bitrate=N/A dup=0 drop=776 speed=2.89x    
+frame=  912 fps= 87 q=24.0 size=N/A time=00:00:30.48 bitrate=N/A dup=0 drop=816 speed=2.89x    
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_14.mp4' for writing
+frame=  948 fps= 86 q=24.0 size=N/A time=00:00:31.69 bitrate=N/A dup=0 drop=849 speed=2.87x    
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_15.mp4' for writing
+frame=  986 fps= 85 q=24.0 size=N/A time=00:00:32.97 bitrate=N/A dup=0 drop=883 speed=2.85x    
+frame= 1017 fps= 84 q=24.0 size=N/A time=00:00:33.99 bitrate=N/A dup=0 drop=911 speed=2.82x    
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_16.mp4' for writing
+rame= 1055 fps= 84 q=24.0 size=N/A time=00:00:35.27 bitrate=N/A dup=0 drop=945 speed= 2.8x    
+frame= 1089 fps= 83 q=24.0 size=N/A time=00:00:36.40 bitrate=N/A dup=0 drop=976 speed=2.78x    
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_17.mp4' for writing
+frame= 1129 fps= 83 q=24.0 size=N/A time=00:00:37.73 bitrate=N/A dup=0 drop=1012 speed=2.77x    
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_18.mp4' for writing
+frame= 1167 fps= 82 q=24.0 size=N/A time=00:00:39.00 bitrate=N/A dup=0 drop=1046 speed=2.76x    
+frame= 1202 fps= 82 q=24.0 size=N/A time=00:00:40.14 bitrate=N/A dup=0 drop=1077 speed=2.74x    
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_19.mp4' for writing
+frame= 1246 fps= 82 q=24.0 size=N/A time=00:00:41.63 bitrate=N/A dup=0 drop=1117 speed=2.74x    
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_20.mp4' for writing
+frame= 1281 fps= 82 q=24.0 size=N/A time=00:00:42.81 bitrate=N/A dup=0 drop=1149 speed=2.73x    
+frame= 1315 fps= 81 q=24.0 size=N/A time=00:00:43.93 bitrate=N/A dup=0 drop=1179 speed=2.71x    
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_21.mp4' for writing
+frame= 1345 fps= 81 q=24.0 size=N/A time=00:00:44.93 bitrate=N/A dup=0 drop=1206 speed=2.69x    
+frame= 1380 fps= 80 q=24.0 size=N/A time=00:00:46.11 bitrate=N/A dup=0 drop=1238 speed=2.68x    
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_22.mp4' for writing
+[segment @ 000001a35367d7c0] Opening 'E:\得物4\临时目录\输出1_23.mp4' for writing
+frame= 1400 fps= 77 q=-1.0 Lsize=N/A time=00:00:46.60 bitrate=N/A dup=0 drop=1256 speed=2.58x    
+video:23102kB audio:1102kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+[libx264 @ 000001a3536ce080] frame I:24    Avg QP:16.24  size: 74689
+[libx264 @ 000001a3536ce080] frame P:450   Avg QP:19.51  size: 27540
+[libx264 @ 000001a3536ce080] frame B:926   Avg QP:21.95  size: 10227
+[libx264 @ 000001a3536ce080] consecutive B-frames:  5.53.36.94.3%
+[libx264 @ 000001a3536ce080] mb I  I16..4:  6.3 4.59.2%
+[libx264 @ 000001a3536ce080] mb P  I16..4:  6.34.2%  4.1%  P16..4: 28.42.1%  4.2%  0.0%  0.0%    skip:10.7%
+[libx264 @ 000001a3536ce080] mb B  I16..4:  1.8%  6.7%  0.5%  B16..8: 37.5%  9.4%  1.5%  direct: 5.0%  skip:37.6%  L0:47.2% L1:43.1
+I: 9.7%
+[libx264 @ 000001a3536ce080] 8x8 transform intra:75.7% inter:72.6%
+[libx264 @ 000001a3536ce080] direct mvs  spatial:98.9% temporal:1.1%
+[libx264 @ 000001a3536ce080] coded y,uvDC,uvAC intra: 59.42.05.8% inter: 17.17.8
+
+2026-04-10 15:11:19  视频地址：https://videocdn.poizon.com/sns-og/mf/dw264_720p_60fps/acee4de9-6a9e-4c71-9f7f-a0b3ab59bf3a/_dur46649dur_c9a3d26a0b0811f199d200163e539558_iOS_w1080h1920.mp4
+
+2026-04-10 15:11:19  下载1
+
+2026-04-10 15:11:39  处理结果ffmpeg version git-2020-03-11-36aaee2 Copyright (c) 2000-2020 the FFmpeg developers
+  built with gcc 9.2.1 (GCC) 20200122
+  configuration: --enable-gpl --enable-version3 --enable-sdl2 --enable-fontconfig --enable-gnutls --enable-iconv --enable-libass --enable-libdav1d --enable-libbluray --enable-libfreetype --enable-libmp3lame --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenjpeg --enable-libopus --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libtheora --enable-libtwolame --enable-libvpx --enable-libwavpack --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxml2 --enable-libzimg --enable-lzma --enable-zlib --enable-gmp --enable-libvidstab --enable-libvorbis --enable-libvo-amrwbenc --enable-libmysofa --enable-libspeex --enable-libxvid --enable-libaom --enable-libmfx --enable-ffnvcodec --enable-cuda-llvm --enable-cuvid --enable-d3d11va --enable-nvenc --enable-nvdec --enable-dxva2 --enable-avisynth --enable-libopenmpt --enable-amf
+  libavutil      56. 42.100 / 56. 42.100
+  libavcodec     58. 75.100 / 58. 75.100
+  libavformat    58. 41.100 / 58. 41.100
+  libavdevice    58.  9.103 / 58.  9.103
+  libavfilter     7. 77.100 /  7. 77.100
+  libswscale      5.  6.100 /  5.  6.100
+  libswresample   3.  6.100 /  3.  6.100
+  libpostproc    55.  6.100 / 55.  6.100
+nput #0, mov,mp4,m4a,3gp,3g2,mj2, from 'E:\得物4\临时目录\2.mp4':
+  Metadata:
+    Hw              : 1
+    moov_pos        : 128687760
+    maxrate         : 0
+    major_brand     : qt  
+    bitrate         : 22020096
+    mdat_pos        : 28
+    compatible_brands: qt  
+    minor_version   : 512
+    comment         : dewu-encoder-dmp-1771226984363
+    creation_time   : 2026-02-16T07:21:19Z
+    te_is_reencode  : 1
+    DreaminaMetaInfo: {"data":{}}
+    encoder         : Lavf61.7.100
+  Duration: 00:00:46.60, start: 0.000000, bitrate: 2122 kb/s
+    Stream #0:0(eng): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709), 720x1280, 1985 kb/s, 57 fps, 57 tbr, 14592 tbn, 114 tbc (default)
+    Metadata:
+      creation_time   : 2026-02-16T07:21:19.000000Z
+      handler_name    : VideoHandler
+      encoder         : Lavc61.19.101 libx264
+    Stream #0:1(eng): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 125 kb/s (default)
+    Metadata:
+      creation_time   : 2026-02-16T07:21:19.000000Z
+      handler_name    : SoundHandler
+Stream mapping:
+  Stream #0:0 -> #0:0 (h264 (native) -> h264 (libx264))
+  Stream #0:1 -> #0:1 (aac (native) -> aac (native))
+Press [q] to stop, [?] for help
+[libx264 @ 00000234dfb1e080] using cpu capabilities: MMX2 SSE2Fast SSSE3 SSE4.2 AVX FMA3 BMI2 AVX2 AVX512
+[libx264 @ 00000234dfb1e080] profile High, level 3.1, 4:2:0, 8-bit
+[libx264 @ 00000234dfb1e080] 264 - core 159 - H.264/MPEG-4 AVC codec - Copyleft 2003-2019 - http://www.videolan.org/x264.html - options: cabac=1 ref=5 deblock=1:0:0 analyse=0x3:0x113 me=hex subme=8 psy=1 psy_rd=1.00:0.00 mixed_ref=1 me_range=16 chroma_me=1 trellis=2 8x8dct=1 cqm=0 deadzone=21,11 fast_pskip=1 chroma_qp_offset=-2 threads=18 lookahead_threads=3 sliced_threads=0 nr=0 decimate=1 interlaced=0 bluray_compat=0 constrained_intra=0 bframes=3 b_pyramid=2 b_adapt=1 b_bias=0 direct=3 weightb=1 open_gop=0 weightp=2 keyint=60 keyint_min=6 scenecut=0 intra_refresh=0 rc_lookahead=50 rc=crf mbtree=1 crf=18.0 qcomp=0.60 qpmin=0 qpmax=69 qpstep=4 ip_ratio=1.40 aq=1:1.00
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_00.mp4' for writing
+Output #0, segment, to 'E:\得物4\临时目录\输出2_d.mp4':
+  Metadata:
+    Hw              : 1
+    moov_pos        : 128687760
+    maxrate         : 0
+    major_brand     : qt  
+    bitrate         : 22020096
+    mdat_pos        : 28
+    compatible_brands: qt  
+    minor_version   : 512
+    comment         : dewu-encoder-dmp-1771226984363
+    DreaminaMetaInfo: {"data":{}}
+    te_is_reencode  : 1
+    encoder         : Lavf58.41.100
+    Stream #0:0(eng): Video: h264 (libx264), yuv420p, 720x1280, q=-1--1, 30 fps, 15360 tbn, 30 tbc (default)
+    Metadata:
+      creation_time   : 2026-02-16T07:21:19.000000Z
+      handler_name    : VideoHandler
+      encoder         : Lavc58.75.100 libx264
+    Side data:
+      cpb: bitrate max/min/avg: 0/0/0 buffer size: 0 vbv_delay: N/A
+    Stream #0:1(eng): Audio: aac (LC), 44100 Hz, stereo, fltp, 192 kb/s (default)
+    Metadata:
+      creation_time   : 2026-02-16T07:21:19.000000Z
+      handler_name    : SoundHandler
+      encoder         : Lavc58.75.100 aac
+frame=   87 fps=0.0 q=24.0 size=N/A time=00:00:02.99 bitrate=N/A dup=0 drop=74 speed=5.94x    
+frame=  130 fps=129 q=24.0 size=N/A time=00:00:04.43 bitrate=N/A dup=0 drop=113 speed=4.41x    
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_01.mp4' for writing
+frame=  172 fps=114 q=24.0 size=N/A time=00:00:05.80 bitrate=N/A dup=0 drop=150 speed=3.85x    
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_02.mp4' for writing
+frame=  211 fps=102 q=24.0 size=N/A time=00:00:07.15 bitrate=N/A dup=0 drop=186 speed=3.45x    
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_03.mp4' for writing
+frame=  258 fps= 94 q=24.0 size=N/A time=00:00:08.70 bitrate=N/A dup=0 drop=228 speed=3.17x    
+frame=  301 fps= 90 q=24.0 size=N/A time=00:00:10.14 bitrate=N/A dup=0 drop=267 speed=3.03x    
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_04.mp4' for writing
+frame=  346 fps= 90 q=24.0 size=N/A time=00:00:11.63 bitrate=N/A dup=0 drop=307 speed=3.01x    
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_05.mp4' for writing
+frame=  385 fps= 88 q=24.0 size=N/A time=00:00:12.93 bitrate=N/A dup=0 drop=342 speed=2.96x    
+frame=  427 fps= 88 q=24.0 size=N/A time=00:00:14.32 bitrate=N/A dup=0 drop=380 speed=2.94x    
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_06.mp4' for writing
+frame=  467 fps= 87 q=24.0 size=N/A time=00:00:15.67 bitrate=N/A dup=0 drop=416 speed=2.91x    
+segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_07.mp4' for writing
+frame=  514 fps= 87 q=24.0 size=N/A time=00:00:17.22 bitrate=N/A dup=0 drop=458 speed=2.93x    
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_08.mp4' for writing
+frame=  558 fps= 87 q=24.0 size=N/A time=00:00:18.69 bitrate=N/A dup=0 drop=498 speed=2.91x    
+frame=  598 fps= 86 q=24.0 size=N/A time=00:00:20.03 bitrate=N/A dup=0 drop=534 speed=2.88x    
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_09.mp4' for writing
+frame=  656 fps= 87 q=21.0 size=N/A time=00:00:21.96 bitrate=N/A dup=0 drop=586 speed=2.93x    
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_10.mp4' for writing
+frame=  710 fps= 87 q=24.0 size=N/A time=00:00:23.77 bitrate=N/A dup=0 drop=635 speed=2.92x    
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_11.mp4' for writing
+frame=  754 fps= 87 q=24.0 size=N/A time=00:00:25.21 bitrate=N/A dup=0 drop=674 speed=2.91x    
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_12.mp4' for writing
+frame=  799 fps= 87 q=24.0 size=N/A time=00:00:26.72 bitrate=N/A dup=0 drop=715 speed=2.91x    
+frame=  832 fps= 86 q=24.0 size=N/A time=00:00:27.81 bitrate=N/A dup=0 drop=744 speed=2.87x    
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_13.mp4' for writing
+frame=  869 fps= 85 q=24.0 size=N/A time=00:00:29.07 bitrate=N/A dup=0 drop=778 speed=2.84x    
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_14.mp4' for writing
+frame=  926 fps= 86 q=24.0 size=N/A time=00:00:30.97 bitrate=N/A dup=0 drop=829 speed=2.87x    
+frame=  964 fps= 85 q=24.0 size=N/A time=00:00:32.22 bitrate=N/A dup=0 drop=863 speed=2.84x    
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_15.mp4' for writing
+frame= 1004 fps= 84 q=24.0 size=N/A time=00:00:33.55 bitrate=N/A dup=0 drop=899 speed=2.82x    
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_16.mp4' for writing
+frame= 1054 fps= 85 q=24.0 size=N/A time=00:00:35.22 bitrate=N/A dup=0 drop=944 speed=2.84x    
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_17.mp4' for writing
+frame= 1094 fps= 85 q=24.0 size=N/A time=00:00:36.57 bitrate=N/A dup=0 drop=980 speed=2.83x    
+frame= 1138 fps= 85 q=24.0 size=N/A time=00:00:38.03 bitrate=N/A dup=0 drop=1020 speed=2.83x    
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_18.mp4' for writing
+frame= 1168 fps= 84 q=24.0 size=N/A time=00:00:39.03 bitrate=N/A dup=0 drop=1047 speed= 2.8x    
+frame= 1205 fps= 83 q=24.0 size=N/A time=00:00:40.28 bitrate=N/A dup=0 drop=1080 speed=2.79x    
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_19.mp4' for writing
+frame= 1246 fps= 83 q=24.0 size=N/A time=00:00:41.63 bitrate=N/A dup=0 drop=1117 speed=2.78x    
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_20.mp4' for writing
+frame= 1281 fps= 83 q=24.0 size=N/A time=00:00:42.81 bitrate=N/A dup=0 drop=1149 speed=2.76x    
+frame= 1309 fps= 82 q=24.0 size=N/A time=00:00:43.74 bitrate=N/A dup=0 drop=1174 speed=2.73x    
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_21.mp4' for writing
+frame= 1341 fps= 81 q=24.0 size=N/A time=00:00:44.81 bitrate=N/A dup=0 drop=1203 speed=2.71x    
+frame= 1381 fps= 81 q=24.0 size=N/A time=00:00:46.13 bitrate=N/A dup=0 drop=1239 speed=2.71x    
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_22.mp4' for writing
+[segment @ 00000234dfacd7c0] Opening 'E:\得物4\临时目录\输出2_23.mp4' for writing
+frame= 1400 fps= 78 q=-1.0 Lsize=N/A time=00:00:46.60 bitrate=N/A dup=0 drop=1256 speed= 2.6x    
+video:23102kB audio:1102kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+[libx264 @ 00000234dfb1e080] frame I:24    Avg QP:16.24  size: 74689
+[libx264 @ 00000234dfb1e080] frame P:450   Avg QP:19.51  size: 27540
+[libx264 @ 00000234dfb1e080] frame B:926   Avg QP:21.95  size: 10227
+[libx264 @ 00000234dfb1e080] consecutive B-frames:  5.53.36.94.3%
+[libx264 @ 00000234dfb1e080] mb I  I16..4:  6.3 4.59.2%
+[libx264 @ 00000234dfb1e080] mb P  I16..4:  6.34.2%  4.1%  P16..4: 28.42.1%  4.2%  0.0%  0.0%    skip:10.7%
+[libx264 @ 00000234dfb1e080] mb B  I16..4:  1.8%  6.7%  0.5%  B16..8: 37.5%  9.4%  1.5%  direct: 5.0%  skip:37.6%  L0:47.2% L1:43.1
+I: 9.7%
+[libx264 @ 00000234dfb1e080] 8x8 transform intra:75.7% inter:72.6%
+[libx264 @ 00000234dfb1e080] direct mvs  spatial:98.9% temporal:1.1%
+[libx264 @ 00000234dfb1e080] coded y,uvDC,uvAC intra: 59.42.05.8% inter: 17.17.8
+
+2026-04-10 15:11:39  封面地址：https://image-cdn.dewu.com/app/2026/community/2279799309_byte400148byte_216e0ff3484c30d900ae3e5bedd6463e_iOS_w962h1281.jpg
+
+2026-04-10 15:11:40  封面地址：https://image-cdn.dewu.com/app/2026/community/2279799309_byte400148byte_216e0ff3484c30d900ae3e5bedd6463e_iOS_w962h1281.jpg
+
+2026-04-10 15:12:14  豆包返回为空，重新合成
+
+2026-04-10 15:12:46  豆包返回为空，重新合成
+
+2026-04-10 15:13:18  豆包返回为空，重新合成
+
+2026-04-10 15:13:50  豆包返回为空，重新合成
+
+2026-04-10 15:14:22  豆包返回为空，重新合成
+
+2026-04-10 15:14:54  豆包返回为空，重新合成
+
+2026-04-10 15:15:26  豆包返回为空，重新合成
+
+2026-04-10 15:15:58  豆包返回为空，重新合成
+
+2026-04-10 15:16:30  豆包返回为空，重新合成
+
+2026-04-10 15:17:02  豆包返回为空，重新合成
+
+2026-04-10 15:17:34  豆包返回为空，重新合成
+
+2026-04-10 15:18:06  豆包返回为空，重新合成
+
+2026-04-10 15:18:38  豆包返回为空，重新合成
+
+2026-04-10 15:19:10  豆包返回为空，重新合成
+
+2026-04-10 15:19:42  豆包返回为空，重新合成
+
+2026-04-10 15:20:14  豆包返回为空，重新合成
+
+2026-04-10 15:20:46  豆包返回为空，重新合成
+
+2026-04-10 15:21:18  豆包返回为空，重新合成
+
+2026-04-10 15:21:22  豆包生成的文案：你的请求涉及不当引导和违规宣传，不符合相关规定，因此我不能按照你的要求进行生成。我们应当遵守法律法规和公序良俗，共同维护健康的网络环境。如果你有其他合法合规、积极健康的内容创作需求，我会尽力为你提供帮助。
+
+2026-04-10 15:21:23  最终合成1
+
+2026-04-10 15:21:44  主线任务处理进度：9/2

@@ -49,6 +49,15 @@ class TaskStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
+class TaskKind(str, Enum):
+    COMPOSITION = "composition"
+    PUBLISH = "publish"
+
+
+class CreativeStatus(str, Enum):
+    PENDING_INPUT = "PENDING_INPUT"
+
+
 class CompositionJobStatus(str, Enum):
     PENDING = "pending"
     PROCESSING = "processing"
@@ -356,6 +365,9 @@ class TaskResponse(BaseModel):
 
     id: int
     account_id: int
+    creative_item_id: Optional[int] = None
+    creative_version_id: Optional[int] = None
+    task_kind: Optional[TaskKind] = None
     video_ids: List[int] = Field(default_factory=list)
     copywriting_ids: List[int] = Field(default_factory=list)
     cover_ids: List[int] = Field(default_factory=list)
@@ -431,9 +443,48 @@ class TaskResponse(BaseModel):
 
 
 class TaskListResponse(BaseModel):
-    """任务列表响应"""
+    """??????"""
     total: int
     items: List[TaskResponse]
+
+
+class PackageRecordResponse(BaseModel):
+    """??????Phase A ?????"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    creative_version_id: int
+    package_status: str
+    manifest_json: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class CreativeVersionSummaryResponse(BaseModel):
+    """?????????Phase A?"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    creative_item_id: int
+    version_no: int
+    version_type: str
+    title: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class CreativeItemResponse(BaseModel):
+    """???????Phase A?"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    creative_no: str
+    title: Optional[str] = None
+    status: CreativeStatus
+    current_version_id: Optional[int] = None
+    latest_version_no: int = 0
+    created_at: datetime
+    updated_at: datetime
 
 
 # ============ CompositionJob Schema (BE-TM-02) ============
@@ -488,13 +539,32 @@ class BatchAssembleRequest(BaseModel):
 # ============ 商品 Schema ============
 
 class ProductCreate(BaseModel):
-    """创建商品 — 仅接受分享文本，后端解析 dewu_url"""
+    """创建商品，请求中必须同时提供商品名称和分享文本。"""
+    name: str = Field(..., min_length=1, max_length=256)
     share_text: str = Field(..., min_length=1, max_length=2048)
+
+    @field_validator("name", "share_text")
+    @classmethod
+    def strip_and_validate_non_blank(cls, v: str) -> str:
+        value = v.strip()
+        if not value:
+            raise ValueError("value cannot be blank")
+        return value
 
 
 class ProductUpdate(BaseModel):
-    """更新商品 — 仅允许修改名称"""
+    """更新商品，目前只允许修改商品名称。"""
     name: Optional[str] = Field(None, min_length=1, max_length=256)
+
+    @field_validator("name")
+    @classmethod
+    def strip_and_validate_name(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        value = v.strip()
+        if not value:
+            raise ValueError("name cannot be blank")
+        return value
 
 
 class ProductResponse(BaseModel):

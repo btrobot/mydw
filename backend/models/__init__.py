@@ -85,6 +85,11 @@ class Task(Base):
     batch_id = Column(String(64), nullable=True, index=True)
     failed_at_status = Column(String(32), nullable=True)
 
+    # Creative Phase A ?????migration 024?
+    creative_item_id = Column(Integer, ForeignKey("creative_items.id"), nullable=True, index=True)
+    creative_version_id = Column(Integer, ForeignKey("creative_versions.id"), nullable=True, index=True)
+    task_kind = Column(String(32), nullable=True, index=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -98,7 +103,88 @@ class Task(Base):
     topics = relationship("Topic", secondary="task_topics", passive_deletes=True)
     composition_jobs = relationship("CompositionJob", back_populates="task", order_by="CompositionJob.id")
     profile = relationship("PublishProfile", foreign_keys=[profile_id])
+    creative_item = relationship("CreativeItem", back_populates="tasks", foreign_keys=[creative_item_id])
+    creative_version = relationship("CreativeVersion", back_populates="tasks", foreign_keys=[creative_version_id])
 
+
+class CreativeItem(Base):
+    """??????Phase A ?????"""
+    __tablename__ = "creative_items"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    creative_no = Column(String(64), unique=True, nullable=False, index=True)
+    title = Column(String(256), nullable=True)
+    status = Column(String(32), nullable=False, default="PENDING_INPUT", index=True)
+    current_version_id = Column(
+        Integer,
+        ForeignKey("creative_versions.id", use_alter=True, name="fk_creative_items_current_version_id"),
+        nullable=True,
+        index=True,
+    )
+    latest_version_no = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    current_version = relationship(
+        "CreativeVersion",
+        foreign_keys=[current_version_id],
+        uselist=False,
+        post_update=True,
+    )
+    versions = relationship(
+        "CreativeVersion",
+        back_populates="creative_item",
+        foreign_keys="CreativeVersion.creative_item_id",
+        order_by="CreativeVersion.version_no",
+    )
+    tasks = relationship("Task", back_populates="creative_item", foreign_keys="Task.creative_item_id")
+
+
+class CreativeVersion(Base):
+    """???????Phase A ?????"""
+    __tablename__ = "creative_versions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    creative_item_id = Column(Integer, ForeignKey("creative_items.id"), nullable=False, index=True)
+    version_no = Column(Integer, nullable=False, default=1)
+    version_type = Column(String(32), nullable=False, default="generated")
+    title = Column(String(256), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (UniqueConstraint("creative_item_id", "version_no"),)
+
+    creative_item = relationship(
+        "CreativeItem",
+        back_populates="versions",
+        foreign_keys=[creative_item_id],
+    )
+    package_records = relationship(
+        "PackageRecord",
+        back_populates="creative_version",
+        foreign_keys="PackageRecord.creative_version_id",
+    )
+    tasks = relationship("Task", back_populates="creative_version", foreign_keys="Task.creative_version_id")
+
+
+class PackageRecord(Base):
+    """??????Phase A ?????"""
+    __tablename__ = "package_records"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    creative_version_id = Column(Integer, ForeignKey("creative_versions.id"), nullable=False, index=True)
+    package_status = Column(String(32), nullable=False, default="pending", index=True)
+    manifest_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (UniqueConstraint("creative_version_id"),)
+
+    creative_version = relationship(
+        "CreativeVersion",
+        back_populates="package_records",
+        foreign_keys=[creative_version_id],
+    )
 
 
 class Product(Base):
@@ -550,6 +636,8 @@ async def init_db():
     await migration_022.run_migration(engine)
     migration_023 = importlib.import_module("migrations.023_remote_auth_sessions")
     await migration_023.run_migration(engine)
+    migration_024 = importlib.import_module("migrations.024_creative_phase_a_skeleton")
+    await migration_024.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

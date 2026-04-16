@@ -62,6 +62,24 @@ const readStatus = () => spawnSync(
   },
 )
 
+const runRegenerate = () => {
+  if (process.platform === 'win32') {
+    return spawnSync(
+      process.env.ComSpec || 'cmd.exe',
+      ['/d', '/s', '/c', `${regenCommand} run generated:regenerate`],
+      {
+        stdio: 'inherit',
+        shell: false,
+      },
+    )
+  }
+
+  return spawnSync(regenCommand, ['run', 'generated:regenerate'], {
+    stdio: 'inherit',
+    shell: false,
+  })
+}
+
 const beforeManifest = buildManifest()
 const beforeStatus = readStatus()
 
@@ -70,10 +88,7 @@ if ((beforeStatus.status ?? 1) !== 0) {
   process.exit(beforeStatus.status ?? 1)
 }
 
-const regenerate = spawnSync(regenCommand, ['run', 'generated:regenerate'], {
-  stdio: 'inherit',
-  shell: false,
-})
+const regenerate = runRegenerate()
 
 if ((regenerate.status ?? 1) !== 0) {
   process.exit(regenerate.status ?? 1)

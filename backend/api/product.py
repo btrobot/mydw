@@ -5,8 +5,9 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, delete
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
+from sqlalchemy.exc import IntegrityError
 from loguru import logger
 
 from core.auth_dependencies import ACTIVE_ROUTE_DEPENDENCIES, GRACE_READONLY_ROUTE_DEPENDENCIES
@@ -22,13 +23,20 @@ from utils.url_parser import extract_dewu_url
 router = APIRouter(tags=["商品管理"])
 
 
+def _raise_product_conflict_from_integrity_error(error: IntegrityError) -> None:
+    raw = str(getattr(error, "orig", error))
+    if "products.name" in raw or "ix_products_name" in raw:
+        raise HTTPException(status_code=409, detail="商品名称已存在") from error
+    if "products.dewu_url" in raw or "uix_products_dewu_url" in raw:
+        raise HTTPException(status_code=409, detail="该得物链接已存在") from error
+    raise error
+
+
 def _build_detail_response(product: Product) -> ProductDetailResponse:
     """从已 eager-load 的 Product ORM 对象构建 ProductDetailResponse。"""
     videos = list(product.videos)
-    # 封面：优先从 product.covers（直接 FK），兼容旧数据从 video.covers 收集
     direct_covers = list(product.covers)
     video_covers = [cover for video in videos for cover in video.covers]
-    # 合并去重（以 id 为键）
     seen_ids: set[int] = set()
     all_covers: list[Cover] = []
     for c in direct_covers + video_covers:
@@ -76,7 +84,7 @@ async def list_products(
     name: Optional[str] = Query(None, description="按名称模糊搜索"),
     db: AsyncSession = Depends(get_db),
 ) -> ProductListResponse:
-    """获取商品列表（支持分页和名称搜索）"""
+    """获取商品列表，支持分页和名称搜索。"""
     query = select(Product)
     count_query = select(func.count()).select_from(Product)
 
@@ -100,7 +108,7 @@ async def get_product(
     product_id: int,
     db: AsyncSession = Depends(get_db),
 ) -> ProductDetailResponse:
-    """获取单个商品及其全部关联素材（videos、covers、copywritings、topics）"""
+    """获取单个商品及其全部关联素材。"""
     product = await _load_product_detail(db, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="商品不存在")
@@ -112,27 +120,26 @@ async def create_product(
     data: ProductCreate,
     db: AsyncSession = Depends(get_db),
 ) -> ProductDetailResponse:
-    """创建商品并立即触发素材解析（原子操作）。
-
-    流程：
-    1. 从分享文本提取 dewu_url
-    2. 检查 dewu_url 唯一性
-    3. 创建 Product（parse_status='parsing'）
-    4. 调用 parse_and_create_materials()
-    5. 解析失败时设 parse_status='error'，仍返回商品（可重试）
-    6. 返回 ProductDetailResponse
-    """
+    """创建商品并立即触发素材解析。"""
     dewu_url = extract_dewu_url(data.share_text)
     if not dewu_url:
         raise HTTPException(status_code=422, detail="未找到有效的得物链接")
+
+    existing_name = await db.execute(select(Product).where(Product.name == data.name))
+    if existing_name.scalars().first():
+        raise HTTPException(status_code=409, detail="商品名称已存在")
 
     existing = await db.execute(select(Product).where(Product.dewu_url == dewu_url))
     if existing.scalars().first():
         raise HTTPException(status_code=409, detail="该得物链接已存在")
 
-    product = Product(name=dewu_url, dewu_url=dewu_url, parse_status="parsing")
+    product = Product(name=data.name, dewu_url=dewu_url, parse_status="parsing")
     db.add(product)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as error:
+        await db.rollback()
+        _raise_product_conflict_from_integrity_error(error)
     await db.refresh(product)
     logger.info("商品创建成功，开始解析: product_id={}, dewu_url={}", product.id, dewu_url)
 
@@ -157,16 +164,25 @@ async def update_product(
     data: ProductUpdate,
     db: AsyncSession = Depends(get_db),
 ) -> ProductResponse:
-    """更新商品名称"""
+    """更新商品名称。"""
     result = await db.execute(select(Product).where(Product.id == product_id))
     product = result.scalars().first()
     if not product:
         raise HTTPException(status_code=404, detail="商品不存在")
 
     if data.name is not None:
+        existing_name = await db.execute(
+            select(Product).where(Product.name == data.name, Product.id != product_id)
+        )
+        if existing_name.scalars().first():
+            raise HTTPException(status_code=409, detail="商品名称已存在")
         product.name = data.name
 
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as error:
+        await db.rollback()
+        _raise_product_conflict_from_integrity_error(error)
     await db.refresh(product)
     logger.info("商品更新成功: product_id={}", product_id)
     return product
@@ -177,7 +193,7 @@ async def delete_product(
     product_id: int,
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """删除商品，同时解除关联素材（保留素材记录，product_id 置 NULL）"""
+    """删除商品，并解除已有素材关联，将 product_id 置为 NULL。"""
     from sqlalchemy import update as sa_update
 
     result = await db.execute(select(Product).where(Product.id == product_id))
@@ -185,11 +201,9 @@ async def delete_product(
     if not product:
         raise HTTPException(status_code=404, detail="商品不存在")
 
-    # 解除封面直接 FK
     await db.execute(
         sa_update(Cover).where(Cover.product_id == product_id).values(product_id=None)
     )
-    # 解除视频关联封面的 product_id（通过 video 间接关联的封面）
     video_ids_result = await db.execute(
         select(Video.id).where(Video.product_id == product_id)
     )
@@ -198,14 +212,12 @@ async def delete_product(
         await db.execute(
             sa_update(Cover).where(Cover.video_id.in_(video_ids)).values(product_id=None)
         )
-    # 解除视频和文案关联
     await db.execute(
         sa_update(Video).where(Video.product_id == product_id).values(product_id=None)
     )
     await db.execute(
         sa_update(Copywriting).where(Copywriting.product_id == product_id).values(product_id=None)
     )
-    # product_topics 由 FK ondelete=CASCADE 自动清理
     await db.delete(product)
     await db.commit()
     logger.info("商品删除成功: product_id={}", product_id)
@@ -220,7 +232,7 @@ async def parse_product_materials(
     product_id: int,
     db: AsyncSession = Depends(get_db),
 ) -> ProductDetailResponse:
-    """重新解析商品得物页面素材（封面、视频、标题、话题），覆盖更新已有素材记录"""
+    """重新解析商品得物页面素材，并覆盖更新已有素材记录。"""
     result = await db.execute(select(Product).where(Product.id == product_id))
     product = result.scalars().first()
     if not product:
@@ -258,18 +270,16 @@ async def get_product_covers(
     product_id: int,
     db: AsyncSession = Depends(get_db),
 ) -> list[CoverResponse]:
-    """获取商品关联的所有封面"""
+    """获取商品关联的所有封面。"""
     product_result = await db.execute(select(Product).where(Product.id == product_id))
     if not product_result.scalars().first():
         raise HTTPException(status_code=404, detail="商品不存在")
 
-    # 直接 FK 封面
     direct_result = await db.execute(
         select(Cover).where(Cover.product_id == product_id)
     )
     direct_covers = direct_result.scalars().all()
 
-    # 通过 video 关联的封面（兼容旧数据）
     video_ids_result = await db.execute(
         select(Video.id).where(Video.product_id == product_id)
     )
@@ -300,7 +310,7 @@ async def get_product_topics(
     product_id: int,
     db: AsyncSession = Depends(get_db),
 ) -> list[TopicResponse]:
-    """获取商品关联的话题（通过 product_topics 表）"""
+    """获取商品关联的话题。"""
     product_result = await db.execute(select(Product).where(Product.id == product_id))
     if not product_result.scalars().first():
         raise HTTPException(status_code=404, detail="商品不存在")
@@ -322,7 +332,7 @@ async def get_product_materials(
     product_id: int,
     db: AsyncSession = Depends(get_db),
 ) -> ProductMaterialsResponse:
-    """获取商品关联的所有素材（用于素材篮快速导入）"""
+    """获取商品关联的所有素材，用于素材篮导入。"""
     product = await _load_product_detail(db, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="商品不存在")
