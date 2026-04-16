@@ -1,14 +1,15 @@
-import { useState } from 'react'
-import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Layout, Menu, Typography, theme } from 'antd'
 import {
+  AppstoreOutlined,
   DashboardOutlined,
-  UserOutlined,
   FileTextOutlined,
   FolderOutlined,
   ScissorOutlined,
   SettingOutlined,
+  UserOutlined,
 } from '@ant-design/icons'
+import { Layout, Menu, Typography, theme } from 'antd'
+import { useState } from 'react'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { AuthSessionHeader } from '@/features/auth'
 
@@ -18,6 +19,14 @@ const { Title } = Typography
 const items = [
   { key: '/dashboard', icon: <DashboardOutlined />, label: '数据看板' },
   { key: '/account', icon: <UserOutlined />, label: '账号管理' },
+  {
+    key: 'creative-group',
+    icon: <AppstoreOutlined />,
+    label: '作品工作台',
+    children: [
+      { key: '/creative/workbench', label: '作品列表' },
+    ],
+  },
   {
     key: 'task-group',
     icon: <FileTextOutlined />,
@@ -40,7 +49,7 @@ const items = [
       { key: '/material/cover', label: '封面管理' },
       { key: '/material/audio', label: '音频管理' },
       { key: '/material/topic', label: '话题管理' },
-      { type: 'divider' },
+      { type: 'divider' as const },
       { key: '/material/product', label: '商品管理' },
       { key: '/material/topic-group', label: '话题组管理' },
     ],
@@ -58,6 +67,7 @@ const items = [
 ]
 
 const subMenuKeys = [
+  '/creative/workbench',
   '/material/overview',
   '/material/video',
   '/material/copywriting',
@@ -73,6 +83,8 @@ const subMenuKeys = [
   '/settings/auth-admin',
 ]
 
+const rootMenuKeys = new Set(['material-group', 'creative-group', 'settings-group', 'task-group'])
+
 export default function LayoutComponent() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -81,16 +93,22 @@ export default function LayoutComponent() {
   } = theme.useToken()
 
   const isMaterialRoute = location.pathname.startsWith('/material')
+  const isCreativeRoute = location.pathname.startsWith('/creative')
   const isSettingsRoute = location.pathname.startsWith('/settings')
-  const isTaskRoute = location.pathname.startsWith('/task') || ['/schedule-config', '/profile-management'].includes(location.pathname)
+  const isTaskRoute =
+    location.pathname.startsWith('/task')
+    || ['/schedule-config', '/profile-management'].includes(location.pathname)
+
   const initialOpenKeys = [
     ...(isMaterialRoute ? ['material-group'] : []),
+    ...(isCreativeRoute ? ['creative-group'] : []),
     ...(isSettingsRoute ? ['settings-group'] : []),
     ...(isTaskRoute ? ['task-group'] : []),
   ]
   const [openKeys, setOpenKeys] = useState<string[]>(initialOpenKeys)
 
-  const selectedKey = subMenuKeys.find((k) => location.pathname === k)
+  const selectedKey = subMenuKeys.find((key) => location.pathname === key)
+    ?? (isCreativeRoute ? '/creative/workbench' : undefined)
     ?? location.pathname
 
   return (
@@ -109,10 +127,12 @@ export default function LayoutComponent() {
             mode="inline"
             selectedKeys={[selectedKey]}
             openKeys={openKeys}
-            onOpenChange={setOpenKeys}
+            onOpenChange={(keys) => setOpenKeys(keys as string[])}
             items={items}
             onClick={({ key }) => {
-              if (key !== 'material-group' && key !== 'settings-group' && key !== 'task-group') navigate(key)
+              if (!rootMenuKeys.has(key)) {
+                navigate(key)
+              }
             }}
             style={{ height: '100%', borderRight: 0 }}
           />
