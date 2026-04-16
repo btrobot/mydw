@@ -1134,6 +1134,114 @@ export type CoverResponse = {
 };
 
 /**
+ * CreativeCurrentVersionResponse
+ *
+ * Current-version projection for the Creative detail endpoint.
+ */
+export type CreativeCurrentVersionResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Version No
+     */
+    version_no: number;
+    /**
+     * Title
+     */
+    title?: string | null;
+    /**
+     * Package Record Id
+     */
+    package_record_id?: number | null;
+};
+
+/**
+ * CreativeDetailResponse
+ *
+ * Creative detail response for the Phase A workbench/detail flow.
+ */
+export type CreativeDetailResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Creative No
+     */
+    creative_no: string;
+    /**
+     * Title
+     */
+    title?: string | null;
+    status: CreativeStatus;
+    /**
+     * Current Version Id
+     */
+    current_version_id?: number | null;
+    current_version?: CreativeCurrentVersionResponse | null;
+    /**
+     * Linked Task Ids
+     */
+    linked_task_ids?: Array<number>;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * CreativeStatus
+ */
+export type CreativeStatus = 'PENDING_INPUT';
+
+/**
+ * CreativeWorkbenchItemResponse
+ *
+ * Creative workbench list item for Phase A.
+ */
+export type CreativeWorkbenchItemResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Creative No
+     */
+    creative_no: string;
+    /**
+     * Title
+     */
+    title?: string | null;
+    status: CreativeStatus;
+    /**
+     * Current Version Id
+     */
+    current_version_id?: number | null;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * CreativeWorkbenchListResponse
+ *
+ * Paginated Creative workbench list response for Phase A.
+ */
+export type CreativeWorkbenchListResponse = {
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Items
+     */
+    items: Array<CreativeWorkbenchItemResponse>;
+};
+
+/**
  * DetectHighlightsResponse
  */
 export type DetectHighlightsResponse = {
@@ -6970,6 +7078,70 @@ export type SetDefaultProfileApiProfilesProfileIdSetDefaultPutResponses = {
 };
 
 export type SetDefaultProfileApiProfilesProfileIdSetDefaultPutResponse = SetDefaultProfileApiProfilesProfileIdSetDefaultPutResponses[keyof SetDefaultProfileApiProfilesProfileIdSetDefaultPutResponses];
+
+export type ListCreativesApiCreativesGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/creatives';
+};
+
+export type ListCreativesApiCreativesGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListCreativesApiCreativesGetError = ListCreativesApiCreativesGetErrors[keyof ListCreativesApiCreativesGetErrors];
+
+export type ListCreativesApiCreativesGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: CreativeWorkbenchListResponse;
+};
+
+export type ListCreativesApiCreativesGetResponse = ListCreativesApiCreativesGetResponses[keyof ListCreativesApiCreativesGetResponses];
+
+export type GetCreativeApiCreativesCreativeIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Creative Id
+         */
+        creative_id: number;
+    };
+    query?: never;
+    url: '/api/creatives/{creative_id}';
+};
+
+export type GetCreativeApiCreativesCreativeIdGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetCreativeApiCreativesCreativeIdGetError = GetCreativeApiCreativesCreativeIdGetErrors[keyof GetCreativeApiCreativesCreativeIdGetErrors];
+
+export type GetCreativeApiCreativesCreativeIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: CreativeDetailResponse;
+};
+
+export type GetCreativeApiCreativesCreativeIdGetResponse = GetCreativeApiCreativesCreativeIdGetResponses[keyof GetCreativeApiCreativesCreativeIdGetResponses];
 
 export type RootGetData = {
     body?: never;
