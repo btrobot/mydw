@@ -6,6 +6,7 @@ from fastapi.openapi.utils import get_openapi
 
 from app.api.admin import router as admin_router
 from app.api.auth import router as auth_router
+from app.api.self_service import router as self_service_router
 from app.core.config import get_settings
 from app.core.observability import RequestContextMiddleware
 
@@ -27,6 +28,7 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(RequestContextMiddleware)
     app.include_router(auth_router)
+    app.include_router(self_service_router)
     app.include_router(admin_router)
 
     def custom_openapi() -> dict:

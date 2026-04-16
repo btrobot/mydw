@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.security import verify_password
@@ -203,6 +203,35 @@ class AuthRepository:
             .options(joinedload(EndUserSession.user), joinedload(EndUserSession.device))
             .where(EndUserSession.access_token_hash == access_token_hash)
         ).scalars().first()
+
+    def list_audit_logs_for_user(
+        self,
+        user_id: int,
+        *,
+        event_types: set[str] | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[AuditLog]:
+        query = select(AuditLog).where(AuditLog.target_user_id == str(user_id))
+        if event_types:
+            query = query.where(AuditLog.event_type.in_(sorted(event_types)))
+        query = query.order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
+        if offset:
+            query = query.offset(offset)
+        if limit is not None:
+            query = query.limit(limit)
+        return list(self.db.execute(query).scalars().all())
+
+    def count_audit_logs_for_user(
+        self,
+        user_id: int,
+        *,
+        event_types: set[str] | None = None,
+    ) -> int:
+        query = select(func.count()).select_from(AuditLog).where(AuditLog.target_user_id == str(user_id))
+        if event_types:
+            query = query.where(AuditLog.event_type.in_(sorted(event_types)))
+        return self.db.execute(query).scalar_one()
 
     def touch_device(self, device: Device, *, client_version: str | None = None) -> None:
         now = datetime.utcnow()

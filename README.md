@@ -1,7 +1,7 @@
 # 得物掘金工具
 
 **版本**: 0.2.0
-**技术栈**: Electron + React + Vite + FastAPI + Playwright + FFmpeg
+**技术栈**: Electron + React + Vite + FastAPI + Patchright/Playwright + FFmpeg
 
 得物平台自动化视频发布系统，支持多账号管理、智能素材剪辑、任务定时发布。
 
@@ -47,7 +47,7 @@ npm install
 # 后端依赖
 cd ../backend
 pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
-python -m playwright install chromium
+python -m patchright install chromium
 ```
 
 ### 启动服务
@@ -65,6 +65,39 @@ cd backend
 cd frontend
 npm run dev
 ```
+
+### 推荐：3 个脚本启动 4 个服务
+
+```powershell
+cd E:\ais\mydw
+
+.\scripts\start-backend.bat
+.\scripts\start-frontend.bat
+.\scripts\start-remote.bat
+```
+
+脚本说明：
+
+- `scripts\start-backend.bat`
+  - 启动本地 `backend`
+- `scripts\start-frontend.bat`
+  - 一键启动本地前端
+  - 若 `backend:8000` 未启动，会自动先启动后端
+- `scripts\start-remote.bat`
+  - 一键启动 `remote-backend + remote-admin`
+  - 会自动 build `remote-admin` 并 bootstrap admin 账号
+
+配套辅助脚本：
+
+```powershell
+.\scripts\status-all.bat
+.\scripts\stop-all.bat
+```
+
+- `scripts\status-all.bat`
+  - 查看 4 个服务当前状态、端口和访问地址
+- `scripts\stop-all.bat`
+  - 按端口停止 `backend / frontend / remote-backend / remote-admin`
 
 > Electron 运行时不再应直接依赖 Python venv / exe 路径布局。  
 > 详见 `docs/startup-protocol.md`。

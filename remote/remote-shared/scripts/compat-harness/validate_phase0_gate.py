@@ -27,6 +27,11 @@ def validate_openapi() -> dict:
         "/refresh",
         "/logout",
         "/me",
+        "/self/me",
+        "/self/devices",
+        "/self/sessions",
+        "/self/activity",
+        "/self/sessions/{session_id}/revoke",
         "/admin/users",
         "/admin/users/{user_id}",
         "/admin/devices",
@@ -48,10 +53,41 @@ def validate_fixtures(spec: dict) -> None:
         "refresh-success.json": schemas["AuthSuccessResponse"]["required"],
         "logout-success.json": schemas["LogoutResponse"]["required"],
         "me-success.json": schemas["MeResponse"]["required"],
+        "self-me-success.json": schemas["SelfMeResponse"]["required"],
+        "self-devices-success.json": schemas["SelfDeviceListResponse"]["required"],
+        "self-sessions-success.json": schemas["SelfSessionListResponse"]["required"],
+        "self-activity-success.json": schemas["SelfActivityListResponse"]["required"],
+        "self-session-revoke-success.json": schemas["SelfSessionRevokeResponse"]["required"],
     }
     for filename, required in fixture_map.items():
         payload = json.loads((FIXTURE_ROOT / filename).read_text(encoding="utf-8"))
         assert_required_keys(payload, required, filename)
+
+    self_me = json.loads((FIXTURE_ROOT / "self-me-success.json").read_text(encoding="utf-8"))
+    if "tenant_id" in self_me["user"]:
+        raise AssertionError("self-me-success.json must not expose tenant_id")
+
+    self_activity = json.loads((FIXTURE_ROOT / "self-activity-success.json").read_text(encoding="utf-8"))
+    allowed_event_types = {
+        "login_succeeded",
+        "login_failed",
+        "session_refreshed",
+        "session_revoked",
+        "device_bound",
+        "device_unbound",
+    }
+    for event in self_activity["items"]:
+        assert_required_keys(event, ["id", "event_type", "created_at", "summary"], "self-activity event")
+        if event["event_type"] not in allowed_event_types:
+            raise AssertionError(f"self-activity-success.json uses unsupported event_type {event['event_type']}")
+
+    self_revoke = json.loads((FIXTURE_ROOT / "self-session-revoke-success.json").read_text(encoding="utf-8"))
+    if self_revoke["success"] is not True:
+        raise AssertionError("self-session-revoke-success.json must freeze success=true")
+    if self_revoke["auth_state"] != "revoked":
+        raise AssertionError("self-session-revoke-success.json must freeze auth_state=revoked")
+    if self_revoke["already_revoked"] is not False:
+        raise AssertionError("self-session-revoke-success.json must freeze already_revoked=false for the first revoke")
 
     error_codes = json.loads(
         (ARTIFACT_ROOT / "scripts" / "compat-harness" / "error-codes.json").read_text(encoding="utf-8")

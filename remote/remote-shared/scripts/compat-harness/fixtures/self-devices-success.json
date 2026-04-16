@@ -1,0 +1,13 @@
+{
+  "items": [
+    {
+      "device_id": "device_abc",
+      "device_status": "bound",
+      "client_version": "0.2.0",
+      "first_bound_at": "2026-04-01T10:00:00Z",
+      "last_seen_at": "2026-04-15T12:00:00Z",
+      "is_current": true
+    }
+  ],
+  "total": 1
+}

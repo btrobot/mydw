@@ -14,9 +14,10 @@ import json
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import Account, Video, Copywriting, Product, Audio, Cover, Topic, PublishProfile
+from models import Account, Video, Copywriting, Product, Audio, Cover, Topic, PublishProfile, TaskVideo
 
 
 # ============ 辅助函数 ============
@@ -224,6 +225,33 @@ async def test_create_tasks_with_composition_profile_start_in_draft(
     assert len(tasks) == 1
     assert tasks[0]["video_ids"] == [vid1.id, vid2.id]
     assert tasks[0]["status"] == "draft"
+
+
+@pytest.mark.asyncio
+async def test_delete_task_removes_task_video_relations(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    acct = await _create_account(db_session, "delete_rel_a1")
+    vid = await _create_video(db_session, "delete_rel_v1")
+    await db_session.commit()
+
+    create_resp = await client.post(
+        "/api/tasks/",
+        json={
+            "video_ids": [vid.id],
+            "account_ids": [acct.id],
+        },
+    )
+    assert create_resp.status_code == 201
+    task_id = create_resp.json()[0]["id"]
+
+    delete_resp = await client.delete(f"/api/tasks/{task_id}")
+    assert delete_resp.status_code == 204
+
+    relation_count = await db_session.execute(
+        select(func.count(TaskVideo.id)).where(TaskVideo.task_id == task_id)
+    )
+    assert relation_count.scalar() == 0
 
 
 @pytest.mark.asyncio

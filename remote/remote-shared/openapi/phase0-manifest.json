@@ -2,7 +2,7 @@
   "version": "phase0-v1",
   "openapi": {
     "file": "remote-auth-v1.yaml",
-    "sha256": "50348cc7b35d019840f2dd82ff954e4ed5ee584bc0e49cb3706f7d5e21aee07a"
+    "sha256": "cc66e7917d5846a38713901db43b9745bad211617e5f230e5448accb214b779e"
   },
   "docs": [
     {
@@ -15,7 +15,7 @@
     },
     {
       "file": "auth-domain-boundaries.md",
-      "sha256": "b98751f0f53ab9f160d6944c74530409bf6bc05e3265136364553e5e8ff27009"
+      "sha256": "317837ab3530190458891c820d226042b794c6f1d33a9ffaed119cd73ed0ae76"
     },
     {
       "file": "compatibility-gate.md",
@@ -31,11 +31,11 @@
     },
     {
       "file": "end-user-auth-api-contract-v1.md",
-      "sha256": "0d04a2b91fdbecf75e4adc112c0552fb8d1ac3cd4cade17ca6b77f7125af05e0"
+      "sha256": "3ce7989b29b6ce4e21a97fa6d68bd65da40f6be72b19292941fe10c8877c3c0b"
     },
     {
       "file": "error-code-matrix.md",
-      "sha256": "1268d8c3dfc5b99fc8dd88b01c3c30c55a45d6beb38507d9712150878458b57d"
+      "sha256": "adfb65080688b0f0278397dca36c7e1a450b48f5cf435b3b57a3568050ac98ef"
     },
     {
       "file": "offline-grace-boundary.md",
@@ -55,23 +55,51 @@
     },
     {
       "file": "phase4-release-gate.md",
-      "sha256": "92afb89a10df08f40dd9503da9b6c8825a83e3d70f5edbf8fc1ceea83db6765f"
+      "sha256": "7b49528366f5067cc86a560edb1bac727a1bde3e41525a12081f71f6df68edc1"
+    },
+    {
+      "file": "release-governance-tabletop-record-v1.md",
+      "sha256": "60caf6f0f65e16a2ecb2aa1d6deaca3f6bf292fedd7bf40f376444f263b8774d"
+    },
+    {
+      "file": "remote-full-system-deployment-topology-v1.md",
+      "sha256": "951ebc504f360fc60fce189f6ef854e0440c59dec84216d00aa7759f0a8514ea"
+    },
+    {
+      "file": "remote-full-system-env-config-matrix-v1.md",
+      "sha256": "516c5148b8c35d03572fac85e4eb195f80b949911d9002ff2c53caa7ab7af576"
+    },
+    {
+      "file": "remote-full-system-operating-model-v1.md",
+      "sha256": "78d7ea5b3ce3d31d1455871f7098ea535bdf7f1fc5a1e99dc4a026761b13a82c"
+    },
+    {
+      "file": "restore-recovery-runbook.md",
+      "sha256": "a1cb45e56b09f851ca59afc69011331f8d78e09d3ead2c0668fb8890e4f53b85"
     },
     {
       "file": "rollback-runbook.md",
-      "sha256": "e3b8baf05628e8e0a1dbfd00c69808b28858ec4a90b641b1450c8830dcaff24f"
+      "sha256": "bed170fa5ef45607ea37a6a51849de2a404a86536adf678b906503a27b0d4960"
     },
     {
       "file": "schema-freeze-migration-policy.md",
       "sha256": "fce89904bf9941b7e7e5928327353164ef7767924346ae90393835c897953c4a"
     },
     {
+      "file": "self-service-browser-contract-v1.md",
+      "sha256": "9c96352029df4fa4749512543a5adfe72ad7613beaeaea84c5acc6b58d54c7d4"
+    },
+    {
       "file": "staging-deploy-checklist.md",
       "sha256": "e8fdb6700be2c8a3bcb1c61bb14180c46d9def6bd5c6b928e43f9e2ac666be9e"
     },
     {
+      "file": "staging-env-dry-run-artifact-v1.md",
+      "sha256": "e85b784fd07b4720fa2957f8d62ce07ca2571cf16bb71e4608a10c852b742f0b"
+    },
+    {
       "file": "staging-promotion-checklist.md",
-      "sha256": "7dba6e90dc2b73a8f650b4e5e8e1708f5551220633ebf637ce3e6d8c485f82c1"
+      "sha256": "5e45a375551ba995be09d94400f24658f2bc03a25eaa8d9d5a89abbb9e1346e3"
     },
     {
       "file": "support-runbook.md",
@@ -100,6 +128,10 @@
       "sha256": "59d9f8e544d05adc7e8bb44b30eab735f1a013b7fc0e80d17431669cbcb7989f"
     },
     {
+      "file": "error-not-found.json",
+      "sha256": "a0609e0be6688efc3b1b35954169fdc5221158487427e8a2c2b6c8024c0c4e22"
+    },
+    {
       "file": "error-revoked.json",
       "sha256": "9c787428735466c2c62e7f9a23412fec8a13096e2cb06016bc5f154f52a75315"
     },
@@ -122,6 +154,26 @@
     {
       "file": "refresh-success.json",
       "sha256": "e387c0e6078daa197d61e59d8efbcb1b6f06fa5b2634dc208ac70ddda8caf4cc"
+    },
+    {
+      "file": "self-activity-success.json",
+      "sha256": "4e62505a6b0ff45d070da4ecd6dac551dbf5ded73e682f56fc3cd55d68412c1e"
+    },
+    {
+      "file": "self-devices-success.json",
+      "sha256": "6996b4a8278393a5006bcd61f2b5a1ed635c28bdb471d80bbeb938eaaa9a45a2"
+    },
+    {
+      "file": "self-me-success.json",
+      "sha256": "f90a98659af9919138f9dc3806638067eaf3dbae26cb21be5fd7375aa14133a8"
+    },
+    {
+      "file": "self-session-revoke-success.json",
+      "sha256": "de117931a735c99909c4eeae0e9e10bafe6646ef7587988141efabdadba5611d"
+    },
+    {
+      "file": "self-sessions-success.json",
+      "sha256": "f12be627bd32f7966e0c2ba4e70a41af97cf0ba9bdca25acc50c1746e50d5000"
     }
   ],
   "error_code_matrix": {

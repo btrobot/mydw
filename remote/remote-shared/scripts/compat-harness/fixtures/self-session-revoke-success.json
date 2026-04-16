@@ -1,0 +1,6 @@
+{
+  "success": true,
+  "session_id": "sess_123",
+  "auth_state": "revoked",
+  "already_revoked": false
+}

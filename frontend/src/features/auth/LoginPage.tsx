@@ -7,7 +7,7 @@ import AuthErrorMessage from './AuthErrorMessage'
 import { loginAuth } from './api'
 import { useAuth } from './AuthProvider'
 import { getAuthErrorDescriptor, getAuthStateDescriptor, type AuthErrorDescriptor } from './authErrorHandler'
-import { getClientVersion, getOrCreateDeviceId } from './device'
+import { getClientVersion, getOrCreateDeviceId, setStoredDeviceId } from './device'
 import { useAuthStatus } from './useAuthStatus'
 
 interface LoginFormValues {
@@ -19,7 +19,7 @@ export default function LoginPage() {
   const [form] = Form.useForm<LoginFormValues>()
   const navigate = useNavigate()
   const { session, setSession } = useAuth()
-  const [deviceId] = useState(() => getOrCreateDeviceId())
+  const [deviceId, setDeviceId] = useState(() => getOrCreateDeviceId())
   const [clientVersion, setClientVersion] = useState('web-dev')
   const [submitError, setSubmitError] = useState<AuthErrorDescriptor | null>(null)
   const authStatusQuery = useAuthStatus(Boolean(session))
@@ -35,6 +35,15 @@ export default function LoginPage() {
       mounted = false
     }
   }, [])
+
+  useEffect(() => {
+    const persistedDeviceId = authStatusQuery.data?.device_id ?? session?.device_id
+    if (!persistedDeviceId || persistedDeviceId === deviceId) {
+      return
+    }
+    setStoredDeviceId(persistedDeviceId)
+    setDeviceId(persistedDeviceId)
+  }, [authStatusQuery.data?.device_id, deviceId, session?.device_id])
 
   const loginMutation = useMutation({
     mutationFn: async (values: LoginFormValues) =>

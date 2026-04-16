@@ -40,3 +40,10 @@ Freeze the first release error semantics for the remote auth system.
 - `forbidden` may include `details.required_permission` for admin authorization failures.
 - `not_found` may include a target identifier such as `user_id`, `device_id`, or `session_id`.
 - These `details` keys are additive diagnostics; callers must not depend on every key being present in every response.
+
+## Self-service details semantics
+
+- self-service routes reuse the same `v1` `error_code` matrix; B0 does not add a
+  new self-service-specific code
+- `422` validation failures remain FastAPI validation payloads, not a new
+  `error_code`

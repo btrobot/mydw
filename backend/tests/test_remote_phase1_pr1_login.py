@@ -79,6 +79,13 @@ def test_login_minimum_version_required_path() -> None:
     assert response.json()['error_code'] == 'minimum_version_required'
 
 
+def test_login_non_semver_version_returns_minimum_version_required_instead_of_500() -> None:
+    client = get_client()
+    response = client.post('/login', json={'username': 'alice', 'password': 'secret', 'device_id': 'device_abc', 'client_version': 'web-dev'})
+    assert response.status_code == 403
+    assert response.json()['error_code'] == 'minimum_version_required'
+
+
 def test_login_disabled_and_revoked_paths() -> None:
     with session_scope() as session:
         user = session.query(User).filter_by(username='alice').one_or_none()

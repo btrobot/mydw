@@ -1,4 +1,5 @@
 const DEVICE_ID_STORAGE_KEY = 'mydw.auth.device_id'
+const DEFAULT_CLIENT_VERSION = '0.2.0'
 
 export const getOrCreateDeviceId = () => {
   const existing = window.localStorage.getItem(DEVICE_ID_STORAGE_KEY)
@@ -11,6 +12,10 @@ export const getOrCreateDeviceId = () => {
   return created
 }
 
+export const setStoredDeviceId = (deviceId: string) => {
+  window.localStorage.setItem(DEVICE_ID_STORAGE_KEY, deviceId)
+}
+
 export const getClientVersion = async (): Promise<string> => {
   try {
     if (window.electronAPI?.getVersion) {
@@ -19,5 +24,5 @@ export const getClientVersion = async (): Promise<string> => {
   } catch {
     // ignore and fall back
   }
-  return 'web-dev'
+  return DEFAULT_CLIENT_VERSION
 }

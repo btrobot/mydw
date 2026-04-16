@@ -1,28 +1,36 @@
 @echo off
+setlocal
 chcp 65001 >nul
 set PYTHONIOENCODING=utf-8
 
-echo 得物掘金工具 - 后端服务
-echo ========================
 cd /d "%~dp0"
 
-REM 激活虚拟环境
-if exist "venv\Scripts\activate.bat" (
-    call venv\Scripts\activate.bat
+if defined BACKEND_HOST (
+  set "HOST=%BACKEND_HOST%"
+) else (
+  set "HOST=127.0.0.1"
 )
 
-REM 创建必要目录
+if defined BACKEND_PORT (
+  set "PORT=%BACKEND_PORT%"
+) else (
+  set "PORT=8000"
+)
+
+if exist "venv\Scripts\python.exe" (
+  set "PYTHON_EXE=%~dp0venv\Scripts\python.exe"
+) else (
+  set "PYTHON_EXE=python"
+)
+
 if not exist "data" mkdir data
 if not exist "logs" mkdir logs
 
-set "BACKEND_HOST=127.0.0.1"
-set "BACKEND_PORT=8000"
+echo Backend service
+echo ========================
+echo Python: %PYTHON_EXE%
+echo Host:   %HOST%
+echo Port:   %PORT%
+echo.
 
-REM 统一走 launcher 兼容入口
-set "LAUNCHER=%~dp0..\frontend\electron\launchers\start-backend-dev.bat"
-if exist "%LAUNCHER%" (
-    call "%LAUNCHER%" "%~dp0" %BACKEND_HOST% %BACKEND_PORT%
-) else (
-    echo [警告] 未找到 launcher，回退到直接 uvicorn
-    uvicorn main:app --reload --port %BACKEND_PORT% --host %BACKEND_HOST%
-)
+"%PYTHON_EXE%" -m uvicorn main:app --host %HOST% --port %PORT%

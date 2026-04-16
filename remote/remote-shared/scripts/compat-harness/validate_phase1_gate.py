@@ -52,6 +52,11 @@ def validate_openapi_drift(source_spec: dict, runtime_spec: dict) -> None:
         "/refresh",
         "/logout",
         "/me",
+        "/self/me",
+        "/self/devices",
+        "/self/sessions",
+        "/self/activity",
+        "/self/sessions/{session_id}/revoke",
         "/admin/login",
         "/admin/session",
     }
@@ -73,6 +78,15 @@ def validate_openapi_drift(source_spec: dict, runtime_spec: dict) -> None:
         "AdminIdentity",
         "AdminLoginResponse",
         "AdminCurrentSessionResponse",
+        "SelfUserIdentity",
+        "SelfMeResponse",
+        "SelfDeviceResponse",
+        "SelfDeviceListResponse",
+        "SelfSessionResponse",
+        "SelfSessionListResponse",
+        "SelfActivityResponse",
+        "SelfActivityListResponse",
+        "SelfSessionRevokeResponse",
     ]
     for name in schema_names:
         source_schema = source_spec["components"]["schemas"][name]
@@ -100,6 +114,11 @@ def validate_openapi_drift(source_spec: dict, runtime_spec: dict) -> None:
         "/refresh": ["200", "401", "403", "429"],
         "/logout": ["200", "401", "403"],
         "/me": ["200", "401", "403"],
+        "/self/me": ["200", "401", "403"],
+        "/self/devices": ["200", "401", "403"],
+        "/self/sessions": ["200", "401", "403"],
+        "/self/activity": ["200", "401", "403"],
+        "/self/sessions/{session_id}/revoke": ["200", "401", "403", "404"],
         "/admin/login": ["200", "401", "403", "429"],
         "/admin/session": ["200", "401", "403"],
     }
@@ -117,7 +136,7 @@ def validate_openapi_drift(source_spec: dict, runtime_spec: dict) -> None:
         if sorted(response_codes) != runtime_codes:
             raise AssertionError(f"runtime OpenAPI response codes drifted for {path}: {runtime_codes}")
 
-    secure_paths = ["/me", "/admin/session"]
+    secure_paths = ["/me", "/self/me", "/self/devices", "/self/sessions", "/self/activity", "/self/sessions/{session_id}/revoke", "/admin/session"]
     for path in secure_paths:
         operation = next(iter(source_spec["paths"][path]))
         source_security_requirement = source_spec["paths"][path][operation].get("security")
@@ -139,10 +158,40 @@ def validate_fixtures(source_spec: dict) -> None:
         "refresh-success.json": schemas["AuthSuccessResponse"]["required"],
         "logout-success.json": schemas["LogoutResponse"]["required"],
         "me-success.json": schemas["MeResponse"]["required"],
+        "self-me-success.json": schemas["SelfMeResponse"]["required"],
+        "self-devices-success.json": schemas["SelfDeviceListResponse"]["required"],
+        "self-sessions-success.json": schemas["SelfSessionListResponse"]["required"],
+        "self-activity-success.json": schemas["SelfActivityListResponse"]["required"],
+        "self-session-revoke-success.json": schemas["SelfSessionRevokeResponse"]["required"],
     }
     for filename, required in success_fixture_map.items():
         payload = fixture(filename)
         assert_required_keys(payload, required, filename)
+
+    self_me_payload = fixture("self-me-success.json")
+    if "tenant_id" in self_me_payload["user"]:
+        raise AssertionError("self-me-success.json must not expose tenant_id")
+
+    allowed_event_types = {
+        "login_succeeded",
+        "login_failed",
+        "session_refreshed",
+        "session_revoked",
+        "device_bound",
+        "device_unbound",
+    }
+    for event in fixture("self-activity-success.json")["items"]:
+        assert_required_keys(event, ["id", "event_type", "created_at", "summary"], "self-activity event")
+        if event["event_type"] not in allowed_event_types:
+            raise AssertionError(f"self-activity fixture uses unsupported event type {event['event_type']}")
+
+    self_revoke_fixture = fixture("self-session-revoke-success.json")
+    if self_revoke_fixture["success"] is not True:
+        raise AssertionError("self-session-revoke-success.json must freeze success=true")
+    if self_revoke_fixture["auth_state"] != "revoked":
+        raise AssertionError("self-session-revoke-success.json must freeze auth_state=revoked")
+    if self_revoke_fixture["already_revoked"] is not False:
+        raise AssertionError("self-session-revoke-success.json must freeze already_revoked=false for the first revoke")
 
     error_codes = set(json.loads(ERROR_CODES_PATH.read_text(encoding="utf-8"))["error_codes"])
     for path in sorted(FIXTURE_ROOT.glob("error-*.json")):
@@ -287,12 +336,18 @@ def validate_runtime_contract() -> None:
         login_fixture = fixture("login-success.json")
         refresh_fixture = fixture("refresh-success.json")
         me_fixture = fixture("me-success.json")
+        self_me_fixture = fixture("self-me-success.json")
+        self_devices_fixture = fixture("self-devices-success.json")
+        self_sessions_fixture = fixture("self-sessions-success.json")
+        self_activity_fixture = fixture("self-activity-success.json")
+        self_revoke_fixture = fixture("self-session-revoke-success.json")
         logout_fixture = fixture("logout-success.json")
         invalid_fixture = fixture("error-invalid-credentials.json")
         disabled_fixture = fixture("error-disabled.json")
         revoked_fixture = fixture("error-revoked.json")
         mismatch_fixture = fixture("error-device-mismatch.json")
         min_version_fixture = fixture("error-minimum-version-required.json")
+        not_found_fixture = fixture("error-not-found.json")
         rate_limit_fixture = fixture("error-too-many-requests.json")
 
         invalid_login = post_json(
@@ -358,14 +413,178 @@ def validate_runtime_contract() -> None:
         me_payload = me[1]
         assert_required_keys(me_payload, list(me_fixture.keys()), "runtime me payload")
 
+        self_me = get_json(harness, "/self/me", headers={"Authorization": f"Bearer {refresh_payload['access_token']}"})
+        if self_me[0] != 200:
+            raise AssertionError(f"compat self/me failed: {self_me[0]} {self_me[1]}")
+        self_me_payload = self_me[1]
+        assert_required_keys(self_me_payload, list(self_me_fixture.keys()), "runtime self/me payload")
+        if "tenant_id" in self_me_payload["user"]:
+            raise AssertionError("runtime /self/me payload must not expose tenant_id")
+
+        self_devices = get_json(harness, "/self/devices", headers={"Authorization": f"Bearer {refresh_payload['access_token']}"})
+        if self_devices[0] != 200:
+            raise AssertionError(f"compat self/devices failed: {self_devices[0]} {self_devices[1]}")
+        self_devices_payload = self_devices[1]
+        assert_required_keys(self_devices_payload, list(self_devices_fixture.keys()), "runtime self/devices payload")
+        if not self_devices_payload["items"]:
+            raise AssertionError("runtime /self/devices returned no items for authenticated user")
+
+        self_sessions = get_json(harness, "/self/sessions", headers={"Authorization": f"Bearer {refresh_payload['access_token']}"})
+        if self_sessions[0] != 200:
+            raise AssertionError(f"compat self/sessions failed: {self_sessions[0]} {self_sessions[1]}")
+        self_sessions_payload = self_sessions[1]
+        assert_required_keys(self_sessions_payload, list(self_sessions_fixture.keys()), "runtime self/sessions payload")
+        if not self_sessions_payload["items"]:
+            raise AssertionError("runtime /self/sessions returned no items for authenticated user")
+
+        second_login = post_json(
+            harness,
+            "/login",
+            {"username": harness.managed_username(), "password": harness.managed_password(), "device_id": harness.managed_device(), "client_version": "0.2.0"},
+        )
+        if second_login[0] != 200:
+            raise AssertionError(f"compat second login failed: {second_login[0]} {second_login[1]}")
+        second_login_payload = second_login[1]
+
+        second_sessions = get_json(harness, "/self/sessions", headers={"Authorization": f"Bearer {second_login_payload['access_token']}"})
+        if second_sessions[0] != 200:
+            raise AssertionError(f"compat second self/sessions failed: {second_sessions[0]} {second_sessions[1]}")
+        target_session_id = next((item["session_id"] for item in second_sessions[1]["items"] if not item["is_current"]), None)
+        if target_session_id is None:
+            raise AssertionError("compat self/sessions did not expose a non-current session for revoke testing")
+
+        revoke = post_json(
+            harness,
+            f"/self/sessions/{target_session_id}/revoke",
+            {},
+            headers={"Authorization": f"Bearer {second_login_payload['access_token']}"},
+        )
+        if revoke[0] != 200:
+            raise AssertionError(f"compat self revoke failed: {revoke[0]} {revoke[1]}")
+        revoke_payload = revoke[1]
+        assert_required_keys(revoke_payload, list(self_revoke_fixture.keys()), "runtime self revoke payload")
+        if revoke_payload["success"] is not True:
+            raise AssertionError("runtime self revoke must return success=true")
+        if revoke_payload["session_id"] != target_session_id:
+            raise AssertionError("runtime self revoke must echo the revoked session_id")
+        if revoke_payload["auth_state"] != "revoked":
+            raise AssertionError("runtime self revoke must freeze auth_state=revoked")
+        if revoke_payload["already_revoked"]:
+            raise AssertionError("runtime self revoke should not report already_revoked on first revoke")
+
+        repeat_revoke = post_json(
+            harness,
+            f"/self/sessions/{target_session_id}/revoke",
+            {},
+            headers={"Authorization": f"Bearer {second_login_payload['access_token']}"},
+        )
+        if repeat_revoke[0] != 200:
+            raise AssertionError(f"compat repeated self revoke failed: {repeat_revoke[0]} {repeat_revoke[1]}")
+        if repeat_revoke[1].get("success") is not True:
+            raise AssertionError("runtime repeated self revoke must return success=true")
+        if repeat_revoke[1].get("session_id") != target_session_id:
+            raise AssertionError("runtime repeated self revoke must echo the revoked session_id")
+        if repeat_revoke[1].get("auth_state") != "revoked":
+            raise AssertionError("runtime repeated self revoke must freeze auth_state=revoked")
+        if repeat_revoke[1].get("already_revoked") is not True:
+            raise AssertionError("runtime self revoke should be idempotent with already_revoked=true")
+
+        if harness.supports_db_mutation:
+            from app.core.db import session_scope  # noqa: WPS433
+            from app.models import AuditLog  # noqa: WPS433
+
+            with session_scope() as session:
+                audits = (
+                    session.query(AuditLog)
+                    .filter_by(event_type="self_session_revoked", target_session_id=target_session_id)
+                    .order_by(AuditLog.id.desc())
+                    .limit(2)
+                    .all()
+                )
+                if len(audits) != 2:
+                    raise AssertionError("runtime self revoke must emit two audit rows across first and repeated revoke")
+                latest_details = json.loads(audits[0].details_json or "{}")
+                previous_details = json.loads(audits[1].details_json or "{}")
+                if audits[0].actor_type != "user" or audits[1].actor_type != "user":
+                    raise AssertionError("runtime self revoke audit rows must use actor_type=user")
+                if audits[0].target_session_id != target_session_id or audits[1].target_session_id != target_session_id:
+                    raise AssertionError("runtime self revoke audit rows must link the target_session_id")
+                if latest_details.get("already_revoked") is not True:
+                    raise AssertionError("runtime repeated self revoke audit row must persist already_revoked=true")
+                if previous_details.get("already_revoked") is not False:
+                    raise AssertionError("runtime first self revoke audit row must persist already_revoked=false")
+
+        revoked_refresh = post_json(
+            harness,
+            "/refresh",
+            {"refresh_token": refresh_payload["refresh_token"], "device_id": harness.managed_device(), "client_version": "0.2.0"},
+        )
+        if revoked_refresh[0] != 403:
+            raise AssertionError(f"revoked refresh path drifted: {revoked_refresh[0]} {revoked_refresh[1]}")
+        assert_error_response(revoked_refresh[1], revoked_fixture, "runtime revoked refresh after self revoke")
+
+        foreign_revoke = post_json(
+            harness,
+            "/self/sessions/sess_foreign/revoke",
+            {},
+            headers={"Authorization": f"Bearer {second_login_payload['access_token']}"},
+        )
+        if foreign_revoke[0] != 404:
+            raise AssertionError(f"foreign self revoke drifted: {foreign_revoke[0]} {foreign_revoke[1]}")
+        assert_error_response(foreign_revoke[1], not_found_fixture, "runtime self revoke not found")
+
         logout = post_json(
             harness,
             "/logout",
-            {"refresh_token": refresh_payload["refresh_token"], "device_id": harness.managed_device()},
+            {"refresh_token": second_login_payload["refresh_token"], "device_id": harness.managed_device()},
         )
         if logout[0] != 200:
             raise AssertionError(f"compat logout failed: {logout[0]} {logout[1]}")
         assert_required_keys(logout[1], list(logout_fixture.keys()), "runtime logout payload")
+
+        revoked_self_revoke = post_json(
+            harness,
+            f"/self/sessions/{target_session_id}/revoke",
+            {},
+            headers={"Authorization": f"Bearer {second_login_payload['access_token']}"},
+        )
+        if revoked_self_revoke[0] != 403:
+            raise AssertionError(f"revoked self revoke drifted: {revoked_self_revoke[0]} {revoked_self_revoke[1]}")
+        assert_error_response(revoked_self_revoke[1], revoked_fixture, "runtime self revoke after logout")
+
+        relogin = post_json(
+            harness,
+            "/login",
+            {"username": harness.managed_username(), "password": harness.managed_password(), "device_id": harness.managed_device(), "client_version": "0.2.0"},
+        )
+        if relogin[0] != 200:
+            raise AssertionError(f"compat re-login failed: {relogin[0]} {relogin[1]}")
+        self_activity = get_json(harness, "/self/activity", headers={"Authorization": f"Bearer {relogin[1]['access_token']}"})
+        if self_activity[0] != 200:
+            raise AssertionError(f"compat self/activity failed: {self_activity[0]} {self_activity[1]}")
+        self_activity_payload = self_activity[1]
+        assert_required_keys(self_activity_payload, list(self_activity_fixture.keys()), "runtime self/activity payload")
+        allowed_activity_keys = {"id", "event_type", "created_at", "summary", "device_id", "session_id"}
+        allowed_event_types = {
+            "login_succeeded",
+            "login_failed",
+            "session_refreshed",
+            "session_revoked",
+            "device_bound",
+            "device_unbound",
+        }
+        event_types = set()
+        for item in self_activity_payload["items"]:
+            assert_required_keys(item, ["id", "event_type", "created_at", "summary"], "runtime self/activity item")
+            if set(item.keys()) - allowed_activity_keys:
+                raise AssertionError(f"runtime /self/activity exposed unexpected keys: {sorted(set(item.keys()) - allowed_activity_keys)}")
+            if item["event_type"] not in allowed_event_types:
+                raise AssertionError(f"runtime /self/activity exposed unsupported event type: {item['event_type']}")
+            event_types.add(item["event_type"])
+        if "session_revoked" not in event_types:
+            raise AssertionError("runtime /self/activity did not project the session_revoked event")
+
+        harness.reset_rate_limits()
 
         min_version = post_json(
             harness,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime, timedelta
 
 from app.core.config import get_settings
@@ -16,6 +17,15 @@ from app.schemas.auth import (
     LogoutResponse,
     MeResponse,
     RefreshRequest,
+    SelfActivityListResponse,
+    SelfActivityResponse,
+    SelfDeviceListResponse,
+    SelfDeviceResponse,
+    SelfMeResponse,
+    SelfSessionRevokeResponse,
+    SelfSessionListResponse,
+    SelfSessionResponse,
+    SelfUserIdentity,
     UserIdentity,
 )
 
@@ -25,6 +35,26 @@ class AuthServiceError(Exception):
         self.error_code = error_code
         self.status_code = status_code
         self.details = details or {}
+
+
+SELF_ACTIVITY_EVENT_MAP = {
+    'auth_login_succeeded': 'login_succeeded',
+    'auth_login_failed': 'login_failed',
+    'auth_refresh_succeeded': 'session_refreshed',
+    'auth_logout_succeeded': 'session_revoked',
+    'self_session_revoked': 'session_revoked',
+    'authorization_device_rebound': 'device_bound',
+    'authorization_device_unbound': 'device_unbound',
+}
+
+SELF_ACTIVITY_SUMMARY_MAP = {
+    'login_succeeded': 'Signed in successfully',
+    'login_failed': 'Sign-in attempt failed',
+    'session_refreshed': 'Session was refreshed',
+    'session_revoked': 'Session was revoked',
+    'device_bound': 'Device was bound',
+    'device_unbound': 'Device was unbound',
+}
 
 
 class AuthService:
@@ -324,9 +354,212 @@ class AuthService:
         return LogoutResponse(success=True)
 
     def me(self, access_token: str) -> MeResponse:
+        session, user, device, license_record, binding, entitlements = self._resolve_self_context(
+            access_token,
+            failure_event='auth_me_failed',
+        )
+        self._touch_authenticated_context(session=session, binding=binding, device=device)
+        response = self._build_me_response(
+            user=user,
+            license_record=license_record,
+            entitlements=entitlements,
+            device=device,
+        )
+        self._write_audit(
+            'auth_me_succeeded',
+            target_user_id=str(user.id),
+            target_device_id=device.device_id,
+            target_session_id=session.session_id,
+            details={'reason': 'me'},
+        )
+        self.repository.db.commit()
+        return response
+
+    def self_me(self, access_token: str) -> SelfMeResponse:
+        session, user, device, license_record, binding, entitlements = self._resolve_self_context(
+            access_token,
+            failure_event='auth_self_me_failed',
+        )
+        self._touch_authenticated_context(session=session, binding=binding, device=device)
+        response = SelfMeResponse(
+            user=self._build_self_user_identity(user),
+            license_status=license_record.license_status,
+            entitlements=entitlements,
+            device_id=device.device_id,
+            device_status=device.status,
+            offline_grace_until=self.policy.offline_grace_until(license_record),
+            minimum_supported_version=self.policy.minimum_supported_version,
+        )
+        self._write_audit(
+            'auth_self_me_viewed',
+            target_user_id=str(user.id),
+            target_device_id=device.device_id,
+            target_session_id=session.session_id,
+            details={'reason': 'self_me'},
+        )
+        self.repository.db.commit()
+        return response
+
+    def list_self_devices(self, access_token: str, *, limit: int = 20, offset: int = 0) -> SelfDeviceListResponse:
+        session, user, device, _license_record, binding, _entitlements = self._resolve_self_context(
+            access_token,
+            failure_event='auth_self_devices_failed',
+        )
+        self._touch_authenticated_context(session=session, binding=binding, device=device)
+        latest_by_device: dict[str, UserDevice] = {}
+        for row in self.repository.list_bindings_for_user(user.id):
+            if row.device is None:
+                continue
+            current = latest_by_device.get(row.device.device_id)
+            if current is None or row.id > current.id:
+                latest_by_device[row.device.device_id] = row
+
+        ordered = sorted(
+            latest_by_device.values(),
+            key=lambda item: (
+                item.device.device_id != device.device_id,
+                -(item.device.last_seen_at.timestamp() if item.device and item.device.last_seen_at else 0),
+                -item.id,
+            ),
+        )
+        paged = ordered[offset: offset + limit]
+        items = [
+            SelfDeviceResponse(
+                device_id=row.device.device_id,
+                device_status=row.device.status,
+                client_version=row.device.client_version,
+                first_bound_at=row.bound_at,
+                last_seen_at=row.device.last_seen_at,
+                is_current=row.device.device_id == device.device_id,
+            )
+            for row in paged
+            if row.device is not None
+        ]
+        self._write_audit(
+            'auth_self_devices_listed',
+            target_user_id=str(user.id),
+            target_device_id=device.device_id,
+            target_session_id=session.session_id,
+            details={'limit': limit, 'offset': offset, 'count': len(items), 'total': len(ordered)},
+        )
+        self.repository.db.commit()
+        return SelfDeviceListResponse(items=items, total=len(ordered))
+
+    def list_self_sessions(self, access_token: str, *, limit: int = 20, offset: int = 0) -> SelfSessionListResponse:
+        session, user, device, _license_record, binding, _entitlements = self._resolve_self_context(
+            access_token,
+            failure_event='auth_self_sessions_failed',
+        )
+        self._touch_authenticated_context(session=session, binding=binding, device=device)
+        ordered = sorted(
+            self.repository.list_sessions_for_user(user.id),
+            key=lambda item: (
+                item.session_id != session.session_id,
+                -(item.last_seen_at.timestamp() if item.last_seen_at else 0),
+                -item.id,
+            ),
+        )
+        paged = ordered[offset: offset + limit]
+        items = [
+            SelfSessionResponse(
+                session_id=row.session_id,
+                device_id=row.device.device_id if row.device is not None else None,
+                auth_state=row.auth_state,
+                issued_at=row.issued_at,
+                expires_at=row.expires_at,
+                last_seen_at=row.last_seen_at,
+                is_current=row.session_id == session.session_id,
+            )
+            for row in paged
+        ]
+        self._write_audit(
+            'auth_self_sessions_listed',
+            target_user_id=str(user.id),
+            target_device_id=device.device_id,
+            target_session_id=session.session_id,
+            details={'limit': limit, 'offset': offset, 'count': len(items), 'total': len(ordered)},
+        )
+        self.repository.db.commit()
+        return SelfSessionListResponse(items=items, total=len(ordered))
+
+    def list_self_activity(self, access_token: str, *, limit: int = 20, offset: int = 0) -> SelfActivityListResponse:
+        session, user, device, _license_record, binding, _entitlements = self._resolve_self_context(
+            access_token,
+            failure_event='auth_self_activity_failed',
+        )
+        self._touch_authenticated_context(session=session, binding=binding, device=device)
+        raw_event_types = set(SELF_ACTIVITY_EVENT_MAP.keys())
+        total = self.repository.count_audit_logs_for_user(user.id, event_types=raw_event_types)
+        logs = self.repository.list_audit_logs_for_user(user.id, event_types=raw_event_types, limit=limit, offset=offset)
+        items = [self._build_self_activity_response(row) for row in logs]
+        self._write_audit(
+            'auth_self_activity_listed',
+            target_user_id=str(user.id),
+            target_device_id=device.device_id,
+            target_session_id=session.session_id,
+            details={'limit': limit, 'offset': offset, 'count': len(items), 'total': total},
+        )
+        self.repository.db.commit()
+        return SelfActivityListResponse(items=items, total=total)
+
+    def revoke_self_session(self, access_token: str, session_id: str) -> SelfSessionRevokeResponse:
+        current_session, user, device, _license_record, binding, _entitlements = self._resolve_self_context(
+            access_token,
+            failure_event='auth_self_session_revoke_failed',
+        )
+        self._touch_authenticated_context(session=current_session, binding=binding, device=device)
+
+        target_session = self.repository.get_session_by_session_id(session_id)
+        if (
+            target_session is None
+            or target_session.user is None
+            or target_session.user.id != user.id
+        ):
+            self._write_audit(
+                'auth_self_session_revoke_masked',
+                target_user_id=str(user.id),
+                target_device_id=device.device_id,
+                target_session_id=session_id,
+                details={'reason': 'not_found_masked'},
+            )
+            self.repository.db.commit()
+            raise AuthServiceError(
+                'not_found',
+                'Requested resource was not found.',
+                status_code=404,
+                details={'session_id': session_id},
+            )
+
+        already_revoked = target_session.revoked_at is not None or target_session.auth_state.startswith('revoked:')
+        if not already_revoked:
+            self.repository.revoke_session(target_session, reason='self_session_revoked')
+            self.repository.revoke_refresh_tokens_for_session(target_session.id, reason='self_session_revoked')
+
+        self._write_audit(
+            'self_session_revoked',
+            actor_type='user',
+            target_user_id=str(user.id),
+            target_device_id=target_session.device.device_id if target_session.device is not None else None,
+            target_session_id=target_session.session_id,
+            details={'reason': 'self_session_revoked', 'already_revoked': already_revoked},
+        )
+        self.repository.db.commit()
+        return SelfSessionRevokeResponse(
+            success=True,
+            session_id=target_session.session_id,
+            auth_state='revoked',
+            already_revoked=already_revoked,
+        )
+
+    def _resolve_self_context(
+        self,
+        access_token: str,
+        *,
+        failure_event: str,
+    ) -> tuple:
         if not access_token:
             self._raise_with_audit(
-                event_type='auth_me_failed',
+                event_type=failure_event,
                 error_code='token_expired',
                 message='Access token expired or invalid',
                 status_code=401,
@@ -336,7 +569,7 @@ class AuthService:
         session = self.repository.get_session_by_access_token_hash(fingerprint_token(access_token))
         if session is None:
             self._raise_with_audit(
-                event_type='auth_me_failed',
+                event_type=failure_event,
                 error_code='token_expired',
                 message='Access token expired or invalid',
                 status_code=401,
@@ -350,7 +583,7 @@ class AuthService:
 
         if session.revoked_at is not None:
             self._raise_with_audit(
-                event_type='auth_me_failed',
+                event_type=failure_event,
                 error_code='revoked',
                 message='Remote authorization revoked',
                 status_code=403,
@@ -361,7 +594,7 @@ class AuthService:
             )
         if session.expires_at <= datetime.utcnow():
             self._raise_with_audit(
-                event_type='auth_me_failed',
+                event_type=failure_event,
                 error_code='token_expired',
                 message='Access token expired or invalid',
                 status_code=401,
@@ -374,7 +607,7 @@ class AuthService:
         license_record = self.repository.get_license(user.id)
         if license_record is None:
             self._raise_with_audit(
-                event_type='auth_me_failed',
+                event_type=failure_event,
                 error_code='disabled',
                 message='User or license disabled',
                 status_code=403,
@@ -387,7 +620,7 @@ class AuthService:
             user,
             license_record,
             client_version=device.client_version or self.policy.minimum_supported_version,
-            failure_event='auth_me_failed',
+            failure_event=failure_event,
             target_device_id=device.device_id,
             target_session_id=session.session_id,
         )
@@ -395,33 +628,25 @@ class AuthService:
         binding = self.repository.get_active_binding_for_user(user.id)
         if binding is None or binding.device is None or binding.device.device_id != device.device_id:
             self._raise_device_mismatch(
-                failure_event='auth_me_failed',
+                failure_event=failure_event,
                 device_id=device.device_id,
                 target_user_id=str(user.id),
                 target_session_id=session.session_id,
             )
         self._assert_device_allowed(
             device,
-            failure_event='auth_me_failed',
+            failure_event=failure_event,
             device_id=device.device_id,
             target_user_id=str(user.id),
             target_session_id=session.session_id,
         )
+        entitlements = self.repository.get_entitlements(user.id)
+        return session, user, device, license_record, binding, entitlements
 
+    def _touch_authenticated_context(self, *, session, binding, device: Device) -> None:
         self.repository.touch_session(session)
         self.repository.touch_binding(binding)
         self.repository.touch_device(device)
-        entitlements = self.repository.get_entitlements(user.id)
-        response = self._build_me_response(user=user, license_record=license_record, entitlements=entitlements, device=device)
-        self._write_audit(
-            'auth_me_succeeded',
-            target_user_id=str(user.id),
-            target_device_id=device.device_id,
-            target_session_id=session.session_id,
-            details={'reason': 'me'},
-        )
-        self.repository.db.commit()
-        return response
 
     def _ensure_allowed_device(self, user: User, device_id: str, client_version: str, *, failure_event: str) -> tuple[Device, UserDevice]:
         binding = self.repository.get_active_binding_for_user(user.id)
@@ -563,6 +788,26 @@ class AuthService:
             tenant_id=user.tenant_id,
         )
 
+    @staticmethod
+    def _build_self_user_identity(user: User) -> SelfUserIdentity:
+        return SelfUserIdentity(
+            id=f'u_{user.id}',
+            username=user.username,
+            display_name=user.display_name,
+        )
+
+    @staticmethod
+    def _build_self_activity_response(row) -> SelfActivityResponse:
+        event_type = SELF_ACTIVITY_EVENT_MAP[row.event_type]
+        return SelfActivityResponse(
+            id=str(row.id),
+            event_type=event_type,
+            created_at=row.created_at,
+            summary=SELF_ACTIVITY_SUMMARY_MAP[event_type],
+            device_id=row.target_device_id,
+            session_id=row.target_session_id,
+        )
+
     def _raise_with_audit(
         self,
         *,
@@ -589,6 +834,7 @@ class AuthService:
         self,
         event_type: str,
         *,
+        actor_type: str = 'managed_user',
         target_user_id: str | None,
         target_device_id: str | None,
         target_session_id: str | None = None,
@@ -597,7 +843,7 @@ class AuthService:
         context = get_request_context()
         self.repository.write_audit_log(
             event_type=event_type,
-            actor_type='managed_user',
+            actor_type=actor_type,
             actor_id=target_user_id,
             target_user_id=target_user_id,
             target_device_id=target_device_id,
@@ -609,4 +855,7 @@ class AuthService:
 
     @staticmethod
     def _version_tuple(version: str) -> tuple[int, ...]:
-        return tuple(int(part) for part in version.split('.'))
+        parts = re.findall(r'\d+', version or '')
+        if not parts:
+            return (0,)
+        return tuple(int(part) for part in parts)

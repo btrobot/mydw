@@ -4,7 +4,7 @@
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, delete
 from sqlalchemy.orm import selectinload
 from loguru import logger
 
@@ -12,7 +12,7 @@ from core.auth_dependencies import (
     require_active_service_session,
     require_grace_readonly_service_session,
 )
-from models import Task, PublishLog, PublishProfile
+from models import Task, PublishLog, PublishProfile, TaskVideo, TaskCopywriting, TaskCover, TaskAudio, TaskTopic
 from schemas.auth import LocalAuthSessionSummary
 
 
@@ -183,6 +183,7 @@ class TaskService:
         if not task:
             return False
 
+        await self._delete_task_relations(task.id)
         await self.db.delete(task)
         await self.db.commit()
         return True
@@ -199,11 +200,17 @@ class TaskService:
         count = len(tasks)
 
         for task in tasks:
+            await self._delete_task_relations(task.id)
             await self.db.delete(task)
 
         await self.db.commit()
         logger.info("删除任务: {} 个", count)
         return count
+
+    async def _delete_task_relations(self, task_id: int) -> None:
+        """Delete task-owned association rows before deleting the task row."""
+        for model in (TaskVideo, TaskCopywriting, TaskCover, TaskAudio, TaskTopic, PublishLog):
+            await self.db.execute(delete(model).where(model.task_id == task_id))
 
     async def get_next_ready_task(self, account_id: Optional[int] = None) -> Optional[Task]:
         """获取下一个待上传任务（ready 状态）"""

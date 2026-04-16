@@ -16,9 +16,18 @@ It owns:
 - `/refresh`
 - `/logout`
 - `/me`
+- `/self/me`
+- `/self/devices`
+- `/self/sessions`
+- `/self/activity`
+- `/self/sessions/{session_id}/revoke`
 - end-user remote sessions
 - end-user token lifecycle
 - end-user license / entitlement / device truth
+
+For B0, `/self/*` is the canonical self-service namespace for the future portal.
+`/me` may remain as a legacy compatibility route, but portal work must target
+`/self/me`.
 
 ### Admin-operator auth domain
 
@@ -41,6 +50,14 @@ Managed-user auth and admin-operator auth **must not** share:
 - token lifecycle rules
 
 They may reuse storage primitives later, but they must remain architecturally distinct.
+
+## Self-service projection rule
+
+Portal-facing self-service routes must not depend on admin-only response shapes
+or expose Program C identity fields such as `tenant_id`.
+
+`GET /self/activity` is a self-service projection and must not reuse the raw
+admin audit payload contract.
 
 ## Repo boundary
 
