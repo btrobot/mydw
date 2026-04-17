@@ -134,6 +134,30 @@ async def test_creative_review_openapi_exposes_phase_b_review_contracts(
 
 
 @pytest.mark.asyncio
+async def test_creative_workflow_openapi_exposes_phase_d_submit_contract(
+    client: AsyncClient,
+) -> None:
+    response = await client.get("/openapi.json")
+    assert response.status_code == 200
+
+    spec = response.json()
+    paths = spec["paths"]
+    schemas = spec["components"]["schemas"]
+
+    submit_path = paths["/api/creative-workflows/{creative_id}/ai-clip/submit"]["post"]
+    request_schema = submit_path["requestBody"]["content"]["application/json"]["schema"]
+    response_schema = submit_path["responses"]["200"]["content"]["application/json"]["schema"]
+
+    assert request_schema["$ref"].endswith("/CreativeAIClipWorkflowSubmitRequest")
+    assert response_schema["$ref"].endswith("/CreativeAIClipWorkflowResponse")
+    assert schemas["CreativeAIClipWorkflowSubmitRequest"]["properties"]["output_path"]["type"] == "string"
+    assert schemas["CreativeAIClipWorkflowSubmitRequest"]["properties"]["source_version_id"]["type"] == "integer"
+    assert schemas["CreativeAIClipWorkflowResponse"]["properties"]["workflow_type"]["type"] == "string"
+    assert schemas["CreativeAIClipWorkflowResponse"]["properties"]["version"]["$ref"].endswith("/CreativeVersionSummaryResponse")
+    assert schemas["CreativeAIClipWorkflowResponse"]["properties"]["package_record"]["$ref"].endswith("/PackageRecordResponse")
+
+
+@pytest.mark.asyncio
 async def test_creative_publish_pool_openapi_exposes_phase_c_pool_contracts(
     client: AsyncClient,
 ) -> None:

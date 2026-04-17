@@ -13,7 +13,26 @@ from fastapi.responses import PlainTextResponse
 from sqlalchemy import select
 from loguru import logger
 
-from api import auth, account, task, publish, schedule_config, system, ai, product, video, copywriting, cover, audio, topic, profile, creative, creative_review, creative_publish_pool
+from api import (
+    account,
+    ai,
+    audio,
+    auth,
+    copywriting,
+    cover,
+    creative,
+    creative_publish_pool,
+    creative_review,
+    creative_workflows,
+    product,
+    profile,
+    publish,
+    schedule_config,
+    system,
+    task,
+    topic,
+    video,
+)
 from api.auth import admin_router as auth_admin_router
 from api.topic import group_router as topic_group_router
 import models as _models
@@ -68,6 +87,7 @@ app.include_router(profile.router, prefix="/api/profiles", tags=["?????"])
 app.include_router(creative.router, prefix="/api/creatives", tags=["????"])
 app.include_router(creative_review.router, prefix="/api/creative-reviews", tags=["???? review"])
 app.include_router(creative_publish_pool.router, prefix="/api/creative-publish-pool", tags=["发布池"])
+app.include_router(creative_workflows.router, prefix="/api/creative-workflows", tags=["Creative workflow"])
 
 metrics_exporter = PrometheusMetricsExporter(auth_metrics_collector)
 

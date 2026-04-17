@@ -632,6 +632,24 @@ class CreativeReviewActionResponse(BaseModel):
     check: CheckRecordResponse
 
 
+class CreativeAIClipWorkflowSubmitRequest(BaseModel):
+    source_version_id: int
+    output_path: str = Field(..., min_length=1)
+    title: Optional[str] = None
+    workflow_type: str = Field(default="ai_clip", min_length=1, max_length=64)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class CreativeAIClipWorkflowResponse(BaseModel):
+    creative_id: int
+    creative_status: CreativeStatus
+    source_version_id: int
+    current_version_id: int
+    workflow_type: str
+    version: CreativeVersionSummaryResponse
+    package_record: PackageRecordResponse
+
+
 class CreativeDetailResponse(BaseModel):
     """Creative detail response for the Phase A workbench/detail flow."""
 
