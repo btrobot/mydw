@@ -3,7 +3,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   approveCreativeApiCreativeReviewsCreativeIdApprovePost,
   getCreativeApiCreativesCreativeIdGet,
+  getPublishStatusApiPublishStatusGet,
+  getScheduleConfigApiScheduleConfigGet,
   listCreativesApiCreativesGet,
+  listPublishPoolItemsApiCreativePublishPoolGet,
   rejectCreativeApiCreativeReviewsCreativeIdRejectPost,
   reworkCreativeApiCreativeReviewsCreativeIdReworkPost,
 } from '@/api'
@@ -14,6 +17,10 @@ import type {
   CreativeReviewActionResponse,
   CreativeReworkRequest,
   CreativeWorkbenchListResponse,
+  PublishPoolListResponse,
+  PublishPoolStatus,
+  PublishStatusResponse,
+  ScheduleConfigResponse,
 } from '@/api'
 
 export const creativeQueryKeys = {
@@ -23,6 +30,22 @@ export const creativeQueryKeys = {
     [...creativeQueryKeys.lists(), params?.skip ?? 0, params?.limit ?? 50] as const,
   details: () => [...creativeQueryKeys.all, 'detail'] as const,
   detail: (creativeId: number | undefined) => [...creativeQueryKeys.details(), creativeId] as const,
+  publishPool: () => [...creativeQueryKeys.all, 'publish-pool'] as const,
+  publishPoolList: (params?: {
+    skip?: number
+    limit?: number
+    status?: PublishPoolStatus
+    creativeId?: number
+  }) =>
+    [
+      ...creativeQueryKeys.publishPool(),
+      params?.skip ?? 0,
+      params?.limit ?? 50,
+      params?.status ?? 'active',
+      params?.creativeId ?? 'all',
+    ] as const,
+  publishStatus: () => [...creativeQueryKeys.all, 'publish-status'] as const,
+  scheduleConfig: () => [...creativeQueryKeys.all, 'schedule-config'] as const,
 }
 
 export const useCreatives = (params?: { skip?: number; limit?: number }) =>
@@ -51,6 +74,51 @@ export const useCreative = (creativeId: number | undefined) =>
       return response.data!
     },
     enabled: creativeId !== undefined,
+    retry: false,
+  })
+
+export const usePublishPoolItems = (params?: {
+  skip?: number
+  limit?: number
+  status?: PublishPoolStatus
+  creativeId?: number
+  enabled?: boolean
+}) =>
+  useQuery<PublishPoolListResponse>({
+    queryKey: creativeQueryKeys.publishPoolList(params),
+    queryFn: async () => {
+      const response = await listPublishPoolItemsApiCreativePublishPoolGet({
+        query: {
+          skip: params?.skip ?? 0,
+          limit: params?.limit ?? 50,
+          status: params?.status,
+          creative_id: params?.creativeId,
+        },
+      })
+
+      return response.data ?? { total: 0, items: [] }
+    },
+    enabled: params?.enabled ?? true,
+    retry: false,
+  })
+
+export const usePublishStatus = () =>
+  useQuery<PublishStatusResponse | undefined>({
+    queryKey: creativeQueryKeys.publishStatus(),
+    queryFn: async () => {
+      const response = await getPublishStatusApiPublishStatusGet()
+      return response.data
+    },
+    retry: false,
+  })
+
+export const useScheduleConfig = () =>
+  useQuery<ScheduleConfigResponse | undefined>({
+    queryKey: creativeQueryKeys.scheduleConfig(),
+    queryFn: async () => {
+      const response = await getScheduleConfigApiScheduleConfigGet()
+      return response.data
+    },
     retry: false,
   })
 

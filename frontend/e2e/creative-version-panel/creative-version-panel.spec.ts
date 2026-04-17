@@ -21,9 +21,9 @@ test.describe('Creative version panel', () => {
     await page.goto(`${BASE_URL}/#/creative/101`)
 
     await page.getByTestId('creative-open-review').click()
-    const drawer = page.getByRole('dialog', { name: '作品审核' })
-    await drawer.getByRole('textbox', { name: '审核说明' }).fill('新版本确认通过')
-    await drawer.getByRole('button', { name: '提交审核' }).click()
+    const drawer = page.getByTestId('creative-check-drawer')
+    await drawer.locator('textarea').fill('新版本确认通过')
+    await drawer.getByTestId('creative-review-submit').click()
 
     await expect(page.getByTestId('creative-version-item-202')).toContainText('当前有效结论')
     await expect(page.getByTestId('creative-version-item-201')).toContainText('历史结论')

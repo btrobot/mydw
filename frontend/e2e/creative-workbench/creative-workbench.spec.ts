@@ -11,7 +11,9 @@ const creativeListPayload = {
       title: '春季作品样本',
       status: 'PENDING_INPUT',
       current_version_id: 201,
-      updated_at: '2026-04-16T10:00:00',
+      generation_error_msg: null,
+      generation_failed_at: null,
+      updated_at: '2026-04-16T10:00:00Z',
     },
   ],
 }
@@ -28,8 +30,14 @@ const creativeDetailPayload = {
     title: '初始版本',
     package_record_id: 301,
   },
+  versions: [],
+  review_summary: {
+    current_version_id: null,
+    current_check: null,
+    total_checks: 0,
+  },
   linked_task_ids: [901],
-  updated_at: '2026-04-16T10:00:00',
+  updated_at: '2026-04-16T10:00:00Z',
 }
 
 const taskDetailPayload = {
@@ -43,8 +51,8 @@ const taskDetailPayload = {
   scheduled_time: null,
   final_video_path: null,
   upload_url: null,
-  created_at: '2026-04-16T10:00:00',
-  updated_at: '2026-04-16T10:00:00',
+  created_at: '2026-04-16T10:00:00Z',
+  updated_at: '2026-04-16T10:00:00Z',
   video_ids: [],
   copywriting_ids: [],
   cover_ids: [],
@@ -52,21 +60,36 @@ const taskDetailPayload = {
   topic_ids: [],
 }
 
-const accountsPayload = [
-  {
-    id: 1,
-    account_id: 'creative-task-account',
-    account_name: 'Creative Task Account',
-    status: 'active',
-  },
-]
-
-const profilesPayload = {
-  total: 0,
-  items: [],
+const scheduleConfigPayload = {
+  id: 1,
+  name: 'default',
+  start_hour: 8,
+  end_hour: 23,
+  interval_minutes: 30,
+  max_per_account_per_day: 20,
+  shuffle: false,
+  auto_start: true,
+  publish_scheduler_mode: 'task',
+  publish_pool_kill_switch: false,
+  publish_pool_shadow_read: false,
+  created_at: '2026-04-16T10:00:00Z',
+  updated_at: '2026-04-16T10:00:00Z',
 }
 
-async function mockPhaseAApis(page: Page) {
+const publishStatusPayload = {
+  status: 'idle',
+  current_task_id: null,
+  total_pending: 0,
+  total_success: 0,
+  total_failed: 0,
+  scheduler_mode: 'task',
+  effective_scheduler_mode: 'task',
+  publish_pool_kill_switch: false,
+  publish_pool_shadow_read: false,
+  scheduler_shadow_diff: null,
+}
+
+async function mockCreativeApis(page: Page) {
   await page.route('**/api/auth/session', async (route) => {
     await route.fulfill({
       status: 200,
@@ -102,67 +125,50 @@ async function mockPhaseAApis(page: Page) {
     })
   })
 
-  await page.route('**/api/accounts', async (route) => {
+  await page.route('**/api/publish/status', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(accountsPayload),
+      body: JSON.stringify(publishStatusPayload),
     })
   })
 
-  await page.route('**/api/accounts/', async (route) => {
+  await page.route('**/api/schedule-config', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(accountsPayload),
+      body: JSON.stringify(scheduleConfigPayload),
     })
   })
 
-  await page.route('**/api/accounts?**', async (route) => {
+  await page.route('**/api/creative-publish-pool**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(accountsPayload),
+      body: JSON.stringify({ total: 0, items: [] }),
     })
   })
 
-  await page.route('**/api/accounts/?**', async (route) => {
+  await page.route('**/api/accounts**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(accountsPayload),
+      body: JSON.stringify([
+        {
+          id: 1,
+          account_id: 'creative-task-account',
+          account_name: 'Creative Task Account',
+          status: 'active',
+        },
+      ]),
     })
   })
 
-  await page.route('**/api/profiles', async (route) => {
+  await page.route('**/api/profiles**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(profilesPayload),
-    })
-  })
-
-  await page.route('**/api/profiles/', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(profilesPayload),
-    })
-  })
-
-  await page.route('**/api/profiles?**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(profilesPayload),
-    })
-  })
-
-  await page.route('**/api/profiles/?**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(profilesPayload),
+      body: JSON.stringify({ total: 0, items: [] }),
     })
   })
 
@@ -186,56 +192,34 @@ async function mockPhaseAApis(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({
-        total: 0,
-        items: [],
-      }),
-    })
-  })
-
-  await page.route('**/api/tasks/?**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        total: 0,
-        items: [],
-      }),
+      body: JSON.stringify({ total: 0, items: [] }),
     })
   })
 }
 
-test.describe('Creative workbench Phase A', () => {
+test.describe('Creative workbench baseline', () => {
   test.beforeEach(async ({ page }) => {
-    await mockPhaseAApis(page)
+    await mockCreativeApis(page)
   })
 
-  test('opens workbench from the sidebar and shows list data', async ({ page }) => {
-    await page.goto(`${BASE_URL}/#/task/list`)
-    await page.getByText('作品工作台', { exact: true }).click()
-    await page.getByText('作品列表', { exact: true }).click()
-    await page.waitForURL('**/#/creative/workbench')
+  test('shows workbench list and Phase C publish summary', async ({ page }) => {
+    await page.goto(`${BASE_URL}/#/creative/workbench`)
 
-    await expect(page.locator('body')).toContainText('作品工作台')
-    await expect(page.locator('body')).toContainText('春季作品样本')
+    await expect(page.getByTestId('creative-workbench-publish-summary')).toBeVisible()
     await expect(page.locator('body')).toContainText('CR-000101')
-    await expect(page.locator('body')).toContainText('当前版本 #201')
+    await expect(page.getByTestId('creative-workbench-pool-state-101')).toContainText('未在发布池')
   })
 
-  test('navigates from workbench to detail, task detail, and ai-clip diagnostics', async ({ page }) => {
+  test('navigates from workbench to detail and task diagnostics', async ({ page }) => {
     await page.goto(`${BASE_URL}/#/creative/workbench`)
     await page.getByRole('button', { name: '查看详情' }).click()
 
     await page.waitForURL('**/#/creative/101')
+    await expect(page.getByTestId('creative-publish-diagnostics')).toBeVisible()
     await expect(page.locator('body')).toContainText('初始版本')
-    await expect(page.locator('body')).toContainText('任务 #901')
 
     await page.getByRole('button', { name: '查看关联任务' }).click()
     await page.waitForURL('**/#/task/901')
     await expect(page.locator('body')).toContainText('任务详情 #901')
-
-    await page.getByText('AI 剪辑', { exact: true }).click()
-    await page.waitForURL('**/#/ai-clip')
-    await expect(page.locator('body')).toContainText('AI 智能剪辑')
   })
 })

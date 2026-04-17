@@ -41,11 +41,11 @@ export default function VersionPanel({
     <Card
       title="版本历史"
       data-testid="creative-version-panel"
-      extra={
+      extra={(
         <Text type="secondary">
           共 {versions.length} 个版本
         </Text>
-      }
+      )}
     >
       <List
         itemLayout="vertical"

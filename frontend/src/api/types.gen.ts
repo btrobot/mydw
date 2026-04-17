@@ -1926,6 +1926,15 @@ export type PublishConfigRequest = {
      * Auto Start
      */
     auto_start?: boolean;
+    publish_scheduler_mode?: PublishSchedulerMode;
+    /**
+     * Publish Pool Kill Switch
+     */
+    publish_pool_kill_switch?: boolean;
+    /**
+     * Publish Pool Shadow Read
+     */
+    publish_pool_shadow_read?: boolean;
 };
 
 /**
@@ -1966,6 +1975,15 @@ export type PublishConfigResponse = {
      * Auto Start
      */
     auto_start: boolean;
+    publish_scheduler_mode?: PublishSchedulerMode;
+    /**
+     * Publish Pool Kill Switch
+     */
+    publish_pool_kill_switch?: boolean;
+    /**
+     * Publish Pool Shadow Read
+     */
+    publish_pool_shadow_read?: boolean;
 };
 
 /**
@@ -1981,6 +1999,77 @@ export type PublishControlRequest = {
      */
     action: string;
 };
+
+/**
+ * PublishPoolItemResponse
+ *
+ * Creative Phase C publish-pool item projection.
+ */
+export type PublishPoolItemResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Creative Item Id
+     */
+    creative_item_id: number;
+    /**
+     * Creative Version Id
+     */
+    creative_version_id: number;
+    status: PublishPoolStatus;
+    /**
+     * Invalidation Reason
+     */
+    invalidation_reason?: string | null;
+    /**
+     * Invalidated At
+     */
+    invalidated_at?: string | null;
+    /**
+     * Creative No
+     */
+    creative_no?: string | null;
+    /**
+     * Creative Title
+     */
+    creative_title?: string | null;
+    creative_status?: CreativeStatus | null;
+    /**
+     * Creative Current Version Id
+     */
+    creative_current_version_id?: number | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * PublishPoolListResponse
+ *
+ * Paginated publish-pool list response.
+ */
+export type PublishPoolListResponse = {
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Items
+     */
+    items: Array<PublishPoolItemResponse>;
+};
+
+/**
+ * PublishPoolStatus
+ */
+export type PublishPoolStatus = 'active' | 'invalidated';
 
 /**
  * PublishProfileCreate
@@ -2132,6 +2221,11 @@ export type PublishProfileUpdate = {
 };
 
 /**
+ * PublishSchedulerMode
+ */
+export type PublishSchedulerMode = 'task' | 'pool';
+
+/**
  * PublishStatus
  */
 export type PublishStatus = 'idle' | 'running' | 'paused';
@@ -2159,6 +2253,22 @@ export type PublishStatusResponse = {
      * Total Failed
      */
     total_failed?: number;
+    scheduler_mode?: PublishSchedulerMode;
+    effective_scheduler_mode?: PublishSchedulerMode;
+    /**
+     * Publish Pool Kill Switch
+     */
+    publish_pool_kill_switch?: boolean;
+    /**
+     * Publish Pool Shadow Read
+     */
+    publish_pool_shadow_read?: boolean;
+    /**
+     * Scheduler Shadow Diff
+     */
+    scheduler_shadow_diff?: {
+        [key: string]: unknown;
+    } | null;
 };
 
 /**
@@ -2288,6 +2398,22 @@ export type ScheduleConfigRequest = {
      * 是否自动启动调度
      */
     auto_start?: boolean;
+    /**
+     * 发布 scheduler 候选源模式：task=旧 ready task，pool=Creative publish pool
+     */
+    publish_scheduler_mode?: PublishSchedulerMode;
+    /**
+     * Publish Pool Kill Switch
+     *
+     * 开启后强制回退旧 task 路径
+     */
+    publish_pool_kill_switch?: boolean;
+    /**
+     * Publish Pool Shadow Read
+     *
+     * 开启后记录 task 与 pool 候选差异
+     */
+    publish_pool_shadow_read?: boolean;
 };
 
 /**
@@ -2328,6 +2454,15 @@ export type ScheduleConfigResponse = {
      * Auto Start
      */
     auto_start: boolean;
+    publish_scheduler_mode: PublishSchedulerMode;
+    /**
+     * Publish Pool Kill Switch
+     */
+    publish_pool_kill_switch: boolean;
+    /**
+     * Publish Pool Shadow Read
+     */
+    publish_pool_shadow_read: boolean;
     /**
      * Created At
      */
@@ -7428,6 +7563,78 @@ export type RejectCreativeApiCreativeReviewsCreativeIdRejectPostResponses = {
 };
 
 export type RejectCreativeApiCreativeReviewsCreativeIdRejectPostResponse = RejectCreativeApiCreativeReviewsCreativeIdRejectPostResponses[keyof RejectCreativeApiCreativeReviewsCreativeIdRejectPostResponses];
+
+export type ListPublishPoolItemsApiCreativePublishPoolGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Status
+         */
+        status?: PublishPoolStatus | null;
+        /**
+         * Creative Id
+         */
+        creative_id?: number | null;
+    };
+    url: '/api/creative-publish-pool';
+};
+
+export type ListPublishPoolItemsApiCreativePublishPoolGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListPublishPoolItemsApiCreativePublishPoolGetError = ListPublishPoolItemsApiCreativePublishPoolGetErrors[keyof ListPublishPoolItemsApiCreativePublishPoolGetErrors];
+
+export type ListPublishPoolItemsApiCreativePublishPoolGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: PublishPoolListResponse;
+};
+
+export type ListPublishPoolItemsApiCreativePublishPoolGetResponse = ListPublishPoolItemsApiCreativePublishPoolGetResponses[keyof ListPublishPoolItemsApiCreativePublishPoolGetResponses];
+
+export type GetPublishPoolItemApiCreativePublishPoolPoolItemIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Pool Item Id
+         */
+        pool_item_id: number;
+    };
+    query?: never;
+    url: '/api/creative-publish-pool/{pool_item_id}';
+};
+
+export type GetPublishPoolItemApiCreativePublishPoolPoolItemIdGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetPublishPoolItemApiCreativePublishPoolPoolItemIdGetError = GetPublishPoolItemApiCreativePublishPoolPoolItemIdGetErrors[keyof GetPublishPoolItemApiCreativePublishPoolPoolItemIdGetErrors];
+
+export type GetPublishPoolItemApiCreativePublishPoolPoolItemIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: PublishPoolItemResponse;
+};
+
+export type GetPublishPoolItemApiCreativePublishPoolPoolItemIdGetResponse = GetPublishPoolItemApiCreativePublishPoolPoolItemIdGetResponses[keyof GetPublishPoolItemApiCreativePublishPoolPoolItemIdGetResponses];
 
 export type RootGetData = {
     body?: never;

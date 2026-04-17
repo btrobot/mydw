@@ -142,7 +142,7 @@ export default function CheckDrawer({
           <div>
             <Text strong>{getVersionTitle(version)}</Text>
             <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-              {getVersionLabel(version.version_no)} · Package #{version.package_record_id ?? '-'}
+              {getVersionLabel(version.version_no)} / Package #{version.package_record_id ?? '-'}
             </Paragraph>
           </div>
 

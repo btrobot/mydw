@@ -3,6 +3,7 @@ import type { Page, Route } from '@playwright/test'
 export const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:4173'
 
 type ReviewConclusion = 'APPROVED' | 'REWORK_REQUIRED' | 'REJECTED'
+type PublishPoolStatus = 'active' | 'invalidated'
 
 interface CheckRecord {
   id: number
@@ -25,6 +26,21 @@ interface CreativeVersion {
   package_record_id?: number | null
   is_current?: boolean
   latest_check?: CheckRecord | null
+  created_at: string
+  updated_at: string
+}
+
+interface PublishPoolItem {
+  id: number
+  creative_item_id: number
+  creative_version_id: number
+  status: PublishPoolStatus
+  invalidation_reason?: string | null
+  invalidated_at?: string | null
+  creative_no?: string | null
+  creative_title?: string | null
+  creative_status?: string | null
+  creative_current_version_id?: number | null
   created_at: string
   updated_at: string
 }
@@ -56,6 +72,14 @@ interface CreativeScenarioState {
     updated_at: string
   }
   nextCheckId: number
+}
+
+interface CreativeReviewMockOptions {
+  publishStatus?: Record<string, unknown>
+  scheduleConfig?: Record<string, unknown>
+  activePoolItems?: PublishPoolItem[]
+  invalidatedPoolItems?: PublishPoolItem[]
+  taskDetails?: Record<number, Record<string, unknown>>
 }
 
 function buildCheck(
@@ -194,6 +218,39 @@ export function createCreativeReviewState(): CreativeScenarioState {
   }
 }
 
+function buildDefaultScheduleConfig() {
+  return {
+    id: 1,
+    name: 'default',
+    start_hour: 8,
+    end_hour: 23,
+    interval_minutes: 30,
+    max_per_account_per_day: 20,
+    shuffle: false,
+    auto_start: true,
+    publish_scheduler_mode: 'task',
+    publish_pool_kill_switch: false,
+    publish_pool_shadow_read: false,
+    created_at: '2026-04-17T07:00:00Z',
+    updated_at: '2026-04-17T07:00:00Z',
+  }
+}
+
+function buildDefaultPublishStatus() {
+  return {
+    status: 'idle',
+    current_task_id: null,
+    total_pending: 0,
+    total_success: 0,
+    total_failed: 0,
+    scheduler_mode: 'task',
+    effective_scheduler_mode: 'task',
+    publish_pool_kill_switch: false,
+    publish_pool_shadow_read: false,
+    scheduler_shadow_diff: null,
+  }
+}
+
 async function fulfillJson(route: Route, body: unknown, status = 200) {
   await route.fulfill({
     status,
@@ -202,7 +259,46 @@ async function fulfillJson(route: Route, body: unknown, status = 200) {
   })
 }
 
-export async function mockCreativeReviewApis(page: Page, state = createCreativeReviewState()) {
+function filterPoolItems(items: PublishPoolItem[], url: URL) {
+  const status = url.searchParams.get('status')
+  const creativeId = url.searchParams.get('creative_id')
+  const skip = Number.parseInt(url.searchParams.get('skip') ?? '0', 10)
+  const limit = Number.parseInt(url.searchParams.get('limit') ?? `${items.length || 50}`, 10)
+
+  const filtered = items.filter((item) => {
+    if (status && item.status !== status) {
+      return false
+    }
+
+    if (creativeId && item.creative_item_id !== Number.parseInt(creativeId, 10)) {
+      return false
+    }
+
+    return true
+  })
+
+  return {
+    total: filtered.length,
+    items: filtered.slice(skip, skip + limit),
+  }
+}
+
+export async function mockCreativeReviewApis(
+  page: Page,
+  state = createCreativeReviewState(),
+  options: CreativeReviewMockOptions = {},
+) {
+  const scheduleConfig = {
+    ...buildDefaultScheduleConfig(),
+    ...options.scheduleConfig,
+  }
+  const publishStatus = {
+    ...buildDefaultPublishStatus(),
+    ...options.publishStatus,
+  }
+  const activePoolItems = options.activePoolItems ?? []
+  const invalidatedPoolItems = options.invalidatedPoolItems ?? []
+
   await page.route('**/api/auth/session', async (route) => {
     await fulfillJson(route, {
       auth_state: 'authenticated_active',
@@ -238,6 +334,20 @@ export async function mockCreativeReviewApis(page: Page, state = createCreativeR
 
   await page.route(`**/api/creatives/${state.detail.id}`, async (route) => {
     await fulfillJson(route, state.detail)
+  })
+
+  await page.route('**/api/publish/status', async (route) => {
+    await fulfillJson(route, publishStatus)
+  })
+
+  await page.route('**/api/schedule-config', async (route) => {
+    await fulfillJson(route, scheduleConfig)
+  })
+
+  await page.route('**/api/creative-publish-pool**', async (route) => {
+    const url = new URL(route.request().url())
+    const allItems = [...activePoolItems, ...invalidatedPoolItems]
+    await fulfillJson(route, filterPoolItems(allItems, url))
   })
 
   await page.route(`**/api/creative-reviews/${state.detail.id}/approve`, async (route) => {
@@ -287,9 +397,14 @@ export async function mockCreativeReviewApis(page: Page, state = createCreativeR
     await fulfillJson(route, { detail: 'composition job not found' }, 404)
   })
 
-  await page.route(`**/api/tasks/${state.detail.linked_task_ids[0]}`, async (route) => {
-    await fulfillJson(route, {
-      id: state.detail.linked_task_ids[0],
+  await page.route('**/api/tasks/*/composition-status', async (route) => {
+    await fulfillJson(route, { detail: 'composition job not found' }, 404)
+  })
+
+  await page.route('**/api/tasks/*', async (route) => {
+    const taskId = Number.parseInt(route.request().url().split('/').pop() ?? '0', 10)
+    const taskBody = options.taskDetails?.[taskId] ?? {
+      id: taskId,
       name: '作品诊断任务',
       status: 'draft',
       account_id: 1,
@@ -306,12 +421,20 @@ export async function mockCreativeReviewApis(page: Page, state = createCreativeR
       cover_ids: [],
       audio_ids: [],
       topic_ids: [],
-    })
+    }
+
+    await fulfillJson(route, taskBody)
   })
 
   await page.route('**/api/tasks?**', async (route) => {
     await fulfillJson(route, { total: 0, items: [] })
   })
 
-  return state
+  return {
+    state,
+    publishStatus,
+    scheduleConfig,
+    activePoolItems,
+    invalidatedPoolItems,
+  }
 }
