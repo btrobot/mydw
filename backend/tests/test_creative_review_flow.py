@@ -3,7 +3,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import CheckRecord, CreativeItem
+from models import CheckRecord, CreativeItem, PublishPoolItem
 from services.creative_version_service import CreativeVersionService
 
 
@@ -46,6 +46,15 @@ async def _load_checks(db_session: AsyncSession, creative_id: int) -> list[Check
     return list(result.scalars().all())
 
 
+async def _load_pool_items(db_session: AsyncSession, creative_id: int) -> list[PublishPoolItem]:
+    result = await db_session.execute(
+        select(PublishPoolItem)
+        .where(PublishPoolItem.creative_item_id == creative_id)
+        .order_by(PublishPoolItem.id.asc())
+    )
+    return list(result.scalars().all())
+
+
 @pytest.mark.asyncio
 async def test_approve_current_version_writes_check_record_and_updates_business_status(
     client: AsyncClient,
@@ -66,9 +75,13 @@ async def test_approve_current_version_writes_check_record_and_updates_business_
 
     creative = await _load_creative(db_session, creative_id)
     checks = await _load_checks(db_session, creative_id)
+    pool_items = await _load_pool_items(db_session, creative_id)
     assert creative.status == "APPROVED"
     assert len(checks) == 1
     assert checks[0].conclusion == "APPROVED"
+    assert len(pool_items) == 1
+    assert pool_items[0].status == "active"
+    assert pool_items[0].creative_version_id == current_version_id
 
 
 @pytest.mark.asyncio
@@ -92,8 +105,10 @@ async def test_non_current_version_cannot_be_approved(
 
     creative = await _load_creative(db_session, creative_id)
     checks = await _load_checks(db_session, creative_id)
+    pool_items = await _load_pool_items(db_session, creative_id)
     assert creative.current_version_id == current_version_id
     assert checks == []
+    assert pool_items == []
 
 
 @pytest.mark.asyncio
@@ -112,7 +127,9 @@ async def test_rework_requires_rework_type(
     assert "rework_type" in response.json()["detail"]
 
     checks = await _load_checks(db_session, creative_id)
+    pool_items = await _load_pool_items(db_session, creative_id)
     assert checks == []
+    assert pool_items == []
 
 
 @pytest.mark.asyncio
@@ -134,6 +151,33 @@ async def test_reject_writes_check_record_and_terminal_business_status(
 
     creative = await _load_creative(db_session, creative_id)
     checks = await _load_checks(db_session, creative_id)
+    pool_items = await _load_pool_items(db_session, creative_id)
     assert creative.status == "REJECTED"
     assert len(checks) == 1
     assert checks[0].conclusion == "REJECTED"
+    assert pool_items == []
+
+
+@pytest.mark.asyncio
+async def test_reject_invalidates_existing_publish_pool_item(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    creative_id, current_version_id, _ = await _seed_creative_review_sample(db_session)
+
+    approve_response = await client.post(
+        f"/api/creative-reviews/{creative_id}/approve",
+        json={"version_id": current_version_id, "note": "approved first"},
+    )
+    assert approve_response.status_code == 200
+
+    reject_response = await client.post(
+        f"/api/creative-reviews/{creative_id}/reject",
+        json={"version_id": current_version_id, "note": "reject later"},
+    )
+
+    assert reject_response.status_code == 200
+    pool_items = await _load_pool_items(db_session, creative_id)
+    assert len(pool_items) == 1
+    assert pool_items[0].status == "invalidated"
+    assert pool_items[0].invalidation_reason == "review_rejected"

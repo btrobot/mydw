@@ -68,6 +68,16 @@ class CreativeReviewConclusion(str, Enum):
     REJECTED = "REJECTED"
 
 
+class PublishPoolStatus(str, Enum):
+    ACTIVE = "active"
+    INVALIDATED = "invalidated"
+
+
+class PublishSchedulerMode(str, Enum):
+    TASK = "task"
+    POOL = "pool"
+
+
 class CompositionJobStatus(str, Enum):
     PENDING = "pending"
     PROCESSING = "processing"
@@ -480,6 +490,48 @@ class CheckRecordResponse(BaseModel):
     conclusion: CreativeReviewConclusion
     rework_type: Optional[str] = None
     note: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class PublishPoolItemResponse(BaseModel):
+    """Creative Phase C publish-pool item projection."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    creative_item_id: int
+    creative_version_id: int
+    status: PublishPoolStatus
+    invalidation_reason: Optional[str] = None
+    invalidated_at: Optional[datetime] = None
+    creative_no: Optional[str] = None
+    creative_title: Optional[str] = None
+    creative_status: Optional[CreativeStatus] = None
+    creative_current_version_id: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class PublishPoolListResponse(BaseModel):
+    """Paginated publish-pool list response."""
+
+    total: int
+    items: List[PublishPoolItemResponse]
+
+
+class PublishExecutionSnapshotResponse(BaseModel):
+    """Frozen publish-planning snapshot for a publish task."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    pool_item_id: int
+    source_task_id: int
+    task_id: Optional[int] = None
+    creative_item_id: int
+    creative_version_id: int
+    account_id: int
+    profile_id: Optional[int] = None
+    snapshot_json: str
     created_at: datetime
     updated_at: datetime
 
@@ -927,6 +979,9 @@ class PublishConfigRequest(BaseModel):
     max_per_account_per_day: int = Field(default=5, ge=1, le=100)
     shuffle: bool = False
     auto_start: bool = False
+    publish_scheduler_mode: PublishSchedulerMode = PublishSchedulerMode.TASK
+    publish_pool_kill_switch: bool = False
+    publish_pool_shadow_read: bool = False
 
 
 class PublishConfigResponse(BaseModel):
@@ -941,6 +996,9 @@ class PublishConfigResponse(BaseModel):
     max_per_account_per_day: int
     shuffle: bool
     auto_start: bool
+    publish_scheduler_mode: PublishSchedulerMode = PublishSchedulerMode.TASK
+    publish_pool_kill_switch: bool = False
+    publish_pool_shadow_read: bool = False
 
 
 # ============ 调度配置 Schema (替代 PublishConfig) ============
@@ -953,6 +1011,12 @@ class ScheduleConfigRequest(BaseModel):
     max_per_account_per_day: int = Field(default=5, ge=1, le=100, description="每账号每日最大上传数")
     shuffle: bool = Field(default=False, description="是否随机打乱任务顺序")
     auto_start: bool = Field(default=False, description="是否自动启动调度")
+    publish_scheduler_mode: PublishSchedulerMode = Field(
+        default=PublishSchedulerMode.TASK,
+        description="发布 scheduler 候选源模式：task=旧 ready task，pool=Creative publish pool",
+    )
+    publish_pool_kill_switch: bool = Field(default=False, description="开启后强制回退旧 task 路径")
+    publish_pool_shadow_read: bool = Field(default=False, description="开启后记录 task 与 pool 候选差异")
 
     @field_validator("end_hour")
     @classmethod
@@ -975,6 +1039,9 @@ class ScheduleConfigResponse(BaseModel):
     max_per_account_per_day: int
     shuffle: bool
     auto_start: bool
+    publish_scheduler_mode: PublishSchedulerMode
+    publish_pool_kill_switch: bool
+    publish_pool_shadow_read: bool
     created_at: datetime
     updated_at: datetime
 
@@ -991,6 +1058,11 @@ class PublishStatusResponse(BaseModel):
     total_pending: int = 0
     total_success: int = 0
     total_failed: int = 0
+    scheduler_mode: PublishSchedulerMode = PublishSchedulerMode.TASK
+    effective_scheduler_mode: PublishSchedulerMode = PublishSchedulerMode.TASK
+    publish_pool_kill_switch: bool = False
+    publish_pool_shadow_read: bool = False
+    scheduler_shadow_diff: Optional[dict[str, Any]] = None
 
 
 # ============ 系统 Schema ============

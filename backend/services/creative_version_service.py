@@ -13,6 +13,7 @@ from schemas import (
     CreativeCurrentVersionResponse,
     CreativeVersionSummaryResponse,
 )
+from services.publish_pool_service import PublishPoolService
 
 
 class CreativeVersionService:
@@ -90,6 +91,11 @@ class CreativeVersionService:
         creative_item.latest_version_no = version.version_no
         if status_on_activate is not None:
             creative_item.status = status_on_activate
+        if parent_version_id is not None:
+            await PublishPoolService(self.db).invalidate_for_creative(
+                creative_item.id,
+                reason="superseded_by_new_version",
+            )
         return version
 
     @staticmethod

@@ -146,6 +146,12 @@ class CreativeItem(Base):
         foreign_keys="CheckRecord.creative_item_id",
         order_by="CheckRecord.id",
     )
+    publish_pool_items = relationship(
+        "PublishPoolItem",
+        back_populates="creative_item",
+        foreign_keys="PublishPoolItem.creative_item_id",
+        order_by="PublishPoolItem.id",
+    )
 
 
 class CreativeVersion(Base):
@@ -191,6 +197,12 @@ class CreativeVersion(Base):
         back_populates="creative_version",
         foreign_keys="CheckRecord.creative_version_id",
         order_by="CheckRecord.id",
+    )
+    publish_pool_items = relationship(
+        "PublishPoolItem",
+        back_populates="creative_version",
+        foreign_keys="PublishPoolItem.creative_version_id",
+        order_by="PublishPoolItem.id",
     )
     tasks = relationship("Task", back_populates="creative_version", foreign_keys="Task.creative_version_id")
 
@@ -249,6 +261,74 @@ class CheckRecord(Base):
         back_populates="check_records",
         foreign_keys=[creative_version_id],
     )
+
+
+class PublishPoolItem(Base):
+    """Creative Phase C publishable candidate."""
+    __tablename__ = "publish_pool_items"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    creative_item_id = Column(Integer, ForeignKey("creative_items.id"), nullable=False, index=True)
+    creative_version_id = Column(Integer, ForeignKey("creative_versions.id"), nullable=False, index=True)
+    status = Column(String(32), nullable=False, default="active", index=True)
+    invalidation_reason = Column(String(64), nullable=True)
+    invalidated_at = Column(DateTime, nullable=True)
+    locked_at = Column(DateTime, nullable=True, index=True)
+    locked_by_task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("creative_version_id"),
+        CheckConstraint(
+            "status IN ('active', 'invalidated')",
+            name="ck_publish_pool_items_status",
+        ),
+        CheckConstraint(
+            "status != 'invalidated' OR invalidated_at IS NOT NULL",
+            name="ck_publish_pool_items_invalidated_at_required",
+        ),
+        CheckConstraint(
+            "locked_by_task_id IS NULL OR locked_at IS NOT NULL",
+            name="ck_publish_pool_items_locked_task_requires_locked_at",
+        ),
+    )
+
+    creative_item = relationship(
+        "CreativeItem",
+        back_populates="publish_pool_items",
+        foreign_keys=[creative_item_id],
+    )
+    creative_version = relationship(
+        "CreativeVersion",
+        back_populates="publish_pool_items",
+        foreign_keys=[creative_version_id],
+    )
+
+
+class PublishExecutionSnapshot(Base):
+    """Frozen publish-planning truth for a Creative publish candidate."""
+    __tablename__ = "publish_execution_snapshots"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    pool_item_id = Column(Integer, ForeignKey("publish_pool_items.id"), nullable=False, index=True)
+    source_task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False, index=True)
+    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True, unique=True, index=True)
+    creative_item_id = Column(Integer, ForeignKey("creative_items.id"), nullable=False, index=True)
+    creative_version_id = Column(Integer, ForeignKey("creative_versions.id"), nullable=False, index=True)
+    account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False, index=True)
+    profile_id = Column(Integer, ForeignKey("publish_profiles.id"), nullable=True, index=True)
+    snapshot_json = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    pool_item = relationship("PublishPoolItem", foreign_keys=[pool_item_id])
+    source_task = relationship("Task", foreign_keys=[source_task_id])
+    task = relationship("Task", foreign_keys=[task_id])
+    creative_item = relationship("CreativeItem", foreign_keys=[creative_item_id])
+    creative_version = relationship("CreativeVersion", foreign_keys=[creative_version_id])
+    account = relationship("Account", foreign_keys=[account_id])
+    profile = relationship("PublishProfile", foreign_keys=[profile_id])
 
 
 class Product(Base):
@@ -570,6 +650,9 @@ class ScheduleConfig(Base):
     max_per_account_per_day = Column(Integer, default=5)
     shuffle = Column(Boolean, default=False)
     auto_start = Column(Boolean, default=False)
+    publish_scheduler_mode = Column(String(16), default="task")
+    publish_pool_kill_switch = Column(Boolean, default=False)
+    publish_pool_shadow_read = Column(Boolean, default=False)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -706,6 +789,12 @@ async def init_db():
     await migration_025.run_migration(engine)
     migration_026 = importlib.import_module("migrations.026_creative_phase_b_composition_writeback")
     await migration_026.run_migration(engine)
+    migration_027 = importlib.import_module("migrations.027_creative_phase_c_publish_pool")
+    await migration_027.run_migration(engine)
+    migration_028 = importlib.import_module("migrations.028_creative_phase_c_publish_execution_snapshot")
+    await migration_028.run_migration(engine)
+    migration_029 = importlib.import_module("migrations.029_creative_phase_c_scheduler_cutover")
+    await migration_029.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

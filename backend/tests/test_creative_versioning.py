@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-from models import Account, CreativeItem, CreativeVersion
+from models import Account, CreativeItem, CreativeVersion, PublishPoolItem
 from schemas import CreativeStatus
 from services.creative_review_service import CreativeReviewService
 from services.creative_service import CreativeService
@@ -120,6 +120,11 @@ async def test_create_next_version_invalidates_previous_approval_summary(
     await db_session.commit()
 
     detail = await CreativeService(db_session).get_creative_detail(creative.id)
+    pool_items = (
+        await db_session.execute(
+            select(PublishPoolItem).where(PublishPoolItem.creative_item_id == creative.id)
+        )
+    ).scalars().all()
 
     assert v2.parent_version_id == v1.id
     assert detail is not None
@@ -131,3 +136,7 @@ async def test_create_next_version_invalidates_previous_approval_summary(
     assert detail.versions[1].latest_check is not None
     assert detail.versions[1].latest_check.conclusion.value == "APPROVED"
     assert detail.versions[1].is_current is False
+    assert len(pool_items) == 1
+    assert pool_items[0].creative_version_id == v1.id
+    assert pool_items[0].status == "invalidated"
+    assert pool_items[0].invalidation_reason == "superseded_by_new_version"

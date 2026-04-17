@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from models import CheckRecord, CreativeItem, CreativeVersion
 from schemas import CreativeReviewConclusion
+from services.publish_pool_service import PublishPoolService
 
 
 @dataclass
@@ -105,7 +106,28 @@ class CreativeReviewService:
         self.db.add(check)
         creative.status = conclusion.value
         await self.db.flush()
+        await self._sync_publish_pool(creative, version, conclusion)
         return creative, check
+
+    async def _sync_publish_pool(
+        self,
+        creative: CreativeItem,
+        version: CreativeVersion,
+        conclusion: CreativeReviewConclusion,
+    ) -> None:
+        pool_service = PublishPoolService(self.db)
+        if conclusion == CreativeReviewConclusion.APPROVED:
+            await pool_service.activate_for_version(creative, version)
+            return
+
+        invalidation_reason = {
+            CreativeReviewConclusion.REWORK_REQUIRED: "review_rework_required",
+            CreativeReviewConclusion.REJECTED: "review_rejected",
+        }[conclusion]
+        await pool_service.invalidate_for_creative(
+            creative.id,
+            reason=invalidation_reason,
+        )
 
     async def _load_creative(self, creative_id: int) -> CreativeItem | None:
         result = await self.db.execute(

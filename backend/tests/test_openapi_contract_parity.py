@@ -134,6 +134,47 @@ async def test_creative_review_openapi_exposes_phase_b_review_contracts(
 
 
 @pytest.mark.asyncio
+async def test_creative_publish_pool_openapi_exposes_phase_c_pool_contracts(
+    client: AsyncClient,
+) -> None:
+    response = await client.get("/openapi.json")
+    assert response.status_code == 200
+
+    spec = response.json()
+    paths = spec["paths"]
+    schemas = spec["components"]["schemas"]
+
+    assert paths["/api/creative-publish-pool"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/PublishPoolListResponse")
+    assert paths["/api/creative-publish-pool/{pool_item_id}"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/PublishPoolItemResponse")
+    status_param = _find_parameter(paths["/api/creative-publish-pool"]["get"]["parameters"], "status")
+    assert status_param["schema"]["anyOf"][0]["$ref"].endswith("/PublishPoolStatus")
+    assert schemas["PublishPoolItemResponse"]["properties"]["creative_status"]["anyOf"][0]["$ref"].endswith("/CreativeStatus")
+    assert schemas["PublishPoolStatus"]["enum"] == ["active", "invalidated"]
+
+
+@pytest.mark.asyncio
+async def test_scheduler_cutover_openapi_exposes_phase_c_runtime_controls(
+    client: AsyncClient,
+) -> None:
+    response = await client.get("/openapi.json")
+    assert response.status_code == 200
+
+    spec = response.json()
+    schedule_config = spec["components"]["schemas"]["ScheduleConfigResponse"]["properties"]
+    publish_status = spec["components"]["schemas"]["PublishStatusResponse"]["properties"]
+    publish_scheduler_mode = spec["components"]["schemas"]["PublishSchedulerMode"]
+
+    assert schedule_config["publish_scheduler_mode"]["$ref"].endswith("/PublishSchedulerMode")
+    assert schedule_config["publish_pool_kill_switch"]["type"] == "boolean"
+    assert schedule_config["publish_pool_shadow_read"]["type"] == "boolean"
+    assert publish_status["scheduler_mode"]["$ref"].endswith("/PublishSchedulerMode")
+    assert publish_status["effective_scheduler_mode"]["$ref"].endswith("/PublishSchedulerMode")
+    assert publish_status["publish_pool_kill_switch"]["type"] == "boolean"
+    assert publish_status["publish_pool_shadow_read"]["type"] == "boolean"
+    assert publish_scheduler_mode["enum"] == ["task", "pool"]
+
+
+@pytest.mark.asyncio
 async def test_product_create_openapi_requires_name_and_share_text(
     client: AsyncClient,
 ) -> None:
