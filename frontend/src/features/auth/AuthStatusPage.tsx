@@ -121,8 +121,11 @@ export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
           <Space wrap>
             {isGraceVariant ? (
               <>
-                <Button type="primary" onClick={() => navigate('/dashboard')}>
-                  Back to dashboard
+                <Button type="primary" onClick={() => navigate('/creative/workbench')}>
+                  Open creative workbench
+                </Button>
+                <Button onClick={() => navigate('/dashboard')}>
+                  Open runtime dashboard
                 </Button>
                 <Button
                   onClick={() => logoutMutation.mutate()}

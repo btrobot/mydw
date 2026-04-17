@@ -11,16 +11,16 @@ export default function CreativeEmptyState({ onOpenTaskList }: CreativeEmptyStat
     <Empty
       description={(
         <Space direction="vertical" size={4}>
-          <Text strong>暂无作品</Text>
+          <Text strong>No creatives yet</Text>
           <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            阶段 A 仅接入 Creative 骨架。当前还没有映射到作品域的任务样本时，这里会显示空态。
+            Creative workbench becomes most useful after tasks have written back into the creative domain. Until then, this page stays empty and you can inspect execution progress from task diagnostics.
           </Paragraph>
         </Space>
       )}
     >
       {onOpenTaskList ? (
         <Button type="primary" onClick={onOpenTaskList}>
-          前往任务列表
+          Open task diagnostics
         </Button>
       ) : null}
     </Empty>

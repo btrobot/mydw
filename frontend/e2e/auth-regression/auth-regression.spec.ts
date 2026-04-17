@@ -1,32 +1,18 @@
 import { expect, test } from '@playwright/test'
 
+import { mockWorkbenchLandingApis } from '../utils/workbenchEntryMocks'
+
 const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:5173'
 const BOOTSTRAP_WARNING = 'Local auth bootstrap failed, but app startup can continue.'
 
 test.describe('Auth regression and polish', () => {
   test('redirects authenticated users away from login and shows auth session header', async ({ page }) => {
-    await page.route('**/api/auth/session', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          auth_state: 'authenticated_active',
-          remote_user_id: 'u_123',
-          display_name: 'Alice',
-          license_status: 'active',
-          entitlements: ['dashboard:view'],
-          expires_at: '2026-04-20T10:00:00',
-          last_verified_at: '2026-04-14T00:00:00',
-          offline_grace_until: '2026-04-21T10:00:00',
-          denial_reason: null,
-          device_id: 'device-1',
-        }),
-      })
-    })
+    await mockWorkbenchLandingApis(page)
 
     await page.goto(`${BASE_URL}/#/login`)
-    await page.waitForURL('**/#/dashboard')
+    await page.waitForURL('**/#/creative/workbench')
     await expect(page.getByTestId('auth-session-header')).toBeVisible()
+    await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
     await expect(page.locator('body')).toContainText('Alice')
     await expect(page.locator('body')).toContainText('Authenticated')
   })

@@ -1,6 +1,25 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+
+import {
+  createAuthSession,
+  mockDashboardRuntimeApis,
+  mockWorkbenchLandingApis,
+} from '../utils/workbenchEntryMocks'
 
 const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:5173'
+
+async function mockProtectedShellApis(page: Page, authState: 'authenticated_active' | 'authenticated_grace') {
+  await mockWorkbenchLandingApis(page, { authState })
+  await mockDashboardRuntimeApis(page)
+
+  await page.route('**/api/accounts**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([]),
+    })
+  })
+}
 
 test.describe('Auth route gating', () => {
   test('redirects unauthenticated users from protected routes to login', async ({ page }) => {
@@ -8,12 +27,7 @@ test.describe('Auth route gating', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          auth_state: 'unauthenticated',
-          entitlements: [],
-          denial_reason: null,
-          device_id: null,
-        }),
+        body: JSON.stringify(createAuthSession('unauthenticated')),
       })
     })
 
@@ -23,74 +37,41 @@ test.describe('Auth route gating', () => {
   })
 
   test('allows active sessions to mount protected routes', async ({ page }) => {
-    await page.route('**/api/auth/session', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          auth_state: 'authenticated_active',
-          remote_user_id: 'u_123',
-          display_name: 'Alice',
-          license_status: 'active',
-          entitlements: ['dashboard:view'],
-          expires_at: '2026-04-20T10:00:00',
-          last_verified_at: '2026-04-14T00:00:00',
-          offline_grace_until: '2026-04-21T10:00:00',
-          denial_reason: null,
-          device_id: 'device-1',
-        }),
-      })
-    })
+    await mockProtectedShellApis(page, 'authenticated_active')
 
     await page.goto(`${BASE_URL}/#/account`)
     await page.waitForURL('**/#/account')
-    await expect(page.getByRole('button', { name: '添加账号' })).toBeVisible()
+    await expect(page.getByTestId('auth-session-header')).toBeVisible()
   })
 
-  test('redirects grace sessions away from non-dashboard routes', async ({ page }) => {
-    await page.route('**/api/auth/session', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          auth_state: 'authenticated_grace',
-          remote_user_id: 'u_123',
-          display_name: 'Alice',
-          license_status: 'active',
-          entitlements: ['dashboard:view'],
-          expires_at: null,
-          last_verified_at: '2026-04-14T00:00:00',
-          offline_grace_until: '2026-04-15T00:00:00',
-          denial_reason: 'network_timeout',
-          device_id: 'device-1',
-        }),
-      })
-    })
+  test('redirects grace sessions away from non-shell routes', async ({ page }) => {
+    await mockProtectedShellApis(page, 'authenticated_grace')
 
     await page.goto(`${BASE_URL}/#/account`)
     await page.waitForURL('**/#/auth/grace')
     await expect(page.getByTestId('auth-status-grace')).toBeVisible()
   })
 
-  test('allows grace sessions to mount the restricted dashboard shell', async ({ page }) => {
-    await page.route('**/api/auth/session', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          auth_state: 'authenticated_grace',
-          remote_user_id: 'u_123',
-          display_name: 'Alice',
-          license_status: 'active',
-          entitlements: ['dashboard:view'],
-          expires_at: null,
-          last_verified_at: '2026-04-14T00:00:00',
-          offline_grace_until: '2026-04-15T00:00:00',
-          denial_reason: 'network_timeout',
-          device_id: 'device-1',
-        }),
-      })
-    })
+  test('redirects grace sessions from login to the workbench shell', async ({ page }) => {
+    await mockProtectedShellApis(page, 'authenticated_grace')
+
+    await page.goto(`${BASE_URL}/#/login`)
+    await page.waitForURL('**/#/creative/workbench')
+    await expect(page.getByTestId('auth-grace-banner')).toBeVisible()
+    await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
+  })
+
+  test('allows grace sessions to mount the restricted workbench shell', async ({ page }) => {
+    await mockProtectedShellApis(page, 'authenticated_grace')
+
+    await page.goto(`${BASE_URL}/#/creative/workbench`)
+    await page.waitForURL('**/#/creative/workbench')
+    await expect(page.getByTestId('auth-grace-banner')).toBeVisible()
+    await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
+  })
+
+  test('allows grace sessions to keep using the runtime dashboard manually', async ({ page }) => {
+    await mockProtectedShellApis(page, 'authenticated_grace')
 
     await page.goto(`${BASE_URL}/#/dashboard`)
     await page.waitForURL('**/#/dashboard')
@@ -103,18 +84,7 @@ test.describe('Auth route gating', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          auth_state: 'revoked',
-          remote_user_id: 'u_123',
-          display_name: 'Alice',
-          license_status: 'revoked',
-          entitlements: [],
-          expires_at: null,
-          last_verified_at: '2026-04-14T00:00:00',
-          offline_grace_until: null,
-          denial_reason: 'revoked',
-          device_id: 'device-1',
-        }),
+        body: JSON.stringify(createAuthSession('revoked')),
       })
     })
 

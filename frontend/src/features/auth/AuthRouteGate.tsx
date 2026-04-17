@@ -16,6 +16,13 @@ const GraceBanner = () => (
   </div>
 )
 
+const canAccessGraceShell = (pathname: string) => (
+  pathname === '/'
+  || pathname === '/dashboard'
+  || pathname === '/creative'
+  || pathname === '/creative/workbench'
+)
+
 export const ProtectedAppShell = () => {
   const { authState } = useAuth()
   const location = useLocation()
@@ -25,7 +32,7 @@ export const ProtectedAppShell = () => {
   }
 
   if (authState === 'authenticated_grace') {
-    if (location.pathname === '/' || location.pathname === '/dashboard') {
+    if (canAccessGraceShell(location.pathname)) {
       return (
         <>
           <GraceBanner />
@@ -55,11 +62,11 @@ export const PublicLoginRoute = () => {
   const { authState } = useAuth()
 
   if (authState === 'authenticated_active') {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/creative/workbench" replace />
   }
 
   if (authState === 'authenticated_grace') {
-    return <Navigate to="/auth/grace" replace />
+    return <Navigate to="/creative/workbench" replace />
   }
 
   if (authState === 'revoked') {

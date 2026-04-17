@@ -25,19 +25,41 @@ import {
 } from '../hooks/useCreatives'
 import type { PublishPoolItem } from '../types/creative'
 import {
-  creativeStatusMeta,
   formatCreativeTimestamp,
-  formatModeLabel,
-  formatRuntimeStatusLabel,
+  creativeStatusMeta,
   isPoolVersionAligned,
   publishPoolStatusMeta,
-  publishRuntimeStatusMeta,
   publishSchedulerModeMeta,
+  publishRuntimeStatusMeta,
 } from '../types/creative'
 
 const { Paragraph, Text, Title } = Typography
 
 type WorkbenchPoolFilter = 'all' | 'pool' | 'unpooled'
+
+const WORKBENCH_STATUS_LABELS = {
+  PENDING_INPUT: 'Pending input',
+  WAITING_REVIEW: 'Waiting review',
+  APPROVED: 'Approved',
+  REWORK_REQUIRED: 'Rework required',
+  REJECTED: 'Rejected',
+} as const
+
+const WORKBENCH_POOL_STATUS_LABELS = {
+  active: 'In publish pool',
+  invalidated: 'Invalidated',
+} as const
+
+const WORKBENCH_SCHEDULER_MODE_LABELS = {
+  task: 'Task mode',
+  pool: 'Pool mode',
+} as const
+
+const WORKBENCH_RUNTIME_LABELS = {
+  idle: 'Idle',
+  running: 'Running',
+  paused: 'Paused',
+} as const
 
 export default function CreativeWorkbench() {
   const navigate = useNavigate()
@@ -90,11 +112,22 @@ export default function CreativeWorkbench() {
 
   return (
     <PageContainer
-      title="作品工作台"
-      subTitle="Phase C：发布池可见性与 cutover 诊断"
+      title="Creative workbench"
+      subTitle="Default daily entry for creative operations, review, and publish diagnostics"
       extra={[
-        <Button key="tasks" onClick={() => navigate('/task/list')}>
-          查看任务列表
+        <Button
+          key="dashboard"
+          onClick={() => navigate('/dashboard')}
+          data-testid="creative-workbench-open-dashboard"
+        >
+          Open runtime dashboard
+        </Button>,
+        <Button
+          key="tasks"
+          onClick={() => navigate('/task/list')}
+          data-testid="creative-workbench-open-task-list"
+        >
+          Open task diagnostics
         </Button>,
       ]}
     >
@@ -102,16 +135,17 @@ export default function CreativeWorkbench() {
         <Alert
           type="info"
           showIcon
-          message="Phase C 只读诊断入口"
-          description="工作台现在会投影发布池候选、scheduler 模式与 cutover 诊断，但仍不提供直接绕过 scheduler 的发布按钮。"
+          message="Creative workbench is the default main entry"
+          description="Use this page for day-to-day creative work: open detail pages, review current versions, enter AIClip workflow, and inspect publish readiness. Task pages remain diagnostics surfaces, and the runtime dashboard stays available as a secondary view."
+          data-testid="creative-workbench-main-entry-banner"
         />
 
         <Card data-testid="creative-workbench-publish-summary">
           <Flex wrap gap={24}>
-            <Statistic title="作品总数" value={total} />
-            <Statistic title="池中候选" value={poolData?.total ?? 0} loading={poolLoading} />
-            <Statistic title="版本对齐候选" value={alignedPoolCount} loading={poolLoading} />
-            <Statistic title="发布失败累计" value={publishStatus?.total_failed ?? 0} />
+            <Statistic title="Creatives" value={total} />
+            <Statistic title="Active pool items" value={poolData?.total ?? 0} loading={poolLoading} />
+            <Statistic title="Version-aligned pool items" value={alignedPoolCount} loading={poolLoading} />
+            <Statistic title="Publish failures" value={publishStatus?.total_failed ?? 0} />
           </Flex>
 
           <Space wrap size={[8, 8]} style={{ marginTop: 16 }}>
@@ -119,43 +153,43 @@ export default function CreativeWorkbench() {
               color={schedulerMode ? publishSchedulerModeMeta[schedulerMode].color : 'default'}
               data-testid="creative-workbench-scheduler-mode"
             >
-              配置模式：{formatModeLabel(schedulerMode)}
+              Configured mode: {schedulerMode ? WORKBENCH_SCHEDULER_MODE_LABELS[schedulerMode] : '-'}
             </Tag>
             <Tag
               color={effectiveSchedulerMode ? publishSchedulerModeMeta[effectiveSchedulerMode].color : 'default'}
               data-testid="creative-workbench-effective-mode"
             >
-              生效模式：{formatModeLabel(effectiveSchedulerMode)}
+              Effective mode: {effectiveSchedulerMode ? WORKBENCH_SCHEDULER_MODE_LABELS[effectiveSchedulerMode] : '-'}
             </Tag>
             <Tag
               color={runtimeStatus ? publishRuntimeStatusMeta[runtimeStatus].color : 'default'}
               data-testid="creative-workbench-runtime-status"
             >
-              Runtime：{formatRuntimeStatusLabel(runtimeStatus)}
+              Runtime: {runtimeStatus ? WORKBENCH_RUNTIME_LABELS[runtimeStatus] : '-'}
             </Tag>
             <Tag data-testid="creative-workbench-shadow-read">
-              Shadow Read：{publishStatus?.publish_pool_shadow_read ? 'ON' : 'OFF'}
+              Shadow read: {publishStatus?.publish_pool_shadow_read ? 'ON' : 'OFF'}
             </Tag>
             <Tag data-testid="creative-workbench-kill-switch">
-              Kill Switch：{publishStatus?.publish_pool_kill_switch ? 'ON' : 'OFF'}
+              Kill switch: {publishStatus?.publish_pool_kill_switch ? 'ON' : 'OFF'}
             </Tag>
           </Space>
 
           <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
-            可通过下方筛选查看已入池候选与未入池作品；详情页继续承担版本、发布链与任务诊断聚合视图。
+            Filter the list below to inspect in-pool and unpooled creatives. Open each detail page to review versions, checks, AIClip workflow access, and task diagnostics round-trips without leaving the creative-first flow.
           </Paragraph>
         </Card>
 
         <Card
           size="small"
-          title="候选筛选"
+          title="Pool visibility filter"
           data-testid="creative-workbench-pool-filter"
           extra={(
             <Segmented
               options={[
-                { label: '全部作品', value: 'all' },
-                { label: '池中候选', value: 'pool' },
-                { label: '未入池', value: 'unpooled' },
+                { label: 'All creatives', value: 'all' },
+                { label: 'In pool', value: 'pool' },
+                { label: 'Not in pool', value: 'unpooled' },
               ]}
               value={poolFilter}
               onChange={(value) => setPoolFilter(value as WorkbenchPoolFilter)}
@@ -163,7 +197,7 @@ export default function CreativeWorkbench() {
           )}
         >
           <Text type="secondary">
-            当前筛选不会触发发布动作，只用于核对作品状态、当前版本与 publish pool 投影是否一致。
+            This filter is read-only. It helps verify creative status, current version alignment, and publish-pool projection readiness before you inspect a specific creative.
           </Text>
         </Card>
 
@@ -189,22 +223,23 @@ export default function CreativeWorkbench() {
                         type="link"
                         icon={<ArrowRightOutlined />}
                         onClick={() => navigate(`/creative/${item.id}`)}
+                        data-testid={`creative-workbench-open-detail-${item.id}`}
                       >
-                        查看详情
+                        View detail
                       </Button>
                     )}
                   >
                     <Space direction="vertical" size={12} style={{ width: '100%' }}>
                       <div>
-                        <Text type="secondary">作品编号</Text>
+                        <Text type="secondary">Creative number</Text>
                         <Title level={5} style={{ marginTop: 4, marginBottom: 0 }}>
                           {item.creative_no}
                         </Title>
                       </div>
 
                       <Space wrap>
-                        <Tag color={statusMeta.color}>{statusMeta.label}</Tag>
-                        <Tag>当前版本 #{item.current_version_id ?? '-'}</Tag>
+                        <Tag color={statusMeta.color}>{WORKBENCH_STATUS_LABELS[item.status]}</Tag>
+                        <Tag>Current version #{item.current_version_id ?? '-'}</Tag>
                       </Space>
 
                       <Space wrap>
@@ -218,40 +253,39 @@ export default function CreativeWorkbench() {
                         </Button>
                       </Space>
 
-
                       <Space wrap data-testid={`creative-workbench-pool-state-${item.id}`}>
                         {poolItem ? (
                           <>
                             <Tag color={publishPoolStatusMeta[poolItem.status].color}>
-                              {publishPoolStatusMeta[poolItem.status].label}
+                              {WORKBENCH_POOL_STATUS_LABELS[poolItem.status]}
                             </Tag>
                             <Tag color={poolAligned ? 'success' : 'warning'}>
-                              池版本 #{poolItem.creative_version_id}
+                              Pool version #{poolItem.creative_version_id}
                             </Tag>
                             <Tag color={poolAligned ? 'success' : 'warning'}>
-                              {poolAligned ? '与当前版本一致' : '与当前版本不一致'}
+                              {poolAligned ? 'Aligned with current version' : 'Not aligned with current version'}
                             </Tag>
                           </>
                         ) : (
-                          <Tag>未在发布池</Tag>
+                          <Tag>Not in publish pool</Tag>
                         )}
                       </Space>
 
                       {poolItem ? (
-                        <Text type="secondary">Pool Item #{poolItem.id}</Text>
+                        <Text type="secondary">Pool item #{poolItem.id}</Text>
                       ) : null}
 
                       {item.generation_error_msg ? (
                         <Alert
                           type="warning"
                           showIcon
-                          message="最近一次生成失败"
+                          message="Latest generation writeback failed"
                           description={item.generation_error_msg}
                         />
                       ) : null}
 
                       <Text type="secondary">
-                        更新时间：{formatCreativeTimestamp(item.updated_at)}
+                        Updated at: {formatCreativeTimestamp(item.updated_at)}
                       </Text>
                     </Space>
                   </Card>

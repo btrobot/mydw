@@ -65,7 +65,7 @@ function App() {
                   <Route path="auth/grace" element={<AuthStatusPage variant="grace" />} />
 
                   <Route path="/" element={<ProtectedAppShell />}>
-                    <Route index element={<Navigate to="/dashboard" replace />} />
+                    <Route index element={<Navigate to="/creative/workbench" replace />} />
                     <Route path="dashboard" element={<Dashboard />} />
                     <Route path="account" element={<Account />} />
                     <Route path="creative" element={<Navigate to="/creative/workbench" replace />} />

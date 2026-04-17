@@ -17,8 +17,6 @@ const { Header, Sider, Content } = Layout
 const { Title } = Typography
 
 const items = [
-  { key: '/dashboard', icon: <DashboardOutlined />, label: 'Runtime dashboard' },
-  { key: '/account', icon: <UserOutlined />, label: 'Accounts' },
   {
     key: 'creative-group',
     icon: <AppstoreOutlined />,
@@ -27,6 +25,8 @@ const items = [
       { key: '/creative/workbench', label: 'Creative workbench' },
     ],
   },
+  { key: '/dashboard', icon: <DashboardOutlined />, label: 'Runtime dashboard' },
+  { key: '/account', icon: <UserOutlined />, label: 'Accounts' },
   {
     key: 'task-group',
     icon: <FileTextOutlined />,

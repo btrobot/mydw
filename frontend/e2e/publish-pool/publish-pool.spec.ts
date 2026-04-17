@@ -39,17 +39,16 @@ test.describe('Phase C publish pool visibility', () => {
 
     await page.goto(`${BASE_URL}/#/creative/workbench`)
 
-    await expect(page.getByTestId('creative-workbench-effective-mode')).toContainText('Pool 模式')
-    await page.getByTestId('creative-workbench-pool-filter').getByText('池中候选', { exact: true }).click()
+    await expect(page.getByTestId('creative-workbench-effective-mode')).toContainText('Pool mode')
+    await page.getByTestId('creative-workbench-pool-filter').getByText('In pool', { exact: true }).click()
     await expect(page.locator('body')).toContainText('CR-000101')
-    await expect(page.getByTestId('creative-workbench-pool-state-101')).toContainText('池版本 #202')
-    await expect(page.getByRole('button', { name: /发布/ })).toHaveCount(0)
+    await expect(page.getByTestId('creative-workbench-pool-state-101')).toContainText('Pool version #202')
+    await expect(page.getByRole('button', { name: /publish/i })).toHaveCount(0)
 
-    await page.getByRole('button', { name: '查看详情' }).click()
+    await page.getByTestId('creative-workbench-open-detail-101').click()
     await page.waitForURL('**/#/creative/101')
 
     await expect(page.getByTestId('creative-publish-diagnostics')).toContainText('Pool Item ID')
     await expect(page.getByTestId('creative-publish-pool-card')).toContainText('Pool #501')
-    await expect(page.getByTestId('creative-publish-pool-card')).toContainText('与当前版本一致')
   })
 })

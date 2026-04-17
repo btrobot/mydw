@@ -1,9 +1,13 @@
-﻿import { expect, test } from '@playwright/test'
+import { expect, test } from '@playwright/test'
+
+import { mockWorkbenchLandingApis } from '../utils/workbenchEntryMocks'
 
 const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:5173'
 
 test.describe('Auth shell pages', () => {
   test('renders login page and submits successful login to local auth surface', async ({ page }) => {
+    await mockWorkbenchLandingApis(page, { authState: 'unauthenticated' })
+
     await page.route('**/api/auth/login', async (route) => {
       const body = await route.request().postDataJSON()
       expect(body.username).toBe('alice')
@@ -35,7 +39,8 @@ test.describe('Auth shell pages', () => {
     await page.getByLabel('Password').fill('secret')
     await page.locator('button[type="submit"]').click()
 
-    await page.waitForURL('**/#/dashboard')
+    await page.waitForURL('**/#/creative/workbench')
+    await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
   })
 
   test('renders revoked shell', async ({ page }) => {

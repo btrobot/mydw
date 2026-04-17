@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import { mockWorkbenchLandingApis } from '../utils/workbenchEntryMocks'
+
 const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:5173'
 const DEVICE_ID_STORAGE_KEY = 'mydw.auth.device_id'
 
@@ -53,63 +55,6 @@ async function mockAuthStatus(page: Page, status = createStatus()) {
   })
 }
 
-async function mockDashboardApis(page: Page) {
-  await page.route('**/api/system/stats**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        total_accounts: 1,
-        active_accounts: 1,
-        total_products: 0,
-      }),
-    })
-  })
-
-  await page.route('**/api/system/logs**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        total: 0,
-        items: [],
-      }),
-    })
-  })
-
-  await page.route('**/api/tasks/stats**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        total: 0,
-        draft: 0,
-        composing: 0,
-        ready: 0,
-        uploading: 0,
-        uploaded: 0,
-        failed: 0,
-        cancelled: 0,
-        today_uploaded: 0,
-      }),
-    })
-  })
-
-  await page.route('**/api/publish/status**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        status: 'idle',
-        current_task_id: null,
-        total_pending: 0,
-        total_success: 0,
-        total_failed: 0,
-      }),
-    })
-  })
-}
-
 async function gotoLoginPage(page: Page) {
   await page.goto(`${BASE_URL}/#/login`)
   await expect(page.getByTestId('auth-login-page')).toBeVisible()
@@ -139,8 +84,7 @@ test.describe('Remote auth login page', () => {
   })
 
   test('submits username/password/device metadata and redirects on success', async ({ page }) => {
-    await mockAuthSession(page)
-    await mockDashboardApis(page)
+    await mockWorkbenchLandingApis(page, { authState: 'unauthenticated' })
 
     let receivedPayload: Record<string, unknown> | null = null
     await page.route('**/api/auth/login', async (route) => {
@@ -168,7 +112,8 @@ test.describe('Remote auth login page', () => {
     await page.getByLabel('Password').fill('secret')
     await page.getByRole('button', { name: 'Sign in' }).click()
 
-    await page.waitForURL('**/#/dashboard')
+    await page.waitForURL('**/#/creative/workbench')
+    await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
     expect(receivedPayload).not.toBeNull()
     expect(receivedPayload?.username).toBe('alice')
     expect(receivedPayload?.password).toBe('secret')

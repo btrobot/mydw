@@ -8,7 +8,7 @@ const creativeListPayload = {
     {
       id: 101,
       creative_no: 'CR-000101',
-      title: '春季作品样本',
+      title: 'Spring campaign',
       status: 'PENDING_INPUT',
       current_version_id: 201,
       generation_error_msg: null,
@@ -21,13 +21,13 @@ const creativeListPayload = {
 const creativeDetailPayload = {
   id: 101,
   creative_no: 'CR-000101',
-  title: '春季作品样本',
+  title: 'Spring campaign',
   status: 'PENDING_INPUT',
   current_version_id: 201,
   current_version: {
     id: 201,
     version_no: 1,
-    title: '初始版本',
+    title: 'Initial version',
     package_record_id: 301,
   },
   versions: [],
@@ -42,7 +42,7 @@ const creativeDetailPayload = {
 
 const taskDetailPayload = {
   id: 901,
-  name: '阶段 A 样本任务',
+  name: 'Phase D diagnostics task',
   status: 'draft',
   account_id: 1,
   account_name: 'Creative Task Account',
@@ -204,17 +204,18 @@ test.describe('Creative workbench baseline', () => {
     await mockCreativeApis(page)
   })
 
-  test('shows workbench list and Phase C publish summary', async ({ page }) => {
+  test('shows workbench list and the default-entry banner', async ({ page }) => {
     await page.goto(`${BASE_URL}/#/creative/workbench`)
 
+    await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
     await expect(page.getByTestId('creative-workbench-publish-summary')).toBeVisible()
     await expect(page.locator('body')).toContainText('CR-000101')
-    await expect(page.getByTestId('creative-workbench-pool-state-101')).toContainText('未在发布池')
+    await expect(page.getByTestId('creative-workbench-pool-state-101')).toContainText('Not in publish pool')
   })
 
   test('navigates from workbench to detail and task diagnostics', async ({ page }) => {
     await page.goto(`${BASE_URL}/#/creative/workbench`)
-    await page.getByRole('button', { name: '查看详情' }).click()
+    await page.getByTestId('creative-workbench-open-detail-101').click()
 
     await page.waitForURL('**/#/creative/101')
     await expect(page.getByTestId('creative-publish-diagnostics')).toBeVisible()

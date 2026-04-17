@@ -36,7 +36,7 @@ async function mockTaskDiagnosticsApis(page: Page) {
     },
   })
 
-  await page.route('**/api/system-stats', async (route) => {
+  await page.route('**/api/system/stats**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -48,7 +48,7 @@ async function mockTaskDiagnosticsApis(page: Page) {
     })
   })
 
-  await page.route('**/api/system-logs**', async (route) => {
+  await page.route('**/api/system/logs**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -98,11 +98,15 @@ test.describe('Task diagnostics positioning', () => {
     await mockTaskDiagnosticsApis(page)
   })
 
-  test('keeps dashboard as current default entry while foregrounding the creative CTA', async ({ page }) => {
+  test('uses workbench as the default entry while keeping dashboard reachable', async ({ page }) => {
     await page.goto(`${BASE_URL}/#/`)
 
+    await page.waitForURL('**/#/creative/workbench')
+    await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
+
+    await page.getByTestId('creative-workbench-open-dashboard').click()
     await page.waitForURL('**/#/dashboard')
-    await expect(page.getByTestId('dashboard-open-workbench')).toBeVisible()
+    await expect(page.getByTestId('dashboard-primary-cta')).toBeVisible()
 
     await page.getByTestId('dashboard-open-workbench').click()
     await page.waitForURL('**/#/creative/workbench')

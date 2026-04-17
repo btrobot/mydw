@@ -57,7 +57,7 @@ export default function LoginPage() {
       setSubmitError(null)
       setSession(nextSession)
       message.success('Login succeeded')
-      navigate('/dashboard', { replace: true })
+      navigate('/creative/workbench', { replace: true })
     },
     onError: (error: unknown) => {
       const descriptor = getAuthErrorDescriptor(error)

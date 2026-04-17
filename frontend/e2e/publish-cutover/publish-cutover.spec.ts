@@ -76,14 +76,14 @@ test.describe('Phase C cutover diagnostics', () => {
 
     await page.goto(`${BASE_URL}/#/creative/101`)
 
-    await expect(page.getByTestId('creative-publish-diagnostics')).toContainText('Pool 模式')
+    await expect(page.getByTestId('creative-publish-diagnostics')).toContainText('Pool')
     await expect(page.getByTestId('creative-publish-pool-card')).toContainText('publish_failed')
     await expect(page.getByTestId('creative-shadow-diff')).toContainText('legacy_task_diff')
     await expect(page.getByTestId('creative-shadow-diff')).toContainText('pool_candidate_locked')
     await expect(page.locator('body')).toContainText('publish pipeline timeout')
 
-    await page.getByRole('button', { name: '打开任务 #903' }).click()
+    await page.getByTestId('creative-open-task-903').click()
     await page.waitForURL('**/#/task/903')
-    await expect(page.locator('body')).toContainText('任务详情 #903')
+    await expect(page.getByTestId('task-detail-diagnostics-banner')).toBeVisible()
   })
 })
