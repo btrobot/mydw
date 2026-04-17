@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, func, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, func, UniqueConstraint, CheckConstraint
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -138,6 +138,12 @@ class CreativeItem(Base):
         order_by="CreativeVersion.version_no",
     )
     tasks = relationship("Task", back_populates="creative_item", foreign_keys="Task.creative_item_id")
+    check_records = relationship(
+        "CheckRecord",
+        back_populates="creative_item",
+        foreign_keys="CheckRecord.creative_item_id",
+        order_by="CheckRecord.id",
+    )
 
 
 class CreativeVersion(Base):
@@ -146,6 +152,7 @@ class CreativeVersion(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     creative_item_id = Column(Integer, ForeignKey("creative_items.id"), nullable=False, index=True)
+    parent_version_id = Column(Integer, ForeignKey("creative_versions.id"), nullable=True, index=True)
     version_no = Column(Integer, nullable=False, default=1)
     version_type = Column(String(32), nullable=False, default="generated")
     title = Column(String(256), nullable=True)
@@ -159,10 +166,29 @@ class CreativeVersion(Base):
         back_populates="versions",
         foreign_keys=[creative_item_id],
     )
+    parent_version = relationship(
+        "CreativeVersion",
+        remote_side=[id],
+        foreign_keys=[parent_version_id],
+        back_populates="child_versions",
+        uselist=False,
+    )
+    child_versions = relationship(
+        "CreativeVersion",
+        back_populates="parent_version",
+        foreign_keys=[parent_version_id],
+        order_by="CreativeVersion.version_no",
+    )
     package_records = relationship(
         "PackageRecord",
         back_populates="creative_version",
         foreign_keys="PackageRecord.creative_version_id",
+    )
+    check_records = relationship(
+        "CheckRecord",
+        back_populates="creative_version",
+        foreign_keys="CheckRecord.creative_version_id",
+        order_by="CheckRecord.id",
     )
     tasks = relationship("Task", back_populates="creative_version", foreign_keys="Task.creative_version_id")
 
@@ -183,6 +209,42 @@ class PackageRecord(Base):
     creative_version = relationship(
         "CreativeVersion",
         back_populates="package_records",
+        foreign_keys=[creative_version_id],
+    )
+
+
+class CheckRecord(Base):
+    """Creative Phase B review record."""
+    __tablename__ = "check_records"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    creative_item_id = Column(Integer, ForeignKey("creative_items.id"), nullable=False, index=True)
+    creative_version_id = Column(Integer, ForeignKey("creative_versions.id"), nullable=False, index=True)
+    conclusion = Column(String(32), nullable=False, index=True)
+    rework_type = Column(String(64), nullable=True)
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        CheckConstraint(
+            "conclusion IN ('APPROVED', 'REWORK_REQUIRED', 'REJECTED')",
+            name="ck_check_records_conclusion",
+        ),
+        CheckConstraint(
+            "conclusion != 'REWORK_REQUIRED' OR rework_type IS NOT NULL",
+            name="ck_check_records_rework_type_required",
+        ),
+    )
+
+    creative_item = relationship(
+        "CreativeItem",
+        back_populates="check_records",
+        foreign_keys=[creative_item_id],
+    )
+    creative_version = relationship(
+        "CreativeVersion",
+        back_populates="check_records",
         foreign_keys=[creative_version_id],
     )
 
@@ -638,6 +700,8 @@ async def init_db():
     await migration_023.run_migration(engine)
     migration_024 = importlib.import_module("migrations.024_creative_phase_a_skeleton")
     await migration_024.run_migration(engine)
+    migration_025 = importlib.import_module("migrations.025_creative_phase_b_review_invariants")
+    await migration_025.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

@@ -109,6 +109,28 @@ async def test_creative_openapi_exposes_phase_a_workbench_and_detail_contracts(
     assert paths["/api/creatives/{creative_id}"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeDetailResponse")
     assert schemas["CreativeCurrentVersionResponse"]["properties"]["package_record_id"]["anyOf"][0]["type"] == "integer"
     assert schemas["CreativeDetailResponse"]["properties"]["linked_task_ids"]["type"] == "array"
+    assert schemas["CreativeDetailResponse"]["properties"]["versions"]["type"] == "array"
+    assert schemas["CreativeDetailResponse"]["properties"]["review_summary"]["anyOf"][0]["$ref"].endswith("/CreativeReviewSummaryResponse")
+
+
+@pytest.mark.asyncio
+async def test_creative_review_openapi_exposes_phase_b_review_contracts(
+    client: AsyncClient,
+) -> None:
+    response = await client.get("/openapi.json")
+    assert response.status_code == 200
+
+    spec = response.json()
+    paths = spec["paths"]
+    schemas = spec["components"]["schemas"]
+
+    assert paths["/api/creative-reviews/{creative_id}/approve"]["post"]["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeApproveRequest")
+    assert paths["/api/creative-reviews/{creative_id}/rework"]["post"]["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeReworkRequest")
+    assert paths["/api/creative-reviews/{creative_id}/reject"]["post"]["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeRejectRequest")
+    assert paths["/api/creative-reviews/{creative_id}/approve"]["post"]["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeReviewActionResponse")
+    assert schemas["CheckRecordResponse"]["properties"]["conclusion"]["$ref"].endswith("/CreativeReviewConclusion")
+    assert "WAITING_REVIEW" in schemas["CreativeStatus"]["enum"]
+    assert "REWORK_REQUIRED" in schemas["CreativeReviewConclusion"]["enum"]
 
 
 @pytest.mark.asyncio

@@ -14,6 +14,22 @@ export const creativeStatusMeta: Record<CreativeStatus, { color: string; label: 
     color: 'default',
     label: '待补充',
   },
+  WAITING_REVIEW: {
+    color: 'processing',
+    label: '待审核',
+  },
+  APPROVED: {
+    color: 'success',
+    label: '已通过',
+  },
+  REWORK_REQUIRED: {
+    color: 'warning',
+    label: '待返工',
+  },
+  REJECTED: {
+    color: 'error',
+    label: '已驳回',
+  },
 }
 
 export const formatCreativeTimestamp = (value: string): string =>

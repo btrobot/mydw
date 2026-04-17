@@ -786,6 +786,43 @@ export type BodyUploadVideoApiVideosUploadPost = {
 };
 
 /**
+ * CheckRecordResponse
+ *
+ * Creative Phase B review record.
+ */
+export type CheckRecordResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Creative Item Id
+     */
+    creative_item_id: number;
+    /**
+     * Creative Version Id
+     */
+    creative_version_id: number;
+    conclusion: CreativeReviewConclusion;
+    /**
+     * Rework Type
+     */
+    rework_type?: string | null;
+    /**
+     * Note
+     */
+    note?: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
  * ClipResultResponse
  */
 export type ClipResultResponse = {
@@ -1134,6 +1171,20 @@ export type CoverResponse = {
 };
 
 /**
+ * CreativeApproveRequest
+ */
+export type CreativeApproveRequest = {
+    /**
+     * Version Id
+     */
+    version_id: number;
+    /**
+     * Note
+     */
+    note?: string | null;
+};
+
+/**
  * CreativeCurrentVersionResponse
  *
  * Current-version projection for the Creative detail endpoint.
@@ -1152,9 +1203,14 @@ export type CreativeCurrentVersionResponse = {
      */
     title?: string | null;
     /**
+     * Parent Version Id
+     */
+    parent_version_id?: number | null;
+    /**
      * Package Record Id
      */
     package_record_id?: number | null;
+    latest_check?: CheckRecordResponse | null;
 };
 
 /**
@@ -1182,6 +1238,11 @@ export type CreativeDetailResponse = {
     current_version_id?: number | null;
     current_version?: CreativeCurrentVersionResponse | null;
     /**
+     * Versions
+     */
+    versions?: Array<CreativeVersionSummaryResponse>;
+    review_summary?: CreativeReviewSummaryResponse | null;
+    /**
      * Linked Task Ids
      */
     linked_task_ids?: Array<number>;
@@ -1192,9 +1253,128 @@ export type CreativeDetailResponse = {
 };
 
 /**
+ * CreativeRejectRequest
+ */
+export type CreativeRejectRequest = {
+    /**
+     * Version Id
+     */
+    version_id: number;
+    /**
+     * Note
+     */
+    note?: string | null;
+};
+
+/**
+ * CreativeReviewActionResponse
+ */
+export type CreativeReviewActionResponse = {
+    /**
+     * Creative Id
+     */
+    creative_id: number;
+    creative_status: CreativeStatus;
+    /**
+     * Current Version Id
+     */
+    current_version_id?: number | null;
+    check: CheckRecordResponse;
+};
+
+/**
+ * CreativeReviewConclusion
+ */
+export type CreativeReviewConclusion = 'APPROVED' | 'REWORK_REQUIRED' | 'REJECTED';
+
+/**
+ * CreativeReviewSummaryResponse
+ *
+ * Effective review summary for the current Creative version.
+ */
+export type CreativeReviewSummaryResponse = {
+    /**
+     * Current Version Id
+     */
+    current_version_id?: number | null;
+    current_check?: CheckRecordResponse | null;
+    /**
+     * Total Checks
+     */
+    total_checks?: number;
+};
+
+/**
+ * CreativeReworkRequest
+ */
+export type CreativeReworkRequest = {
+    /**
+     * Version Id
+     */
+    version_id: number;
+    /**
+     * Rework Type
+     */
+    rework_type?: string | null;
+    /**
+     * Note
+     */
+    note?: string | null;
+};
+
+/**
  * CreativeStatus
  */
-export type CreativeStatus = 'PENDING_INPUT';
+export type CreativeStatus = 'PENDING_INPUT' | 'WAITING_REVIEW' | 'APPROVED' | 'REWORK_REQUIRED' | 'REJECTED';
+
+/**
+ * CreativeVersionSummaryResponse
+ *
+ * ?????????Phase A?
+ */
+export type CreativeVersionSummaryResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Creative Item Id
+     */
+    creative_item_id: number;
+    /**
+     * Parent Version Id
+     */
+    parent_version_id?: number | null;
+    /**
+     * Version No
+     */
+    version_no: number;
+    /**
+     * Version Type
+     */
+    version_type: string;
+    /**
+     * Title
+     */
+    title?: string | null;
+    /**
+     * Package Record Id
+     */
+    package_record_id?: number | null;
+    /**
+     * Is Current
+     */
+    is_current?: boolean;
+    latest_check?: CheckRecordResponse | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
 
 /**
  * CreativeWorkbenchItemResponse
@@ -7142,6 +7322,96 @@ export type GetCreativeApiCreativesCreativeIdGetResponses = {
 };
 
 export type GetCreativeApiCreativesCreativeIdGetResponse = GetCreativeApiCreativesCreativeIdGetResponses[keyof GetCreativeApiCreativesCreativeIdGetResponses];
+
+export type ApproveCreativeApiCreativeReviewsCreativeIdApprovePostData = {
+    body: CreativeApproveRequest;
+    path: {
+        /**
+         * Creative Id
+         */
+        creative_id: number;
+    };
+    query?: never;
+    url: '/api/creative-reviews/{creative_id}/approve';
+};
+
+export type ApproveCreativeApiCreativeReviewsCreativeIdApprovePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ApproveCreativeApiCreativeReviewsCreativeIdApprovePostError = ApproveCreativeApiCreativeReviewsCreativeIdApprovePostErrors[keyof ApproveCreativeApiCreativeReviewsCreativeIdApprovePostErrors];
+
+export type ApproveCreativeApiCreativeReviewsCreativeIdApprovePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: CreativeReviewActionResponse;
+};
+
+export type ApproveCreativeApiCreativeReviewsCreativeIdApprovePostResponse = ApproveCreativeApiCreativeReviewsCreativeIdApprovePostResponses[keyof ApproveCreativeApiCreativeReviewsCreativeIdApprovePostResponses];
+
+export type ReworkCreativeApiCreativeReviewsCreativeIdReworkPostData = {
+    body: CreativeReworkRequest;
+    path: {
+        /**
+         * Creative Id
+         */
+        creative_id: number;
+    };
+    query?: never;
+    url: '/api/creative-reviews/{creative_id}/rework';
+};
+
+export type ReworkCreativeApiCreativeReviewsCreativeIdReworkPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReworkCreativeApiCreativeReviewsCreativeIdReworkPostError = ReworkCreativeApiCreativeReviewsCreativeIdReworkPostErrors[keyof ReworkCreativeApiCreativeReviewsCreativeIdReworkPostErrors];
+
+export type ReworkCreativeApiCreativeReviewsCreativeIdReworkPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: CreativeReviewActionResponse;
+};
+
+export type ReworkCreativeApiCreativeReviewsCreativeIdReworkPostResponse = ReworkCreativeApiCreativeReviewsCreativeIdReworkPostResponses[keyof ReworkCreativeApiCreativeReviewsCreativeIdReworkPostResponses];
+
+export type RejectCreativeApiCreativeReviewsCreativeIdRejectPostData = {
+    body: CreativeRejectRequest;
+    path: {
+        /**
+         * Creative Id
+         */
+        creative_id: number;
+    };
+    query?: never;
+    url: '/api/creative-reviews/{creative_id}/reject';
+};
+
+export type RejectCreativeApiCreativeReviewsCreativeIdRejectPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RejectCreativeApiCreativeReviewsCreativeIdRejectPostError = RejectCreativeApiCreativeReviewsCreativeIdRejectPostErrors[keyof RejectCreativeApiCreativeReviewsCreativeIdRejectPostErrors];
+
+export type RejectCreativeApiCreativeReviewsCreativeIdRejectPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: CreativeReviewActionResponse;
+};
+
+export type RejectCreativeApiCreativeReviewsCreativeIdRejectPostResponse = RejectCreativeApiCreativeReviewsCreativeIdRejectPostResponses[keyof RejectCreativeApiCreativeReviewsCreativeIdRejectPostResponses];
 
 export type RootGetData = {
     body?: never;

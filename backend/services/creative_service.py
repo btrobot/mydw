@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 from models import CreativeItem, CreativeVersion, Task
 from schemas import (
     CreativeDetailResponse,
+    CreativeReviewSummaryResponse,
     CreativeWorkbenchItemResponse,
     CreativeWorkbenchListResponse,
 )
@@ -102,8 +103,12 @@ class CreativeService:
         result = await self.db.execute(
             select(CreativeItem)
             .where(CreativeItem.id == creative_id)
+            .execution_options(populate_existing=True)
             .options(
                 selectinload(CreativeItem.current_version).selectinload(CreativeVersion.package_records),
+                selectinload(CreativeItem.current_version).selectinload(CreativeVersion.check_records),
+                selectinload(CreativeItem.versions).selectinload(CreativeVersion.package_records),
+                selectinload(CreativeItem.versions).selectinload(CreativeVersion.check_records),
                 selectinload(CreativeItem.tasks),
             )
         )
@@ -112,6 +117,29 @@ class CreativeService:
     def _build_creative_detail_response(self, creative: CreativeItem) -> CreativeDetailResponse:
         linked_task_ids = sorted(task.id for task in creative.tasks)
         current_version = self.version_service.build_current_version_response(creative.current_version)
+        ordered_versions = sorted(
+            creative.versions,
+            key=lambda version: (version.version_no, version.id),
+            reverse=True,
+        )
+        versions = [
+            self.version_service.build_version_summary_response(
+                version,
+                current_version_id=creative.current_version_id,
+            )
+            for version in ordered_versions
+        ]
+        total_checks = sum(len(version.check_records) for version in creative.versions)
+        current_check = None
+        if creative.current_version and creative.current_version.check_records:
+            current_check = self.version_service.build_check_record_response(
+                creative.current_version.check_records[-1]
+            )
+        review_summary = CreativeReviewSummaryResponse(
+            current_version_id=creative.current_version_id,
+            current_check=current_check,
+            total_checks=total_checks,
+        )
 
         return CreativeDetailResponse(
             id=creative.id,
@@ -120,6 +148,8 @@ class CreativeService:
             status=creative.status,
             current_version_id=creative.current_version_id,
             current_version=current_version,
+            versions=versions,
+            review_summary=review_summary,
             linked_task_ids=linked_task_ids,
             updated_at=creative.updated_at,
         )

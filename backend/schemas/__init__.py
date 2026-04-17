@@ -56,6 +56,16 @@ class TaskKind(str, Enum):
 
 class CreativeStatus(str, Enum):
     PENDING_INPUT = "PENDING_INPUT"
+    WAITING_REVIEW = "WAITING_REVIEW"
+    APPROVED = "APPROVED"
+    REWORK_REQUIRED = "REWORK_REQUIRED"
+    REJECTED = "REJECTED"
+
+
+class CreativeReviewConclusion(str, Enum):
+    APPROVED = "APPROVED"
+    REWORK_REQUIRED = "REWORK_REQUIRED"
+    REJECTED = "REJECTED"
 
 
 class CompositionJobStatus(str, Enum):
@@ -460,15 +470,33 @@ class PackageRecordResponse(BaseModel):
     updated_at: datetime
 
 
+class CheckRecordResponse(BaseModel):
+    """Creative Phase B review record."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    creative_item_id: int
+    creative_version_id: int
+    conclusion: CreativeReviewConclusion
+    rework_type: Optional[str] = None
+    note: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+
 class CreativeVersionSummaryResponse(BaseModel):
     """?????????Phase A?"""
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     creative_item_id: int
+    parent_version_id: Optional[int] = None
     version_no: int
     version_type: str
     title: Optional[str] = None
+    package_record_id: Optional[int] = None
+    is_current: bool = False
+    latest_check: Optional[CheckRecordResponse] = None
     created_at: datetime
     updated_at: datetime
 
@@ -512,7 +540,40 @@ class CreativeCurrentVersionResponse(BaseModel):
     id: int
     version_no: int
     title: Optional[str] = None
+    parent_version_id: Optional[int] = None
     package_record_id: Optional[int] = None
+    latest_check: Optional[CheckRecordResponse] = None
+
+
+class CreativeReviewSummaryResponse(BaseModel):
+    """Effective review summary for the current Creative version."""
+
+    current_version_id: Optional[int] = None
+    current_check: Optional[CheckRecordResponse] = None
+    total_checks: int = 0
+
+
+class CreativeApproveRequest(BaseModel):
+    version_id: int
+    note: Optional[str] = None
+
+
+class CreativeRejectRequest(BaseModel):
+    version_id: int
+    note: Optional[str] = None
+
+
+class CreativeReworkRequest(BaseModel):
+    version_id: int
+    rework_type: Optional[str] = None
+    note: Optional[str] = None
+
+
+class CreativeReviewActionResponse(BaseModel):
+    creative_id: int
+    creative_status: CreativeStatus
+    current_version_id: Optional[int] = None
+    check: CheckRecordResponse
 
 
 class CreativeDetailResponse(BaseModel):
@@ -524,6 +585,8 @@ class CreativeDetailResponse(BaseModel):
     status: CreativeStatus
     current_version_id: Optional[int] = None
     current_version: Optional[CreativeCurrentVersionResponse] = None
+    versions: List[CreativeVersionSummaryResponse] = Field(default_factory=list)
+    review_summary: Optional[CreativeReviewSummaryResponse] = None
     linked_task_ids: List[int] = Field(default_factory=list)
     updated_at: datetime
 
