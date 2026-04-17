@@ -29,6 +29,8 @@ from core.auth_dependencies import (
     require_active_machine_session,
     require_grace_readonly_machine_session,
 )
+from core.device_identity import FileDeviceIdentityStore
+from core.secret_store import FileSecretStore
 import models
 from models import Base, Account, RemoteAuthSession, get_db
 from main import app
@@ -51,6 +53,22 @@ async def engine():
     async with _engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
     await _engine.dispose()
+
+
+@pytest.fixture(autouse=True)
+def isolated_auth_runtime_artifacts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Keep AuthService tests hermetic by isolating default file-backed auth artifacts."""
+    set_current_auth_summary(None)
+
+    secret_store = FileSecretStore(path=tmp_path / "remote_auth_secrets.json")
+    device_store = FileDeviceIdentityStore(path=tmp_path / "remote_auth_device.json")
+
+    monkeypatch.setattr("services.auth_service.create_secret_store", lambda: secret_store)
+    monkeypatch.setattr("services.auth_service.create_device_identity_store", lambda: device_store)
+
+    yield
+
+    set_current_auth_summary(None)
 
 
 @pytest_asyncio.fixture()
