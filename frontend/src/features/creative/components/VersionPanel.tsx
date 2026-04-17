@@ -22,12 +22,14 @@ interface VersionPanelProps {
   versions: CreativeVersionSummary[]
   reviewSummary?: CreativeReviewSummary | null
   onReviewVersion?: (version: CreativeVersionSummary) => void
+  onOpenAiClipWorkflow?: (version: CreativeVersionSummary) => void
 }
 
 export default function VersionPanel({
   versions,
   reviewSummary,
   onReviewVersion,
+  onOpenAiClipWorkflow,
 }: VersionPanelProps) {
   if (versions.length === 0) {
     return (
@@ -60,6 +62,16 @@ export default function VersionPanel({
               key={version.id}
               data-testid={`creative-version-item-${version.id}`}
               actions={[
+                version.is_current && onOpenAiClipWorkflow ? (
+                  <Button
+                    key="ai-clip"
+                    size="small"
+                    onClick={() => onOpenAiClipWorkflow(version)}
+                    data-testid={`creative-version-ai-clip-${version.id}`}
+                  >
+                    AIClip workflow
+                  </Button>
+                ) : null,
                 version.is_current && onReviewVersion ? (
                   <Button
                     key="review"
@@ -67,7 +79,7 @@ export default function VersionPanel({
                     size="small"
                     onClick={() => onReviewVersion(version)}
                   >
-                    发起审核
+                    ??????
                   </Button>
                 ) : null,
               ].filter(Boolean)}

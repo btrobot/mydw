@@ -1,11 +1,12 @@
 import { PageContainer } from '@ant-design/pro-components'
 import { useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Alert,
   Button,
   Card,
   Descriptions,
+  Drawer,
   Empty,
   Flex,
   List,
@@ -16,6 +17,7 @@ import {
 } from 'antd'
 
 import CheckDrawer from '../components/CheckDrawer'
+import AIClipWorkflowPanel from '../components/AIClipWorkflowPanel'
 import VersionPanel from '../components/VersionPanel'
 import {
   useCreative,
@@ -45,6 +47,7 @@ const { Paragraph, Text } = Typography
 export default function CreativeDetail() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
   const creativeId = id ? Number.parseInt(id, 10) : undefined
   const { data: creative, isLoading, isError } = useCreative(creativeId)
   const { data: publishStatus, isError: publishStatusError } = usePublishStatus()
@@ -64,6 +67,19 @@ export default function CreativeDetail() {
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   const currentVersion = creative?.versions?.find((version) => version.is_current) ?? null
+  const aiClipOpen = searchParams.get('tool') === 'ai-clip' && Boolean(currentVersion)
+
+  const openAiClipWorkflow = () => {
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.set('tool', 'ai-clip')
+    setSearchParams(nextParams, { replace: true })
+  }
+
+  const closeAiClipWorkflow = () => {
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete('tool')
+    setSearchParams(nextParams, { replace: true })
+  }
 
   const activePoolItems = activePoolData?.items ?? []
   const invalidatedPoolItems = useMemo(
@@ -142,6 +158,15 @@ export default function CreativeDetail() {
         primaryTaskId ? (
           <Button key="task-detail" onClick={() => navigate(`/task/${primaryTaskId}`)}>
             查看关联任务
+          </Button>
+        ) : null,
+        currentVersion ? (
+          <Button
+            key="ai-clip"
+            onClick={openAiClipWorkflow}
+            data-testid="creative-open-ai-clip"
+          >
+            AIClip workflow
           </Button>
         ) : null,
         currentVersion ? (
@@ -403,6 +428,11 @@ export default function CreativeDetail() {
         <VersionPanel
           versions={creative.versions ?? []}
           reviewSummary={creative.review_summary}
+          onOpenAiClipWorkflow={(version) => {
+            if (version.is_current) {
+              openAiClipWorkflow()
+            }
+          }}
           onReviewVersion={(version) => {
             if (version.is_current) {
               setDrawerOpen(true)
@@ -439,6 +469,28 @@ export default function CreativeDetail() {
         version={currentVersion}
         onClose={() => setDrawerOpen(false)}
       />
+
+      <Drawer
+        title="AIClip workflow"
+        open={aiClipOpen}
+        width={720}
+        onClose={closeAiClipWorkflow}
+        destroyOnClose
+      >
+        <div data-testid="creative-ai-clip-drawer">
+          <AIClipWorkflowPanel
+            creativeContext={creativeId && currentVersion ? {
+              creativeId,
+              creativeTitle: creative.title,
+              sourceVersionId: currentVersion.id,
+              sourceVersionLabel: getVersionLabel(currentVersion.version_no),
+              onSubmitted: () => {
+                closeAiClipWorkflow()
+              },
+            } : null}
+          />
+        </div>
+      </Drawer>
     </PageContainer>
   )
 }

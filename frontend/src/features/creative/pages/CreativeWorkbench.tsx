@@ -207,6 +207,18 @@ export default function CreativeWorkbench() {
                         <Tag>当前版本 #{item.current_version_id ?? '-'}</Tag>
                       </Space>
 
+                      <Space wrap>
+                        <Button
+                          type="primary"
+                          onClick={() => navigate(`/creative/${item.id}?tool=ai-clip`)}
+                          disabled={!item.current_version_id}
+                          data-testid={`creative-workbench-ai-clip-${item.id}`}
+                        >
+                          AIClip workflow
+                        </Button>
+                      </Space>
+
+
                       <Space wrap data-testid={`creative-workbench-pool-state-${item.id}`}>
                         {poolItem ? (
                           <>

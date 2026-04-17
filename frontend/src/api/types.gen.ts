@@ -1171,6 +1171,59 @@ export type CoverResponse = {
 };
 
 /**
+ * CreativeAIClipWorkflowResponse
+ */
+export type CreativeAiClipWorkflowResponse = {
+    /**
+     * Creative Id
+     */
+    creative_id: number;
+    creative_status: CreativeStatus;
+    /**
+     * Source Version Id
+     */
+    source_version_id: number;
+    /**
+     * Current Version Id
+     */
+    current_version_id: number;
+    /**
+     * Workflow Type
+     */
+    workflow_type: string;
+    version: CreativeVersionSummaryResponse;
+    package_record: PackageRecordResponse;
+};
+
+/**
+ * CreativeAIClipWorkflowSubmitRequest
+ */
+export type CreativeAiClipWorkflowSubmitRequest = {
+    /**
+     * Source Version Id
+     */
+    source_version_id: number;
+    /**
+     * Output Path
+     */
+    output_path: string;
+    /**
+     * Title
+     */
+    title?: string | null;
+    /**
+     * Workflow Type
+     */
+    workflow_type?: string;
+    /**
+     * Metadata
+     */
+    metadata?: {
+        [key: string]: unknown;
+    };
+};
+
+/**
  * CreativeApproveRequest
  */
 export type CreativeApproveRequest = {
@@ -1665,6 +1718,38 @@ export type MaterialStatsResponse = {
      * Coverage Rate
      */
     coverage_rate: number;
+};
+
+/**
+ * PackageRecordResponse
+ *
+ * ??????Phase A ?????
+ */
+export type PackageRecordResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Creative Version Id
+     */
+    creative_version_id: number;
+    /**
+     * Package Status
+     */
+    package_status: string;
+    /**
+     * Manifest Json
+     */
+    manifest_json?: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
 };
 
 /**
@@ -7635,6 +7720,36 @@ export type GetPublishPoolItemApiCreativePublishPoolPoolItemIdGetResponses = {
 };
 
 export type GetPublishPoolItemApiCreativePublishPoolPoolItemIdGetResponse = GetPublishPoolItemApiCreativePublishPoolPoolItemIdGetResponses[keyof GetPublishPoolItemApiCreativePublishPoolPoolItemIdGetResponses];
+
+export type SubmitAiClipWorkflowApiCreativeWorkflowsCreativeIdAiClipSubmitPostData = {
+    body: CreativeAiClipWorkflowSubmitRequest;
+    path: {
+        /**
+         * Creative Id
+         */
+        creative_id: number;
+    };
+    query?: never;
+    url: '/api/creative-workflows/{creative_id}/ai-clip/submit';
+};
+
+export type SubmitAiClipWorkflowApiCreativeWorkflowsCreativeIdAiClipSubmitPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SubmitAiClipWorkflowApiCreativeWorkflowsCreativeIdAiClipSubmitPostError = SubmitAiClipWorkflowApiCreativeWorkflowsCreativeIdAiClipSubmitPostErrors[keyof SubmitAiClipWorkflowApiCreativeWorkflowsCreativeIdAiClipSubmitPostErrors];
+
+export type SubmitAiClipWorkflowApiCreativeWorkflowsCreativeIdAiClipSubmitPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: CreativeAiClipWorkflowResponse;
+};
+
+export type SubmitAiClipWorkflowApiCreativeWorkflowsCreativeIdAiClipSubmitPostResponse = SubmitAiClipWorkflowApiCreativeWorkflowsCreativeIdAiClipSubmitPostResponses[keyof SubmitAiClipWorkflowApiCreativeWorkflowsCreativeIdAiClipSubmitPostResponses];
 
 export type RootGetData = {
     body?: never;
