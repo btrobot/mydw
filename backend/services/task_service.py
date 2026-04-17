@@ -119,11 +119,82 @@ class TaskService:
         logger.info("批量创建任务: {} 个", len(loaded_tasks))
         return len(loaded_tasks), list(loaded_tasks)
 
+    async def clone_as_publish_task(
+        self,
+        source_task: Task,
+        *,
+        creative_item_id: int,
+        creative_version_id: int,
+        profile_id: int | None,
+        batch_id: str | None = None,
+    ) -> Task:
+        """Clone a source task into a publish-task shell while preserving collection truth."""
+        await self._require_active()
+        hydrated_source = await self._load_task_with_resources(source_task.id)
+
+        cloned_task = Task(
+            account_id=hydrated_source.account_id,
+            status="ready",
+            priority=hydrated_source.priority,
+            name=hydrated_source.name,
+            composition_template=hydrated_source.composition_template,
+            composition_params=hydrated_source.composition_params,
+            final_video_path=hydrated_source.final_video_path,
+            final_video_duration=hydrated_source.final_video_duration,
+            final_video_size=hydrated_source.final_video_size,
+            scheduled_time=hydrated_source.scheduled_time,
+            profile_id=profile_id,
+            batch_id=batch_id,
+            creative_item_id=creative_item_id,
+            creative_version_id=creative_version_id,
+            task_kind="publish",
+        )
+        self.db.add(cloned_task)
+        await self.db.flush()
+
+        for order, video in enumerate(hydrated_source.videos or []):
+            self.db.add(TaskVideo(task_id=cloned_task.id, video_id=video.id, sort_order=order))
+        for order, copywriting in enumerate(hydrated_source.copywritings or []):
+            self.db.add(TaskCopywriting(task_id=cloned_task.id, copywriting_id=copywriting.id, sort_order=order))
+        for order, cover in enumerate(hydrated_source.covers or []):
+            self.db.add(TaskCover(task_id=cloned_task.id, cover_id=cover.id, sort_order=order))
+        for order, audio in enumerate(hydrated_source.audios or []):
+            self.db.add(TaskAudio(task_id=cloned_task.id, audio_id=audio.id, sort_order=order))
+        for topic in hydrated_source.topics or []:
+            self.db.add(TaskTopic(task_id=cloned_task.id, topic_id=topic.id))
+
+        await self.db.flush()
+        logger.info(
+            "created publish task: source_task_id={}, task_id={}, creative_item_id={}, creative_version_id={}",
+            hydrated_source.id,
+            cloned_task.id,
+            creative_item_id,
+            creative_version_id,
+        )
+        return await self._load_task_with_resources(cloned_task.id)
+
     async def get_task(self, task_id: int) -> Optional[Task]:
         """获取任务"""
         await self._require_grace_readonly()
         result = await self.db.execute(select(Task).where(Task.id == task_id))
         return result.scalar_one_or_none()
+
+    async def _load_task_with_resources(self, task_id: int) -> Task:
+        result = await self.db.execute(
+            select(Task).options(
+                selectinload(Task.topics),
+                selectinload(Task.videos),
+                selectinload(Task.copywritings),
+                selectinload(Task.covers),
+                selectinload(Task.audios),
+                selectinload(Task.account),
+                selectinload(Task.profile),
+            ).where(Task.id == task_id)
+        )
+        task = result.scalar_one_or_none()
+        if task is None:
+            raise ValueError(f"Task {task_id} does not exist")
+        return task
 
     async def get_tasks(
         self,

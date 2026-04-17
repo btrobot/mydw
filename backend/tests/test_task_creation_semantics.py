@@ -7,6 +7,24 @@ Phase 6 / PR1 keeps this file focused on authoritative task input rules:
 - topic source resolution is handled elsewhere and must not reintroduce legacy FK semantics here
 """
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from models import (
+    Account,
+    Copywriting,
+    CreativeItem,
+    Cover,
+    PublishProfile,
+    Task,
+    TaskCopywriting,
+    TaskCover,
+    TaskTopic,
+    TaskVideo,
+    Topic,
+    Video,
+)
+from services.creative_version_service import CreativeVersionService
+from services.task_service import TaskService
 
 from services.task_execution_semantics import TaskSemanticsError, validate_task_resource_inputs
 
@@ -46,3 +64,66 @@ def test_validate_task_resource_inputs_allows_single_copywriting_and_cover_for_d
         cover_ids=[20],
         composition_mode="none",
     )
+
+
+@pytest.mark.asyncio
+async def test_clone_as_publish_task_preserves_collection_resource_contract(
+    db_session: AsyncSession,
+    active_remote_auth_session,
+) -> None:
+    account = Account(account_id="clone_publish_account", account_name="Clone Publish", status="active", storage_state="{}")
+    profile = PublishProfile(name="clone_publish_profile", composition_mode="none")
+    video = Video(name="clone_publish_video.mp4", file_path="videos/clone_publish_video.mp4")
+    copywriting = Copywriting(name="clone_publish_copy", content="clone publish content")
+    cover = Cover(name="clone_publish_cover", file_path="covers/clone_publish_cover.jpg")
+    topic = Topic(name="clone_publish_topic")
+    creative = CreativeItem(
+        creative_no="CR-CLONE-PUBLISH-0001",
+        title="Clone Publish Creative",
+        status="PENDING_INPUT",
+        latest_version_no=0,
+    )
+    db_session.add_all([account, profile, video, copywriting, cover, topic, creative])
+    await db_session.flush()
+
+    version = await CreativeVersionService(db_session).create_initial_version(creative, title="Clone Publish V1")
+    source_task = Task(
+        account_id=account.id,
+        status="ready",
+        name="Clone Publish Source",
+        profile_id=profile.id,
+        creative_item_id=creative.id,
+        creative_version_id=version.id,
+        task_kind="composition",
+        final_video_path="final/clone_publish.mp4",
+    )
+    db_session.add(source_task)
+    await db_session.flush()
+    db_session.add_all(
+        [
+            TaskVideo(task_id=source_task.id, video_id=video.id, sort_order=0),
+            TaskCopywriting(task_id=source_task.id, copywriting_id=copywriting.id, sort_order=0),
+            TaskCover(task_id=source_task.id, cover_id=cover.id, sort_order=0),
+            TaskTopic(task_id=source_task.id, topic_id=topic.id),
+        ]
+    )
+    await db_session.commit()
+
+    cloned_task = await TaskService(db_session).clone_as_publish_task(
+        source_task,
+        creative_item_id=creative.id,
+        creative_version_id=version.id,
+        profile_id=profile.id,
+        batch_id="publish-pool:test",
+    )
+
+    assert cloned_task.task_kind == "publish"
+    assert cloned_task.status == "ready"
+    assert cloned_task.profile_id == profile.id
+    assert cloned_task.creative_item_id == creative.id
+    assert cloned_task.creative_version_id == version.id
+    assert cloned_task.final_video_path == source_task.final_video_path
+    assert [item.id for item in cloned_task.videos] == [video.id]
+    assert [item.id for item in cloned_task.copywritings] == [copywriting.id]
+    assert [item.id for item in cloned_task.covers] == [cover.id]
+    assert [item.id for item in cloned_task.topics] == [topic.id]
