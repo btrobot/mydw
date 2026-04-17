@@ -48,6 +48,8 @@ class CreativeService:
                 title=item.title,
                 status=item.status,
                 current_version_id=item.current_version_id,
+                generation_error_msg=item.generation_error_msg,
+                generation_failed_at=item.generation_failed_at,
                 updated_at=item.updated_at,
             )
             for item in result.scalars().all()
@@ -148,6 +150,8 @@ class CreativeService:
             status=creative.status,
             current_version_id=creative.current_version_id,
             current_version=current_version,
+            generation_error_msg=creative.generation_error_msg,
+            generation_failed_at=creative.generation_failed_at,
             versions=versions,
             review_summary=review_summary,
             linked_task_ids=linked_task_ids,

@@ -511,6 +511,8 @@ class CreativeItemResponse(BaseModel):
     status: CreativeStatus
     current_version_id: Optional[int] = None
     latest_version_no: int = 0
+    generation_error_msg: Optional[str] = None
+    generation_failed_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
@@ -524,6 +526,8 @@ class CreativeWorkbenchItemResponse(BaseModel):
     title: Optional[str] = None
     status: CreativeStatus
     current_version_id: Optional[int] = None
+    generation_error_msg: Optional[str] = None
+    generation_failed_at: Optional[datetime] = None
     updated_at: datetime
 
 
@@ -588,6 +592,8 @@ class CreativeDetailResponse(BaseModel):
     versions: List[CreativeVersionSummaryResponse] = Field(default_factory=list)
     review_summary: Optional[CreativeReviewSummaryResponse] = None
     linked_task_ids: List[int] = Field(default_factory=list)
+    generation_error_msg: Optional[str] = None
+    generation_failed_at: Optional[datetime] = None
     updated_at: datetime
 
 

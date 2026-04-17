@@ -87,6 +87,8 @@ def test_phase_a_response_contracts_are_instantiable() -> None:
         status=CreativeStatus.PENDING_INPUT,
         current_version_id=20,
         latest_version_no=1,
+        generation_error_msg="last render failed",
+        generation_failed_at="2026-04-17T00:00:00",
         created_at="2026-04-17T00:00:00",
         updated_at="2026-04-17T00:00:00",
     )
@@ -110,5 +112,6 @@ def test_phase_a_response_contracts_are_instantiable() -> None:
 
     assert task.task_kind == TaskKind.COMPOSITION
     assert creative.current_version_id == 20
+    assert creative.generation_error_msg == "last render failed"
     assert version.version_no == 1
     assert package.creative_version_id == 20

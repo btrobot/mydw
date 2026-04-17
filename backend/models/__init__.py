@@ -122,6 +122,8 @@ class CreativeItem(Base):
         index=True,
     )
     latest_version_no = Column(Integer, nullable=False, default=0)
+    generation_error_msg = Column(Text, nullable=True)
+    generation_failed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -702,6 +704,8 @@ async def init_db():
     await migration_024.run_migration(engine)
     migration_025 = importlib.import_module("migrations.025_creative_phase_b_review_invariants")
     await migration_025.run_migration(engine)
+    migration_026 = importlib.import_module("migrations.026_creative_phase_b_composition_writeback")
+    await migration_026.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

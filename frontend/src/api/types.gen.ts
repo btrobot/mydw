@@ -1247,6 +1247,14 @@ export type CreativeDetailResponse = {
      */
     linked_task_ids?: Array<number>;
     /**
+     * Generation Error Msg
+     */
+    generation_error_msg?: string | null;
+    /**
+     * Generation Failed At
+     */
+    generation_failed_at?: string | null;
+    /**
      * Updated At
      */
     updated_at: string;
@@ -1399,6 +1407,14 @@ export type CreativeWorkbenchItemResponse = {
      * Current Version Id
      */
     current_version_id?: number | null;
+    /**
+     * Generation Error Msg
+     */
+    generation_error_msg?: string | null;
+    /**
+     * Generation Failed At
+     */
+    generation_failed_at?: string | null;
     /**
      * Updated At
      */

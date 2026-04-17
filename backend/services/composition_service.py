@@ -17,6 +17,7 @@ from core.coze_client import CozeClient
 from core.auth_dependencies import require_active_service_session
 from models import CompositionJob, Task
 from schemas.auth import LocalAuthSessionSummary
+from services.creative_generation_service import CreativeGenerationService
 from services.task_compat_service import resolve_primary_task_video
 from services.task_service import TaskService
 
@@ -28,6 +29,7 @@ class CompositionService:
         self.db = db
         self._auth_summary = auth_summary
         self._task_service = TaskService(db, auth_summary=auth_summary)
+        self._creative_generation_service = CreativeGenerationService(db)
 
     # ------------------------------------------------------------------
     # 内部辅助
@@ -166,6 +168,7 @@ class CompositionService:
         """
         job = await self._get_job(job_id)
         task = await self._get_task(job.task_id)
+        already_completed = job.status == "completed"
 
         video_url: Optional[str] = output.get("video_url")
         local_path: Optional[str] = None
@@ -208,6 +211,9 @@ class CompositionService:
         task.final_video_path = local_path
         task.updated_at = datetime.utcnow()
 
+        if not already_completed:
+            await self._creative_generation_service.record_composition_success(task)
+
         await self.db.commit()
         logger.info(
             "合成成功处理完毕: job_id={}, task_id={}", job_id, job.task_id
@@ -234,6 +240,8 @@ class CompositionService:
         task.status = "failed"
         task.error_msg = error_msg
         task.updated_at = datetime.utcnow()
+
+        await self._creative_generation_service.record_composition_failure(task, error_msg)
 
         await self.db.commit()
         logger.warning(
