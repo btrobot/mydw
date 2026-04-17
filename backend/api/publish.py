@@ -45,6 +45,9 @@ async def update_publish_config(
 @router.get("/status", response_model=PublishStatusResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def get_publish_status(db: AsyncSession = Depends(get_db)):
     """获取发布状态（基于 scheduler runtime truth）。"""
+    schedule_config = await ScheduleConfigService(db).get_or_create_default()
+    selection_report = scheduler.get_last_selection_report() or {}
+
     # 统计任务
     ready = await db.execute(
         select(func.count(Task.id)).where(Task.status == "ready")
@@ -61,7 +64,15 @@ async def get_publish_status(db: AsyncSession = Depends(get_db)):
         current_task_id=scheduler.current_task_id(),
         total_pending=ready.scalar() or 0,
         total_success=uploaded.scalar() or 0,
-        total_failed=failed.scalar() or 0
+        total_failed=failed.scalar() or 0,
+        scheduler_mode=schedule_config.publish_scheduler_mode,
+        effective_scheduler_mode=selection_report.get(
+            "effective_scheduler_mode",
+            "task" if schedule_config.publish_pool_kill_switch else schedule_config.publish_scheduler_mode,
+        ),
+        publish_pool_kill_switch=schedule_config.publish_pool_kill_switch,
+        publish_pool_shadow_read=schedule_config.publish_pool_shadow_read,
+        scheduler_shadow_diff=selection_report.get("shadow_diff"),
     )
 
 

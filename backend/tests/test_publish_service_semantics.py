@@ -13,6 +13,8 @@ from models import (
     Audio,
     Copywriting,
     Cover,
+    CreativeItem,
+    PublishPoolItem,
     PublishProfile,
     Task,
     TaskAudio,
@@ -24,6 +26,9 @@ from models import (
     Video,
 )
 from schemas.auth import LocalAuthSessionSummary
+from services.creative_review_service import CreativeReviewService
+from services.creative_version_service import CreativeVersionService
+from services.publish_planner_service import PublishPlannerService
 from services.publish_service import PublishService
 from services.task_execution_semantics import (
     PublishabilityError,
@@ -120,6 +125,62 @@ async def _create_raw_task_with_resources(
     await db.commit()
     result = await db.execute(select(Task).where(Task.id == task.id))
     return result.scalar_one()
+
+
+async def _seed_bound_publish_task(db: AsyncSession) -> tuple[Task, int]:
+    account = await _create_account(db, "bound_publish")
+    profile = await _create_profile(db, "bound_publish", "none")
+    video = await _create_video(db, "bound_publish")
+    copywriting = await _create_copywriting(db, "bound_publish")
+    cover = await _create_cover(db, "bound_publish")
+    topic = await _create_topic(db, "bound_publish")
+
+    creative = CreativeItem(
+        creative_no="CR-PUBLISH-BOUND-0001",
+        title="Bound Publish Creative",
+        status="PENDING_INPUT",
+        latest_version_no=0,
+    )
+    db.add(creative)
+    await db.flush()
+
+    version = await CreativeVersionService(db).create_initial_version(
+        creative,
+        title="Bound Publish V1",
+        package_status="ready",
+    )
+    creative.status = "WAITING_REVIEW"
+
+    source_task = await _create_raw_task_with_resources(
+        db,
+        account_id=account.id,
+        video_ids=[video.id],
+        copywriting_ids=[copywriting.id],
+        cover_ids=[cover.id],
+        topic_ids=[topic.id],
+        status="ready",
+        profile_id=profile.id,
+    )
+    source_task.creative_item_id = creative.id
+    source_task.creative_version_id = version.id
+    source_task.task_kind = "composition"
+    source_task.final_video_path = "final/bound_publish.mp4"
+    await db.commit()
+
+    await CreativeReviewService(db).approve(
+        creative.id,
+        version_id=version.id,
+        note="ready for bound publish",
+    )
+    await db.commit()
+
+    pool_item = (
+        await db.execute(select(PublishPoolItem).where(PublishPoolItem.creative_item_id == creative.id))
+    ).scalar_one()
+    result = await PublishPlannerService(db).plan_publish_task(pool_item.id)
+    publish_task = await db.get(Task, result.task_id)
+    assert publish_task is not None
+    return publish_task, pool_item.id
 
 
 @pytest.mark.asyncio
@@ -290,3 +351,61 @@ async def test_publish_task_marks_failed_with_canonical_auth_reason_after_upload
     persisted = await _get_task(db_session, task.id)
     assert persisted.status == "failed"
     assert persisted.error_msg == expected_reason
+
+
+@pytest.mark.asyncio
+async def test_publish_task_releases_bound_pool_lock_when_publish_task_fails(
+    db_session: AsyncSession,
+    active_remote_auth_session,
+) -> None:
+    publish_task, pool_item_id = await _seed_bound_publish_task(db_session)
+    account = await db_session.get(Account, publish_task.account_id)
+    assert account is not None
+    account.status = "disabled"
+    await db_session.commit()
+
+    success, message = await PublishService(db_session).publish_task(publish_task)
+
+    refreshed_pool_item = await db_session.get(PublishPoolItem, pool_item_id)
+    persisted_task = await _get_task(db_session, publish_task.id)
+
+    assert success is False
+    assert message == "账号无效"
+    assert persisted_task.status == "failed"
+    assert refreshed_pool_item is not None
+    assert refreshed_pool_item.locked_at is None
+    assert refreshed_pool_item.locked_by_task_id is None
+
+
+@pytest.mark.asyncio
+async def test_publish_task_invalidates_bound_pool_item_when_publish_task_succeeds(
+    db_session: AsyncSession,
+    active_remote_auth_session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    publish_task, pool_item_id = await _seed_bound_publish_task(db_session)
+    mock_client = MagicMock()
+    mock_client.check_login_status = AsyncMock(return_value=(True, "ok"))
+    mock_client.upload_video = AsyncMock(return_value=(True, "ok"))
+    monkeypatch.setattr("services.publish_service.get_dewu_client", AsyncMock(return_value=mock_client))
+    monkeypatch.setattr(
+        "services.publish_service.browser_manager",
+        SimpleNamespace(
+            get_or_create_context=AsyncMock(return_value=SimpleNamespace(pages=[MagicMock()])),
+            new_page=AsyncMock(return_value=MagicMock()),
+        ),
+    )
+
+    success, message = await PublishService(db_session).publish_task(publish_task)
+
+    refreshed_pool_item = await db_session.get(PublishPoolItem, pool_item_id)
+    persisted_task = await _get_task(db_session, publish_task.id)
+
+    assert success is True
+    assert message == "发布成功"
+    assert persisted_task.status == "uploaded"
+    assert refreshed_pool_item is not None
+    assert refreshed_pool_item.status == "invalidated"
+    assert refreshed_pool_item.invalidation_reason == "published_successfully"
+    assert refreshed_pool_item.locked_at is None
+    assert refreshed_pool_item.locked_by_task_id is None

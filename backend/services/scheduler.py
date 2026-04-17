@@ -49,6 +49,7 @@ class TaskScheduler:
         self._paused: bool = False
         self._pause_reason: Optional[str] = None
         self._current_task_id: Optional[int] = None
+        self._last_selection_report: dict | None = None
 
     def is_running(self) -> bool:
         return self._loop_task is not None and not self._loop_task.done()
@@ -58,6 +59,9 @@ class TaskScheduler:
 
     def current_task_id(self) -> Optional[int]:
         return self._current_task_id
+
+    def get_last_selection_report(self) -> dict | None:
+        return self._last_selection_report
 
     def get_status(self) -> str:
         if self.is_paused():
@@ -130,6 +134,10 @@ class TaskScheduler:
                         config = await self._get_schedule_config(db)
                         service = PublishService(db)
                         task = await service.get_next_task()
+                        selection_report = service.get_last_selection_report()
+                        self._last_selection_report = (
+                            selection_report.to_dict() if selection_report is not None else None
+                        )
 
                         if not task:
                             self._current_task_id = None
@@ -228,6 +236,7 @@ class TaskScheduler:
         self._loop_task = None
         self._current_task_id = None
         self._clear_paused()
+        self._last_selection_report = None
         return {"success": True, "message": "发布任务已停止"}
 
     async def shuffle_tasks(self, db: AsyncSession) -> dict:

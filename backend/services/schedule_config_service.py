@@ -27,6 +27,9 @@ class ScheduleConfigService:
         "max_per_account_per_day",
         "shuffle",
         "auto_start",
+        "publish_scheduler_mode",
+        "publish_pool_kill_switch",
+        "publish_pool_shadow_read",
     )
 
     def __init__(self, db: AsyncSession) -> None:
