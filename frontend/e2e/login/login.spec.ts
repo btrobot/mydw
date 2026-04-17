@@ -1,529 +1,269 @@
-/**
- * Login E2E Test Cases
- *
- * End-to-end tests for the login functionality.
- * Tests cover:
- * - Login page load
- * - Login success flow
- * - Login failure handling
- * - Session persistence
- */
+import { expect, test, type Page } from '@playwright/test'
 
-import { test, expect, Page, BrowserContext } from '@playwright/test'
-import path from 'path'
-import fs from 'fs'
-
-// Test configuration
-const TEST_ACCOUNT_ID = 'test_account_e2e'
-const TEST_PHONE = '13800138000'
-const TEST_CODE = '123456'
-
-// Base URL - use config value or fallback
 const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:5173'
+const DEVICE_ID_STORAGE_KEY = 'mydw.auth.device_id'
 
-// Test data file path for session persistence
-const TEST_DATA_DIR = path.join(__dirname, '..', 'test-data')
-const SESSION_FILE = path.join(TEST_DATA_DIR, 'session.json')
+const createSession = (overrides: Record<string, unknown> = {}) => ({
+  auth_state: 'unauthenticated',
+  entitlements: [],
+  denial_reason: null,
+  device_id: null,
+  ...overrides,
+})
 
-/**
- * Helper: Navigate to account page and ensure test account exists
- */
-async function navigateToAccountPage(page: Page) {
-  // Navigate to the app
-  await page.goto(BASE_URL)
+const createStatus = (overrides: Record<string, unknown> = {}) => ({
+  auth_state: 'unauthenticated',
+  remote_user_id: null,
+  display_name: null,
+  license_status: null,
+  device_id: null,
+  denial_reason: null,
+  expires_at: null,
+  last_verified_at: null,
+  offline_grace_until: null,
+  token_expires_in_seconds: null,
+  grace_remaining_seconds: null,
+  is_authenticated: false,
+  is_active: false,
+  is_grace: false,
+  requires_reauth: false,
+  can_read_local_data: false,
+  can_run_protected_actions: false,
+  can_run_background_tasks: false,
+  ...overrides,
+})
 
-  // Wait for page to load
-  await page.waitForLoadState('networkidle')
-
-  // Click on Account menu in sidebar
-  await page.click('text=账号管理')
-
-  // Wait for account page to load
-  await page.waitForURL('**/account', { timeout: 10000 })
-
-  // Wait for table to load
-  await page.waitForSelector('table', { timeout: 10000 })
+async function mockAuthSession(page: Page, session = createSession()) {
+  await page.route('**/api/auth/session', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(session),
+    })
+  })
 }
 
-/**
- * Helper: Click login button for test account
- */
-async function clickLoginButton(page: Page) {
-  // Wait for table to fully render
-  await page.waitForSelector('table', { timeout: 10000 })
-
-  // Find the row containing the test account
-  const row = page.locator('tr').filter({ hasText: TEST_ACCOUNT_ID })
-
-  // Find the login button/span within this row
-  const loginLocator = row.locator('a, button').filter({ hasText: '登录' })
-
-  await loginLocator.first().click()
-
-  // Wait for modal to appear
-  await page.waitForSelector('.ant-modal', { timeout: 5000 })
+async function mockAuthStatus(page: Page, status = createStatus()) {
+  await page.route('**/api/auth/status', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(status),
+    })
+  })
 }
 
-/**
- * Helper: Fill in login form
- */
-async function fillLoginForm(page: Page, phone: string, code: string) {
-  // Fill phone number
-  const phoneInput = page.locator('input[placeholder="请输入手机号"]')
-  await phoneInput.fill(phone)
-
-  // Fill verification code
-  const codeInput = page.locator('input[placeholder="请输入验证码"]')
-  await codeInput.fill(code)
-}
-
-/**
- * Helper: Create a test account via API
- */
-async function createTestAccount(): Promise<number | null> {
-  try {
-    const response = await fetch('http://localhost:8000/api/accounts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+async function mockDashboardApis(page: Page) {
+  await page.route('**/api/system/stats**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
       body: JSON.stringify({
-        account_id: TEST_ACCOUNT_ID,
-        account_name: 'E2E测试账号',
+        total_accounts: 1,
+        active_accounts: 1,
+        total_products: 0,
       }),
     })
+  })
 
-    if (response.ok) {
-      const data = await response.json()
-      return data.id
-    }
+  await page.route('**/api/system/logs**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        total: 0,
+        items: [],
+      }),
+    })
+  })
 
-    // If account exists, get its ID
-    const listResponse = await fetch('http://localhost:8000/api/accounts')
-    if (listResponse.ok) {
-      const accounts = await listResponse.json()
-      const existing = accounts.find(
-        (a: { account_id: string }) => a.account_id === TEST_ACCOUNT_ID
-      )
-      return existing?.id || null
-    }
+  await page.route('**/api/tasks/stats**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        total: 0,
+        draft: 0,
+        composing: 0,
+        ready: 0,
+        uploading: 0,
+        uploaded: 0,
+        failed: 0,
+        cancelled: 0,
+        today_uploaded: 0,
+      }),
+    })
+  })
 
-    return null
-  } catch (error) {
-    console.error('Failed to create test account:', error)
-    return null
-  }
+  await page.route('**/api/publish/status**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'idle',
+        current_task_id: null,
+        total_pending: 0,
+        total_success: 0,
+        total_failed: 0,
+      }),
+    })
+  })
 }
 
-/**
- * Helper: Delete test account
- */
-async function deleteTestAccount(accountId: number) {
-  try {
-    await fetch(`http://localhost:8000/api/accounts/${accountId}`, {
-      method: 'DELETE',
-    })
-  } catch (error) {
-    console.error('Failed to delete test account:', error)
-  }
+async function gotoLoginPage(page: Page) {
+  await page.goto(`${BASE_URL}/#/login`)
+  await expect(page.getByTestId('auth-login-page')).toBeVisible()
 }
 
-// ============================================================================
-// TEST SUITE: Login Page Load Tests
-// ============================================================================
+test.describe('Remote auth login page', () => {
+  test('renders the current auth shell baseline', async ({ page }) => {
+    await mockAuthSession(page)
 
-test.describe('Login Page Load Tests', () => {
-  test.beforeEach(async ({ page }) => {
-    // Ensure test account exists before each test
-    await createTestAccount()
+    await gotoLoginPage(page)
 
-    // Navigate to account page
-    await navigateToAccountPage(page)
+    await expect(page.getByText('Remote Auth Login', { exact: true })).toBeVisible()
+    await expect(page.getByLabel('Username')).toBeVisible()
+    await expect(page.getByLabel('Password')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible()
+    await expect(page.getByText(/^Device ID:/)).toBeVisible()
   })
 
-  test('TEST-LOGIN-01-01: Login modal opens correctly', async ({ page }) => {
-    // Click login button
-    await clickLoginButton(page)
+  test('shows required-field validation on empty submit', async ({ page }) => {
+    await mockAuthSession(page)
 
-    // Verify modal title contains account name
-    const modalTitle = page.locator('.ant-modal-title')
-    await expect(modalTitle).toContainText('E2E测试账号')
+    await gotoLoginPage(page)
+    await page.getByRole('button', { name: 'Sign in' }).click()
 
-    // Verify phone input exists and is empty
-    const phoneInput = page.locator('input[placeholder="请输入手机号"]')
-    await expect(phoneInput).toBeVisible()
-    await expect(phoneInput).toHaveValue('')
-
-    // Verify code input exists and is empty
-    const codeInput = page.locator('input[placeholder="请输入验证码"]')
-    await expect(codeInput).toBeVisible()
-    await expect(codeInput).toHaveValue('')
-
-    // Verify "Get Code" button exists
-    const getCodeButton = page.locator('button:has-text("获取验证码")')
-    await expect(getCodeButton).toBeVisible()
-    await expect(getCodeButton).toBeEnabled()
-
-    // Verify "Login" button exists
-    const loginButton = page.locator('.ant-modal button[type="submit"]')
-    await expect(loginButton).toBeVisible()
-
-    // Verify "Cancel" button exists
-    const cancelButton = page.locator('.ant-modal button:has-text("取 消")')
-    await expect(cancelButton).toBeVisible()
+    await expect(page.getByText('Please enter a username')).toBeVisible()
+    await expect(page.getByText('Please enter a password')).toBeVisible()
   })
 
-  test('TEST-LOGIN-01-02: Modal can be closed and reopened', async ({ page }) => {
-    // Open login modal
-    await clickLoginButton(page)
+  test('submits username/password/device metadata and redirects on success', async ({ page }) => {
+    await mockAuthSession(page)
+    await mockDashboardApis(page)
 
-    // Verify modal is visible
-    await expect(page.locator('.ant-modal')).toBeVisible()
+    let receivedPayload: Record<string, unknown> | null = null
+    await page.route('**/api/auth/login', async (route) => {
+      receivedPayload = await route.request().postDataJSON()
 
-    // Click cancel button
-    await page.locator('.ant-modal button:has-text("取 消")').click()
-
-    // Wait for modal to close
-    await page.waitForSelector('.ant-modal', { state: 'hidden', timeout: 5000 })
-
-    // Verify modal is closed
-    await expect(page.locator('.ant-modal')).not.toBeVisible()
-
-    // Open modal again
-    await clickLoginButton(page)
-
-    // Verify modal is visible again
-    await expect(page.locator('.ant-modal')).toBeVisible()
-  })
-})
-
-// ============================================================================
-// TEST SUITE: Form Validation Tests
-// ============================================================================
-
-test.describe('Form Validation Tests', () => {
-  test.beforeEach(async ({ page }) => {
-    await createTestAccount()
-    await navigateToAccountPage(page)
-    await clickLoginButton(page)
-  })
-
-  test('TEST-LOGIN-02-01: Phone number format validation', async ({ page }) => {
-    // Try to get code with invalid phone number
-    await fillLoginForm(page, '12345', '')
-
-    // Submit the form (should trigger validation)
-    await page.locator('.ant-modal button[type="submit"]').click()
-
-    // Wait for validation error
-    await page.waitForTimeout(500)
-
-    // Verify validation error message appears
-    const errorMessage = page.locator('.ant-form-item-explain-error')
-    await expect(errorMessage.first()).toBeVisible()
-  })
-
-  test('TEST-LOGIN-02-02: Empty verification code validation', async ({ page }) => {
-    // Fill valid phone number but not code
-    await fillLoginForm(page, TEST_PHONE, '')
-
-    // Try to submit
-    await page.locator('.ant-modal button[type="submit"]').click()
-
-    // Wait for validation
-    await page.waitForTimeout(500)
-
-    // Verify validation error for code
-    const codeError = page.locator('.ant-form-item-explain-error')
-    await expect(codeError.last()).toBeVisible()
-  })
-})
-
-// ============================================================================
-// TEST SUITE: Login Success Flow Tests
-// ============================================================================
-
-test.describe('Login Success Flow Tests', () => {
-  let testAccountId: number | null = null
-
-  test.beforeEach(async ({ page }) => {
-    testAccountId = await createTestAccount()
-    await navigateToAccountPage(page)
-    await clickLoginButton(page)
-  })
-
-  test.afterEach(async () => {
-    if (testAccountId) {
-      await deleteTestAccount(testAccountId)
-    }
-  })
-
-  test('TEST-LOGIN-03-01: Login form submission with valid data', async ({ page }) => {
-    // Skip actual login since we can't get real SMS code
-    // Instead, test that form accepts valid input
-
-    await fillLoginForm(page, TEST_PHONE, TEST_CODE)
-
-    // Verify inputs have correct values
-    await expect(page.locator('input[placeholder="请输入手机号"]')).toHaveValue(TEST_PHONE)
-    await expect(page.locator('input[placeholder="请输入验证码"]')).toHaveValue(TEST_CODE)
-
-    // Cancel for now - actual login test requires mock SMS service
-    await page.locator('.ant-modal button:has-text("取 消")').click()
-  })
-
-  test('TEST-LOGIN-03-02: Code sending button is accessible', async ({ page }) => {
-    // Fill phone number
-    const phoneInput = page.locator('input[placeholder="请输入手机号"]')
-    await phoneInput.fill(TEST_PHONE)
-
-    // Verify get code button exists and is visible
-    const getCodeButton = page.locator('.ant-modal button:has-text("获取验证码")')
-    await expect(getCodeButton).toBeVisible()
-    await expect(getCodeButton).toBeEnabled()
-
-    // Note: The actual API call test requires backend to be running
-    // and the button click may trigger API errors that close the modal
-  })
-})
-
-// ============================================================================
-// TEST SUITE: Login Error Handling Tests
-// ============================================================================
-
-test.describe('Login Error Handling Tests', () => {
-  let testAccountId: number | null = null
-
-  test.beforeEach(async ({ page }) => {
-    testAccountId = await createTestAccount()
-    await navigateToAccountPage(page)
-    await clickLoginButton(page)
-  })
-
-  test.afterEach(async () => {
-    if (testAccountId) {
-      await deleteTestAccount(testAccountId)
-    }
-  })
-
-  test('TEST-LOGIN-04-01: Login with wrong code shows error', async ({ page }) => {
-    // Fill form with wrong code
-    await fillLoginForm(page, TEST_PHONE, '000000')
-
-    // Submit login
-    await page.locator('.ant-modal button[type="submit"]').click()
-
-    // Wait for error response
-    await page.waitForTimeout(3000)
-
-    // Check for error message (either in-page or toast)
-    const errorToast = page.locator('.ant-message-error')
-    const hasErrorToast = await errorToast.isVisible().catch(() => false)
-
-    if (hasErrorToast) {
-      await expect(errorToast).toBeVisible()
-    }
-  })
-
-  test('TEST-LOGIN-04-02: Login with empty fields shows validation errors', async ({ page }) => {
-    // Click login without filling anything
-    await page.locator('.ant-modal button[type="submit"]').click()
-
-    // Wait for validation
-    await page.waitForTimeout(500)
-
-    // Verify validation errors appear
-    const errors = page.locator('.ant-form-item-explain-error')
-    const errorCount = await errors.count()
-    expect(errorCount).toBeGreaterThanOrEqual(1)
-  })
-})
-
-// ============================================================================
-// TEST SUITE: Session Persistence Tests
-// ============================================================================
-
-test.describe('Session Persistence Tests', () => {
-  test('TEST-LOGIN-05-01: Session can be exported and imported', async ({ browser }) => {
-    // Create two browser contexts
-    const context1 = await browser.newContext()
-    const context2 = await browser.newContext()
-
-    const page1 = await context1.newPage()
-    const page2 = await context2.newPage()
-
-    try {
-      // Step 1: Login in first context
-      await page1.goto(BASE_URL)
-      await page1.waitForLoadState('networkidle')
-      await page1.click('text=账号管理')
-      await page1.waitForURL('**/account')
-
-      // Ensure test account exists
-      const accountId = await createTestAccount()
-      if (!accountId) {
-        throw new Error('Could not create test account')
-      }
-
-      // Reload to see new account
-      await page1.reload()
-      await page1.waitForLoadState('networkidle')
-
-      await clickLoginButton(page1)
-
-      // Note: Real session export requires successful login
-      // For this test, we simulate the session storage mechanism
-
-      // Export session storage state
-      const storageState = await context1.storageState()
-
-      // Save session to file
-      if (!fs.existsSync(TEST_DATA_DIR)) {
-        fs.mkdirSync(TEST_DATA_DIR, { recursive: true })
-      }
-      fs.writeFileSync(SESSION_FILE, JSON.stringify(storageState, null, 2))
-
-      // Step 2: Use session in second context
-      await context2.addInitScript((storage) => {
-        // This would restore cookies/storage
-        localStorage.setItem('test_session', storage)
-      }, storageState)
-
-      await page2.goto(BASE_URL)
-      await page2.waitForLoadState('networkidle')
-
-      // Verify session is restored (no need to login again)
-      // The exact verification depends on the session implementation
-      await page2.waitForTimeout(1000)
-
-      // Clean up
-      if (fs.existsSync(SESSION_FILE)) {
-        fs.unlinkSync(SESSION_FILE)
-      }
-    } finally {
-      await context1.close()
-      await context2.close()
-    }
-  })
-
-  test('TEST-LOGIN-05-02: Session file persists between test runs', async () => {
-    // This test verifies that session data can be saved and loaded
-    const testSession = {
-      cookies: [
-        {
-          name: 'test_session',
-          value: 'test_value',
-          domain: 'localhost',
-          path: '/',
-        },
-      ],
-      origins: [],
-    }
-
-    // Write session file
-    if (!fs.existsSync(TEST_DATA_DIR)) {
-      fs.mkdirSync(TEST_DATA_DIR, { recursive: true })
-    }
-    fs.writeFileSync(SESSION_FILE, JSON.stringify(testSession))
-
-    // Read session file
-    expect(fs.existsSync(SESSION_FILE)).toBeTruthy()
-    const loaded = JSON.parse(fs.readFileSync(SESSION_FILE, 'utf-8'))
-    expect(loaded.cookies).toHaveLength(1)
-    expect(loaded.cookies[0].name).toBe('test_session')
-
-    // Clean up
-    if (fs.existsSync(SESSION_FILE)) {
-      fs.unlinkSync(SESSION_FILE)
-    }
-  })
-})
-
-// ============================================================================
-// TEST SUITE: SSE Status Stream Tests
-// ============================================================================
-
-test.describe('SSE Status Stream Tests', () => {
-  test('TEST-LOGIN-06-01: SSE connection established on modal open', async ({ page }) => {
-    // Create test account
-    await createTestAccount()
-
-    // Navigate to account page
-    await navigateToAccountPage(page)
-
-    // Intercept SSE requests
-    const sseRequests: string[] = []
-    page.on('request', (request) => {
-      if (request.url().includes('/stream')) {
-        sseRequests.push(request.url())
-      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(createSession({
+          auth_state: 'authenticated_active',
+          remote_user_id: 'u_123',
+          display_name: 'Alice',
+          license_status: 'active',
+          entitlements: ['dashboard:view'],
+          expires_at: '2026-04-20T10:00:00',
+          last_verified_at: '2026-04-14T00:00:00',
+          offline_grace_until: '2026-04-21T10:00:00',
+          device_id: receivedPayload?.device_id ?? 'device-test-1',
+        })),
+      })
     })
 
-    // Open login modal
-    await clickLoginButton(page)
+    await gotoLoginPage(page)
+    await page.getByLabel('Username').fill('alice')
+    await page.getByLabel('Password').fill('secret')
+    await page.getByRole('button', { name: 'Sign in' }).click()
 
-    // Wait for SSE connection
-    await page.waitForTimeout(1000)
-
-    // Verify SSE request was made
-    expect(sseRequests.length).toBeGreaterThanOrEqual(1)
-    expect(sseRequests[0]).toContain('/api/accounts/login/')
+    await page.waitForURL('**/#/dashboard')
+    expect(receivedPayload).not.toBeNull()
+    expect(receivedPayload?.username).toBe('alice')
+    expect(receivedPayload?.password).toBe('secret')
+    expect(receivedPayload?.device_id).toBeTruthy()
+    expect(receivedPayload?.client_version).toBeTruthy()
   })
 
-  test('TEST-LOGIN-06-02: SSE status updates display correctly', async ({ page }) => {
-    await createTestAccount()
-    await navigateToAccountPage(page)
-    await clickLoginButton(page)
+  test('shows auth error messaging for invalid credentials', async ({ page }) => {
+    await mockAuthSession(page)
 
-    // Fill phone number to trigger potential status updates
-    await fillLoginForm(page, TEST_PHONE, '')
+    await page.route('**/api/auth/login', async (route) => {
+      await route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          detail: {
+            error_code: 'invalid_credentials',
+            message: 'Incorrect username or password',
+          },
+        }),
+      })
+    })
 
-    // Wait for any status updates
-    await page.waitForTimeout(2000)
+    await gotoLoginPage(page)
+    await page.getByLabel('Username').fill('alice')
+    await page.getByLabel('Password').fill('wrong-password')
+    await page.getByRole('button', { name: 'Sign in' }).click()
 
-    // The status message area should exist in the modal
-    const modal = page.locator('.ant-modal')
-    await expect(modal).toBeVisible()
-  })
-})
-
-// ============================================================================
-// TEST SUITE: Accessibility Tests
-// ============================================================================
-
-test.describe('Accessibility Tests', () => {
-  test.beforeEach(async ({ page }) => {
-    await createTestAccount()
-    await navigateToAccountPage(page)
-    await clickLoginButton(page)
+    await expect(page.getByTestId('auth-login-error-message')).toBeVisible()
+    await expect(page.getByTestId('auth-login-error-message')).toContainText('Incorrect username or password')
+    await expect(page.getByTestId('auth-login-error-message')).toContainText('Double-check your credentials and try signing in again.')
   })
 
-  test('TEST-LOGIN-07-01: All form inputs have labels', async ({ page }) => {
-    // Check phone input has accessible label
-    const phoneInput = page.locator('input[placeholder="请输入手机号"]')
-    await expect(phoneInput).toHaveAttribute('id')
+  test('shows refresh-required status context on the login page', async ({ page }) => {
+    const session = createSession({
+      auth_state: 'refresh_required',
+      entitlements: ['dashboard:view'],
+      denial_reason: 'network_timeout',
+      device_id: 'device-refresh-001',
+    })
 
-    // Check code input has accessible label
-    const codeInput = page.locator('input[placeholder="请输入验证码"]')
-    await expect(codeInput).toHaveAttribute('id')
+    await mockAuthSession(page, session)
+    await mockAuthStatus(page, createStatus({
+      auth_state: 'refresh_required',
+      is_authenticated: true,
+      requires_reauth: true,
+      denial_reason: 'network_timeout',
+      device_id: 'device-refresh-001',
+    }))
 
-    // Check all inputs are reachable via keyboard (have proper tab order)
-    await phoneInput.focus()
-    await expect(phoneInput).toBeFocused()
+    await gotoLoginPage(page)
+
+    await expect(page.getByTestId('auth-login-status-message')).toBeVisible()
+    await expect(page.getByTestId('auth-login-status-message')).toContainText('Session refresh required')
+    await expect(page.getByTestId('auth-login-status-message')).toContainText('Reason: network_timeout.')
+    await expect(page.getByText('Device ID: device-refresh-001')).toBeVisible()
+  })
+
+  test('persists the generated device id across reloads', async ({ page }) => {
+    await mockAuthSession(page)
+
+    await gotoLoginPage(page)
+
+    const firstDeviceId = await page.evaluate(() => window.localStorage.getItem('mydw.auth.device_id'))
+    expect(firstDeviceId).toBeTruthy()
+    await expect(page.getByText(`Device ID: ${firstDeviceId}`)).toBeVisible()
+
+    await page.reload()
+    await expect(page.getByTestId('auth-login-page')).toBeVisible()
+
+    const secondDeviceId = await page.evaluate(() => window.localStorage.getItem('mydw.auth.device_id'))
+    expect(secondDeviceId).toBe(firstDeviceId)
+    await expect(page.getByText(`Device ID: ${secondDeviceId}`)).toBeVisible()
+  })
+
+  test('keeps form controls keyboard-accessible', async ({ page }) => {
+    await mockAuthSession(page)
+
+    await page.addInitScript((storageKey) => {
+      window.localStorage.setItem(storageKey, 'device-keyboard-001')
+    }, DEVICE_ID_STORAGE_KEY)
+
+    await gotoLoginPage(page)
+
+    const username = page.getByLabel('Username')
+    const password = page.getByLabel('Password')
+    const submit = page.getByRole('button', { name: 'Sign in' })
+
+    await username.focus()
+    await expect(username).toBeFocused()
 
     await page.keyboard.press('Tab')
-    await expect(codeInput).toBeFocused()
-  })
+    await expect(password).toBeFocused()
 
-  test('TEST-LOGIN-07-02: Buttons are keyboard accessible', async ({ page }) => {
-    // Tab to phone input
-    await page.locator('input[placeholder="请输入手机号"]').focus()
-
-    // Tab through buttons
     await page.keyboard.press('Tab')
-    await page.keyboard.press('Tab')
-
-    // Should be able to reach cancel button
-    const cancelButton = page.locator('.ant-modal button:has-text("取 消")')
-    await cancelButton.focus()
-    await expect(cancelButton).toBeFocused()
+    await expect(submit).toBeFocused()
   })
 })

@@ -52,6 +52,15 @@ const taskDetailPayload = {
   topic_ids: [],
 }
 
+const accountsPayload = [
+  {
+    id: 1,
+    account_id: 'creative-task-account',
+    account_name: 'Creative Task Account',
+    status: 'active',
+  },
+]
+
 const profilesPayload = {
   total: 0,
   items: [],
@@ -93,7 +102,63 @@ async function mockPhaseAApis(page: Page) {
     })
   })
 
+  await page.route('**/api/accounts', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(accountsPayload),
+    })
+  })
+
+  await page.route('**/api/accounts/', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(accountsPayload),
+    })
+  })
+
+  await page.route('**/api/accounts?**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(accountsPayload),
+    })
+  })
+
+  await page.route('**/api/accounts/?**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(accountsPayload),
+    })
+  })
+
+  await page.route('**/api/profiles', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(profilesPayload),
+    })
+  })
+
+  await page.route('**/api/profiles/', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(profilesPayload),
+    })
+  })
+
   await page.route('**/api/profiles?**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(profilesPayload),
+    })
+  })
+
+  await page.route('**/api/profiles/?**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -118,6 +183,17 @@ async function mockPhaseAApis(page: Page) {
   })
 
   await page.route('**/api/tasks?**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        total: 0,
+        items: [],
+      }),
+    })
+  })
+
+  await page.route('**/api/tasks/?**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',

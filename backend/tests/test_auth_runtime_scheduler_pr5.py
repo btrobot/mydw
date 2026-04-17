@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.auth_events import auth_event_emitter
 import models
 from models import Account, CompositionJob, Task
 from schemas.auth import LocalAuthSessionSummary
@@ -93,16 +94,18 @@ class TestTaskSchedulerRuntimeAuth:
                 )
             ),
         )
-        log_event = MagicMock()
-        monkeypatch.setattr(scheduler, "_log_auth_event", log_event)
+        scheduler_denied_by_auth = MagicMock()
+        monkeypatch.setattr(auth_event_emitter, "scheduler_denied_by_auth", scheduler_denied_by_auth)
 
         result = await scheduler.start_publishing()
 
         assert result["success"] is False
         assert result["auth_state"] == "authenticated_grace"
         assert scheduler.get_status() == "paused"
-        log_event.assert_called_once()
-        assert log_event.call_args.args[0] == "scheduler_denied_by_auth"
+        scheduler_denied_by_auth.assert_called_once_with(
+            auth_state="authenticated_grace",
+            reason_code="offline_grace_restricted",
+        )
 
     @pytest.mark.asyncio
     async def test_start_publishing_denies_revoked_without_running(
@@ -122,12 +125,18 @@ class TestTaskSchedulerRuntimeAuth:
                 )
             ),
         )
+        scheduler_denied_by_auth = MagicMock()
+        monkeypatch.setattr(auth_event_emitter, "scheduler_denied_by_auth", scheduler_denied_by_auth)
 
         result = await scheduler.start_publishing()
 
         assert result["success"] is False
         assert result["reason_code"] == "remote_auth_revoked"
         assert scheduler.get_status() == "idle"
+        scheduler_denied_by_auth.assert_called_once_with(
+            auth_state="revoked",
+            reason_code="remote_auth_revoked",
+        )
 
     @pytest.mark.asyncio
     async def test_publish_loop_pauses_before_fetching_new_task_when_grace(
@@ -148,8 +157,12 @@ class TestTaskSchedulerRuntimeAuth:
                 )
             ),
         )
-        log_event = MagicMock()
-        monkeypatch.setattr(scheduler, "_log_auth_event", log_event)
+        background_stopped_due_to_auth = MagicMock()
+        monkeypatch.setattr(
+            auth_event_emitter,
+            "background_stopped_due_to_auth",
+            background_stopped_due_to_auth,
+        )
         get_next_task = AsyncMock()
         monkeypatch.setattr("services.publish_service.PublishService.get_next_task", get_next_task)
         monkeypatch.setattr(models, "async_session", lambda: _AsyncSessionContext(db_session))
@@ -158,7 +171,11 @@ class TestTaskSchedulerRuntimeAuth:
 
         assert scheduler.get_status() == "paused"
         get_next_task.assert_not_called()
-        assert log_event.call_args.args[0] == "background_stopped_due_to_auth"
+        background_stopped_due_to_auth.assert_called_once_with(
+            component="task_scheduler",
+            auth_state="authenticated_grace",
+            reason_code="offline_grace_restricted",
+        )
 
     @pytest.mark.asyncio
     async def test_publish_loop_stops_after_current_task_when_post_publish_auth_is_revoked(
@@ -174,6 +191,7 @@ class TestTaskSchedulerRuntimeAuth:
             AsyncMock(
                 side_effect=[
                     _decision("allow", "authenticated_active"),
+                    _decision("allow", "authenticated_active"),
                     _decision(
                         "stop",
                         "revoked",
@@ -188,10 +206,14 @@ class TestTaskSchedulerRuntimeAuth:
             "_get_schedule_config",
             AsyncMock(return_value=SimpleNamespace(interval_minutes=30, shuffle=False)),
         )
-        log_event = MagicMock()
-        monkeypatch.setattr(scheduler, "_log_auth_event", log_event)
+        background_stopped_due_to_auth = MagicMock()
+        monkeypatch.setattr(
+            auth_event_emitter,
+            "background_stopped_due_to_auth",
+            background_stopped_due_to_auth,
+        )
         monkeypatch.setattr("services.publish_service.PublishService.get_next_task", AsyncMock(return_value=task))
-        publish_task = AsyncMock(return_value=(False, "remote_auth_revoked"))
+        publish_task = AsyncMock(return_value=(True, "ok"))
         monkeypatch.setattr("services.publish_service.PublishService.publish_task", publish_task)
         monkeypatch.setattr(models, "async_session", lambda: _AsyncSessionContext(db_session))
 
@@ -200,7 +222,11 @@ class TestTaskSchedulerRuntimeAuth:
         assert scheduler.get_status() == "idle"
         assert scheduler.current_task_id() is None
         publish_task.assert_awaited_once()
-        assert log_event.call_args.args[0] == "background_stopped_due_to_auth"
+        background_stopped_due_to_auth.assert_called_once_with(
+            component="task_scheduler",
+            auth_state="revoked",
+            reason_code="remote_auth_revoked",
+        )
 
     @pytest.mark.asyncio
     async def test_publish_loop_pauses_after_current_task_when_post_publish_auth_is_grace(
@@ -216,6 +242,7 @@ class TestTaskSchedulerRuntimeAuth:
             AsyncMock(
                 side_effect=[
                     _decision("allow", "authenticated_active"),
+                    _decision("allow", "authenticated_active"),
                     _decision(
                         "pause",
                         "authenticated_grace",
@@ -230,6 +257,12 @@ class TestTaskSchedulerRuntimeAuth:
             "_get_schedule_config",
             AsyncMock(return_value=SimpleNamespace(interval_minutes=30, shuffle=False)),
         )
+        background_stopped_due_to_auth = MagicMock()
+        monkeypatch.setattr(
+            auth_event_emitter,
+            "background_stopped_due_to_auth",
+            background_stopped_due_to_auth,
+        )
         monkeypatch.setattr("services.publish_service.PublishService.get_next_task", AsyncMock(return_value=task))
         publish_task = AsyncMock(return_value=(True, "ok"))
         monkeypatch.setattr("services.publish_service.PublishService.publish_task", publish_task)
@@ -240,11 +273,16 @@ class TestTaskSchedulerRuntimeAuth:
         assert scheduler.get_status() == "paused"
         assert scheduler.current_task_id() is None
         publish_task.assert_awaited_once()
+        background_stopped_due_to_auth.assert_called_once_with(
+            component="task_scheduler",
+            auth_state="authenticated_grace",
+            reason_code="offline_grace_restricted",
+        )
 
 
 class TestCompositionPollerRuntimeAuth:
     @pytest.mark.asyncio
-    async def test_start_denies_grace_and_enters_paused_state(
+    async def test_start_denies_grace_without_running(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -261,14 +299,18 @@ class TestCompositionPollerRuntimeAuth:
                 )
             ),
         )
-        log_event = MagicMock()
-        monkeypatch.setattr(poller, "_log_auth_event", log_event)
+        scheduler_denied_by_auth = MagicMock()
+        monkeypatch.setattr(auth_event_emitter, "scheduler_denied_by_auth", scheduler_denied_by_auth)
 
         result = await poller.start()
 
         assert result["success"] is False
-        assert poller.get_status() == "paused"
-        assert log_event.call_args.args[0] == "composition_poller_stopped_due_to_auth"
+        assert result["auth_state"] == "authenticated_grace"
+        assert poller.is_running() is False
+        scheduler_denied_by_auth.assert_called_once_with(
+            auth_state="authenticated_grace",
+            reason_code="offline_grace_restricted",
+        )
 
     @pytest.mark.asyncio
     async def test_start_denies_revoked_without_running(
@@ -288,15 +330,21 @@ class TestCompositionPollerRuntimeAuth:
                 )
             ),
         )
+        scheduler_denied_by_auth = MagicMock()
+        monkeypatch.setattr(auth_event_emitter, "scheduler_denied_by_auth", scheduler_denied_by_auth)
 
         result = await poller.start()
 
         assert result["success"] is False
         assert result["reason_code"] == "remote_auth_revoked"
-        assert poller.get_status() == "idle"
+        assert poller.is_running() is False
+        scheduler_denied_by_auth.assert_called_once_with(
+            auth_state="revoked",
+            reason_code="remote_auth_revoked",
+        )
 
     @pytest.mark.asyncio
-    async def test_check_task_hard_stop_after_remote_success_preserves_composing_state(
+    async def test_poll_compositions_hard_stop_after_remote_success_preserves_composing_state(
         self,
         db_session: AsyncSession,
         monkeypatch: pytest.MonkeyPatch,
@@ -333,6 +381,7 @@ class TestCompositionPollerRuntimeAuth:
                 ]
             ),
         )
+        monkeypatch.setattr(poller, "_get_current_task_id", lambda: task.id)
         handle_success = AsyncMock()
         handle_failure = AsyncMock()
         composition_service_cls = lambda db: SimpleNamespace(
@@ -344,7 +393,7 @@ class TestCompositionPollerRuntimeAuth:
         )
 
         with pytest.raises(RuntimeAuthHalt) as exc_info:
-            await poller._check_task(db_session, task, composition_service_cls, coze_client_cls)
+            await poller._poll_compositions(db_session, composition_service_cls, coze_client_cls)
 
         assert exc_info.value.decision.reason_code == "remote_auth_revoked"
         handle_success.assert_not_called()
@@ -355,7 +404,7 @@ class TestCompositionPollerRuntimeAuth:
         assert refreshed_job.status == "pending"
 
     @pytest.mark.asyncio
-    async def test_check_task_grace_after_remote_success_preserves_composing_state(
+    async def test_poll_compositions_grace_after_remote_success_preserves_composing_state(
         self,
         db_session: AsyncSession,
         monkeypatch: pytest.MonkeyPatch,
@@ -392,6 +441,7 @@ class TestCompositionPollerRuntimeAuth:
                 ]
             ),
         )
+        monkeypatch.setattr(poller, "_get_current_task_id", lambda: task.id)
         handle_success = AsyncMock()
         handle_failure = AsyncMock()
         composition_service_cls = lambda db: SimpleNamespace(
@@ -403,7 +453,7 @@ class TestCompositionPollerRuntimeAuth:
         )
 
         with pytest.raises(RuntimeAuthHalt) as exc_info:
-            await poller._check_task(db_session, task, composition_service_cls, coze_client_cls)
+            await poller._poll_compositions(db_session, composition_service_cls, coze_client_cls)
 
         assert exc_info.value.decision.action == "pause"
         handle_success.assert_not_called()
