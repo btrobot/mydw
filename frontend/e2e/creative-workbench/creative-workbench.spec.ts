@@ -51,6 +51,8 @@ const taskDetailPayload = {
   scheduled_time: null,
   final_video_path: null,
   upload_url: null,
+  creative_item_id: 101,
+  creative_version_id: 201,
   created_at: '2026-04-16T10:00:00Z',
   updated_at: '2026-04-16T10:00:00Z',
   video_ids: [],
@@ -216,10 +218,10 @@ test.describe('Creative workbench baseline', () => {
 
     await page.waitForURL('**/#/creative/101')
     await expect(page.getByTestId('creative-publish-diagnostics')).toBeVisible()
-    await expect(page.locator('body')).toContainText('初始版本')
+    await expect(page.getByTestId('creative-open-task-diagnostics')).toBeVisible()
 
-    await page.getByRole('button', { name: '查看关联任务' }).click()
+    await page.getByTestId('creative-open-task-diagnostics').click()
     await page.waitForURL('**/#/task/901')
-    await expect(page.locator('body')).toContainText('任务详情 #901')
+    await expect(page.getByTestId('task-detail-diagnostics-banner')).toBeVisible()
   })
 })

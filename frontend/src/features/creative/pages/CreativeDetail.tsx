@@ -156,7 +156,11 @@ export default function CreativeDetail() {
       onBack={() => navigate('/creative/workbench')}
       extra={[
         primaryTaskId ? (
-          <Button key="task-detail" onClick={() => navigate(`/task/${primaryTaskId}`)}>
+          <Button
+            key="task-detail"
+            onClick={() => navigate(`/task/${primaryTaskId}`)}
+            data-testid="creative-open-task-diagnostics"
+          >
             查看关联任务
           </Button>
         ) : null,
@@ -451,6 +455,7 @@ export default function CreativeDetail() {
                   <Button
                     key={taskId}
                     onClick={() => navigate(`/task/${taskId}`)}
+                    data-testid={`creative-open-task-${taskId}`}
                   >
                     打开任务 #{taskId}
                   </Button>

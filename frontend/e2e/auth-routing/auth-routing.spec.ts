@@ -44,7 +44,7 @@ test.describe('Auth route gating', () => {
 
     await page.goto(`${BASE_URL}/#/account`)
     await page.waitForURL('**/#/account')
-    await expect(page.locator('body')).toContainText('账号管理')
+    await expect(page.getByRole('button', { name: '添加账号' })).toBeVisible()
   })
 
   test('redirects grace sessions away from non-dashboard routes', async ({ page }) => {
@@ -95,7 +95,7 @@ test.describe('Auth route gating', () => {
     await page.goto(`${BASE_URL}/#/dashboard`)
     await page.waitForURL('**/#/dashboard')
     await expect(page.getByTestId('auth-grace-banner')).toBeVisible()
-    await expect(page.locator('body')).toContainText('任务概览')
+    await expect(page.getByTestId('dashboard-primary-cta')).toBeVisible()
   })
 
   test('redirects revoked sessions to revoked shell', async ({ page }) => {
