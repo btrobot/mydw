@@ -66,6 +66,14 @@
       "sha256": "60caf6f0f65e16a2ecb2aa1d6deaca3f6bf292fedd7bf40f376444f263b8774d"
     },
     {
+      "file": "remote-admin-platform-ui-spec-v1.md",
+      "sha256": "5782cc086b3e9ca77544e13fc332bd3856bf0eb74aad061565137474a6bfd4bd"
+    },
+    {
+      "file": "remote-admin-ui-refresh-lite-pr-plan.md",
+      "sha256": "6689e66db9e636b83dfe911a99c8efb89b8ef1101320d5fac069447080da95c7"
+    },
+    {
       "file": "remote-full-system-deployment-topology-v1.md",
       "sha256": "951ebc504f360fc60fce189f6ef854e0440c59dec84216d00aa7759f0a8514ea"
     },
