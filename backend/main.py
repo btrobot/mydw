@@ -1,11 +1,11 @@
 """
-?????? - FastAPI ????
+???? - FastAPI ???
 """
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-# ???????? Python ??
+# ????????????? Python ?
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from fastapi import FastAPI
@@ -50,25 +50,26 @@ logger.add(
     format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} - {message}"
 )
 
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     """Application lifecycle hooks."""
-    logger.info("?????????????...")
+    logger.info("?????...")
     auth_metrics_collector.register()
     await init_db()
-    logger.info("????????")
+    logger.info("?????")
     await _seed_default_publish_profile()
     try:
         yield
     finally:
         auth_metrics_collector.unregister()
-        logger.info("????????????")
+        logger.info("??????")
 
 
 # ?? FastAPI ??
 app = FastAPI(
-    title="?????? API",
-    description="???????????????",
+    title="??????? API",
+    description="?????????????",
     version=settings.APP_VERSION,
     docs_url="/docs",
     redoc_url="/redoc",
@@ -91,8 +92,8 @@ app.include_router(account.router, prefix="/api/accounts", tags=["????"])
 app.include_router(task.router, prefix="/api/tasks", tags=["????"])
 app.include_router(publish.router, prefix="/api/publish", tags=["????"])
 app.include_router(schedule_config.router, prefix="/api", tags=["????"])
-app.include_router(system.router, prefix="/api/system", tags=["??"])
-app.include_router(ai.router, prefix="/api/ai", tags=["AI??"])
+app.include_router(system.router, prefix="/api/system", tags=["????"])
+app.include_router(ai.router, prefix="/api/ai", tags=["AI ??"])
 app.include_router(product.router, prefix="/api/products", tags=["????"])
 app.include_router(video.router, prefix="/api/videos", tags=["????"])
 app.include_router(copywriting.router, prefix="/api/copywritings", tags=["????"])
@@ -100,17 +101,17 @@ app.include_router(cover.router, prefix="/api/covers", tags=["????"])
 app.include_router(audio.router, prefix="/api/audios", tags=["????"])
 app.include_router(topic.router, prefix="/api/topics", tags=["????"])
 app.include_router(topic_group_router, prefix="/api/topic-groups", tags=["?????"])
-app.include_router(profile.router, prefix="/api/profiles", tags=["?????"])
+app.include_router(profile.router, prefix="/api/profiles", tags=["????"])
 app.include_router(creative.router, prefix="/api/creatives", tags=["????"])
-app.include_router(creative_review.router, prefix="/api/creative-reviews", tags=["???? review"])
-app.include_router(creative_publish_pool.router, prefix="/api/creative-publish-pool", tags=["发布池"])
+app.include_router(creative_review.router, prefix="/api/creative-reviews", tags=["????"])
+app.include_router(creative_publish_pool.router, prefix="/api/creative-publish-pool", tags=["???"])
 app.include_router(creative_workflows.router, prefix="/api/creative-workflows", tags=["Creative workflow"])
 
 metrics_exporter = PrometheusMetricsExporter(auth_metrics_collector)
 
 
 async def _seed_default_publish_profile() -> None:
-    """?????????????????????"""
+    """???????????????"""
     async with _models.async_session() as session:
         result = await session.execute(select(PublishProfile))
         if result.scalars().first() is None:
@@ -121,15 +122,14 @@ async def _seed_default_publish_profile() -> None:
             )
             session.add(default_profile)
             await session.commit()
-            logger.info("??????????: name=????")
-
+            logger.info("?????????: name=????")
 
 
 @app.get("/")
 async def root():
-    """???"""
+    """????"""
     return {
-        "name": "?????? API",
+        "name": "??????? API",
         "version": settings.APP_VERSION,
         "status": "running"
     }
@@ -137,7 +137,7 @@ async def root():
 
 @app.get("/health")
 async def health():
-    """????"""
+    """?????"""
     return {"status": "healthy"}
 
 
@@ -149,9 +149,9 @@ async def metrics() -> str:
 
 if __name__ == "__main__":
     import uvicorn
-    # ??? reload=True??? uvicorn reload ? Windows ????? SelectorEventLoop?
-    # ?? Patchright/Playwright ??????? (NotImplementedError)?
-    # ????? watchfiles ?????:
+    # ????????? reload=True?uvicorn reload ? Windows ????? SelectorEventLoop?
+    # ??? Patchright/Playwright ???????????NotImplementedError??
+    # ???? watchfiles ?????
     #   watchfiles "venv/Scripts/python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000" ./
     uvicorn.run(
         "main:app",

@@ -29,6 +29,7 @@ import {
 } from '@ant-design/icons'
 import {
   useAccounts,
+  useBatchDeleteAccounts,
   useCreateAccount,
   useDeleteAccount,
   useUpdateAccount,
@@ -40,9 +41,11 @@ import {
   useBatchCheckStatus,
 } from '../hooks'
 import type { AccountResponseExtended, AccountQueryParams, BatchHealthCheckResult } from '../hooks/useAccount'
+import BatchDeleteButton from '../components/BatchDeleteButton'
 import ConnectionModal from '../components/ConnectionModal'
 import StatusBadge from '../components/StatusBadge'
 import type { AccountCreate, AccountUpdate } from '@/api'
+import { handleApiError } from '@/utils/error'
 
 const { Text } = Typography
 
@@ -80,13 +83,28 @@ interface AccountToolbarProps {
   onTagChange: (value: string | undefined) => void
   tagOptions: string[]
   onAdd: () => void
+  selectedCount: number
+  onBatchDelete: () => void
+  batchDeleting: boolean
   onBatchCheck: () => void
   batchChecking: boolean
   batchProgress: number
   batchTotal: number
 }
 
-function AccountToolbar({ onSearch, onTagChange, tagOptions, onAdd, onBatchCheck, batchChecking, batchProgress, batchTotal }: AccountToolbarProps) {
+function AccountToolbar({
+  onSearch,
+  onTagChange,
+  tagOptions,
+  onAdd,
+  selectedCount,
+  onBatchDelete,
+  batchDeleting,
+  onBatchCheck,
+  batchChecking,
+  batchProgress,
+  batchTotal,
+}: AccountToolbarProps) {
   return (
     <Row gutter={[12, 12]} style={{ marginBottom: 16 }} align="middle">
       <Col>
@@ -115,13 +133,16 @@ function AccountToolbar({ onSearch, onTagChange, tagOptions, onAdd, onBatchCheck
         />
       </Col>
       <Col flex="auto" style={{ textAlign: 'right' }}>
-        <Button
-          icon={batchChecking ? <LoadingOutlined /> : <SyncOutlined />}
-          disabled={batchChecking}
-          onClick={onBatchCheck}
-        >
-          {batchChecking ? `检查中 (${batchProgress}/${batchTotal})` : '批量检查连接'}
-        </Button>
+        <Space wrap>
+          <BatchDeleteButton count={selectedCount} onConfirm={onBatchDelete} loading={batchDeleting} />
+          <Button
+            icon={batchChecking ? <LoadingOutlined /> : <SyncOutlined />}
+            disabled={batchChecking}
+            onClick={onBatchCheck}
+          >
+            {batchChecking ? `检查中 (${batchProgress}/${batchTotal})` : '批量检查连接'}
+          </Button>
+        </Space>
       </Col>
     </Row>
   )
@@ -189,11 +210,13 @@ export default function Account() {
 
   // Query params state
   const [queryParams, setQueryParams] = useState<AccountQueryParams>({})
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
 
   // React Query hooks
   const { data: accounts = [], isLoading, refetch } = useAccounts(queryParams)
   const createAccount = useCreateAccount()
   const deleteAccount = useDeleteAccount()
+  const batchDeleteAccounts = useBatchDeleteAccounts()
   const updateAccount = useUpdateAccount()
 
   // Preview hooks
@@ -260,11 +283,34 @@ export default function Account() {
       title: '确认删除',
       content: '确定要删除这个账号吗？',
       onOk: async () => {
-        await deleteAccount.mutateAsync(id)
-        message.success('删除成功')
+        try {
+          await deleteAccount.mutateAsync(id)
+          message.success('删除成功')
+          setSelectedIds((prev) => prev.filter((selectedId) => selectedId !== id))
+        } catch (error: unknown) {
+          handleApiError(error, '删除账号失败')
+        }
       },
     })
   }, [deleteAccount])
+
+  const handleBatchDelete = useCallback(async () => {
+    try {
+      const result = await batchDeleteAccounts.mutateAsync(selectedIds)
+      setSelectedIds([])
+      if (result.deleted > 0 && result.skipped === 0) {
+        message.success(`已删除 ${result.deleted} 个账号`)
+      } else if (result.deleted > 0 && result.skipped > 0) {
+        message.warning(`已删除 ${result.deleted} 个账号，${result.skipped} 个账号因存在关联任务/发布记录被跳过`)
+      } else if (result.skipped > 0) {
+        message.warning(`未删除任何账号：${result.skipped} 个账号因存在关联任务/发布记录被跳过`)
+      } else {
+        message.info('没有账号被删除')
+      }
+    } catch (error: unknown) {
+      handleApiError(error, '批量删除失败')
+    }
+  }, [batchDeleteAccounts, selectedIds])
 
   const handleSaveRemark = useCallback((id: number, remark: string) => {
     const payload: AccountUpdate & { remark?: string } = { remark }
@@ -550,6 +596,9 @@ export default function Account() {
         onTagChange={handleTagChange}
         tagOptions={tagOptions}
         onAdd={handleAdd}
+        selectedCount={selectedIds.length}
+        onBatchDelete={handleBatchDelete}
+        batchDeleting={batchDeleteAccounts.isPending}
         onBatchCheck={handleBatchCheck}
         batchChecking={batchHealthCheck.isPending}
         batchProgress={batchStatus?.progress ?? 0}
@@ -605,6 +654,10 @@ export default function Account() {
         columns={columns}
         dataSource={accounts}
         rowKey="id"
+        rowSelection={{
+          selectedRowKeys: selectedIds,
+          onChange: (keys) => setSelectedIds(keys as number[]),
+        }}
         loading={isLoading}
         scroll={{ x: 1300 }}
         pagination={{

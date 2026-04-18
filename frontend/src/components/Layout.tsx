@@ -10,7 +10,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons'
 import { Button, Grid, Layout, Menu, Typography, theme } from 'antd'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { AuthSessionHeader } from '@/features/auth'
@@ -19,59 +19,8 @@ const { Header, Sider, Content } = Layout
 const { Title } = Typography
 const { useBreakpoint } = Grid
 
-const items = [
-  {
-    key: 'creative-group',
-    icon: <AppstoreOutlined />,
-    label: '\u521b\u4f5c\u5de5\u4f5c\u53f0',
-    children: [
-      { key: '/creative/workbench', label: '\u4f5c\u54c1\u5de5\u4f5c\u53f0' },
-    ],
-  },
-  { key: '/dashboard', icon: <DashboardOutlined />, label: '\u8fd0\u884c\u603b\u89c8' },
-  { key: '/account', icon: <UserOutlined />, label: '\u8d26\u53f7' },
-  {
-    key: 'task-group',
-    icon: <FileTextOutlined />,
-    label: '\u6267\u884c\u4e0e\u8bca\u65ad',
-    children: [
-      { key: '/task/list', label: '\u4efb\u52a1\u8bca\u65ad\u5217\u8868' },
-      { key: '/task/create', label: '\u65b0\u5efa\u6267\u884c\u4efb\u52a1' },
-      { key: '/schedule-config', label: '\u6267\u884c\u8c03\u5ea6' },
-      { key: '/profile-management', label: '\u6267\u884c\u914d\u7f6e' },
-    ],
-  },
-  {
-    key: 'material-group',
-    icon: <FolderOutlined />,
-    label: '\u7d20\u6750',
-    children: [
-      { key: '/material/overview', label: '\u603b\u89c8' },
-      { key: '/material/video', label: '\u89c6\u9891' },
-      { key: '/material/copywriting', label: '\u6587\u6848' },
-      { key: '/material/cover', label: '\u5c01\u9762' },
-      { key: '/material/audio', label: '\u97f3\u9891' },
-      { key: '/material/topic', label: '\u8bdd\u9898' },
-      { type: 'divider' as const },
-      { key: '/material/product', label: '\u5546\u54c1' },
-      { key: '/material/topic-group', label: '\u8bdd\u9898\u7ec4' },
-    ],
-  },
-  { key: '/ai-clip', icon: <ScissorOutlined />, label: 'AIClip \u5de5\u4f5c\u6d41' },
-  {
-    key: 'settings-group',
-    icon: <SettingOutlined />,
-    label: '\u8bbe\u7f6e',
-    children: [
-      { key: '/settings', label: '\u901a\u7528\u8bbe\u7f6e' },
-      { key: '/settings/auth-admin', label: '\u6388\u6743\u4f1a\u8bdd' },
-    ],
-  },
-]
-
 const subMenuKeys = [
   '/creative/workbench',
-  '/material/overview',
   '/material/video',
   '/material/copywriting',
   '/material/cover',
@@ -113,7 +62,65 @@ export default function LayoutComponent() {
   const [collapsed, setCollapsed] = useState(false)
   const [isBroken, setIsBroken] = useState(false)
 
+  const items = useMemo(() => ([
+    {
+      key: 'creative-group',
+      icon: <AppstoreOutlined />,
+      label: '创作工作台',
+      children: [
+        { key: '/creative/workbench', label: '作品工作台' },
+      ],
+    },
+    { key: '/dashboard', icon: <DashboardOutlined />, label: '运行总览' },
+    { key: '/account', icon: <UserOutlined />, label: '账号' },
+    {
+      key: 'task-group',
+      icon: <FileTextOutlined />,
+      label: '执行与诊断',
+      children: [
+        { key: '/task/list', label: '任务诊断列表' },
+        { key: '/task/create', label: '新建执行任务' },
+        { key: '/schedule-config', label: '执行调度' },
+        { key: '/profile-management', label: '执行配置' },
+      ],
+    },
+    {
+      key: 'material-group',
+      icon: <FolderOutlined />,
+      label: (
+        <span
+          onClick={() => {
+            navigate('/material')
+          }}
+        >
+          素材管理
+        </span>
+      ),
+      children: [
+        { key: '/material/video', label: '视频' },
+        { key: '/material/copywriting', label: '文案' },
+        { key: '/material/cover', label: '封面' },
+        { key: '/material/audio', label: '音频' },
+        { key: '/material/topic', label: '话题' },
+        { type: 'divider' as const },
+        { key: '/material/product', label: '商品' },
+        { key: '/material/topic-group', label: '话题组' },
+      ],
+    },
+    { key: '/ai-clip', icon: <ScissorOutlined />, label: 'AIClip 工作流' },
+    {
+      key: 'settings-group',
+      icon: <SettingOutlined />,
+      label: '设置',
+      children: [
+        { key: '/settings', label: '通用设置' },
+        { key: '/settings/auth-admin', label: '授权会话' },
+      ],
+    },
+  ]), [navigate])
+
   const selectedKey = subMenuKeys.find((key) => location.pathname === key)
+    ?? (location.pathname === '/material' ? 'material-group' : undefined)
     ?? (isCreativeRoute ? '/creative/workbench' : undefined)
     ?? location.pathname
 
@@ -139,7 +146,7 @@ export default function LayoutComponent() {
           style={{ color: 'white', margin: 0, flex: 1, minWidth: 0 }}
           ellipsis
         >
-          \u5f97\u7269\u521b\u4f5c\u63a7\u5236\u53f0
+          得物创作控制台
         </Title>
         <div style={{ marginLeft: 'auto', minWidth: 0 }}>
           <AuthSessionHeader />

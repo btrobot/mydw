@@ -69,10 +69,10 @@ interface AIClipWorkflowPanelProps {
 }
 
 const operationLabelMap: Record<string, string> = {
-  smart_clip: '\u667a\u80fd\u526a\u8f91',
-  add_audio: '\u6dfb\u52a0\u80cc\u666f\u97f3',
-  add_cover: '\u6dfb\u52a0\u5c01\u9762',
-  full_pipeline: '\u5b8c\u6574\u6d41\u7a0b',
+  smart_clip: '智能剪辑',
+  add_audio: '添加背景音',
+  add_cover: '添加封面',
+  full_pipeline: '完整流程',
 }
 
 const formatTime = (seconds?: number | null): string => {
@@ -125,7 +125,7 @@ const normalizeSegments = (value: unknown): HighlightSegment[] => {
       const candidate = item as Record<string, unknown>
       const start = Number(candidate.start)
       const end = Number(candidate.end)
-      const reason = typeof candidate.reason === 'string' ? candidate.reason : '\u672a\u6807\u6ce8\u539f\u56e0'
+      const reason = typeof candidate.reason === 'string' ? candidate.reason : '未标注原因'
 
       if (Number.isNaN(start) || Number.isNaN(end)) {
         return null
@@ -193,14 +193,14 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
 
     setWorkflowTitle(
       creativeContext.creativeTitle?.trim()
-        ? `${creativeContext.creativeTitle} AIClip \u7248\u672c`
-        : 'AIClip \u518d\u521b\u4f5c\u7248\u672c',
+        ? `${creativeContext.creativeTitle} AIClip 版本`
+        : 'AIClip 再创作版本',
     )
   }, [creativeContext?.creativeId, creativeContext?.creativeTitle])
 
   const ensureVideoPath = () => {
     if (!videoPath.trim()) {
-      message.warning('\u8bf7\u5148\u586b\u5199\u6e90\u89c6\u9891\u8def\u5f84')
+      message.warning('请先填写源视频路径')
       return false
     }
 
@@ -222,7 +222,7 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
       return
     }
 
-    message.error(response?.error || '\u5904\u7406\u5931\u8d25')
+    message.error(response?.error || '处理失败')
   }
 
   const handleGetVideoInfo = async () => {
@@ -233,10 +233,10 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
     try {
       const response = await videoInfoMutation.mutateAsync({ video_path: videoPath.trim() })
       setVideoInfo(response)
-      message.success('\u5df2\u83b7\u53d6\u89c6\u9891\u4fe1\u606f')
+      message.success('已获取视频信息')
     } catch {
       setVideoInfo(null)
-      message.error('\u83b7\u53d6\u89c6\u9891\u4fe1\u606f\u5931\u8d25')
+      message.error('获取视频信息失败')
     }
   }
 
@@ -249,9 +249,9 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
       const response = await detectHighlightsMutation.mutateAsync({ video_path: videoPath.trim() })
       const nextSegments = normalizeSegments(response.segments)
       setSegments(nextSegments)
-      message.success(`\u5df2\u8bc6\u522b ${nextSegments.length} \u4e2a\u9ad8\u5149\u7247\u6bb5`)
+      message.success(`已识别 ${nextSegments.length} 个高光片段`)
     } catch {
-      message.error('\u9ad8\u5149\u8bc6\u522b\u5931\u8d25')
+      message.error('高光识别失败')
     }
   }
 
@@ -261,7 +261,7 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
     }
 
     if (segments.length === 0) {
-      message.warning('\u8bf7\u5148\u8bc6\u522b\u9ad8\u5149\u7247\u6bb5')
+      message.warning('请先识别高光片段')
       return
     }
 
@@ -276,9 +276,9 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
         target_duration: targetDuration,
       })
       setProgress(100)
-      applyClipResult(response as ClipResultResponse, nextOutputPath, 'smart_clip', '\u667a\u80fd\u526a\u8f91\u5b8c\u6210')
+      applyClipResult(response as ClipResultResponse, nextOutputPath, 'smart_clip', '智能剪辑完成')
     } catch {
-      message.error('\u667a\u80fd\u526a\u8f91\u5931\u8d25')
+      message.error('智能剪辑失败')
     } finally {
       setProgress(0)
     }
@@ -290,7 +290,7 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
     }
 
     if (!audioPath.trim()) {
-      message.warning('\u8bf7\u586b\u5199\u80cc\u666f\u97f3\u9891\u8def\u5f84')
+      message.warning('请填写背景音频路径')
       return
     }
 
@@ -305,9 +305,9 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
         volume: audioVolume,
       })
       setProgress(100)
-      applyClipResult(response as ClipResultResponse, nextOutputPath, 'add_audio', '\u80cc\u666f\u97f3\u5df2\u52a0\u5165')
+      applyClipResult(response as ClipResultResponse, nextOutputPath, 'add_audio', '背景音已加入')
     } catch {
-      message.error('\u6dfb\u52a0\u80cc\u666f\u97f3\u5931\u8d25')
+      message.error('添加背景音失败')
     } finally {
       setProgress(0)
     }
@@ -319,7 +319,7 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
     }
 
     if (!coverPath.trim()) {
-      message.warning('\u8bf7\u586b\u5199\u5c01\u9762\u8def\u5f84')
+      message.warning('请填写封面路径')
       return
     }
 
@@ -333,9 +333,9 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
         output_path: nextOutputPath,
       })
       setProgress(100)
-      applyClipResult(response as ClipResultResponse, nextOutputPath, 'add_cover', '\u5c01\u9762\u5df2\u52a0\u5165')
+      applyClipResult(response as ClipResultResponse, nextOutputPath, 'add_cover', '封面已加入')
     } catch {
-      message.error('\u6dfb\u52a0\u5c01\u9762\u5931\u8d25')
+      message.error('添加封面失败')
     } finally {
       setProgress(0)
     }
@@ -360,10 +360,10 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
         response as ClipResultResponse,
         response?.output_path?.trim() || outputPath,
         'full_pipeline',
-        'AIClip \u5b8c\u6574\u6d41\u7a0b\u5df2\u5b8c\u6210',
+        'AIClip 完整流程已完成',
       )
     } catch {
-      message.error('AIClip \u5b8c\u6574\u6d41\u7a0b\u5931\u8d25')
+      message.error('AIClip 完整流程失败')
     } finally {
       setProgress(0)
     }
@@ -371,17 +371,17 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
 
   const handleSubmitWorkflow = async () => {
     if (!creativeContext?.creativeId || !creativeContext.sourceVersionId) {
-      message.error('\u5f53\u524d\u4f5c\u54c1\u7f3a\u5c11\u53ef\u63d0\u4ea4\u7684\u7248\u672c\u4e0a\u4e0b\u6587')
+      message.error('当前作品缺少可提交的版本上下文')
       return
     }
 
     if (!outputPath.trim()) {
-      message.warning('\u8bf7\u5148\u751f\u6210\u53ef\u63d0\u4ea4\u7684\u8f93\u51fa\u6587\u4ef6')
+      message.warning('请先生成可提交的输出文件')
       return
     }
 
     const derivedTitle = workflowTitle.trim()
-      || `${creativeContext.creativeTitle || 'AIClip'} ${operationLabelMap[lastOperation ?? ''] || '\u65b0\u7248\u672c'}`
+      || `${creativeContext.creativeTitle || 'AIClip'} ${operationLabelMap[lastOperation ?? ''] || '新版本'}`
 
     try {
       const response = await submitWorkflowMutation.mutateAsync({
@@ -401,33 +401,33 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
 
       message.success(
         response?.version?.version_no
-          ? `\u5df2\u63d0\u4ea4\u4e3a V${response.version.version_no}\uff0c\u8fdb\u5165\u5f85\u5ba1\u6838`
-          : '\u5df2\u63d0\u4ea4\u4e3a\u65b0\u7248\u672c\uff0c\u8fdb\u5165\u5f85\u5ba1\u6838',
+          ? `已提交为 V${response.version.version_no}，进入待审核`
+          : '已提交为新版本，进入待审核',
       )
       creativeContext.onSubmitted?.(response)
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '\u63d0\u4ea4\u5de5\u4f5c\u6d41\u5931\u8d25')
+      message.error(error instanceof Error ? error.message : '提交工作流失败')
     }
   }
 
   const panelSummaryItems = [
     {
       key: 'optional-assets',
-      label: '\u53ef\u9009\u589e\u5f3a\u7d20\u6750',
+      label: '可选增强素材',
       children: (
         <Space direction="vertical" size={12} style={{ display: 'flex' }}>
           <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            \u80cc\u666f\u97f3\u548c\u5c01\u9762\u4f1a\u53c2\u4e0e\u5b8c\u6574\u6d41\u7a0b\uff1b\u5982\u679c\u4f60\u53ea\u60f3\u5feb\u901f\u4ea7\u51fa\uff0c\u53ef\u4ee5\u5148\u7559\u7a7a\uff0c\u540e\u7eed\u518d\u8865\u5145\u3002
+            背景音和封面会参与完整流程；如果你只想快速产出，可以先留空，后续再补充。
           </Paragraph>
           <Input
             value={audioPath}
             onChange={(event) => setAudioPath(event.target.value)}
-            placeholder="\u53ef\u9009\uff1a\u80cc\u666f\u97f3\u9891\u8def\u5f84"
-            addonBefore="\u97f3\u9891\u8def\u5f84"
+            placeholder="可选：背景音频路径"
+            addonBefore="音频路径"
           />
           <Space direction="vertical" size={4} style={{ display: 'flex' }}>
             <Flex justify="space-between">
-              <Text type="secondary">\u97f3\u91cf</Text>
+              <Text type="secondary">音量</Text>
               <Text>{Math.round(audioVolume * 100)}%</Text>
             </Flex>
             <Slider min={0} max={1} step={0.1} value={audioVolume} onChange={setAudioVolume} />
@@ -435,31 +435,31 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
           <Input
             value={coverPath}
             onChange={(event) => setCoverPath(event.target.value)}
-            placeholder="\u53ef\u9009\uff1a\u5c01\u9762\u56fe\u7247\u8def\u5f84"
-            addonBefore="\u5c01\u9762\u8def\u5f84"
+            placeholder="可选：封面图片路径"
+            addonBefore="封面路径"
           />
         </Space>
       ),
     },
     {
       key: 'advanced-settings',
-      label: '\u9ad8\u7ea7\u5904\u7406\u4e0e\u8f93\u51fa',
+      label: '高级处理与输出',
       children: (
         <Space direction="vertical" size={12} style={{ display: 'flex' }}>
           <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            \u4ec5\u5728\u9700\u8981\u590d\u7528\u5df2\u6709\u7d20\u6750\u6216\u8986\u76d6\u9ed8\u8ba4\u8f93\u51fa\u4f4d\u7f6e\u65f6\uff0c\u518d\u5c55\u5f00\u8fd9\u4e9b\u53c2\u6570\u3002
+            仅在需要复用已有素材或覆盖默认输出位置时，再展开这些参数。
           </Paragraph>
           <Input
             value={outputDir}
             onChange={(event) => setOutputDir(event.target.value)}
-            placeholder="\u53ef\u9009\uff1a\u8f93\u51fa\u76ee\u5f55"
-            addonBefore="\u8f93\u51fa\u76ee\u5f55"
+            placeholder="可选：输出目录"
+            addonBefore="输出目录"
           />
           <Input
             value={outputPath}
             onChange={(event) => setOutputPath(event.target.value)}
-            placeholder="\u5904\u7406\u5b8c\u6210\u540e\u4f1a\u81ea\u52a8\u56de\u586b\uff0c\u4e5f\u53ef\u624b\u5de5\u8c03\u6574"
-            addonBefore="\u8f93\u51fa\u6587\u4ef6"
+            placeholder="处理完成后会自动回填，也可手工调整"
+            addonBefore="输出文件"
           />
           <Space wrap>
             <Button
@@ -468,7 +468,7 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
               loading={processing}
               disabled={segments.length === 0}
             >
-              \u4ec5\u751f\u6210\u667a\u80fd\u526a\u8f91
+              仅生成智能剪辑
             </Button>
             <Button
               icon={<AudioOutlined />}
@@ -476,7 +476,7 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
               loading={processing}
               disabled={!audioPath.trim()}
             >
-              \u4ec5\u6dfb\u52a0\u80cc\u666f\u97f3
+              仅添加背景音
             </Button>
             <Button
               icon={<PictureOutlined />}
@@ -484,7 +484,7 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
               loading={processing}
               disabled={!coverPath.trim()}
             >
-              \u4ec5\u6dfb\u52a0\u5c01\u9762
+              仅添加封面
             </Button>
           </Space>
         </Space>
@@ -498,20 +498,20 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
         <Alert
           type={creativeContext ? 'success' : 'info'}
           showIcon
-          message={creativeContext ? '\u5728\u5f53\u524d\u4f5c\u54c1\u5185\u751f\u6210 AIClip \u7248\u672c' : '\u72ec\u7acb\u5b8c\u6210\u4e00\u6b21 AIClip \u5904\u7406\u6d41\u7a0b'}
+          message={creativeContext ? '在当前作品内生成 AIClip 版本' : '独立完成一次 AIClip 处理流程'}
           description={creativeContext
-            ? '\u5efa\u8bae\u6309\u201c\u9009\u62e9\u7d20\u6750 \u2192 \u914d\u7f6e \u2192 \u6267\u884c \u2192 \u63d0\u4ea4\u201d\u7684\u987a\u5e8f\u5b8c\u6210\uff0c\u672c\u6b21\u4ea7\u7269\u4f1a\u4f5c\u4e3a\u65b0\u7684 CreativeVersion \u8fdb\u5165\u65e2\u6709\u5ba1\u6838\u94fe\u3002'
-            : '\u8fd9\u4e2a\u9875\u9762\u4fdd\u7559\u4e3a\u72ec\u7acb\u5165\u53e3\uff0c\u9002\u5408\u5148\u8bd5\u8dd1 AIClip \u6d41\u7a0b\uff1b\u5982\u679c\u9700\u8981\u8fdb\u5165\u6b63\u5f0f\u7248\u672c\u94fe\u8def\uff0c\u8bf7\u56de\u5230\u4f5c\u54c1\u8be6\u60c5\u9875\u63d0\u4ea4\u3002'}
+            ? '建议按“选择素材 → 配置 → 执行 → 提交”的顺序完成，本次产物会作为新的 CreativeVersion 进入既有审核链。'
+            : '这个页面保留为独立入口，适合先试跑 AIClip 流程；如果需要进入正式版本链路，请回到作品详情页提交。'}
         />
 
         <Card styles={{ body: { padding: screens.md ? 24 : 16 } }}>
           <Space direction="vertical" size={16} style={{ display: 'flex' }}>
             <div>
               <Title level={4} style={{ marginBottom: 8 }}>
-                {creativeContext ? 'AIClip \u7248\u672c\u5de5\u4f5c\u6d41' : 'AIClip \u72ec\u7acb\u5de5\u4f5c\u6d41'}
+                {creativeContext ? 'AIClip 版本工作流' : 'AIClip 独立工作流'}
               </Title>
               <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                \u628a\u4e3b\u6d41\u7a0b\u805a\u7126\u5728\u7d20\u6750\u9009\u62e9\u3001\u526a\u8f91\u914d\u7f6e\u3001\u6267\u884c\u4ea7\u51fa\u548c\u7ed3\u679c\u63d0\u4ea4\uff1b\u9ad8\u7ea7\u53c2\u6570\u4ecd\u53ef\u5c55\u5f00\uff0c\u4f46\u4e0d\u518d\u5e72\u6270\u4e3b\u8981\u64cd\u4f5c\u94fe\u8def\u3002
+                把主流程聚焦在素材选择、剪辑配置、执行产出和结果提交；高级参数仍可展开，但不再干扰主要操作链路。
               </Paragraph>
             </div>
             <Steps
@@ -519,10 +519,10 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
               size={screens.md ? 'default' : 'small'}
               responsive
               items={[
-                { title: '\u9009\u62e9\u7d20\u6750', description: '\u786e\u8ba4\u6e90\u89c6\u9891' },
-                { title: '\u914d\u7f6e', description: '\u9ad8\u5149\u4e0e\u589e\u5f3a\u7d20\u6750' },
-                { title: '\u6267\u884c', description: '\u751f\u6210 AIClip \u4ea7\u7269' },
-                { title: creativeContext ? '\u9884\u89c8 / \u63d0\u4ea4' : '\u9884\u89c8 / \u5bfc\u51fa', description: '\u786e\u8ba4\u8f93\u51fa\u7ed3\u679c' },
+                { title: '选择素材', description: '确认源视频' },
+                { title: '配置', description: '高光与增强素材' },
+                { title: '执行', description: '生成 AIClip 产物' },
+                { title: creativeContext ? '预览 / 提交' : '预览 / 导出', description: '确认输出结果' },
               ]}
             />
           </Space>
@@ -532,14 +532,14 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
           <Col xs={24} xxl={15}>
             <Space direction="vertical" size={16} style={{ display: 'flex' }}>
               <Card
-                title={<Space><VideoCameraOutlined /><span>1. \u9009\u62e9\u7d20\u6750</span></Space>}
+                title={<Space><VideoCameraOutlined /><span>1. 选择素材</span></Space>}
                 extra={(
                   <Space wrap>
                     <Button icon={<SyncOutlined />} onClick={handleGetVideoInfo} loading={loadingInfo}>
-                      \u83b7\u53d6\u89c6\u9891\u4fe1\u606f
+                      获取视频信息
                     </Button>
                     <Button icon={<ScissorOutlined />} onClick={handleDetectHighlights} loading={loadingInfo}>
-                      \u8bc6\u522b\u9ad8\u5149
+                      识别高光
                     </Button>
                   </Space>
                 )}
@@ -548,50 +548,50 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
                   <Input
                     value={videoPath}
                     onChange={(event) => setVideoPath(event.target.value)}
-                    placeholder="\u4f8b\u5982\uff1aD:\\videos\\source.mp4"
-                    addonBefore="\u89c6\u9891\u8def\u5f84"
+                    placeholder="例如：D:\\videos\\source.mp4"
+                    addonBefore="视频路径"
                     data-testid="creative-ai-clip-video-path"
                   />
                   <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                    \u5148\u786e\u8ba4\u8981\u5904\u7406\u7684\u6e90\u89c6\u9891\u3002\u4f60\u53ef\u4ee5\u5148\u8bfb\u89c6\u9891\u4fe1\u606f\uff0c\u4e5f\u53ef\u4ee5\u76f4\u63a5\u8bc6\u522b\u9ad8\u5149\uff0c\u4e3a\u540e\u7eed\u6d41\u7a0b\u51c6\u5907\u81ea\u52a8\u526a\u8f91\u7247\u6bb5\u3002
+                    先确认要处理的源视频。你可以先读视频信息，也可以直接识别高光，为后续流程准备自动剪辑片段。
                   </Paragraph>
 
                   {videoInfo ? (
                     <Descriptions bordered size="small" column={screens.md ? 2 : 1}>
-                      <Descriptions.Item label="\u65f6\u957f">{formatTime(videoInfo.duration)}</Descriptions.Item>
-                      <Descriptions.Item label="\u5927\u5c0f">{formatSize(videoInfo.size)}</Descriptions.Item>
-                      <Descriptions.Item label="\u5206\u8fa8\u7387">
-                        {videoInfo.width} \u00d7 {videoInfo.height}
+                      <Descriptions.Item label="时长">{formatTime(videoInfo.duration)}</Descriptions.Item>
+                      <Descriptions.Item label="大小">{formatSize(videoInfo.size)}</Descriptions.Item>
+                      <Descriptions.Item label="分辨率">
+                        {videoInfo.width} × {videoInfo.height}
                       </Descriptions.Item>
-                      <Descriptions.Item label="\u5e27\u7387">{videoInfo.fps?.toFixed?.(2) ?? '-'}</Descriptions.Item>
-                      <Descriptions.Item label="\u683c\u5f0f">{videoInfo.format || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="\u8def\u5f84">
+                      <Descriptions.Item label="帧率">{videoInfo.fps?.toFixed?.(2) ?? '-'}</Descriptions.Item>
+                      <Descriptions.Item label="格式">{videoInfo.format || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="路径">
                         <Text ellipsis style={{ maxWidth: screens.md ? 320 : 220 }}>{videoInfo.path || videoPath}</Text>
                       </Descriptions.Item>
                     </Descriptions>
                   ) : (
-                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="\u5c1a\u672a\u83b7\u53d6\u89c6\u9891\u4fe1\u606f" />
+                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="尚未获取视频信息" />
                   )}
                 </Space>
               </Card>
 
               <Card
-                title={<Space><ScissorOutlined /><span>2. \u914d\u7f6e\u526a\u8f91</span></Space>}
-                extra={<Tag color={segments.length > 0 ? 'processing' : 'default'}>{segments.length} \u4e2a\u9ad8\u5149\u7247\u6bb5</Tag>}
+                title={<Space><ScissorOutlined /><span>2. 配置剪辑</span></Space>}
+                extra={<Tag color={segments.length > 0 ? 'processing' : 'default'}>{segments.length} 个高光片段</Tag>}
               >
                 <Space direction="vertical" size={12} style={{ display: 'flex' }}>
                   <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                    \u9ed8\u8ba4\u63a8\u8350\u5148\u8bc6\u522b\u9ad8\u5149\uff0c\u518d\u8c03\u6574\u76ee\u6807\u65f6\u957f\u3002\u82e5\u9700\u8981\u8865\u80cc\u666f\u97f3\u3001\u5c01\u9762\u6216\u624b\u5de5\u8986\u5199\u8f93\u51fa\u8def\u5f84\uff0c\u53ef\u5728\u4e0b\u65b9\u5c55\u5f00\u9ad8\u7ea7\u914d\u7f6e\u3002
+                    默认推荐先识别高光，再调整目标时长。若需要补背景音、封面或手工覆写输出路径，可在下方展开高级配置。
                   </Paragraph>
 
-                  <Card size="small" type="inner" title="\u76ee\u6807\u65f6\u957f">
+                  <Card size="small" type="inner" title="目标时长">
                     <Space direction="vertical" size={4} style={{ display: 'flex' }}>
                       <Flex justify="space-between">
-                        <Text type="secondary">\u671f\u671b\u6210\u7247\u65f6\u957f</Text>
+                        <Text type="secondary">期望成片时长</Text>
                         <Text>{targetDuration}s</Text>
                       </Flex>
                       <Slider min={15} max={180} value={targetDuration} onChange={setTargetDuration} />
-                      <Text type="secondary">\u5df2\u8bc6\u522b\u7247\u6bb5\u603b\u65f6\u957f\uff1a{formatTime(totalSegmentDuration)}</Text>
+                      <Text type="secondary">已识别片段总时长：{formatTime(totalSegmentDuration)}</Text>
                     </Space>
                   </Card>
 
@@ -599,7 +599,7 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
                     <List
                       size="small"
                       bordered
-                      header={<Text strong>\u5019\u9009\u9ad8\u5149\u7247\u6bb5</Text>}
+                      header={<Text strong>候选高光片段</Text>}
                       dataSource={segments}
                       renderItem={(segment, index) => (
                         <List.Item
@@ -612,7 +612,7 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
                               icon={<DeleteOutlined />}
                               onClick={() => setSegments((current) => current.filter((_, itemIndex) => itemIndex !== index))}
                             >
-                              \u79fb\u9664
+                              移除
                             </Button>,
                           ]}
                         >
@@ -624,7 +624,7 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
                       )}
                     />
                   ) : (
-                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="\u5148\u8bc6\u522b\u9ad8\u5149\u540e\u518d\u8fdb\u884c\u667a\u80fd\u526a\u8f91" />
+                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="先识别高光后再进行智能剪辑" />
                   )}
 
                   <Collapse
@@ -639,10 +639,10 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
 
           <Col xs={24} xxl={9}>
             <Space direction="vertical" size={16} style={{ display: 'flex' }}>
-              <Card title={<Space><PlayCircleOutlined /><span>3. \u6267\u884c\u5e76\u4ea7\u51fa</span></Space>}>
+              <Card title={<Space><PlayCircleOutlined /><span>3. 执行并产出</span></Space>}>
                 <Space direction="vertical" size={12} style={{ display: 'flex' }}>
                   <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                    \u4e3b\u6d41\u7a0b\u4f18\u5148\u8fd0\u884c\u5b8c\u6574\u5904\u7406\u94fe\u3002\u5982\u679c\u53ea\u662f\u60f3\u5148\u770b\u526a\u8f91\u7ed3\u679c\uff0c\u53ef\u4ee5\u4f7f\u7528\u9ad8\u7ea7\u533a\u57df\u91cc\u7684\u5355\u6b65\u52a8\u4f5c\u3002
+                    主流程优先运行完整处理链。如果只是想先看剪辑结果，可以使用高级区域里的单步动作。
                   </Paragraph>
                   <Button
                     type="primary"
@@ -653,7 +653,7 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
                     block
                     data-testid="creative-ai-clip-run-pipeline"
                   >
-                    \u6267\u884c\u5b8c\u6574\u6d41\u7a0b
+                    执行完整流程
                   </Button>
                   <Button
                     icon={<ScissorOutlined />}
@@ -662,47 +662,47 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
                     disabled={segments.length === 0}
                     block
                   >
-                    \u5148\u4ec5\u751f\u6210\u667a\u80fd\u526a\u8f91
+                    先仅生成智能剪辑
                   </Button>
                   {processing ? <Progress percent={progress} status="active" /> : null}
                   {lastOperation ? (
-                    <Tag color="processing">\u6700\u8fd1\u5b8c\u6210\uff1a{operationLabelMap[lastOperation] || lastOperation}</Tag>
+                    <Tag color="processing">最近完成：{operationLabelMap[lastOperation] || lastOperation}</Tag>
                   ) : null}
                 </Space>
               </Card>
 
               <Card
-                title={<Space><CheckCircleOutlined /><span>4. \u9884\u89c8\u4e0e\u7ed3\u679c</span></Space>}
-                extra={outputPath ? <Tag color="success">ready</Tag> : <Tag>\u7b49\u5f85\u4ea7\u51fa</Tag>}
+                title={<Space><CheckCircleOutlined /><span>4. 预览与结果</span></Space>}
+                extra={outputPath ? <Tag color="success">ready</Tag> : <Tag>等待产出</Tag>}
               >
                 {outputPath ? (
                   <Space direction="vertical" size={8} style={{ display: 'flex' }}>
-                    <Text type="secondary">\u5f53\u524d\u8f93\u51fa\u6587\u4ef6</Text>
+                    <Text type="secondary">当前输出文件</Text>
                     <Input readOnly value={outputPath} data-testid="creative-ai-clip-output-path" />
                     <Text copyable>{outputPath}</Text>
                     <Alert
                       type="success"
                       showIcon
-                      message="AIClip \u4ea7\u7269\u5df2\u5c31\u7eea"
-                      description={creativeContext ? '\u4f60\u53ef\u4ee5\u76f4\u63a5\u628a\u5b83\u63d0\u4ea4\u4e3a\u65b0\u7684\u4f5c\u54c1\u7248\u672c\u3002' : '\u5982\u679c\u7ed3\u679c\u7b26\u5408\u9884\u671f\uff0c\u53ef\u5728\u4f5c\u54c1\u8be6\u60c5\u9875\u7ee7\u7eed\u8fdb\u5165\u6b63\u5f0f\u7248\u672c\u6d41\u7a0b\u3002'}
+                      message="AIClip 产物已就绪"
+                      description={creativeContext ? '你可以直接把它提交为新的作品版本。' : '如果结果符合预期，可在作品详情页继续进入正式版本流程。'}
                     />
                   </Space>
                 ) : (
-                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="\u6267\u884c\u6d41\u7a0b\u540e\u4f1a\u5728\u8fd9\u91cc\u5c55\u793a\u8f93\u51fa\u7ed3\u679c" />
+                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="执行流程后会在这里展示输出结果" />
                 )}
               </Card>
 
               {creativeContext ? (
                 <Card
-                  title={<Title level={5} style={{ margin: 0 }}>\u63d0\u4ea4\u4e3a\u65b0\u7248\u672c</Title>}
+                  title={<Title level={5} style={{ margin: 0 }}>提交为新版本</Title>}
                   data-testid="creative-ai-clip-submit-card"
                 >
                   <Space direction="vertical" size={12} style={{ display: 'flex' }}>
                     <Descriptions bordered size="small" column={1}>
-                      <Descriptions.Item label="\u4f5c\u54c1">
+                      <Descriptions.Item label="作品">
                         {creativeContext.creativeTitle || `Creative #${creativeContext.creativeId}`}
                       </Descriptions.Item>
-                      <Descriptions.Item label="\u6765\u6e90\u7248\u672c">
+                      <Descriptions.Item label="来源版本">
                         {creativeContext.sourceVersionLabel || creativeContext.sourceVersionId || '-'}
                       </Descriptions.Item>
                     </Descriptions>
@@ -710,15 +710,15 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
                     <Input
                       value={workflowTitle}
                       onChange={(event) => setWorkflowTitle(event.target.value)}
-                      placeholder="\u63d0\u4ea4\u540e\u7684\u7248\u672c\u6807\u9898"
-                      addonBefore="\u7248\u672c\u6807\u9898"
+                      placeholder="提交后的版本标题"
+                      addonBefore="版本标题"
                     />
 
                     <Alert
                       type="warning"
                       showIcon
-                      message="\u63d0\u4ea4\u540e\u4f1a\u521b\u5efa\u65b0\u7684 CreativeVersion"
-                      description="\u8be5\u52a8\u4f5c\u4e0d\u4f1a\u76f4\u63a5\u53d1\u5e03\uff1b\u6210\u529f\u540e\u53ea\u4f1a\u8fdb\u5165 WAITING_REVIEW\uff0c\u7ee7\u7eed\u6cbf\u7528\u73b0\u6709\u5ba1\u6838\u94fe\u3002"
+                      message="提交后会创建新的 CreativeVersion"
+                      description="该动作不会直接发布；成功后只会进入 WAITING_REVIEW，继续沿用现有审核链。"
                     />
 
                     <Button
@@ -728,7 +728,7 @@ export default function AIClipWorkflowPanel({ creativeContext }: AIClipWorkflowP
                       disabled={!canSubmitWorkflow}
                       data-testid="creative-ai-clip-submit"
                     >
-                      \u63d0\u4ea4\u4e3a\u65b0\u7248\u672c
+                      提交为新版本
                     </Button>
                   </Space>
                 </Card>

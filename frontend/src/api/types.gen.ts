@@ -4203,6 +4203,31 @@ export type UpdateAccountApiAccountsAccountIdPutResponses = {
 
 export type UpdateAccountApiAccountsAccountIdPutResponse = UpdateAccountApiAccountsAccountIdPutResponses[keyof UpdateAccountApiAccountsAccountIdPutResponses];
 
+export type BatchDeleteAccountsApiAccountsBatchDeletePostData = {
+    body: SchemasBatchDeleteRequest;
+    path?: never;
+    query?: never;
+    url: '/api/accounts/batch-delete';
+};
+
+export type BatchDeleteAccountsApiAccountsBatchDeletePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BatchDeleteAccountsApiAccountsBatchDeletePostError = BatchDeleteAccountsApiAccountsBatchDeletePostErrors[keyof BatchDeleteAccountsApiAccountsBatchDeletePostErrors];
+
+export type BatchDeleteAccountsApiAccountsBatchDeletePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SchemasBatchDeleteResponse;
+};
+
+export type BatchDeleteAccountsApiAccountsBatchDeletePostResponse = BatchDeleteAccountsApiAccountsBatchDeletePostResponses[keyof BatchDeleteAccountsApiAccountsBatchDeletePostResponses];
+
 export type HealthCheckApiAccountsAccountIdHealthCheckPostData = {
     body?: never;
     path: {

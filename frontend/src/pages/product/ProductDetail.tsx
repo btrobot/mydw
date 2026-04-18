@@ -141,6 +141,25 @@ export default function ProductDetail() {
         columns={[
           { title: '商品名称', dataIndex: 'name' },
           {
+            title: '得物链接',
+            dataIndex: 'dewu_url',
+            span: 2,
+            render: (_, r) => (
+              r.dewu_url ? (
+                <Typography.Link
+                  href={r.dewu_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  copyable={{ text: r.dewu_url }}
+                >
+                  {r.dewu_url}
+                </Typography.Link>
+              ) : (
+                <Text type="secondary">-</Text>
+              )
+            ),
+          },
+          {
             title: '解析状态',
             dataIndex: 'parse_status',
             render: (_, r) => {

@@ -70,7 +70,15 @@ export default function VideoList() {
     try {
       const result = await batchDeleteVideos.mutateAsync(selectedIds)
       setSelectedIds([])
-      message.success(`已删除 ${result.deleted} 个视频${result.skipped > 0 ? `，${result.skipped} 项被跳过` : ''}`)
+      if (result.deleted > 0 && result.skipped === 0) {
+        message.success(`已删除 ${result.deleted} 个视频`)
+      } else if (result.deleted > 0 && result.skipped > 0) {
+        message.warning(`已删除 ${result.deleted} 个视频，${result.skipped} 个视频因存在任务引用被跳过`)
+      } else if (result.skipped > 0) {
+        message.warning(`未删除任何视频：${result.skipped} 个视频因存在任务引用被跳过`)
+      } else {
+        message.info('没有视频被删除')
+      }
       actionRef.current?.reload()
     } catch (error: unknown) {
       handleApiError(error, '批量删除失败')

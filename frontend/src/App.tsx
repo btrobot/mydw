@@ -79,7 +79,7 @@ function App() {
 
                     {/* ???? */}
                     <Route path="material" element={<MaterialOverview />} />
-                    <Route path="material/overview" element={<MaterialOverview />} />
+                    <Route path="material/overview" element={<Navigate to="/material" replace />} />
                     <Route path="material/video" element={<VideoList />} />
                     <Route path="material/video/:id" element={<VideoDetail />} />
                     <Route path="material/copywriting" element={<CopywritingList />} />

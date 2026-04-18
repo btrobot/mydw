@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
+from sqlalchemy.exc import IntegrityError
 from typing import List, AsyncGenerator, Dict, Optional, Any
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -13,13 +14,14 @@ import asyncio
 import json
 import re
 
-from models import Account, Task, SystemLog
+from models import Account, Task, SystemLog, PublishLog, PublishExecutionSnapshot
 from models import get_db
 from schemas import (
     AccountCreate, AccountUpdate, AccountResponse, AccountStats,
     AccountLoginRequest, AccountTestRequest,
     ConnectionRequest, ConnectionResponse, ConnectionStatusResponse,
     ConnectionStatus, AccountStatus,
+    BatchDeleteRequest, BatchDeleteResponse,
     SendCodeRequest, SendCodeResponse,
     VerifyCodeRequest, VerifyCodeResponse,
     HealthCheckResponse,
@@ -343,6 +345,56 @@ async def get_account_stats(db: AsyncSession = Depends(get_db)):
     )
 
 
+async def _count_account_references(db: AsyncSession, account_id: int) -> int:
+    """统计账号被任务/发布日志/执行快照引用的总次数。"""
+    task_count = (
+        await db.execute(select(func.count(Task.id)).where(Task.account_id == account_id))
+    ).scalar() or 0
+    publish_log_count = (
+        await db.execute(select(func.count(PublishLog.id)).where(PublishLog.account_id == account_id))
+    ).scalar() or 0
+    snapshot_count = (
+        await db.execute(
+            select(func.count(PublishExecutionSnapshot.id)).where(PublishExecutionSnapshot.account_id == account_id)
+        )
+    ).scalar() or 0
+    return int(task_count + publish_log_count + snapshot_count)
+
+
+@router.post("/batch-delete", response_model=BatchDeleteResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
+async def batch_delete_accounts(
+    data: BatchDeleteRequest,
+    db: AsyncSession = Depends(get_db),
+) -> BatchDeleteResponse:
+    """批量删除账号。"""
+    deleted = 0
+    skipped_ids: List[int] = []
+
+    for account_id in data.ids:
+        result = await db.execute(select(Account).where(Account.id == account_id))
+        account = result.scalar_one_or_none()
+
+        if not account:
+            skipped_ids.append(account_id)
+            continue
+
+        if await _count_account_references(db, account_id) > 0:
+            skipped_ids.append(account_id)
+            continue
+
+        try:
+            await _cleanup_account_runtime(account_id)
+            await db.delete(account)
+            await db.commit()
+            deleted += 1
+        except IntegrityError:
+            await db.rollback()
+            skipped_ids.append(account_id)
+
+    logger.info("批量删除账号完成: deleted={}, skipped={}", deleted, len(skipped_ids))
+    return BatchDeleteResponse(deleted=deleted, skipped=len(skipped_ids), skipped_ids=skipped_ids)
+
+
 # ============ 批量健康检查 ============
 
 class BatchCheckState:
@@ -643,6 +695,24 @@ async def update_account(
     return account
 
 
+async def _cleanup_account_runtime(account_id: int) -> None:
+    """清理账号相关的浏览器、预览和内存态。"""
+    await browser_manager.close_context(account_id)
+    release_client(account_id)
+    connection_status_manager.clear_status(account_id)
+
+    if preview_manager.is_open and preview_manager.current_account_id == account_id:
+        try:
+            await preview_manager.close(save_session=False)
+        except Exception as e:
+            logger.warning("关闭预览浏览器失败，强制清理: error_type={}", type(e).__name__)
+            preview_manager._current_account_id = None
+            preview_manager._context = None
+            preview_manager._page = None
+            preview_manager.browser = None
+            preview_manager.playwright = None
+
+
 @router.delete("/{account_id}", status_code=204, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
 async def delete_account(
     account_id: int,
@@ -655,23 +725,17 @@ async def delete_account(
     if not account:
         raise HTTPException(status_code=404, detail="账号不存在")
 
-    # 关闭浏览器上下文
-    await browser_manager.close_context(account_id)
+    ref_count = await _count_account_references(db, account_id)
+    if ref_count > 0:
+        raise HTTPException(status_code=409, detail=f"账号存在 {ref_count} 条关联任务/发布记录，无法删除")
 
-    # 关闭预览浏览器（如果该账号有打开的预览）
-    if preview_manager.is_open and preview_manager.current_account_id == account_id:
-        try:
-            await preview_manager.close(save_session=False)
-        except Exception as e:
-            logger.warning("关闭预览浏览器失败，强制清理: error_type={}", type(e).__name__)
-            preview_manager._current_account_id = None
-            preview_manager._context = None
-            preview_manager._page = None
-            preview_manager.browser = None
-            preview_manager.playwright = None
-
-    await db.delete(account)
-    await db.commit()
+    try:
+        await _cleanup_account_runtime(account_id)
+        await db.delete(account)
+        await db.commit()
+    except IntegrityError as error:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="账号仍存在关联任务或发布记录，无法删除") from error
 
     logger.info("删除账号: {}", account.account_name)
     return None

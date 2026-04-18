@@ -64,7 +64,10 @@ export const useDeleteVideo = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (videoId: number) => {
-      await deleteVideoApiVideosVideoIdDelete({ path: { video_id: videoId } })
+      await deleteVideoApiVideosVideoIdDelete({
+        path: { video_id: videoId },
+        throwOnError: true,
+      })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['videos'] })
@@ -93,7 +96,10 @@ export const useBatchDeleteVideos = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (ids: number[]) => {
-      const response = await batchDeleteVideosApiVideosBatchDeletePost({ body: { ids } })
+      const response = await batchDeleteVideosApiVideosBatchDeletePost({
+        body: { ids },
+        throwOnError: true,
+      })
       return response.data as BatchDeleteResponse
     },
     onSuccess: () => {

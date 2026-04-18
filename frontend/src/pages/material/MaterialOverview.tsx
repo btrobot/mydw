@@ -22,7 +22,7 @@ export default function MaterialOverview() {
 
   return (
     <>
-      <Title level={4} style={{ marginTop: 0, marginBottom: 16 }}>素材总览</Title>
+      <Title level={4} style={{ marginTop: 0, marginBottom: 16 }}>素材管理</Title>
 
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col span={4}>

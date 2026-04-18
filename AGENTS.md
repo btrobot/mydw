@@ -56,6 +56,12 @@ Keep runtime marker contracts stable and non-destructive when overlays are appli
 - Run lint, typecheck, tests, and static analysis after changes.
 - Final reports must include changed files, simplifications made, and remaining risks.
 
+### Encoding hygiene
+- All docs and source files must be written and preserved as UTF-8 text.
+- Do **not** create or edit Chinese/non-ASCII content by piping raw multiline text through PowerShell heredocs/stdin into another process; in this workspace that path can degrade characters into literal `?`.
+- Prefer `apply_patch` for multilingual file edits. If a script must write the file, make the script read/write with explicit `encoding='utf-8'` and avoid shell transport of raw CJK content.
+- After writing any multilingual file, verify by reading it back with Python (`Path(...).read_text(encoding='utf-8')`) before claiming completion. Do not rely on terminal rendering alone to judge correctness.
+
 <lore_commit_protocol>
 ## Lore Commit Protocol
 

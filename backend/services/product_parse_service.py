@@ -137,44 +137,41 @@ def _extract_title(html: str) -> Optional[str]:
 
 
 def _extract_cover_urls(html: str) -> list[str]:
-    """提取封面图: 优先从 __NEXT_DATA__ content.cover.url + media.list[img]，fallback 到 DOM 正则"""
+    """提取封面图: 优先原图 media.list[img]，仅在缺失时回退到缩略图 cover.url。"""
     next_data = _extract_next_data(html)
     if next_data is not None:
         try:
             content = next_data["props"]["pageProps"]["metaOGInfo"]["data"][0]["content"]
-            seen: set[str] = set()
-            urls: list[str] = []
 
-            # 主封面优先
+            # 优先使用 media.list[img] 中的原图，只取第一张
+            for item in content.get("media", {}).get("list", []):
+                if item.get("mediaType") == "img" and item.get("url"):
+                    return [item["url"]]
+
+            # 仅在原图缺失时回退到缩略图
             cover_url = content.get("cover", {}).get("url")
             if cover_url:
-                seen.add(cover_url)
-                urls.append(cover_url)
-
-            # 补充 media.list[mediaType=img]，跳过 blur，去重
-            for item in content.get("media", {}).get("list", []):
-                if item.get("mediaType") == "img" and item.get("url") and item["url"] not in seen:
-                    seen.add(item["url"])
-                    urls.append(item["url"])
-
-            if urls:
-                return urls
+                return [cover_url]
         except (KeyError, TypeError, IndexError):
             pass
 
     # fallback: DOM 正则
     urls = []
-    m = re.search(r'<video[^>]+poster=["\']([^"\']+)["\']', html)
-    if m:
-        urls.append(m.group(1))
     for m in re.finditer(r'<img[^>]+class="Products_item-pic__[^"]*"[^>]+src=["\']([^"\']+)["\']', html):
         url = m.group(1)
         if url not in urls:
             urls.append(url)
-    if not urls:
-        for m in re.finditer(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', html):
-            urls.append(m.group(1))
-    return urls
+            break
+    if urls:
+        return urls
+
+    m = re.search(r'<video[^>]+poster=["\']([^"\']+)["\']', html)
+    if m:
+        return [m.group(1)]
+
+    for m in re.finditer(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', html):
+        return [m.group(1)]
+    return []
 
 
 def _extract_video_url(html: str) -> Optional[str]:

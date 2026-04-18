@@ -17,6 +17,7 @@ export {
   useCreateAccount,
   useUpdateAccount,
   useDeleteAccount,
+  useBatchDeleteAccounts,
   useAccountStats,
   useLoginAccount,
   useTestAccount,

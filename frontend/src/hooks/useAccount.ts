@@ -8,6 +8,7 @@ import {
   getAccountApiAccountsAccountIdGet,
   updateAccountApiAccountsAccountIdPut,
   deleteAccountApiAccountsAccountIdDelete,
+  batchDeleteAccountsApiAccountsBatchDeletePost,
   getAccountStatsApiAccountsStatsGet,
   loginAccountDeprecatedApiAccountsLoginAccountIdPost,
   testAccountApiAccountsTestAccountIdPost,
@@ -18,6 +19,7 @@ import {
   batchHealthCheckApiAccountsBatchHealthCheckPost,
   batchHealthCheckStatusApiAccountsBatchHealthCheckStatusGet,
 } from '@/api'
+import type { BatchDeleteResponse } from '@/types/material'
 
 import type {
   AccountResponse,
@@ -95,7 +97,26 @@ export const useDeleteAccount = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (accountId: number) => {
-      await deleteAccountApiAccountsAccountIdDelete({ path: { account_id: accountId } })
+      await deleteAccountApiAccountsAccountIdDelete({
+        path: { account_id: accountId },
+        throwOnError: true,
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accounts'] })
+    },
+  })
+}
+
+export const useBatchDeleteAccounts = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (ids: number[]) => {
+      const response = await batchDeleteAccountsApiAccountsBatchDeletePost({
+        body: { ids },
+        throwOnError: true,
+      })
+      return response.data as BatchDeleteResponse
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] })
