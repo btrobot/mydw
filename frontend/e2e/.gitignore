@@ -1,7 +1,7 @@
 # Playwright test artifacts
 test-results/
 playwright-report/
-e2e/reports/
+reports/
 e2e/test-data/*.json
 e2e/test-data/*.state
 
