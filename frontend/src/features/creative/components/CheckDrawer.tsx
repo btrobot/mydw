@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { App, Button, Drawer, Form, Input, Radio, Select, Space, Typography } from 'antd'
+import { App, Button, Drawer, Form, Grid, Input, Radio, Select, Space, Typography } from 'antd'
 
 import type {
   CreativeApproveRequest,
@@ -17,6 +17,7 @@ import type { CreativeVersionSummary } from '../types/creative'
 import { getVersionLabel, getVersionTitle } from '../types/creative'
 
 const { Paragraph, Text } = Typography
+const { useBreakpoint } = Grid
 const { TextArea } = Input
 
 type ReviewAction = 'APPROVED' | 'REWORK_REQUIRED' | 'REJECTED'
@@ -47,6 +48,7 @@ export default function CheckDrawer({
   version,
   onClose,
 }: CheckDrawerProps) {
+  const screens = useBreakpoint()
   const [form] = Form.useForm<CheckDrawerFormValues>()
   const { message } = App.useApp()
 
@@ -56,6 +58,7 @@ export default function CheckDrawer({
 
   const submitting = approveMutation.isPending || reworkMutation.isPending || rejectMutation.isPending
   const action = Form.useWatch('action', form) ?? 'APPROVED'
+  const drawerWidth = screens.md ? 420 : '100vw'
 
   useEffect(() => {
     if (open) {
@@ -118,7 +121,8 @@ export default function CheckDrawer({
   return (
     <Drawer
       title="作品审核"
-      width={420}
+      width={drawerWidth}
+      styles={{ body: { padding: screens.md ? 24 : 16 } }}
       open={open}
       onClose={onClose}
       destroyOnClose

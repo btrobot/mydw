@@ -1,5 +1,6 @@
+import { ReloadOutlined } from '@ant-design/icons'
 import { PageContainer } from '@ant-design/pro-components'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Alert,
@@ -10,7 +11,9 @@ import {
   Drawer,
   Empty,
   Flex,
+  Grid,
   List,
+  Result,
   Space,
   Spin,
   Tag,
@@ -44,22 +47,24 @@ import {
 } from '../types/creative'
 
 const { Paragraph, Text } = Typography
+const { useBreakpoint } = Grid
 
 export default function CreativeDetail() {
   const navigate = useNavigate()
+  const screens = useBreakpoint()
   const { id } = useParams<{ id: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const creativeId = id ? Number.parseInt(id, 10) : undefined
-  const { data: creative, isLoading, isError } = useCreative(creativeId)
-  const { data: publishStatus, isError: publishStatusError } = usePublishStatus()
-  const { data: scheduleConfig, isError: scheduleConfigError } = useScheduleConfig()
-  const { data: activePoolData, isError: activePoolError } = usePublishPoolItems({
+  const creativeQuery = useCreative(creativeId)
+  const publishStatusQuery = usePublishStatus()
+  const scheduleConfigQuery = useScheduleConfig()
+  const activePoolQuery = usePublishPoolItems({
     creativeId,
     status: 'active',
     limit: 50,
     enabled: creativeId !== undefined,
   })
-  const { data: invalidatedPoolData, isError: invalidatedPoolError } = usePublishPoolItems({
+  const invalidatedPoolQuery = usePublishPoolItems({
     creativeId,
     status: 'invalidated',
     limit: 50,
@@ -67,8 +72,13 @@ export default function CreativeDetail() {
   })
   const [drawerOpen, setDrawerOpen] = useState(false)
 
+  const creative = creativeQuery.data
+  const publishStatus = publishStatusQuery.data
+  const scheduleConfig = scheduleConfigQuery.data
   const currentVersion = creative?.versions?.find((version) => version.is_current) ?? null
   const aiClipOpen = searchParams.get('tool') === 'ai-clip' && Boolean(currentVersion)
+  const detailCardMinWidth = screens.md ? 320 : '100%'
+  const aiClipDrawerWidth = screens.xl ? 720 : screens.lg ? 640 : screens.md ? 560 : '100vw'
 
   const openAiClipWorkflow = () => {
     const nextParams = new URLSearchParams(searchParams)
@@ -82,10 +92,10 @@ export default function CreativeDetail() {
     setSearchParams(nextParams, { replace: true })
   }
 
-  const activePoolItems = activePoolData?.items ?? []
+  const activePoolItems = activePoolQuery.data?.items ?? []
   const invalidatedPoolItems = useMemo(
-    () => [...(invalidatedPoolData?.items ?? [])].sort((left, right) => right.updated_at.localeCompare(left.updated_at)),
-    [invalidatedPoolData?.items],
+    () => [...(invalidatedPoolQuery.data?.items ?? [])].sort((left, right) => right.updated_at.localeCompare(left.updated_at)),
+    [invalidatedPoolQuery.data?.items],
   )
 
   const currentPoolItem = useMemo(() => {
@@ -123,16 +133,86 @@ export default function CreativeDetail() {
   const shadowDiff = publishStatus?.scheduler_shadow_diff
   const shadowDiffReasons = formatShadowDiffReasons(shadowDiff)
   const shadowDiffDiffers = getShadowDiffFlag(shadowDiff)
-  const diagnosticsUnavailable = publishStatusError || scheduleConfigError || activePoolError || invalidatedPoolError
+  const diagnosticsUnavailable =
+    publishStatusQuery.isError
+    || scheduleConfigQuery.isError
+    || activePoolQuery.isError
+    || invalidatedPoolQuery.isError
 
-  if (isLoading) {
-    return <Flex justify="center" style={{ padding: 48 }}><Spin size="large" /></Flex>
+  const retryCreative = useCallback(() => {
+    void creativeQuery.refetch()
+  }, [creativeQuery])
+
+  const retryDiagnostics = useCallback(() => {
+    void Promise.all([
+      publishStatusQuery.refetch(),
+      scheduleConfigQuery.refetch(),
+      activePoolQuery.refetch(),
+      invalidatedPoolQuery.refetch(),
+    ])
+  }, [activePoolQuery, invalidatedPoolQuery, publishStatusQuery, scheduleConfigQuery])
+
+  const schedulerModeLabel =
+    publishStatusQuery.isError && scheduleConfigQuery.isError
+      ? '获取失败'
+      : formatModeLabel(schedulerMode)
+  const effectiveSchedulerModeLabel = publishStatusQuery.isError
+    ? '获取失败'
+    : formatModeLabel(effectiveSchedulerMode)
+  const runtimeStatusLabel = publishStatusQuery.isError
+    ? '获取失败'
+    : formatRuntimeStatusLabel(publishStatus?.status)
+  const shadowReadLabel =
+    publishStatusQuery.isError && scheduleConfigQuery.isError
+      ? '获取失败'
+      : (publishStatus?.publish_pool_shadow_read ?? scheduleConfig?.publish_pool_shadow_read)
+        ? '开启'
+        : '关闭'
+  const killSwitchLabel =
+    publishStatusQuery.isError && scheduleConfigQuery.isError
+      ? '获取失败'
+      : (publishStatus?.publish_pool_kill_switch ?? scheduleConfig?.publish_pool_kill_switch)
+        ? '开启'
+        : '关闭'
+
+  if (creativeQuery.isLoading && !creative) {
+    return (
+      <Flex justify="center" style={{ padding: 48 }}>
+        <Spin size="large" />
+      </Flex>
+    )
   }
 
-  if (!creative || isError || !statusMeta) {
+  if (creativeQuery.isError) {
     return (
       <PageContainer title="作品详情" onBack={() => navigate('/creative/workbench')}>
-        <Empty description="作品不存在，或你没有权限查看该记录" />
+        <div data-testid="creative-detail-error">
+          <Result
+            status="error"
+            title="作品详情暂时无法加载"
+            subTitle="当前请求失败，已明确展示为错误状态，不再与空作品或无权限场景混淆。"
+            extra={[
+              <Button key="retry" type="primary" icon={<ReloadOutlined />} onClick={retryCreative}>
+                重试加载
+              </Button>,
+              <Button key="back" onClick={() => navigate('/creative/workbench')}>
+                返回工作台
+              </Button>,
+            ]}
+          />
+        </div>
+      </PageContainer>
+    )
+  }
+
+  if (!creative || !statusMeta) {
+    return (
+      <PageContainer title="作品详情" onBack={() => navigate('/creative/workbench')}>
+        <Empty
+          description="作品不存在，或你没有权限查看这条记录。"
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+          data-testid="creative-detail-empty"
+        />
       </PageContainer>
     )
   }
@@ -147,39 +227,52 @@ export default function CreativeDetail() {
             <Alert
               type="warning"
               showIcon
-              message="诊断信息暂不可用"
-              description="发布状态、调度配置或发布池数据加载失败，请稍后重试或转到任务诊断页继续排查。"
+              message="高级诊断暂不可用"
+              description="发布状态、调度配置或发布池数据加载失败，请稍后重试，或转到任务诊断页继续排查。"
+              action={(
+                <Button size="small" icon={<ReloadOutlined />} onClick={retryDiagnostics}>
+                  重试
+                </Button>
+              )}
               style={{ marginBottom: 16 }}
             />
           ) : null}
-          <Descriptions bordered size="small" column={2}>
+          <Descriptions bordered size="small" column={screens.md ? 2 : 1}>
             <Descriptions.Item label="调度模式">
-              <Tag color={schedulerMode ? publishSchedulerModeMeta[schedulerMode].color : 'default'}>{formatModeLabel(schedulerMode)}</Tag>
+              <Tag color={publishStatusQuery.isError && scheduleConfigQuery.isError ? 'warning' : schedulerMode ? publishSchedulerModeMeta[schedulerMode].color : 'default'}>
+                {schedulerModeLabel}
+              </Tag>
             </Descriptions.Item>
             <Descriptions.Item label="当前生效模式">
-              <Tag color={effectiveSchedulerMode ? publishSchedulerModeMeta[effectiveSchedulerMode].color : 'default'}>{formatModeLabel(effectiveSchedulerMode)}</Tag>
+              <Tag color={publishStatusQuery.isError ? 'warning' : effectiveSchedulerMode ? publishSchedulerModeMeta[effectiveSchedulerMode].color : 'default'}>
+                {effectiveSchedulerModeLabel}
+              </Tag>
             </Descriptions.Item>
             <Descriptions.Item label="运行状态">
-              <Tag color={publishStatus?.status ? publishRuntimeStatusMeta[publishStatus.status].color : 'default'}>{formatRuntimeStatusLabel(publishStatus?.status)}</Tag>
+              <Tag color={publishStatusQuery.isError ? 'warning' : publishStatus?.status ? publishRuntimeStatusMeta[publishStatus.status].color : 'default'}>
+                {runtimeStatusLabel}
+              </Tag>
             </Descriptions.Item>
             <Descriptions.Item label="当前任务">
-              {publishStatus?.current_task_id ? <Button type="link" onClick={() => navigate(`/task/${publishStatus.current_task_id}`)}>任务 #{publishStatus.current_task_id}</Button> : '-'}
+              {publishStatus?.current_task_id ? (
+                <Button type="link" onClick={() => navigate(`/task/${publishStatus.current_task_id}`)}>
+                  任务 #{publishStatus.current_task_id}
+                </Button>
+              ) : publishStatusQuery.isError ? '获取失败' : '-'}
             </Descriptions.Item>
-            <Descriptions.Item label="Shadow Read">
-              {(publishStatus?.publish_pool_shadow_read ?? scheduleConfig?.publish_pool_shadow_read) ? '开启' : '关闭'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Kill Switch">
-              {(publishStatus?.publish_pool_kill_switch ?? scheduleConfig?.publish_pool_kill_switch) ? '开启' : '关闭'}
-            </Descriptions.Item>
+            <Descriptions.Item label="Shadow Read">{shadowReadLabel}</Descriptions.Item>
+            <Descriptions.Item label="Kill Switch">{killSwitchLabel}</Descriptions.Item>
             <Descriptions.Item label="当前发布池项">
               {currentPoolItem ? (
                 <Space wrap>
                   <Tag color={publishPoolStatusMeta[currentPoolItem.status].color}>{publishPoolStatusMeta[currentPoolItem.status].label}</Tag>
                   <Tag color={isPoolVersionAligned(currentPoolItem) ? 'success' : 'warning'}>版本 #{currentPoolItem.creative_version_id}</Tag>
                 </Space>
-              ) : '当前版本暂未进入发布池'}
+              ) : activePoolQuery.isError ? '获取失败' : '当前版本暂未进入发布池'}
             </Descriptions.Item>
-            <Descriptions.Item label="Pool Item ID">{currentPoolItem ? `#${currentPoolItem.id}` : '-'}</Descriptions.Item>
+            <Descriptions.Item label="Pool Item ID">
+              {currentPoolItem ? `#${currentPoolItem.id}` : activePoolQuery.isError ? '获取失败' : '-'}
+            </Descriptions.Item>
             <Descriptions.Item label="最近失效记录" span={2}>
               {latestInvalidatedPoolItem ? (
                 <Space direction="vertical" size={4}>
@@ -187,7 +280,7 @@ export default function CreativeDetail() {
                   <Text type="secondary">失效于 {formatCreativeTimestamp(latestInvalidatedPoolItem.invalidated_at ?? latestInvalidatedPoolItem.updated_at)}</Text>
                   <Text type="secondary">原因：{latestInvalidatedPoolItem.invalidation_reason ?? '未记录'}</Text>
                 </Space>
-              ) : '暂无失效记录'}
+              ) : invalidatedPoolQuery.isError ? '获取失败' : '暂无失效记录'}
             </Descriptions.Item>
           </Descriptions>
         </Card>
@@ -198,7 +291,19 @@ export default function CreativeDetail() {
       label: <span data-testid="creative-diagnostics-publish-trigger">发布池历史</span>,
       children: (
         <Card title="发布池记录" size="small" data-testid="creative-publish-pool-card">
-          {activePoolItems.length === 0 && invalidatedPoolItems.length === 0 ? (
+          {activePoolQuery.isError || invalidatedPoolQuery.isError ? (
+            <Alert
+              type="warning"
+              showIcon
+              message="发布池历史暂时不可用"
+              description="当前不能把发布池请求失败误判为没有历史记录，请稍后重试。"
+              action={(
+                <Button size="small" icon={<ReloadOutlined />} onClick={retryDiagnostics}>
+                  重试
+                </Button>
+              )}
+            />
+          ) : activePoolItems.length === 0 && invalidatedPoolItems.length === 0 ? (
             <Empty description="当前没有发布池记录" />
           ) : (
             <List
@@ -236,7 +341,9 @@ export default function CreativeDetail() {
           <Space direction="vertical" size={12} style={{ width: '100%' }}>
             <Space wrap>
               <Tag color={shadowDiffDiffers ? 'warning' : 'success'}>{shadowDiffDiffers ? '存在差异' : '已对齐'}</Tag>
-              {shadowDiffReasons.length > 0 ? shadowDiffReasons.map((reason) => <Tag key={reason}>{reason}</Tag>) : <Tag>无差异原因</Tag>}
+              {shadowDiffReasons.length > 0
+                ? shadowDiffReasons.map((reason) => <Tag key={reason}>{reason}</Tag>)
+                : <Tag>无差异原因</Tag>}
             </Space>
             <pre style={{ margin: 0, padding: 12, background: '#fafafa', borderRadius: 8, overflow: 'auto' }}>{formatShadowDiffJson(shadowDiff)}</pre>
           </Space>
@@ -251,18 +358,35 @@ export default function CreativeDetail() {
       subTitle={creative.creative_no}
       onBack={() => navigate('/creative/workbench')}
       extra={[
-        primaryTaskId ? <Button key="task-detail" onClick={() => navigate(`/task/${primaryTaskId}`)} data-testid="creative-open-task-diagnostics">查看任务诊断</Button> : null,
-        currentVersion ? <Button key="ai-clip" onClick={openAiClipWorkflow} data-testid="creative-open-ai-clip">AIClip 工作流</Button> : null,
-        currentVersion ? <Button key="review" type="primary" data-testid="creative-open-review" onClick={() => setDrawerOpen(true)}>审核当前版本</Button> : null,
+        primaryTaskId ? (
+          <Button key="task-detail" onClick={() => navigate(`/task/${primaryTaskId}`)} data-testid="creative-open-task-diagnostics">
+            查看任务诊断
+          </Button>
+        ) : null,
+        currentVersion ? (
+          <Button key="ai-clip" onClick={openAiClipWorkflow} data-testid="creative-open-ai-clip">
+            AIClip 工作流
+          </Button>
+        ) : null,
+        currentVersion ? (
+          <Button key="review" type="primary" data-testid="creative-open-review" onClick={() => setDrawerOpen(true)}>
+            审核当前版本
+          </Button>
+        ) : null,
       ].filter(Boolean)}
     >
       <Space direction="vertical" size={16} style={{ display: 'flex' }}>
         {creative.generation_error_msg ? (
-          <Alert type="warning" showIcon message="当前发布链路存在失败记录" description={`最近失败于 ${formatCreativeTimestamp(creative.generation_failed_at)}，错误：${creative.generation_error_msg}`} />
+          <Alert
+            type="warning"
+            showIcon
+            message="当前生成链路存在失败记录"
+            description={`最近失败于 ${formatCreativeTimestamp(creative.generation_failed_at)}，错误：${creative.generation_error_msg}`}
+          />
         ) : null}
 
         <Card title="业务概览">
-          <Descriptions bordered size="small" column={2}>
+          <Descriptions bordered size="small" column={screens.md ? 2 : 1}>
             <Descriptions.Item label="作品编号">{creative.creative_no}</Descriptions.Item>
             <Descriptions.Item label="状态"><Tag color={statusMeta.color}>{statusMeta.label}</Tag></Descriptions.Item>
             <Descriptions.Item label="当前版本 ID">{creative.current_version_id ?? '-'}</Descriptions.Item>
@@ -274,9 +398,9 @@ export default function CreativeDetail() {
         </Card>
 
         <Flex gap={16} wrap="wrap" align="stretch">
-          <Card title="当前版本" style={{ flex: 1, minWidth: 320 }}>
+          <Card title="当前版本" style={{ flex: 1, minWidth: detailCardMinWidth }}>
             {creative.current_version ? (
-              <Descriptions bordered size="small" column={2}>
+              <Descriptions bordered size="small" column={screens.md ? 2 : 1}>
                 <Descriptions.Item label="版本 ID">{creative.current_version.id}</Descriptions.Item>
                 <Descriptions.Item label="版本号">{getVersionLabel(creative.current_version.version_no)}</Descriptions.Item>
                 <Descriptions.Item label="版本标题" span={2}>{creative.current_version.title ?? '未命名版本'}</Descriptions.Item>
@@ -294,8 +418,14 @@ export default function CreativeDetail() {
                   <Tag color="processing">版本 {getVersionLabel(creative.review_summary?.current_version_id)}</Tag>
                 </Space>
                 <Text type="secondary">最近审核于 {formatCreativeTimestamp(effectiveCheck.updated_at)}</Text>
-                {effectiveCheck.note ? <Paragraph style={{ marginBottom: 0 }}>{effectiveCheck.note}</Paragraph> : <Paragraph type="secondary" style={{ marginBottom: 0 }}>未填写审核备注</Paragraph>}
-                {creative.review_summary?.total_checks ? <Text type="secondary">累计审核记录 {creative.review_summary.total_checks} 条</Text> : null}
+                {effectiveCheck.note ? (
+                  <Paragraph style={{ marginBottom: 0 }}>{effectiveCheck.note}</Paragraph>
+                ) : (
+                  <Paragraph type="secondary" style={{ marginBottom: 0 }}>未填写审核备注</Paragraph>
+                )}
+                {creative.review_summary?.total_checks ? (
+                  <Text type="secondary">累计审核记录 {creative.review_summary.total_checks} 条</Text>
+                ) : null}
               </Space>
             ) : (
               <Alert
@@ -330,7 +460,11 @@ export default function CreativeDetail() {
                 任务页用于查看执行、重试、发布链路与排障细节；业务判断仍以当前作品详情为准。
               </Paragraph>
               <Space wrap>
-                {diagnosticTaskIds.map((taskId) => <Button key={taskId} onClick={() => navigate(`/task/${taskId}`)} data-testid={`creative-open-task-${taskId}`}>任务 #{taskId}</Button>)}
+                {diagnosticTaskIds.map((taskId) => (
+                  <Button key={taskId} onClick={() => navigate(`/task/${taskId}`)} data-testid={`creative-open-task-${taskId}`}>
+                    任务 #{taskId}
+                  </Button>
+                ))}
                 <Button onClick={() => navigate('/task/list')}>查看任务列表</Button>
               </Space>
             </Space>
@@ -347,7 +481,7 @@ export default function CreativeDetail() {
 
       <CheckDrawer creativeId={creativeId} open={drawerOpen} version={currentVersion} onClose={() => setDrawerOpen(false)} />
 
-      <Drawer title="AIClip 工作流" open={aiClipOpen} width={720} onClose={closeAiClipWorkflow} destroyOnClose>
+      <Drawer title="AIClip 工作流" open={aiClipOpen} width={aiClipDrawerWidth} onClose={closeAiClipWorkflow} destroyOnClose styles={{ body: { padding: screens.md ? 24 : 16 } }}>
         <div data-testid="creative-ai-clip-drawer">
           <AIClipWorkflowPanel
             creativeContext={creativeId && currentVersion ? {

@@ -1,13 +1,15 @@
-﻿import {
+import {
   AppstoreOutlined,
   DashboardOutlined,
   FileTextOutlined,
   FolderOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
   ScissorOutlined,
   SettingOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { Layout, Menu, Typography, theme } from 'antd'
+import { Button, Grid, Layout, Menu, Typography, theme } from 'antd'
 import { useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 
@@ -15,53 +17,54 @@ import { AuthSessionHeader } from '@/features/auth'
 
 const { Header, Sider, Content } = Layout
 const { Title } = Typography
+const { useBreakpoint } = Grid
 
 const items = [
   {
     key: 'creative-group',
     icon: <AppstoreOutlined />,
-    label: '创作工作台',
+    label: '\u521b\u4f5c\u5de5\u4f5c\u53f0',
     children: [
-      { key: '/creative/workbench', label: '作品工作台' },
+      { key: '/creative/workbench', label: '\u4f5c\u54c1\u5de5\u4f5c\u53f0' },
     ],
   },
-  { key: '/dashboard', icon: <DashboardOutlined />, label: '运行总览' },
-  { key: '/account', icon: <UserOutlined />, label: '账号' },
+  { key: '/dashboard', icon: <DashboardOutlined />, label: '\u8fd0\u884c\u603b\u89c8' },
+  { key: '/account', icon: <UserOutlined />, label: '\u8d26\u53f7' },
   {
     key: 'task-group',
     icon: <FileTextOutlined />,
-    label: '执行与诊断',
+    label: '\u6267\u884c\u4e0e\u8bca\u65ad',
     children: [
-      { key: '/task/list', label: '任务诊断列表' },
-      { key: '/task/create', label: '新建执行任务' },
-      { key: '/schedule-config', label: '执行调度' },
-      { key: '/profile-management', label: '执行配置' },
+      { key: '/task/list', label: '\u4efb\u52a1\u8bca\u65ad\u5217\u8868' },
+      { key: '/task/create', label: '\u65b0\u5efa\u6267\u884c\u4efb\u52a1' },
+      { key: '/schedule-config', label: '\u6267\u884c\u8c03\u5ea6' },
+      { key: '/profile-management', label: '\u6267\u884c\u914d\u7f6e' },
     ],
   },
   {
     key: 'material-group',
     icon: <FolderOutlined />,
-    label: '素材',
+    label: '\u7d20\u6750',
     children: [
-      { key: '/material/overview', label: '总览' },
-      { key: '/material/video', label: '视频' },
-      { key: '/material/copywriting', label: '文案' },
-      { key: '/material/cover', label: '封面' },
-      { key: '/material/audio', label: '音频' },
-      { key: '/material/topic', label: '话题' },
+      { key: '/material/overview', label: '\u603b\u89c8' },
+      { key: '/material/video', label: '\u89c6\u9891' },
+      { key: '/material/copywriting', label: '\u6587\u6848' },
+      { key: '/material/cover', label: '\u5c01\u9762' },
+      { key: '/material/audio', label: '\u97f3\u9891' },
+      { key: '/material/topic', label: '\u8bdd\u9898' },
       { type: 'divider' as const },
-      { key: '/material/product', label: '商品' },
-      { key: '/material/topic-group', label: '话题组' },
+      { key: '/material/product', label: '\u5546\u54c1' },
+      { key: '/material/topic-group', label: '\u8bdd\u9898\u7ec4' },
     ],
   },
-  { key: '/ai-clip', icon: <ScissorOutlined />, label: 'AIClip 工具页' },
+  { key: '/ai-clip', icon: <ScissorOutlined />, label: 'AIClip \u5de5\u4f5c\u6d41' },
   {
     key: 'settings-group',
     icon: <SettingOutlined />,
-    label: '设置',
+    label: '\u8bbe\u7f6e',
     children: [
-      { key: '/settings', label: '通用设置' },
-      { key: '/settings/auth-admin', label: '授权会话' },
+      { key: '/settings', label: '\u901a\u7528\u8bbe\u7f6e' },
+      { key: '/settings/auth-admin', label: '\u6388\u6743\u4f1a\u8bdd' },
     ],
   },
 ]
@@ -88,6 +91,7 @@ const rootMenuKeys = new Set(['material-group', 'creative-group', 'settings-grou
 export default function LayoutComponent() {
   const navigate = useNavigate()
   const location = useLocation()
+  const screens = useBreakpoint()
   const {
     token: { colorBgContainer },
   } = theme.useToken()
@@ -106,6 +110,8 @@ export default function LayoutComponent() {
     ...(isTaskRoute ? ['task-group'] : []),
   ]
   const [openKeys, setOpenKeys] = useState<string[]>(initialOpenKeys)
+  const [collapsed, setCollapsed] = useState(false)
+  const [isBroken, setIsBroken] = useState(false)
 
   const selectedKey = subMenuKeys.find((key) => location.pathname === key)
     ?? (isCreativeRoute ? '/creative/workbench' : undefined)
@@ -113,16 +119,46 @@ export default function LayoutComponent() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ display: 'flex', alignItems: 'center', padding: '0 24px' }}>
-        <Title level={4} style={{ color: 'white', margin: 0, flexShrink: 0 }}>
-          得物创作控制台
+      <Header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: screens.md ? '0 24px' : '0 16px',
+        }}
+      >
+        <Button
+          type="text"
+          icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+          onClick={() => setCollapsed((current) => !current)}
+          style={{ color: 'white' }}
+          aria-label="toggle-navigation"
+        />
+        <Title
+          level={screens.md ? 4 : 5}
+          style={{ color: 'white', margin: 0, flex: 1, minWidth: 0 }}
+          ellipsis
+        >
+          \u5f97\u7269\u521b\u4f5c\u63a7\u5236\u53f0
         </Title>
-        <div style={{ marginLeft: 'auto' }}>
+        <div style={{ marginLeft: 'auto', minWidth: 0 }}>
           <AuthSessionHeader />
         </div>
       </Header>
       <Layout>
-        <Sider width={200} style={{ background: colorBgContainer }}>
+        <Sider
+          width={220}
+          breakpoint="lg"
+          collapsedWidth={isBroken ? 0 : 80}
+          collapsible
+          collapsed={collapsed}
+          onCollapse={(value) => setCollapsed(value)}
+          onBreakpoint={(broken) => {
+            setIsBroken(broken)
+            setCollapsed(broken)
+          }}
+          style={{ background: colorBgContainer }}
+        >
           <Menu
             mode="inline"
             selectedKeys={[selectedKey]}
@@ -132,12 +168,15 @@ export default function LayoutComponent() {
             onClick={({ key }) => {
               if (!rootMenuKeys.has(key)) {
                 navigate(key)
+                if (isBroken) {
+                  setCollapsed(true)
+                }
               }
             }}
             style={{ height: '100%', borderRight: 0 }}
           />
         </Sider>
-        <Layout style={{ padding: '24px' }}>
+        <Layout style={{ padding: screens.md ? '24px' : '16px' }}>
           <Content style={{ minHeight: 360 }}>
             <Outlet />
           </Content>
