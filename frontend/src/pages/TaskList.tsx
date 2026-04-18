@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import dayjs, { type Dayjs } from 'dayjs'
 import { App, Button, Popconfirm, Space, Tag, Tooltip, Typography } from 'antd'
 import { DeleteOutlined, PlusOutlined, ReloadOutlined, StopOutlined } from '@ant-design/icons'
@@ -17,6 +17,8 @@ import {
   useRetryTask,
 } from '@/hooks'
 import { handleApiError } from '@/utils/error'
+
+import { getTaskActionAvailability, taskKindMeta, taskStatusMeta } from './task/taskPresentation'
 
 type TaskRow = TaskResponse
 
@@ -55,23 +57,8 @@ type TaskListFormValues = {
   pageSize?: number
 }
 
-const statusMeta: Record<TaskStatus, { color: string; text: string }> = {
-  draft: { color: 'default', text: '待合成' },
-  composing: { color: 'processing', text: '合成中' },
-  ready: { color: 'warning', text: '待上传' },
-  uploading: { color: 'processing', text: '上传中' },
-  uploaded: { color: 'success', text: '已上传' },
-  failed: { color: 'error', text: '失败' },
-  cancelled: { color: 'default', text: '已取消' },
-}
-
-const taskKindMeta: Record<TaskKind, { color: string; text: string }> = {
-  composition: { color: 'purple', text: '合成任务' },
-  publish: { color: 'blue', text: '发布任务' },
-}
-
 const statusValueEnum = Object.fromEntries(
-  Object.entries(statusMeta).map(([key, value]) => [key, { text: value.text }]),
+  Object.entries(taskStatusMeta).map(([key, value]) => [key, { text: value.text }]),
 )
 
 const taskKindValueEnum = Object.fromEntries(
@@ -83,8 +70,6 @@ const booleanOptions = [
   { label: '否', value: false },
 ]
 
-const terminalStates: ReadonlySet<TaskStatus> = new Set<TaskStatus>(['uploaded', 'cancelled'])
-
 const presetControlledQueryKeys: Array<keyof QueryShape> = [
   'status',
   'task_kind',
@@ -95,6 +80,35 @@ const presetControlledQueryKeys: Array<keyof QueryShape> = [
 ]
 
 const hasValue = (value: unknown): boolean => value !== undefined && value !== null && value !== ''
+
+const dateFieldKeys = [
+  'created_from',
+  'created_to',
+  'updated_from',
+  'updated_to',
+  'scheduled_from',
+  'scheduled_to',
+  'publish_from',
+  'publish_to',
+] as const
+
+const numberFieldKeys = [
+  'account_id',
+  'profile_id',
+  'creative_item_id',
+  'creative_version_id',
+  'retry_count_min',
+  'retry_count_max',
+] as const
+
+const stringFieldKeys = [
+  'status',
+  'task_kind',
+  'batch_id',
+  'failed_at_status',
+] as const
+
+const booleanFieldKeys = ['has_error', 'has_final_video'] as const
 
 const parseNumber = (value: unknown): number | undefined => {
   if (typeof value === 'number' && Number.isFinite(value)) return value
@@ -246,6 +260,73 @@ const formatDateTime = (value?: string | null): string => {
   return new Date(value).toLocaleString('zh-CN')
 }
 
+const buildTaskListSearchParams = (
+  query: QueryShape,
+  pagination: { current?: number; pageSize?: number },
+): URLSearchParams => {
+  const nextSearchParams = new URLSearchParams()
+
+  for (const [key, value] of Object.entries(query)) {
+    if (key === 'offset' || key === 'limit' || !hasValue(value)) continue
+    nextSearchParams.set(key, String(value))
+  }
+
+  const pageSize = query.limit ?? pagination.pageSize ?? 20
+  const current = query.offset !== undefined ? Math.floor(query.offset / pageSize) + 1 : (pagination.current ?? 1)
+
+  nextSearchParams.set('page', String(current))
+  nextSearchParams.set('pageSize', String(pageSize))
+
+  return nextSearchParams
+}
+
+const parseTaskListStateFromSearchParams = (searchParams: URLSearchParams) => {
+  const formValues: TaskListFormValues = {}
+  const searchSnapshot: Partial<QueryShape> = {}
+
+  for (const key of stringFieldKeys) {
+    const value = searchParams.get(key)
+    if (!value) continue
+    ;(formValues as Record<string, unknown>)[key] = value
+    ;(searchSnapshot as Record<string, unknown>)[key] = value
+  }
+
+  for (const key of numberFieldKeys) {
+    const value = parseNumber(searchParams.get(key))
+    if (value === undefined) continue
+    ;(formValues as Record<string, unknown>)[key] = value
+    ;(searchSnapshot as Record<string, unknown>)[key] = value
+  }
+
+  for (const key of booleanFieldKeys) {
+    const value = parseBoolean(searchParams.get(key))
+    if (value === undefined) continue
+    ;(formValues as Record<string, unknown>)[key] = value
+    ;(searchSnapshot as Record<string, unknown>)[key] = value
+  }
+
+  for (const key of dateFieldKeys) {
+    const value = searchParams.get(key)
+    if (!value) continue
+    const parsed = dayjs(value)
+    ;(formValues as Record<string, unknown>)[key] = parsed.isValid() ? parsed : value
+    ;(searchSnapshot as Record<string, unknown>)[key] = value
+  }
+
+  const current = parseNumber(searchParams.get('page')) ?? 1
+  const pageSize = parseNumber(searchParams.get('pageSize')) ?? 20
+
+  formValues.current = current
+  formValues.pageSize = pageSize
+
+  return {
+    formValues,
+    searchSnapshot,
+    current,
+    pageSize,
+  }
+}
+
 const quickFilters: Array<{ key: QuickFilterKey; label: string }> = [
   { key: 'all', label: '全部' },
   { key: 'failed', label: '失败任务' },
@@ -257,11 +338,19 @@ const quickFilters: Array<{ key: QuickFilterKey; label: string }> = [
 
 export default function TaskList() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { message } = App.useApp()
   const actionRef = useRef<ActionType>()
   const formRef = useRef<ProFormInstance<TaskListFormValues>>()
   const [selectedIds, setSelectedIds] = useState<number[]>([])
-  const [searchSnapshot, setSearchSnapshot] = useState<Partial<QueryShape>>({})
+  const initialRouteState = useMemo(
+    () => parseTaskListStateFromSearchParams(searchParams),
+    [searchParams],
+  )
+  const [searchSnapshot, setSearchSnapshot] = useState<Partial<QueryShape>>(
+    initialRouteState.searchSnapshot,
+  )
 
   const { data: accounts = [] } = useAccounts()
   const { data: profilesData } = useProfiles()
@@ -281,6 +370,16 @@ export default function TaskList() {
     [profiles],
   )
 
+  const getCurrentReturnTo = useCallback(() => {
+    const currentPath = `${location.pathname}${location.search}`
+    return currentPath || '/task/list'
+  }, [location.pathname, location.search])
+
+  const openTaskDetail = useCallback((taskId: number) => {
+    const params = new URLSearchParams({ returnTo: getCurrentReturnTo() })
+    navigate(`/task/${taskId}?${params.toString()}`)
+  }, [getCurrentReturnTo, navigate])
+
   const syncSearchSnapshot = useCallback((next: Partial<QueryShape>) => {
     setSearchSnapshot((prev) => {
       const prevKeys = Object.keys(prev)
@@ -291,6 +390,10 @@ export default function TaskList() {
       return next
     })
   }, [])
+
+  useEffect(() => {
+    syncSearchSnapshot(initialRouteState.searchSnapshot)
+  }, [initialRouteState.searchSnapshot, syncSearchSnapshot])
 
   const handleDelete = useCallback(async (id: number) => {
     try {
@@ -368,7 +471,7 @@ export default function TaskList() {
       valueEnum: statusValueEnum,
       fieldProps: { placeholder: '筛选状态', allowClear: true },
       render: (_, record) => {
-        const meta = statusMeta[record.status] ?? { color: 'default', text: record.status }
+        const meta = taskStatusMeta[record.status] ?? { color: 'default', text: record.status }
         const tag = <Tag color={meta.color}>{meta.text}</Tag>
         return record.status === 'failed' && record.error_msg ? <Tooltip title={record.error_msg}>{tag}</Tooltip> : tag
       },
@@ -579,8 +682,7 @@ export default function TaskList() {
       width: 220,
       hideInSearch: true,
       render: (_, record) => {
-        const canRetry = record.status === 'failed'
-        const canCancel = !terminalStates.has(record.status) && record.status !== 'failed'
+        const { canRetry, canCancel } = getTaskActionAvailability(record.status)
 
         return (
           <Space size={4}>
@@ -589,7 +691,7 @@ export default function TaskList() {
               size="small"
               onClick={(event) => {
                 event.stopPropagation()
-                navigate(`/task/${record.id}`)
+                openTaskDetail(record.id)
               }}
             >
               查看详情
@@ -659,6 +761,13 @@ export default function TaskList() {
         const query = buildTaskListQuery(params)
         const { limit, offset, ...searchOnlyQuery } = query
         syncSearchSnapshot(searchOnlyQuery)
+        const nextSearchParams = buildTaskListSearchParams(query, {
+          current: params.current,
+          pageSize: params.pageSize,
+        })
+        if (nextSearchParams.toString() !== searchParams.toString()) {
+          setSearchParams(nextSearchParams, { replace: true })
+        }
         const response = await listTasksApiTasksGet({ query })
         const data = response.data ?? { total: 0, items: [] }
         return { data: data.items as TaskRow[], success: true, total: data.total }
@@ -705,10 +814,17 @@ export default function TaskList() {
         </Popconfirm>,
       ]}
       onRow={(record) => ({
-        onClick: () => navigate(`/task/${record.id}`),
+        onClick: () => openTaskDetail(record.id),
         style: { cursor: 'pointer' },
       })}
-      pagination={{ pageSize: 20, showTotal: (total) => `共 ${total} 条` }}
+      pagination={{
+        current: initialRouteState.current,
+        pageSize: initialRouteState.pageSize,
+        showTotal: (total) => `共 ${total} 条`,
+      }}
+      form={{
+        initialValues: initialRouteState.formValues,
+      }}
       search={{
         labelWidth: 'auto',
         defaultCollapsed: false,

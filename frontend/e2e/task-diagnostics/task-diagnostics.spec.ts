@@ -12,15 +12,20 @@ async function mockTaskDiagnosticsApis(page: Page) {
     id: 901,
     name: 'Phase E task diagnostic',
     status: 'draft',
+    task_kind: 'publish',
     account_id: 1,
     account_name: 'Creative Task Account',
     profile_id: null,
     priority: 6,
     scheduled_time: null,
+    publish_time: '2026-04-16T12:30:00Z',
     final_video_path: null,
     upload_url: null,
     creative_item_id: 101,
     creative_version_id: 202,
+    batch_id: 'batch-pr2',
+    failed_at_status: 'uploading',
+    retry_count: 2,
     created_at: '2026-04-16T10:00:00Z',
     updated_at: '2026-04-16T10:00:00Z',
     video_ids: [],
@@ -113,22 +118,29 @@ test.describe('Task diagnostics positioning', () => {
   })
 
   test('treats task list/detail as diagnostics surfaces with return links into creative flows', async ({ page }) => {
-    await page.goto(`${BASE_URL}/#/task/list`)
+    await page.goto(`${BASE_URL}/#/task/list?status=draft&task_kind=publish&page=1&pageSize=50`)
 
     await expect(page.getByTestId('task-list-semantics')).toBeVisible()
     await expect(page.getByRole('cell', { name: 'Phase E task diagnostic' })).toBeVisible()
     await page.getByRole('row', { name: /901.*Phase E task diagnostic/i }).click()
 
-    await page.waitForURL('**/#/task/901')
-    await expect(page.getByTestId('task-detail-diagnostics-banner')).toBeVisible()
+    await page.waitForURL('**/#/task/901?returnTo=*')
+    await expect(page).toHaveURL(/#\/task\/901\?returnTo=%2Ftask%2Flist%3Fstatus%3Ddraft%26task_kind%3Dpublish%26page%3D1%26pageSize%3D50$/)
+    await expect(page.getByTestId('task-detail-back-to-list')).toBeVisible()
 
     await page.getByTestId('task-detail-open-creative').click()
-    await page.waitForURL('**/#/creative/101')
+    await page.waitForURL('**/#/creative/101?taskId=901&returnTo=*')
     await expect(page.getByTestId('creative-open-task-diagnostics')).toBeVisible()
 
     await page.getByTestId('creative-open-task-diagnostics').click()
-    await page.waitForURL('**/#/task/901')
+    await expect(page).toHaveURL(/#\/task\/901\?returnTo=%2Ftask%2Flist%3Fstatus%3Ddraft%26task_kind%3Dpublish%26page%3D1%26pageSize%3D50$/)
 
+    await page.getByTestId('task-detail-back-to-list').click()
+    await expect(page).toHaveURL(/#\/task\/list\?status=draft&task_kind=publish&page=1&pageSize=50$/)
+    await expect(page.getByTestId('task-list-semantics')).toBeVisible()
+
+    await page.getByRole('row', { name: /901.*Phase E task diagnostic/i }).click()
+    await page.waitForURL('**/#/task/901?returnTo=*')
     await page.getByTestId('task-detail-open-workbench').click()
     await page.waitForURL('**/#/creative/workbench')
     await expect(page.getByTestId('creative-workbench-publish-summary')).toBeVisible()

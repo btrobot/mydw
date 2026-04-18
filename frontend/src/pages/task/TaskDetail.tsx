@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
+  App,
   Alert,
   Button,
   Card,
@@ -13,11 +14,9 @@ import {
   Spin,
   Tag,
   Typography,
-  message,
 } from 'antd'
 import {
   DeleteOutlined,
-  EditOutlined,
   PlayCircleOutlined,
   ReloadOutlined,
   StopOutlined,
@@ -29,7 +28,6 @@ import {
   useCancelTask,
   useCompositionStatus,
   useDeleteTask,
-  useEditRetryTask,
   useRetryTask,
   useSubmitComposition,
   useTask,
@@ -38,22 +36,9 @@ import { useProfiles } from '@/hooks/useProfile'
 import { handleApiError } from '@/utils/error'
 
 import { getTaskSemanticsSummary } from './taskSemantics'
+import { getTaskActionAvailability, taskKindMeta, taskStatusMeta } from './taskPresentation'
 
 const { Text } = Typography
-
-type TaskStatus = 'draft' | 'composing' | 'ready' | 'uploading' | 'uploaded' | 'failed' | 'cancelled'
-
-const statusMap: Record<TaskStatus, { color: string; text: string }> = {
-  draft: { color: 'default', text: '草稿' },
-  composing: { color: 'processing', text: '合成中' },
-  ready: { color: 'warning', text: '待上传' },
-  uploading: { color: 'processing', text: '上传中' },
-  uploaded: { color: 'success', text: '已上传' },
-  failed: { color: 'error', text: '失败' },
-  cancelled: { color: 'default', text: '已取消' },
-}
-
-const TERMINAL_STATES: ReadonlySet<TaskStatus> = new Set<TaskStatus>(['uploaded', 'cancelled'])
 
 const priorityLabel = (priority: number): string => {
   if (priority >= 10) return '高'
@@ -70,7 +55,10 @@ const priorityColor = (priority: number): string => {
 export default function TaskDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
+  const { message } = App.useApp()
   const taskId = id ? Number.parseInt(id, 10) : undefined
+  const returnTo = new URLSearchParams(location.search).get('returnTo') || '/task/list'
 
   const { data: task, isLoading } = useTask(taskId ?? 0)
   const { data: profilesData } = useProfiles()
@@ -82,9 +70,20 @@ export default function TaskDetail() {
   const submitComposition = useSubmitComposition()
   const cancelComposition = useCancelComposition()
   const retryTask = useRetryTask()
-  const editRetryTask = useEditRetryTask()
   const cancelTask = useCancelTask()
   const deleteTask = useDeleteTask()
+
+  const goBackToList = useCallback(() => {
+    navigate(returnTo)
+  }, [navigate, returnTo])
+
+  const openCreativeDetail = useCallback((creativeItemId: number) => {
+    const params = new URLSearchParams({
+      taskId: String(taskId),
+      returnTo,
+    })
+    navigate(`/creative/${creativeItemId}?${params.toString()}`)
+  }, [navigate, returnTo, taskId])
 
   const handleSubmitComposition = useCallback(async () => {
     if (!taskId) return
@@ -111,42 +110,33 @@ export default function TaskDetail() {
     try {
       await retryTask.mutateAsync(taskId)
       message.success('已发起任务重试')
+      goBackToList()
     } catch (error: unknown) {
       handleApiError(error, '重试任务失败')
     }
-  }, [retryTask, taskId])
-
-  const handleEditRetry = useCallback(async () => {
-    if (!taskId) return
-    try {
-      await editRetryTask.mutateAsync(taskId)
-      message.success('已创建可编辑重试任务')
-      navigate(-1)
-    } catch (error: unknown) {
-      handleApiError(error, '创建可编辑重试任务失败')
-    }
-  }, [editRetryTask, navigate, taskId])
+  }, [goBackToList, message, retryTask, taskId])
 
   const handleCancel = useCallback(async () => {
     if (!taskId) return
     try {
       await cancelTask.mutateAsync(taskId)
       message.success('已取消任务')
+      goBackToList()
     } catch (error: unknown) {
       handleApiError(error, '取消任务失败')
     }
-  }, [cancelTask, taskId])
+  }, [cancelTask, goBackToList, message, taskId])
 
   const handleDelete = useCallback(async () => {
     if (!taskId) return
     try {
       await deleteTask.mutateAsync(taskId)
       message.success('已删除任务')
-      navigate(-1)
+      goBackToList()
     } catch (error: unknown) {
       handleApiError(error, '删除任务失败')
     }
-  }, [deleteTask, navigate, taskId])
+  }, [deleteTask, goBackToList, message, taskId])
 
   if (isLoading) {
     return <Flex justify="center" style={{ padding: 48 }}><Spin size="large" /></Flex>
@@ -155,17 +145,19 @@ export default function TaskDetail() {
   if (!task) {
     return (
       <Flex vertical gap={16} style={{ padding: 24 }}>
-        <Button type="link" onClick={() => navigate(-1)} style={{ alignSelf: 'flex-start', padding: 0 }}>返回</Button>
+        <Button type="link" onClick={goBackToList} style={{ alignSelf: 'flex-start', padding: 0 }}>返回任务列表</Button>
         <Alert type="error" message="任务不存在或已被删除" />
       </Flex>
     )
   }
 
-  const { color: statusColor, text: statusText } = statusMap[task.status] ?? { color: 'default', text: task.status }
+  const { color: statusColor, text: statusText } = taskStatusMeta[task.status] ?? { color: 'default', text: task.status }
+  const creativeItemId = task.creative_item_id ?? null
+  const taskKind = task.task_kind ? taskKindMeta[task.task_kind] : null
   const isComposing = task.status === 'draft' || task.status === 'composing'
   const isUploaded = task.status === 'uploaded'
   const isFailed = task.status === 'failed'
-  const isTerminal = TERMINAL_STATES.has(task.status)
+  const { canRetry, canCancel } = getTaskActionAvailability(task.status)
   const compositionActive = compositionJob?.status === 'pending' || compositionJob?.status === 'processing'
   const semantics = getTaskSemanticsSummary(task as TaskResponse, profiles)
   const renderIds = (ids?: number[]) => (ids && ids.length > 0 ? ids.map((item) => `#${item}`).join(', ') : '-')
@@ -174,25 +166,37 @@ export default function TaskDetail() {
     <Flex vertical gap={16} style={{ padding: 24, maxWidth: 960 }} data-testid="task-detail-page">
       <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
         <Space wrap>
-          <Button onClick={() => navigate(-1)}>返回上一页</Button>
+          <Button onClick={goBackToList} data-testid="task-detail-back-to-list">返回任务列表</Button>
           <Button onClick={() => navigate('/creative/workbench')} data-testid="task-detail-open-workbench">返回作品工作台</Button>
-          {task.creative_item_id ? <Button type="primary" onClick={() => navigate(`/creative/${task.creative_item_id}`)} data-testid="task-detail-open-creative">返回作品详情</Button> : null}
+          {creativeItemId !== null ? <Button type="primary" onClick={() => openCreativeDetail(creativeItemId)} data-testid="task-detail-open-creative">查看关联作品</Button> : null}
         </Space>
-        <Tag color={statusColor} style={{ fontSize: 14, padding: '2px 10px' }}>{statusText}</Tag>
+        <Space wrap>
+          {taskKind ? <Tag color={taskKind.color}>{taskKind.text}</Tag> : null}
+          <Tag color={statusColor} style={{ fontSize: 14, padding: '2px 10px' }}>{statusText}</Tag>
+        </Space>
       </Flex>
-
-      <Alert type="info" showIcon data-testid="task-detail-diagnostics-banner" message={`任务 #${task.id} 执行 / 诊断页`} description="这里用于查看任务执行、重试、发布链路与排障细节；作品业务状态仍以作品详情页为准。" />
 
       <Card title="基本信息" size="small">
         <Descriptions bordered size="small" column={2}>
           <Descriptions.Item label="任务 ID">{task.id}</Descriptions.Item>
           <Descriptions.Item label="状态"><Tag color={statusColor}>{statusText}</Tag></Descriptions.Item>
-          <Descriptions.Item label="账号">{task.account_name ? `${task.account_name} (${task.account_id})` : task.account_id}</Descriptions.Item>
-          <Descriptions.Item label="Profile ID">{task.profile_id ?? '-'}</Descriptions.Item>
+          <Descriptions.Item label="任务类型">
+            {taskKind ? <Tag color={taskKind.color}>{taskKind.text}</Tag> : '未标记'}
+          </Descriptions.Item>
+          <Descriptions.Item label="账号">
+            {task.account_id == null
+              ? '随机分配'
+              : (task.account_name ? `${task.account_name} (${task.account_id})` : `#${task.account_id}`)}
+          </Descriptions.Item>
+          <Descriptions.Item label="配置档">{task.profile_id ?? '默认/未指定'}</Descriptions.Item>
           <Descriptions.Item label="作品 ID">{task.creative_item_id ?? '-'}</Descriptions.Item>
           <Descriptions.Item label="作品版本 ID">{task.creative_version_id ?? '-'}</Descriptions.Item>
+          <Descriptions.Item label="批次">{task.batch_id ?? '-'}</Descriptions.Item>
+          <Descriptions.Item label="失败阶段">{task.failed_at_status ?? '-'}</Descriptions.Item>
           <Descriptions.Item label="优先级"><Tag color={priorityColor(task.priority)}>{priorityLabel(task.priority)} ({task.priority})</Tag></Descriptions.Item>
           <Descriptions.Item label="计划发布时间">{task.scheduled_time ? new Date(task.scheduled_time).toLocaleString('zh-CN') : '-'}</Descriptions.Item>
+          <Descriptions.Item label="实际发布时间">{task.publish_time ? new Date(task.publish_time).toLocaleString('zh-CN') : '-'}</Descriptions.Item>
+          <Descriptions.Item label="重试次数">{task.retry_count ?? 0}</Descriptions.Item>
           <Descriptions.Item label="创建时间">{new Date(task.created_at).toLocaleString('zh-CN')}</Descriptions.Item>
           <Descriptions.Item label="更新时间">{new Date(task.updated_at).toLocaleString('zh-CN')}</Descriptions.Item>
           {isFailed && task.error_msg ? <Descriptions.Item label="错误信息" span={2}><Text type="danger">{task.error_msg}</Text></Descriptions.Item> : null}
@@ -258,9 +262,8 @@ export default function TaskDetail() {
 
       <Card title="任务动作" size="small">
         <Space wrap>
-          {isFailed ? <Button icon={<ReloadOutlined />} loading={retryTask.isPending} onClick={() => void handleRetry()}>重试</Button> : null}
-          {isFailed ? <Button icon={<EditOutlined />} loading={editRetryTask.isPending} onClick={() => void handleEditRetry()}>创建可编辑重试</Button> : null}
-          {!isTerminal ? <Popconfirm title="确认取消这个任务吗？" onConfirm={() => void handleCancel()}><Button icon={<StopOutlined />} loading={cancelTask.isPending}>取消任务</Button></Popconfirm> : null}
+          {canRetry ? <Button icon={<ReloadOutlined />} loading={retryTask.isPending} onClick={() => void handleRetry()}>重试</Button> : null}
+          {canCancel ? <Popconfirm title="确认取消这个任务吗？" onConfirm={() => void handleCancel()}><Button icon={<StopOutlined />} loading={cancelTask.isPending}>取消任务</Button></Popconfirm> : null}
           <Popconfirm title="确认删除这个任务吗？删除后不可恢复。" onConfirm={() => void handleDelete()}><Button danger icon={<DeleteOutlined />} loading={deleteTask.isPending}>删除</Button></Popconfirm>
         </Space>
       </Card>

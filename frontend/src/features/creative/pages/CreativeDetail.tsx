@@ -55,6 +55,9 @@ export default function CreativeDetail() {
   const { id } = useParams<{ id: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const creativeId = id ? Number.parseInt(id, 10) : undefined
+  const requestedTaskId = Number.parseInt(searchParams.get('taskId') ?? '', 10)
+  const prioritizedTaskId = Number.isFinite(requestedTaskId) ? requestedTaskId : undefined
+  const taskReturnTo = searchParams.get('returnTo') || '/task/list'
   const creativeQuery = useCreative(creativeId)
   const publishStatusQuery = usePublishStatus()
   const scheduleConfigQuery = useScheduleConfig()
@@ -111,10 +114,12 @@ export default function CreativeDetail() {
   }, [activePoolItems, creative?.current_version_id])
 
   const latestInvalidatedPoolItem = invalidatedPoolItems[0] ?? null
-  const primaryTaskId = useMemo(() => creative?.linked_task_ids?.[0], [creative?.linked_task_ids])
 
   const diagnosticTaskIds = useMemo(() => {
     const ids = new Set<number>()
+    if (prioritizedTaskId) {
+      ids.add(prioritizedTaskId)
+    }
     for (const taskId of creative?.linked_task_ids ?? []) {
       ids.add(taskId)
     }
@@ -122,7 +127,9 @@ export default function CreativeDetail() {
       ids.add(publishStatus.current_task_id)
     }
     return Array.from(ids)
-  }, [creative?.linked_task_ids, publishStatus?.current_task_id])
+  }, [creative?.linked_task_ids, prioritizedTaskId, publishStatus?.current_task_id])
+
+  const primaryTaskId = diagnosticTaskIds[0]
 
   const statusMeta = creative ? creativeStatusMeta[creative.status] : null
   const effectiveCheck = creative?.review_summary?.current_check
@@ -131,6 +138,7 @@ export default function CreativeDetail() {
   const schedulerMode = publishStatus?.scheduler_mode ?? scheduleConfig?.publish_scheduler_mode
   const effectiveSchedulerMode = publishStatus?.effective_scheduler_mode ?? schedulerMode
   const shadowDiff = publishStatus?.scheduler_shadow_diff
+  const currentPublishTaskId = publishStatus?.current_task_id ?? null
   const shadowDiffReasons = formatShadowDiffReasons(shadowDiff)
   const shadowDiffDiffers = getShadowDiffFlag(shadowDiff)
   const diagnosticsUnavailable =
@@ -151,6 +159,11 @@ export default function CreativeDetail() {
       invalidatedPoolQuery.refetch(),
     ])
   }, [activePoolQuery, invalidatedPoolQuery, publishStatusQuery, scheduleConfigQuery])
+
+  const openTaskDiagnostics = useCallback((taskId: number) => {
+    const params = new URLSearchParams({ returnTo: taskReturnTo })
+    navigate(`/task/${taskId}?${params.toString()}`)
+  }, [navigate, taskReturnTo])
 
   const schedulerModeLabel =
     publishStatusQuery.isError && scheduleConfigQuery.isError
@@ -254,9 +267,9 @@ export default function CreativeDetail() {
               </Tag>
             </Descriptions.Item>
             <Descriptions.Item label="当前任务">
-              {publishStatus?.current_task_id ? (
-                <Button type="link" onClick={() => navigate(`/task/${publishStatus.current_task_id}`)}>
-                  任务 #{publishStatus.current_task_id}
+              {currentPublishTaskId !== null ? (
+                <Button type="link" onClick={() => openTaskDiagnostics(currentPublishTaskId)}>
+                  任务 #{currentPublishTaskId}
                 </Button>
               ) : publishStatusQuery.isError ? '获取失败' : '-'}
             </Descriptions.Item>
@@ -359,7 +372,7 @@ export default function CreativeDetail() {
       onBack={() => navigate('/creative/workbench')}
       extra={[
         primaryTaskId ? (
-          <Button key="task-detail" onClick={() => navigate(`/task/${primaryTaskId}`)} data-testid="creative-open-task-diagnostics">
+          <Button key="task-detail" onClick={() => openTaskDiagnostics(primaryTaskId)} data-testid="creative-open-task-diagnostics">
             查看任务诊断
           </Button>
         ) : null,
@@ -461,11 +474,11 @@ export default function CreativeDetail() {
               </Paragraph>
               <Space wrap>
                 {diagnosticTaskIds.map((taskId) => (
-                  <Button key={taskId} onClick={() => navigate(`/task/${taskId}`)} data-testid={`creative-open-task-${taskId}`}>
+                  <Button key={taskId} onClick={() => openTaskDiagnostics(taskId)} data-testid={`creative-open-task-${taskId}`}>
                     任务 #{taskId}
                   </Button>
                 ))}
-                <Button onClick={() => navigate('/task/list')}>查看任务列表</Button>
+                <Button onClick={() => navigate(taskReturnTo)}>返回任务列表</Button>
               </Space>
             </Space>
           ) : <Empty description="当前没有关联任务" />}
