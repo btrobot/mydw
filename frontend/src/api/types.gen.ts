@@ -4875,6 +4875,78 @@ export type ListTasksApiTasksGetData = {
          */
         account_id?: number | null;
         /**
+         * Task Kind
+         */
+        task_kind?: string | null;
+        /**
+         * Profile Id
+         */
+        profile_id?: number | null;
+        /**
+         * Creative Item Id
+         */
+        creative_item_id?: number | null;
+        /**
+         * Creative Version Id
+         */
+        creative_version_id?: number | null;
+        /**
+         * Batch Id
+         */
+        batch_id?: string | null;
+        /**
+         * Failed At Status
+         */
+        failed_at_status?: string | null;
+        /**
+         * Retry Count Min
+         */
+        retry_count_min?: number | null;
+        /**
+         * Retry Count Max
+         */
+        retry_count_max?: number | null;
+        /**
+         * Created From
+         */
+        created_from?: string | null;
+        /**
+         * Created To
+         */
+        created_to?: string | null;
+        /**
+         * Updated From
+         */
+        updated_from?: string | null;
+        /**
+         * Updated To
+         */
+        updated_to?: string | null;
+        /**
+         * Scheduled From
+         */
+        scheduled_from?: string | null;
+        /**
+         * Scheduled To
+         */
+        scheduled_to?: string | null;
+        /**
+         * Publish From
+         */
+        publish_from?: string | null;
+        /**
+         * Publish To
+         */
+        publish_to?: string | null;
+        /**
+         * Has Error
+         */
+        has_error?: boolean | null;
+        /**
+         * Has Final Video
+         */
+        has_final_video?: boolean | null;
+        /**
          * Limit
          */
         limit?: number;

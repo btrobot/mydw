@@ -1,7 +1,7 @@
 """
 任务管理 API
 """
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +27,99 @@ from core.auth_dependencies import ACTIVE_ROUTE_DEPENDENCIES, GRACE_READONLY_ROU
 from utils.time import utc_now_naive
 
 router = APIRouter()
+
+
+def _normalize_query_datetime(value: Optional[datetime]) -> Optional[datetime]:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value
+    return value.astimezone(UTC).replace(tzinfo=None)
+
+
+def _build_task_list_filters(
+    *,
+    status: Optional[str],
+    account_id: Optional[int],
+    task_kind: Optional[str],
+    profile_id: Optional[int],
+    creative_item_id: Optional[int],
+    creative_version_id: Optional[int],
+    batch_id: Optional[str],
+    failed_at_status: Optional[str],
+    retry_count_min: Optional[int],
+    retry_count_max: Optional[int],
+    created_from: Optional[datetime],
+    created_to: Optional[datetime],
+    updated_from: Optional[datetime],
+    updated_to: Optional[datetime],
+    scheduled_from: Optional[datetime],
+    scheduled_to: Optional[datetime],
+    publish_from: Optional[datetime],
+    publish_to: Optional[datetime],
+    has_error: Optional[bool],
+    has_final_video: Optional[bool],
+) -> list:
+    filters = []
+
+    if status:
+        filters.append(Task.status == status)
+    if account_id is not None:
+        filters.append(Task.account_id == account_id)
+    if task_kind:
+        filters.append(Task.task_kind == task_kind)
+    if profile_id is not None:
+        filters.append(Task.profile_id == profile_id)
+    if creative_item_id is not None:
+        filters.append(Task.creative_item_id == creative_item_id)
+    if creative_version_id is not None:
+        filters.append(Task.creative_version_id == creative_version_id)
+    if batch_id:
+        filters.append(Task.batch_id == batch_id)
+    if failed_at_status:
+        filters.append(Task.failed_at_status == failed_at_status)
+    if retry_count_min is not None:
+        filters.append(Task.retry_count >= retry_count_min)
+    if retry_count_max is not None:
+        filters.append(Task.retry_count <= retry_count_max)
+
+    created_from = _normalize_query_datetime(created_from)
+    created_to = _normalize_query_datetime(created_to)
+    updated_from = _normalize_query_datetime(updated_from)
+    updated_to = _normalize_query_datetime(updated_to)
+    scheduled_from = _normalize_query_datetime(scheduled_from)
+    scheduled_to = _normalize_query_datetime(scheduled_to)
+    publish_from = _normalize_query_datetime(publish_from)
+    publish_to = _normalize_query_datetime(publish_to)
+
+    if created_from is not None:
+        filters.append(Task.created_at >= created_from)
+    if created_to is not None:
+        filters.append(Task.created_at <= created_to)
+    if updated_from is not None:
+        filters.append(Task.updated_at >= updated_from)
+    if updated_to is not None:
+        filters.append(Task.updated_at <= updated_to)
+    if scheduled_from is not None:
+        filters.append(Task.scheduled_time >= scheduled_from)
+    if scheduled_to is not None:
+        filters.append(Task.scheduled_time <= scheduled_to)
+    if publish_from is not None:
+        filters.append(Task.publish_time >= publish_from)
+    if publish_to is not None:
+        filters.append(Task.publish_time <= publish_to)
+
+    if has_error is True:
+        filters.append(Task.error_msg.is_not(None))
+    elif has_error is False:
+        filters.append(Task.error_msg.is_(None))
+
+    if has_final_video is True:
+        filters.append(Task.final_video_path.is_not(None))
+    elif has_final_video is False:
+        filters.append(Task.final_video_path.is_(None))
+
+    return filters
 
 
 # ============ 请求/响应模型 ============
@@ -107,11 +200,52 @@ async def create_tasks(
 async def list_tasks(
     status: Optional[str] = None,
     account_id: Optional[int] = None,
+    task_kind: Optional[str] = None,
+    profile_id: Optional[int] = None,
+    creative_item_id: Optional[int] = None,
+    creative_version_id: Optional[int] = None,
+    batch_id: Optional[str] = None,
+    failed_at_status: Optional[str] = None,
+    retry_count_min: Optional[int] = None,
+    retry_count_max: Optional[int] = None,
+    created_from: Optional[datetime] = None,
+    created_to: Optional[datetime] = None,
+    updated_from: Optional[datetime] = None,
+    updated_to: Optional[datetime] = None,
+    scheduled_from: Optional[datetime] = None,
+    scheduled_to: Optional[datetime] = None,
+    publish_from: Optional[datetime] = None,
+    publish_to: Optional[datetime] = None,
+    has_error: Optional[bool] = None,
+    has_final_video: Optional[bool] = None,
     limit: int = Query(default=50, le=200),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db)
 ):
     """获取任务列表"""
+    filters = _build_task_list_filters(
+        status=status,
+        account_id=account_id,
+        task_kind=task_kind,
+        profile_id=profile_id,
+        creative_item_id=creative_item_id,
+        creative_version_id=creative_version_id,
+        batch_id=batch_id,
+        failed_at_status=failed_at_status,
+        retry_count_min=retry_count_min,
+        retry_count_max=retry_count_max,
+        created_from=created_from,
+        created_to=created_to,
+        updated_from=updated_from,
+        updated_to=updated_to,
+        scheduled_from=scheduled_from,
+        scheduled_to=scheduled_to,
+        publish_from=publish_from,
+        publish_to=publish_to,
+        has_error=has_error,
+        has_final_video=has_final_video,
+    )
+
     query = select(Task).options(
         selectinload(Task.videos),
         selectinload(Task.copywritings),
@@ -120,16 +254,12 @@ async def list_tasks(
         selectinload(Task.topics),
         selectinload(Task.account),
     )
-    if status:
-        query = query.where(Task.status == status)
-    if account_id:
-        query = query.where(Task.account_id == account_id)
+    if filters:
+        query = query.where(*filters)
 
     count_query = select(func.count(Task.id))
-    if status:
-        count_query = count_query.where(Task.status == status)
-    if account_id:
-        count_query = count_query.where(Task.account_id == account_id)
+    if filters:
+        count_query = count_query.where(*filters)
 
     total_count = (await db.execute(count_query)).scalar()
     query = query.order_by(Task.priority.desc(), Task.created_at.desc()).offset(offset).limit(limit)
