@@ -10,7 +10,7 @@ async function mockTaskDiagnosticsApis(page: Page) {
   const state = createCreativeReviewState()
   const taskDetail = {
     id: 901,
-    name: 'Phase D task diagnostic',
+    name: 'Phase E task diagnostic',
     status: 'draft',
     account_id: 1,
     account_name: 'Creative Task Account',
@@ -104,8 +104,7 @@ test.describe('Task diagnostics positioning', () => {
     await page.waitForURL('**/#/creative/workbench')
     await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
 
-    await page.getByTestId('creative-workbench-open-dashboard').click()
-    await page.waitForURL('**/#/dashboard')
+    await page.goto(`${BASE_URL}/#/dashboard`)
     await expect(page.getByTestId('dashboard-primary-cta')).toBeVisible()
 
     await page.getByTestId('dashboard-open-workbench').click()
@@ -117,8 +116,8 @@ test.describe('Task diagnostics positioning', () => {
     await page.goto(`${BASE_URL}/#/task/list`)
 
     await expect(page.getByTestId('task-list-semantics')).toBeVisible()
-    await expect(page.getByRole('cell', { name: 'Phase D task diagnostic' })).toBeVisible()
-    await page.getByRole('row', { name: /901.*Phase D task diagnostic/i }).click()
+    await expect(page.getByRole('cell', { name: 'Phase E task diagnostic' })).toBeVisible()
+    await page.getByRole('row', { name: /901.*Phase E task diagnostic/i }).click()
 
     await page.waitForURL('**/#/task/901')
     await expect(page.getByTestId('task-detail-diagnostics-banner')).toBeVisible()

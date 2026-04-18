@@ -35,14 +35,14 @@ interface PublishPoolItem {
   creative_item_id: number
   creative_version_id: number
   status: PublishPoolStatus
+  created_at: string
+  updated_at: string
   invalidation_reason?: string | null
   invalidated_at?: string | null
   creative_no?: string | null
   creative_title?: string | null
   creative_status?: string | null
   creative_current_version_id?: number | null
-  created_at: string
-  updated_at: string
 }
 
 interface CreativeScenarioState {
@@ -58,7 +58,6 @@ interface CreativeScenarioState {
       title: string
       parent_version_id?: number | null
       package_record_id?: number | null
-      latest_check?: CheckRecord | null
     }
     versions: CreativeVersion[]
     review_summary: {
@@ -67,11 +66,10 @@ interface CreativeScenarioState {
       total_checks?: number
     }
     linked_task_ids: number[]
+    updated_at: string
     generation_error_msg?: string | null
     generation_failed_at?: string | null
-    updated_at: string
   }
-  nextCheckId: number
 }
 
 interface CreativeReviewMockOptions {
@@ -82,8 +80,12 @@ interface CreativeReviewMockOptions {
   taskDetails?: Record<number, Record<string, unknown>>
 }
 
+async function fulfillJson(route: Route, body: unknown) {
+  await route.fulfill({ json: body })
+}
+
 function buildCheck(
-  state: CreativeScenarioState,
+  creativeId: number,
   versionId: number,
   conclusion: ReviewConclusion,
   note?: string,
@@ -91,8 +93,8 @@ function buildCheck(
 ): CheckRecord {
   const now = new Date().toISOString()
   return {
-    id: state.nextCheckId++,
-    creative_item_id: state.detail.id,
+    id: Math.floor(Math.random() * 10_000),
+    creative_item_id: creativeId,
     creative_version_id: versionId,
     conclusion,
     rework_type: reworkType ?? null,
@@ -104,24 +106,21 @@ function buildCheck(
 
 function getVersion(state: CreativeScenarioState, versionId: number): CreativeVersion {
   const version = state.detail.versions.find((item) => item.id === versionId)
-
   if (!version) {
     throw new Error(`Version ${versionId} not found in mock state`)
   }
-
   return version
 }
 
-function syncCurrentVersion(state: CreativeScenarioState) {
-  const currentVersion = getVersion(state, state.detail.current_version_id)
+function updateCurrentVersion(state: CreativeScenarioState, currentVersion: CreativeVersion) {
   state.detail.current_version = {
     id: currentVersion.id,
     version_no: currentVersion.version_no,
     title: currentVersion.title ?? '',
     parent_version_id: currentVersion.parent_version_id ?? null,
     package_record_id: currentVersion.package_record_id ?? null,
-    latest_check: currentVersion.latest_check ?? null,
   }
+  state.detail.current_version_id = currentVersion.id
 }
 
 function applyReview(
@@ -132,30 +131,50 @@ function applyReview(
   reworkType?: string,
 ) {
   const version = getVersion(state, versionId)
-  const check = buildCheck(state, versionId, conclusion, note, reworkType)
+  const check = buildCheck(state.detail.id, versionId, conclusion, note, reworkType)
+
   version.latest_check = check
-  state.detail.status = conclusion
+  state.detail.status = conclusion === 'APPROVED'
+    ? 'APPROVED'
+    : conclusion === 'REWORK_REQUIRED'
+      ? 'REWORK_REQUIRED'
+      : 'REJECTED'
   state.detail.review_summary = {
     current_version_id: versionId,
     current_check: check,
     total_checks: (state.detail.review_summary.total_checks ?? 0) + 1,
   }
   state.detail.updated_at = check.updated_at
-  syncCurrentVersion(state)
+  return { success: true, check }
+}
 
+function createTaskBody(taskId: number) {
   return {
-    creative_id: state.detail.id,
-    creative_status: state.detail.status,
-    current_version_id: state.detail.current_version_id,
-    check,
+    id: taskId,
+    name: '作品诊断任务',
+    status: 'draft',
+    account_id: 1,
+    account_name: 'Creative Task Account',
+    profile_id: null,
+    priority: 5,
+    scheduled_time: null,
+    final_video_path: null,
+    upload_url: null,
+    creative_item_id: 101,
+    creative_version_id: 202,
+    created_at: '2026-04-17T07:00:00Z',
+    updated_at: '2026-04-17T07:00:00Z',
+    video_ids: [],
+    copywriting_ids: [],
+    cover_ids: [],
+    audio_ids: [],
+    topic_ids: [],
   }
 }
 
 export function createCreativeReviewState(): CreativeScenarioState {
   const approvedAt = '2026-04-16T09:00:00Z'
-
   return {
-    nextCheckId: 9002,
     detail: {
       id: 101,
       creative_no: 'CR-000101',
@@ -168,7 +187,6 @@ export function createCreativeReviewState(): CreativeScenarioState {
         title: '二次修订版',
         parent_version_id: 201,
         package_record_id: 302,
-        latest_check: null,
       },
       versions: [
         {
@@ -181,8 +199,8 @@ export function createCreativeReviewState(): CreativeScenarioState {
           package_record_id: 302,
           is_current: true,
           latest_check: null,
-          created_at: '2026-04-17T07:00:00Z',
-          updated_at: '2026-04-17T07:00:00Z',
+          created_at: '2026-04-16T10:00:00Z',
+          updated_at: '2026-04-17T08:00:00Z',
         },
         {
           id: 201,
@@ -194,7 +212,7 @@ export function createCreativeReviewState(): CreativeScenarioState {
           package_record_id: 301,
           is_current: false,
           latest_check: {
-            id: 9001,
+            id: 501,
             creative_item_id: 101,
             creative_version_id: 201,
             conclusion: 'APPROVED',
@@ -203,18 +221,35 @@ export function createCreativeReviewState(): CreativeScenarioState {
             created_at: approvedAt,
             updated_at: approvedAt,
           },
-          created_at: '2026-04-16T08:00:00Z',
+          created_at: '2026-04-15T08:00:00Z',
           updated_at: approvedAt,
         },
       ],
       review_summary: {
-        current_version_id: undefined,
+        current_version_id: null,
         current_check: null,
         total_checks: 1,
       },
       linked_task_ids: [901],
-      updated_at: '2026-04-17T07:00:00Z',
+      updated_at: '2026-04-17T08:00:00Z',
+      generation_error_msg: null,
+      generation_failed_at: null,
     },
+  }
+}
+
+function buildDefaultPublishStatus() {
+  return {
+    status: 'idle',
+    current_task_id: null,
+    total_pending: 0,
+    total_success: 0,
+    total_failed: 0,
+    scheduler_mode: 'task',
+    effective_scheduler_mode: 'task',
+    publish_pool_shadow_read: false,
+    publish_pool_kill_switch: false,
+    scheduler_shadow_diff: null,
   }
 }
 
@@ -231,55 +266,30 @@ function buildDefaultScheduleConfig() {
     publish_scheduler_mode: 'task',
     publish_pool_kill_switch: false,
     publish_pool_shadow_read: false,
-    created_at: '2026-04-17T07:00:00Z',
-    updated_at: '2026-04-17T07:00:00Z',
   }
-}
-
-function buildDefaultPublishStatus() {
-  return {
-    status: 'idle',
-    current_task_id: null,
-    total_pending: 0,
-    total_success: 0,
-    total_failed: 0,
-    scheduler_mode: 'task',
-    effective_scheduler_mode: 'task',
-    publish_pool_kill_switch: false,
-    publish_pool_shadow_read: false,
-    scheduler_shadow_diff: null,
-  }
-}
-
-async function fulfillJson(route: Route, body: unknown, status = 200) {
-  await route.fulfill({
-    status,
-    contentType: 'application/json',
-    body: JSON.stringify(body),
-  })
 }
 
 function filterPoolItems(items: PublishPoolItem[], url: URL) {
   const status = url.searchParams.get('status')
   const creativeId = url.searchParams.get('creative_id')
-  const skip = Number.parseInt(url.searchParams.get('skip') ?? '0', 10)
-  const limit = Number.parseInt(url.searchParams.get('limit') ?? `${items.length || 50}`, 10)
 
-  const filtered = items.filter((item) => {
+  return items.filter((item) => {
     if (status && item.status !== status) {
       return false
     }
-
     if (creativeId && item.creative_item_id !== Number.parseInt(creativeId, 10)) {
       return false
     }
-
     return true
   })
+}
 
+function paginate<T>(items: T[], url: URL) {
+  const skip = Number.parseInt(url.searchParams.get('skip') ?? '0', 10)
+  const limit = Number.parseInt(url.searchParams.get('limit') ?? `${items.length || 50}`, 10)
   return {
-    total: filtered.length,
-    items: filtered.slice(skip, skip + limit),
+    total: items.length,
+    items: items.slice(skip, skip + limit),
   }
 }
 
@@ -288,14 +298,8 @@ export async function mockCreativeReviewApis(
   state = createCreativeReviewState(),
   options: CreativeReviewMockOptions = {},
 ) {
-  const scheduleConfig = {
-    ...buildDefaultScheduleConfig(),
-    ...options.scheduleConfig,
-  }
-  const publishStatus = {
-    ...buildDefaultPublishStatus(),
-    ...options.publishStatus,
-  }
+  const scheduleConfig = { ...buildDefaultScheduleConfig(), ...options.scheduleConfig }
+  const publishStatus = { ...buildDefaultPublishStatus(), ...options.publishStatus }
   const activePoolItems = options.activePoolItems ?? []
   const invalidatedPoolItems = options.invalidatedPoolItems ?? []
 
@@ -317,37 +321,37 @@ export async function mockCreativeReviewApis(
   await page.route('**/api/creatives?**', async (route) => {
     await fulfillJson(route, {
       total: 1,
-      items: [
-        {
-          id: state.detail.id,
-          creative_no: state.detail.creative_no,
-          title: state.detail.title,
-          status: state.detail.status,
-          current_version_id: state.detail.current_version_id,
-          generation_error_msg: state.detail.generation_error_msg ?? null,
-          generation_failed_at: state.detail.generation_failed_at ?? null,
-          updated_at: state.detail.updated_at,
-        },
-      ],
+      items: [{
+        id: state.detail.id,
+        creative_no: state.detail.creative_no,
+        title: state.detail.title,
+        status: state.detail.status,
+        current_version_id: state.detail.current_version_id,
+        generation_error_msg: state.detail.generation_error_msg ?? null,
+        generation_failed_at: state.detail.generation_failed_at ?? null,
+        updated_at: state.detail.updated_at,
+      }],
     })
   })
 
   await page.route(`**/api/creatives/${state.detail.id}`, async (route) => {
+    updateCurrentVersion(state, getVersion(state, state.detail.current_version_id))
     await fulfillJson(route, state.detail)
   })
 
-  await page.route('**/api/publish/status', async (route) => {
+  await page.route('**/api/publish/status**', async (route) => {
     await fulfillJson(route, publishStatus)
   })
 
-  await page.route('**/api/schedule-config', async (route) => {
+  await page.route('**/api/schedule-config**', async (route) => {
     await fulfillJson(route, scheduleConfig)
   })
 
   await page.route('**/api/creative-publish-pool**', async (route) => {
     const url = new URL(route.request().url())
-    const allItems = [...activePoolItems, ...invalidatedPoolItems]
-    await fulfillJson(route, filterPoolItems(allItems, url))
+    const merged = [...activePoolItems, ...invalidatedPoolItems]
+    const filtered = filterPoolItems(merged, url)
+    await fulfillJson(route, paginate(filtered, url))
   })
 
   await page.route(`**/api/creative-reviews/${state.detail.id}/approve`, async (route) => {
@@ -356,21 +360,8 @@ export async function mockCreativeReviewApis(
   })
 
   await page.route(`**/api/creative-reviews/${state.detail.id}/rework`, async (route) => {
-    const payload = route.request().postDataJSON() as {
-      version_id: number
-      note?: string
-      rework_type?: string
-    }
-    await fulfillJson(
-      route,
-      applyReview(
-        state,
-        payload.version_id,
-        'REWORK_REQUIRED',
-        payload.note,
-        payload.rework_type,
-      ),
-    )
+    const payload = route.request().postDataJSON() as { version_id: number; note?: string; rework_type?: string }
+    await fulfillJson(route, applyReview(state, payload.version_id, 'REWORK_REQUIRED', payload.note, payload.rework_type))
   })
 
   await page.route(`**/api/creative-reviews/${state.detail.id}/reject`, async (route) => {
@@ -379,62 +370,46 @@ export async function mockCreativeReviewApis(
   })
 
   await page.route('**/api/accounts**', async (route) => {
-    await fulfillJson(route, [
-      {
-        id: 1,
-        account_id: 'creative-task-account',
-        account_name: 'Creative Task Account',
-        status: 'active',
-      },
-    ])
+    await fulfillJson(route, [{ id: 1, account_id: 'creative-task-account', account_name: 'Creative Task Account', status: 'active' }])
   })
 
   await page.route('**/api/profiles**', async (route) => {
-    await fulfillJson(route, { total: 0, items: [] })
-  })
-
-  await page.route(`**/api/tasks/${state.detail.linked_task_ids[0]}/composition-status`, async (route) => {
-    await fulfillJson(route, { detail: 'composition job not found' }, 404)
-  })
-
-  await page.route('**/api/tasks/*/composition-status', async (route) => {
-    await fulfillJson(route, { detail: 'composition job not found' }, 404)
+    await fulfillJson(route, {
+      total: 1,
+      items: [
+        {
+          id: 1,
+          name: 'Default Profile',
+          composition_mode: 'none',
+          is_default: true,
+        },
+      ],
+    })
   })
 
   await page.route('**/api/tasks/*', async (route) => {
     const taskId = Number.parseInt(route.request().url().split('/').pop() ?? '0', 10)
-    const taskBody = options.taskDetails?.[taskId] ?? {
-      id: taskId,
-      name: '作品诊断任务',
-      status: 'draft',
-      account_id: 1,
-      account_name: 'Creative Task Account',
-      profile_id: null,
-      priority: 0,
-      scheduled_time: null,
-      final_video_path: null,
-      upload_url: null,
-      created_at: '2026-04-16T10:00:00',
-      updated_at: '2026-04-16T10:00:00',
-      video_ids: [],
-      copywriting_ids: [],
-      cover_ids: [],
-      audio_ids: [],
-      topic_ids: [],
-    }
-
+    const taskBody = options.taskDetails?.[taskId] ?? createTaskBody(taskId)
     await fulfillJson(route, taskBody)
   })
 
+  await page.route('**/api/tasks/*/composition-status', async (route) => {
+    await route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: 'composition job not found' }),
+    })
+  })
+
   await page.route('**/api/tasks?**', async (route) => {
+    const list = state.detail.linked_task_ids.map((taskId) => options.taskDetails?.[taskId] ?? createTaskBody(taskId))
+    const url = new URL(route.request().url())
+    await fulfillJson(route, paginate(list, url))
+  })
+
+  await page.route('**/api/compositions/*', async (route) => {
     await fulfillJson(route, { total: 0, items: [] })
   })
 
-  return {
-    state,
-    publishStatus,
-    scheduleConfig,
-    activePoolItems,
-    invalidatedPoolItems,
-  }
+  return { state, publishStatus, scheduleConfig, activePoolItems, invalidatedPoolItems }
 }

@@ -33,9 +33,8 @@ test.describe('Creative version panel', () => {
 
   test('task link remains available as diagnostic entry', async ({ page }) => {
     await page.goto(`${BASE_URL}/#/creative/101`)
-
-    await page.getByRole('button', { name: '查看关联任务' }).click()
+    await page.getByTestId('creative-open-task-diagnostics').click()
     await page.waitForURL('**/#/task/901')
-    await expect(page.locator('body')).toContainText('任务详情 #901')
+    await expect(page.getByTestId('task-detail-diagnostics-banner')).toBeVisible()
   })
 })

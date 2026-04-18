@@ -7,7 +7,7 @@ import {
 } from '../utils/creativeReviewMocks'
 
 test.describe('Phase C cutover diagnostics', () => {
-  test('detail shows pool/version/task diagnostic chain after cutover failure', async ({ page }) => {
+  test('detail keeps publish failures reachable from the advanced diagnostics area', async ({ page }) => {
     const state = createCreativeReviewState()
     state.detail.status = 'APPROVED'
     state.detail.generation_error_msg = 'publish pipeline timeout'
@@ -76,14 +76,21 @@ test.describe('Phase C cutover diagnostics', () => {
 
     await page.goto(`${BASE_URL}/#/creative/101`)
 
+    await expect(page.locator('body')).toContainText('publish pipeline timeout')
+
+    await page.locator('.ant-collapse-header').nth(0).click()
     await expect(page.getByTestId('creative-publish-diagnostics')).toContainText('Pool')
+
+    await page.locator('.ant-collapse-header').nth(1).click()
     await expect(page.getByTestId('creative-publish-pool-card')).toContainText('publish_failed')
+
+    await page.locator('.ant-collapse-header').nth(2).click()
     await expect(page.getByTestId('creative-shadow-diff')).toContainText('legacy_task_diff')
     await expect(page.getByTestId('creative-shadow-diff')).toContainText('pool_candidate_locked')
-    await expect(page.locator('body')).toContainText('publish pipeline timeout')
 
     await page.getByTestId('creative-open-task-903').click()
     await page.waitForURL('**/#/task/903')
     await expect(page.getByTestId('task-detail-diagnostics-banner')).toBeVisible()
   })
 })
+

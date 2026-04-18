@@ -9,8 +9,8 @@ import { Alert, Button, Card, List, Space, Tag, Typography } from 'antd'
 import type { CreativeReviewSummary, CreativeVersionSummary } from '../types/creative'
 import {
   creativeReviewConclusionMeta,
-  formatCreativeTimestamp,
   formatCheckConclusion,
+  formatCreativeTimestamp,
   getVersionLabel,
   getVersionTitle,
   isCurrentEffectiveCheck,
@@ -33,22 +33,22 @@ export default function VersionPanel({
 }: VersionPanelProps) {
   if (versions.length === 0) {
     return (
-      <Card title="版本历史" data-testid="creative-version-panel">
-        <Alert type="info" showIcon message="当前作品还没有版本记录。" />
+      <Card title="版本与审核记录" data-testid="creative-version-panel">
+        <Alert type="info" showIcon message="当前作品还没有版本记录" />
       </Card>
     )
   }
 
   return (
     <Card
-      title="版本历史"
+      title="版本与审核记录"
       data-testid="creative-version-panel"
-      extra={(
-        <Text type="secondary">
-          共 {versions.length} 个版本
-        </Text>
-      )}
+      extra={<Text type="secondary">共 {versions.length} 个版本</Text>}
     >
+      <Paragraph type="secondary">
+        先确认当前版本与当前有效结论，再回看历史版本与审核轨迹。
+      </Paragraph>
+
       <List
         itemLayout="vertical"
         dataSource={versions}
@@ -69,7 +69,7 @@ export default function VersionPanel({
                     onClick={() => onOpenAiClipWorkflow(version)}
                     data-testid={`creative-version-ai-clip-${version.id}`}
                   >
-                    AIClip workflow
+                    AIClip 工作流
                   </Button>
                 ) : null,
                 version.is_current && onReviewVersion ? (
@@ -79,7 +79,7 @@ export default function VersionPanel({
                     size="small"
                     onClick={() => onReviewVersion(version)}
                   >
-                    ??????
+                    审核当前版本
                   </Button>
                 ) : null,
               ].filter(Boolean)}
@@ -113,7 +113,7 @@ export default function VersionPanel({
                     title={(
                       <Space>
                         <SafetyCertificateOutlined />
-                        <span>最近审核</span>
+                        <span>审核记录</span>
                       </Space>
                     )}
                     data-testid={`creative-version-check-${version.id}`}
@@ -134,7 +134,7 @@ export default function VersionPanel({
                         )}
                       </Space>
                       <Text type="secondary">
-                        更新时间：{formatCreativeTimestamp(latestCheck.updated_at)}
+                        更新于 {formatCreativeTimestamp(latestCheck.updated_at)}
                       </Text>
                       {latestCheck.note ? (
                         <Paragraph style={{ marginBottom: 0 }}>{latestCheck.note}</Paragraph>
@@ -143,8 +143,8 @@ export default function VersionPanel({
                         <Alert
                           type="warning"
                           showIcon
-                          message="当前版本的有效审核结论已更新"
-                          description={`当前以 ${formatCheckConclusion(currentSummaryCheck)} 为准，旧结论仅保留为历史记录。`}
+                          message="当前版本已有新的有效结论"
+                          description={`当前有效结论为 ${formatCheckConclusion(currentSummaryCheck)}，此处仅保留历史记录。`}
                         />
                       ) : null}
                     </Space>
@@ -153,7 +153,7 @@ export default function VersionPanel({
                   <Alert
                     type={version.is_current ? 'info' : 'warning'}
                     showIcon
-                    message={version.is_current ? '当前版本待审核' : '历史版本暂无审核记录'}
+                    message={version.is_current ? '当前版本还没有有效审核结论' : '该历史版本没有审核记录'}
                   />
                 )}
               </Space>

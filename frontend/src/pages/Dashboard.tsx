@@ -1,4 +1,4 @@
-﻿import { useCallback } from 'react'
+import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Alert,
@@ -86,26 +86,26 @@ export default function Dashboard() {
   const handlePublish = useCallback(async (action: 'start' | 'pause' | 'stop') => {
     try {
       await controlPublish.mutateAsync({ action })
-      message.success(action === 'start' ? 'Publish started' : action === 'pause' ? 'Publish paused' : 'Publish stopped')
+      message.success(action === 'start' ? '已启动发布器' : action === 'pause' ? '已暂停发布器' : '已停止发布器')
     } catch (error: unknown) {
       if (error instanceof Error) {
         message.error(error.message)
       } else {
-        message.error('Action failed')
+        message.error('操作失败')
       }
     }
   }, [controlPublish])
 
   const logColumns = [
     {
-      title: 'Time',
+      title: '时间',
       dataIndex: 'created_at',
       key: 'created_at',
       width: 180,
       render: (text: string) => new Date(text).toLocaleString('zh-CN'),
     },
     {
-      title: 'Level',
+      title: '级别',
       dataIndex: 'level',
       key: 'level',
       width: 80,
@@ -115,13 +115,13 @@ export default function Dashboard() {
       },
     },
     {
-      title: 'Module',
+      title: '模块',
       dataIndex: 'module',
       key: 'module',
       width: 120,
     },
     {
-      title: 'Message',
+      title: '消息',
       dataIndex: 'message',
       key: 'message',
     },
@@ -132,100 +132,57 @@ export default function Dashboard() {
       <Alert
         type="info"
         showIcon
-        message="Creative workbench is the main daily workspace"
-        description="Use the creative workbench for day-to-day asset review, version checks, and AIClip workflow steps. This dashboard remains a runtime and publish overview, not the primary Task business entry."
+        message="运行与发布总览"
+        description="这里用于查看系统运行态、发布器状态与关键日志；日常作品处理请进入工作台，AIClip 工作流仍从作品详情进入。"
         action={(
           <Space wrap data-testid="dashboard-primary-cta">
-            <Button
-              type="primary"
-              onClick={() => navigate('/creative/workbench')}
-              data-testid="dashboard-open-workbench"
-            >
-              Open creative workbench
-            </Button>
-            <Button
-              onClick={() => navigate('/task/list')}
-              icon={<UnorderedListOutlined />}
-              data-testid="dashboard-open-task-list"
-            >
-              Open execution / diagnostics tasks
-            </Button>
+            <Button type="primary" onClick={() => navigate('/creative/workbench')} data-testid="dashboard-open-workbench">进入作品工作台</Button>
+            <Button onClick={() => navigate('/task/list')} icon={<UnorderedListOutlined />} data-testid="dashboard-open-task-list">查看任务诊断</Button>
           </Space>
         )}
       />
 
-      <Card title="Execution task overview" size="small" extra={<Text type="secondary">Tasks are secondary execution / diagnostics surfaces</Text>}>
+      <Card title="任务运行概览" size="small" extra={<Text type="secondary">用于观察队列与上传进度，不承担作品主入口职责</Text>}>
         <Row gutter={[12, 12]}>
-          <Col span={3}><Statistic title="Total" value={taskStats.total} /></Col>
-          <Col span={3}><Statistic title="Draft" value={taskStats.draft} valueStyle={{ color: '#999' }} /></Col>
-          <Col span={3}><Statistic title="Composing" value={taskStats.composing} valueStyle={{ color: '#1677ff' }} /></Col>
-          <Col span={3}><Statistic title="Ready" value={taskStats.ready} valueStyle={{ color: '#d46b08' }} /></Col>
-          <Col span={3}><Statistic title="Uploading" value={taskStats.uploading} valueStyle={{ color: '#1677ff' }} /></Col>
-          <Col span={3}><Statistic title="Uploaded" value={taskStats.uploaded} valueStyle={{ color: '#3f8600' }} /></Col>
-          <Col span={3}><Statistic title="Failed" value={taskStats.failed} valueStyle={{ color: '#cf1322' }} /></Col>
-          <Col span={3}><Statistic title="Uploaded today" value={taskStats.today_uploaded} valueStyle={{ color: '#3f8600' }} /></Col>
+          <Col span={3}><Statistic title="总任务" value={taskStats.total} /></Col>
+          <Col span={3}><Statistic title="草稿" value={taskStats.draft} valueStyle={{ color: '#999' }} /></Col>
+          <Col span={3}><Statistic title="合成中" value={taskStats.composing} valueStyle={{ color: '#1677ff' }} /></Col>
+          <Col span={3}><Statistic title="待上传" value={taskStats.ready} valueStyle={{ color: '#d46b08' }} /></Col>
+          <Col span={3}><Statistic title="上传中" value={taskStats.uploading} valueStyle={{ color: '#1677ff' }} /></Col>
+          <Col span={3}><Statistic title="已上传" value={taskStats.uploaded} valueStyle={{ color: '#3f8600' }} /></Col>
+          <Col span={3}><Statistic title="失败" value={taskStats.failed} valueStyle={{ color: '#cf1322' }} /></Col>
+          <Col span={3}><Statistic title="今日上传" value={taskStats.today_uploaded} valueStyle={{ color: '#3f8600' }} /></Col>
         </Row>
       </Card>
 
       <Row gutter={16}>
         <Col span={8}>
-          <Card title="Publish runtime" size="small">
+          <Card title="发布器状态" size="small">
             <Space direction="vertical" style={{ width: '100%' }}>
               <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                Runtime controls stay on the dashboard, while creative flows continue in the creative workbench.
+                用于控制发布器启停，并观察当前运行状态。
               </Paragraph>
               <Space>
                 <Tag color={publishStatus.status === 'running' ? 'processing' : 'default'}>
-                  {publishStatus.status === 'running' ? 'Running' : publishStatus.status === 'paused' ? 'Paused' : 'Idle'}
+                  {publishStatus.status === 'running' ? '运行中' : publishStatus.status === 'paused' ? '已暂停' : '空闲'}
                 </Tag>
               </Space>
               <Space>
                 {publishStatus.status === 'running' ? (
-                  <Button size="small" icon={<PauseCircleOutlined />} onClick={() => handlePublish('pause')}>
-                    Pause
-                  </Button>
+                  <Button size="small" icon={<PauseCircleOutlined />} onClick={() => handlePublish('pause')}>暂停</Button>
                 ) : (
-                  <Button type="primary" size="small" icon={<PlayCircleOutlined />} onClick={() => handlePublish('start')}>
-                    Start
-                  </Button>
+                  <Button type="primary" size="small" icon={<PlayCircleOutlined />} onClick={() => handlePublish('start')}>启动</Button>
                 )}
               </Space>
             </Space>
           </Card>
         </Col>
-        <Col span={8}>
-          <Card size="small">
-            <Statistic
-              title="Accounts"
-              value={sysStats?.total_accounts ?? 0}
-              prefix={<UserOutlined />}
-              suffix={`/ ${sysStats?.active_accounts ?? 0} active`}
-              loading={statsLoading}
-            />
-          </Card>
-        </Col>
-        <Col span={8}>
-          <Card size="small">
-            <Statistic
-              title="Products"
-              value={sysStats?.total_products ?? 0}
-              prefix={<ShoppingOutlined />}
-              loading={statsLoading}
-            />
-          </Card>
-        </Col>
+        <Col span={8}><Card size="small"><Statistic title="账号" value={sysStats?.total_accounts ?? 0} prefix={<UserOutlined />} suffix={`/ ${sysStats?.active_accounts ?? 0} 活跃`} loading={statsLoading} /></Card></Col>
+        <Col span={8}><Card size="small"><Statistic title="商品" value={sysStats?.total_products ?? 0} prefix={<ShoppingOutlined />} loading={statsLoading} /></Card></Col>
       </Row>
 
-      <Card title="Runtime logs" extra={<Button size="small" icon={<ReloadOutlined />} onClick={() => refetchLogs()}>Refresh</Button>}>
-        <Table
-          columns={logColumns}
-          dataSource={logs}
-          rowKey="id"
-          pagination={false}
-          loading={logsLoading}
-          size="small"
-          locale={{ emptyText: logs.length === 0 && !logsLoading ? 'No logs yet' : undefined }}
-        />
+      <Card title="系统日志" extra={<Button size="small" icon={<ReloadOutlined />} onClick={() => refetchLogs()}>刷新</Button>}>
+        <Table columns={logColumns} dataSource={logs} rowKey="id" pagination={false} loading={logsLoading} size="small" locale={{ emptyText: logs.length === 0 && !logsLoading ? '暂无日志' : undefined }} />
       </Card>
     </Space>
   )

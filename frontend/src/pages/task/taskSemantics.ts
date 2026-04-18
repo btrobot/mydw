@@ -34,7 +34,6 @@ export function resolveCompositionMode(
     const selected = profiles.find((profile) => profile.id === profileId)
     if (selected) return selected.composition_mode
   }
-
   return profiles.find((profile) => profile.is_default)?.composition_mode ?? 'none'
 }
 
@@ -90,13 +89,12 @@ export function getTaskSemanticsSummary(
     }
   }
 
-  const violations = getDirectPublishViolations(counts, { usesFinalVideo })
   return {
     mode,
     modeLabel: MODE_LABELS[mode],
     counts,
-    directPublishAllowed: violations.length === 0,
-    violations,
+    directPublishAllowed: usesFinalVideo && counts.copywritings <= 1 && counts.covers <= 1,
+    violations: getDirectPublishViolations(counts, { usesFinalVideo }),
     usesFinalVideo,
   }
 }

@@ -1,4 +1,4 @@
-﻿import { useCallback } from 'react'
+import { useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   Alert,
@@ -44,21 +44,21 @@ const { Text } = Typography
 type TaskStatus = 'draft' | 'composing' | 'ready' | 'uploading' | 'uploaded' | 'failed' | 'cancelled'
 
 const statusMap: Record<TaskStatus, { color: string; text: string }> = {
-  draft: { color: 'default', text: 'Draft' },
-  composing: { color: 'processing', text: 'Composing' },
-  ready: { color: 'warning', text: 'Ready' },
-  uploading: { color: 'processing', text: 'Uploading' },
-  uploaded: { color: 'success', text: 'Uploaded' },
-  failed: { color: 'error', text: 'Failed' },
-  cancelled: { color: 'default', text: 'Cancelled' },
+  draft: { color: 'default', text: '草稿' },
+  composing: { color: 'processing', text: '合成中' },
+  ready: { color: 'warning', text: '待上传' },
+  uploading: { color: 'processing', text: '上传中' },
+  uploaded: { color: 'success', text: '已上传' },
+  failed: { color: 'error', text: '失败' },
+  cancelled: { color: 'default', text: '已取消' },
 }
 
 const TERMINAL_STATES: ReadonlySet<TaskStatus> = new Set<TaskStatus>(['uploaded', 'cancelled'])
 
 const priorityLabel = (priority: number): string => {
-  if (priority >= 10) return 'High'
-  if (priority >= 5) return 'Medium'
-  return 'Low'
+  if (priority >= 10) return '高'
+  if (priority >= 5) return '中'
+  return '低'
 }
 
 const priorityColor = (priority: number): string => {
@@ -90,9 +90,9 @@ export default function TaskDetail() {
     if (!taskId) return
     try {
       await submitComposition.mutateAsync(taskId)
-      message.success('Composition submitted')
+      message.success('已提交合成任务')
     } catch (error: unknown) {
-      handleApiError(error, 'Submit composition failed')
+      handleApiError(error, '提交合成失败')
     }
   }, [submitComposition, taskId])
 
@@ -100,9 +100,9 @@ export default function TaskDetail() {
     if (!taskId) return
     try {
       await cancelComposition.mutateAsync(taskId)
-      message.success('Composition cancelled')
+      message.success('已取消合成任务')
     } catch (error: unknown) {
-      handleApiError(error, 'Cancel composition failed')
+      handleApiError(error, '取消合成失败')
     }
   }, [cancelComposition, taskId])
 
@@ -110,9 +110,9 @@ export default function TaskDetail() {
     if (!taskId) return
     try {
       await retryTask.mutateAsync(taskId)
-      message.success('Task queued again')
+      message.success('已发起任务重试')
     } catch (error: unknown) {
-      handleApiError(error, 'Retry failed')
+      handleApiError(error, '重试任务失败')
     }
   }, [retryTask, taskId])
 
@@ -120,10 +120,10 @@ export default function TaskDetail() {
     if (!taskId) return
     try {
       await editRetryTask.mutateAsync(taskId)
-      message.success('Task reset to draft')
+      message.success('已创建可编辑重试任务')
       navigate(-1)
     } catch (error: unknown) {
-      handleApiError(error, 'Edit retry failed')
+      handleApiError(error, '创建可编辑重试任务失败')
     }
   }, [editRetryTask, navigate, taskId])
 
@@ -131,9 +131,9 @@ export default function TaskDetail() {
     if (!taskId) return
     try {
       await cancelTask.mutateAsync(taskId)
-      message.success('Task cancelled')
+      message.success('已取消任务')
     } catch (error: unknown) {
-      handleApiError(error, 'Cancel failed')
+      handleApiError(error, '取消任务失败')
     }
   }, [cancelTask, taskId])
 
@@ -141,28 +141,22 @@ export default function TaskDetail() {
     if (!taskId) return
     try {
       await deleteTask.mutateAsync(taskId)
-      message.success('Task deleted')
+      message.success('已删除任务')
       navigate(-1)
     } catch (error: unknown) {
-      handleApiError(error, 'Delete failed')
+      handleApiError(error, '删除任务失败')
     }
   }, [deleteTask, navigate, taskId])
 
   if (isLoading) {
-    return (
-      <Flex justify="center" style={{ padding: 48 }}>
-        <Spin size="large" />
-      </Flex>
-    )
+    return <Flex justify="center" style={{ padding: 48 }}><Spin size="large" /></Flex>
   }
 
   if (!task) {
     return (
       <Flex vertical gap={16} style={{ padding: 24 }}>
-        <Button type="link" onClick={() => navigate(-1)} style={{ alignSelf: 'flex-start', padding: 0 }}>
-          Back
-        </Button>
-        <Alert type="error" message="Task not found or already deleted" />
+        <Button type="link" onClick={() => navigate(-1)} style={{ alignSelf: 'flex-start', padding: 0 }}>返回</Button>
+        <Alert type="error" message="任务不存在或已被删除" />
       </Flex>
     )
   }
@@ -180,77 +174,37 @@ export default function TaskDetail() {
     <Flex vertical gap={16} style={{ padding: 24, maxWidth: 960 }} data-testid="task-detail-page">
       <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
         <Space wrap>
-          <Button onClick={() => navigate(-1)}>Back</Button>
-          <Button onClick={() => navigate('/creative/workbench')} data-testid="task-detail-open-workbench">
-            Creative workbench
-          </Button>
-          {task.creative_item_id ? (
-            <Button
-              type="primary"
-              onClick={() => navigate(`/creative/${task.creative_item_id}`)}
-              data-testid="task-detail-open-creative"
-            >
-              Back to creative detail
-            </Button>
-          ) : null}
+          <Button onClick={() => navigate(-1)}>返回上一页</Button>
+          <Button onClick={() => navigate('/creative/workbench')} data-testid="task-detail-open-workbench">返回作品工作台</Button>
+          {task.creative_item_id ? <Button type="primary" onClick={() => navigate(`/creative/${task.creative_item_id}`)} data-testid="task-detail-open-creative">返回作品详情</Button> : null}
         </Space>
         <Tag color={statusColor} style={{ fontSize: 14, padding: '2px 10px' }}>{statusText}</Tag>
       </Flex>
 
-      <Alert
-        type="info"
-        showIcon
-        data-testid="task-detail-diagnostics-banner"
-        message={`Execution / diagnostics task #${task.id}`}
-        description="This page is for execution, retries, publish-chain inspection, and troubleshooting. Creative detail remains the source of truth for versions and review status."
-      />
+      <Alert type="info" showIcon data-testid="task-detail-diagnostics-banner" message={`任务 #${task.id} 执行 / 诊断页`} description="这里用于查看任务执行、重试、发布链路与排障细节；作品业务状态仍以作品详情页为准。" />
 
-      <Card title="Basic info" size="small">
+      <Card title="基本信息" size="small">
         <Descriptions bordered size="small" column={2}>
-          <Descriptions.Item label="Task ID">{task.id}</Descriptions.Item>
-          <Descriptions.Item label="Status">
-            <Tag color={statusColor}>{statusText}</Tag>
-          </Descriptions.Item>
-          <Descriptions.Item label="Account">
-            {task.account_name ? `${task.account_name} (${task.account_id})` : task.account_id}
-          </Descriptions.Item>
+          <Descriptions.Item label="任务 ID">{task.id}</Descriptions.Item>
+          <Descriptions.Item label="状态"><Tag color={statusColor}>{statusText}</Tag></Descriptions.Item>
+          <Descriptions.Item label="账号">{task.account_name ? `${task.account_name} (${task.account_id})` : task.account_id}</Descriptions.Item>
           <Descriptions.Item label="Profile ID">{task.profile_id ?? '-'}</Descriptions.Item>
-          <Descriptions.Item label="Creative item ID">{task.creative_item_id ?? '-'}</Descriptions.Item>
-          <Descriptions.Item label="Creative version ID">{task.creative_version_id ?? '-'}</Descriptions.Item>
-          <Descriptions.Item label="Priority">
-            <Tag color={priorityColor(task.priority)}>
-              {priorityLabel(task.priority)} ({task.priority})
-            </Tag>
-          </Descriptions.Item>
-          <Descriptions.Item label="Scheduled publish time">
-            {task.scheduled_time ? new Date(task.scheduled_time).toLocaleString('zh-CN') : '-'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Created at">{new Date(task.created_at).toLocaleString('zh-CN')}</Descriptions.Item>
-          <Descriptions.Item label="Updated at">{new Date(task.updated_at).toLocaleString('zh-CN')}</Descriptions.Item>
-          {isFailed && task.error_msg ? (
-            <Descriptions.Item label="Error" span={2}>
-              <Text type="danger">{task.error_msg}</Text>
-            </Descriptions.Item>
-          ) : null}
+          <Descriptions.Item label="作品 ID">{task.creative_item_id ?? '-'}</Descriptions.Item>
+          <Descriptions.Item label="作品版本 ID">{task.creative_version_id ?? '-'}</Descriptions.Item>
+          <Descriptions.Item label="优先级"><Tag color={priorityColor(task.priority)}>{priorityLabel(task.priority)} ({task.priority})</Tag></Descriptions.Item>
+          <Descriptions.Item label="计划发布时间">{task.scheduled_time ? new Date(task.scheduled_time).toLocaleString('zh-CN') : '-'}</Descriptions.Item>
+          <Descriptions.Item label="创建时间">{new Date(task.created_at).toLocaleString('zh-CN')}</Descriptions.Item>
+          <Descriptions.Item label="更新时间">{new Date(task.updated_at).toLocaleString('zh-CN')}</Descriptions.Item>
+          {isFailed && task.error_msg ? <Descriptions.Item label="错误信息" span={2}><Text type="danger">{task.error_msg}</Text></Descriptions.Item> : null}
         </Descriptions>
       </Card>
 
-      <Card title="Execution semantics" size="small">
+      <Card title="执行语义" size="small">
         <Descriptions bordered size="small" column={1}>
-          <Descriptions.Item label="Mode">{semantics.modeLabel}</Descriptions.Item>
-          <Descriptions.Item label="Direct publish compatible">
-            <Tag color={semantics.directPublishAllowed ? 'success' : 'warning'}>
-              {semantics.directPublishAllowed ? 'Compatible' : 'Not compatible'}
-            </Tag>
-          </Descriptions.Item>
-          <Descriptions.Item label="Final publish video source">
-            {semantics.usesFinalVideo ? 'Uses final_video_path (composition output)' : 'Uses video resource collection'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Semantics note">
-            {semantics.mode === 'none'
-              ? 'Direct publish expects a single final video, one copy item, and one cover. Independent audio must already be composed.'
-              : 'Composition mode accepts multiple inputs and publishes the final composed video.'}
-          </Descriptions.Item>
+          <Descriptions.Item label="模式">{semantics.modeLabel}</Descriptions.Item>
+          <Descriptions.Item label="可直接发布"><Tag color={semantics.directPublishAllowed ? 'success' : 'warning'}>{semantics.directPublishAllowed ? '兼容' : '不兼容'}</Tag></Descriptions.Item>
+          <Descriptions.Item label="最终发布视频来源">{semantics.usesFinalVideo ? '使用 final_video_path 作为最终成片' : '使用素材集合参与发布'}</Descriptions.Item>
+          <Descriptions.Item label="语义说明">{semantics.mode === 'none' ? '直接发布要求最终成片唯一，且文案、封面数量受限；独立音频需先进入合成流程。' : '当前任务使用合成模式，需先完成合成，再进入发布链路。'}</Descriptions.Item>
         </Descriptions>
         {semantics.violations.length > 0 ? (
           <>
@@ -258,107 +212,56 @@ export default function TaskDetail() {
             <Alert
               type="warning"
               showIcon
-              message="Current task semantic warnings"
-              description={(
-                <ul style={{ margin: 0, paddingInlineStart: 18 }}>
-                  {semantics.violations.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              )}
+              message="当前任务存在直接发布语义警告"
+              description={<ul style={{ margin: 0, paddingInlineStart: 18 }}>{semantics.violations.map((item) => <li key={item}>{item}</li>)}</ul>}
             />
           </>
         ) : null}
       </Card>
 
-      <Card title="Materials" size="small">
+      <Card title="素材信息" size="small">
         <Descriptions bordered size="small" column={1}>
-          <Descriptions.Item label={`Videos (${task.video_ids?.length ?? 0})`}>{renderIds(task.video_ids)}</Descriptions.Item>
-          <Descriptions.Item label={`Copy (${task.copywriting_ids?.length ?? 0})`}>{renderIds(task.copywriting_ids)}</Descriptions.Item>
-          <Descriptions.Item label={`Covers (${task.cover_ids?.length ?? 0})`}>{renderIds(task.cover_ids)}</Descriptions.Item>
-          <Descriptions.Item label={`Audio (${task.audio_ids?.length ?? 0})`}>{renderIds(task.audio_ids)}</Descriptions.Item>
-          <Descriptions.Item label={`Topics (${task.topic_ids?.length ?? 0})`}>{renderIds(task.topic_ids)}</Descriptions.Item>
-          <Descriptions.Item label="Final video path">{task.final_video_path ?? '-'}</Descriptions.Item>
+          <Descriptions.Item label={`视频（${task.video_ids?.length ?? 0}）`}>{renderIds(task.video_ids)}</Descriptions.Item>
+          <Descriptions.Item label={`文案（${task.copywriting_ids?.length ?? 0}）`}>{renderIds(task.copywriting_ids)}</Descriptions.Item>
+          <Descriptions.Item label={`封面（${task.cover_ids?.length ?? 0}）`}>{renderIds(task.cover_ids)}</Descriptions.Item>
+          <Descriptions.Item label={`音频（${task.audio_ids?.length ?? 0}）`}>{renderIds(task.audio_ids)}</Descriptions.Item>
+          <Descriptions.Item label={`话题（${task.topic_ids?.length ?? 0}）`}>{renderIds(task.topic_ids)}</Descriptions.Item>
+          <Descriptions.Item label="最终成片路径">{task.final_video_path ?? '-'}</Descriptions.Item>
         </Descriptions>
       </Card>
 
       {isComposing ? (
-        <Card title="Composition" size="small">
+        <Card title="合成执行" size="small">
           {compositionActive && compositionJob ? (
             <Flex vertical gap={12}>
-              <Flex align="center" gap={12}>
-                <Text>Composition progress</Text>
-                <Progress percent={compositionJob.progress} status="active" style={{ flex: 1 }} />
-                <Text type="secondary">{compositionJob.status}</Text>
-              </Flex>
+              <Flex align="center" gap={12}><Text>当前进度</Text><Progress percent={compositionJob.progress} status="active" style={{ flex: 1 }} /><Text type="secondary">{compositionJob.status}</Text></Flex>
               {compositionJob.error_msg ? <Alert type="error" message={compositionJob.error_msg} /> : null}
-              <Flex justify="flex-end">
-                <Popconfirm title="Cancel composition?" onConfirm={() => void handleCancelComposition()}>
-                  <Button danger icon={<StopOutlined />} loading={cancelComposition.isPending}>
-                    Cancel composition
-                  </Button>
-                </Popconfirm>
-              </Flex>
+              <Flex justify="flex-end"><Popconfirm title="确认取消当前合成吗？" onConfirm={() => void handleCancelComposition()}><Button danger icon={<StopOutlined />} loading={cancelComposition.isPending}>取消合成</Button></Popconfirm></Flex>
             </Flex>
           ) : (
             <Flex vertical gap={12}>
-              {compositionJob?.status === 'failed' && compositionJob.error_msg ? (
-                <Alert type="error" message={`Composition failed: ${compositionJob.error_msg}`} />
-              ) : null}
-              <Flex justify="flex-end">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  loading={submitComposition.isPending}
-                  onClick={() => void handleSubmitComposition()}
-                >
-                  Submit composition
-                </Button>
-              </Flex>
+              {compositionJob?.status === 'failed' && compositionJob.error_msg ? <Alert type="error" message={`合成失败：${compositionJob.error_msg}`} /> : null}
+              <Flex justify="flex-end"><Button type="primary" icon={<PlayCircleOutlined />} loading={submitComposition.isPending} onClick={() => void handleSubmitComposition()}>提交合成</Button></Flex>
             </Flex>
           )}
         </Card>
       ) : null}
 
       {isUploaded ? (
-        <Card title="Upload result" size="small">
+        <Card title="上传结果" size="small">
           <Descriptions bordered size="small" column={1}>
-            <Descriptions.Item label="Dewu video ID">{task.dewu_video_id ?? '-'}</Descriptions.Item>
-            <Descriptions.Item label="Video URL">
-              {task.upload_url ? (
-                <a href={task.upload_url} target="_blank" rel="noreferrer">
-                  {task.upload_url}
-                </a>
-              ) : '-'}
-            </Descriptions.Item>
+            <Descriptions.Item label="得物视频 ID">{task.dewu_video_id ?? '-'}</Descriptions.Item>
+            <Descriptions.Item label="上传地址">{task.upload_url ? <a href={task.upload_url} target="_blank" rel="noreferrer">{task.upload_url}</a> : '-'}</Descriptions.Item>
           </Descriptions>
         </Card>
       ) : null}
 
-      <Card title="Actions" size="small">
+      <Card title="任务动作" size="small">
         <Space wrap>
-          {isFailed ? (
-            <Button icon={<ReloadOutlined />} loading={retryTask.isPending} onClick={() => void handleRetry()}>
-              Retry
-            </Button>
-          ) : null}
-          {isFailed ? (
-            <Button icon={<EditOutlined />} loading={editRetryTask.isPending} onClick={() => void handleEditRetry()}>
-              Edit retry
-            </Button>
-          ) : null}
-          {!isTerminal ? (
-            <Popconfirm title="Cancel this task?" onConfirm={() => void handleCancel()}>
-              <Button icon={<StopOutlined />} loading={cancelTask.isPending}>
-                Cancel task
-              </Button>
-            </Popconfirm>
-          ) : null}
-          <Popconfirm title="Delete this task? This cannot be undone." onConfirm={() => void handleDelete()}>
-            <Button danger icon={<DeleteOutlined />} loading={deleteTask.isPending}>
-              Delete
-            </Button>
-          </Popconfirm>
+          {isFailed ? <Button icon={<ReloadOutlined />} loading={retryTask.isPending} onClick={() => void handleRetry()}>重试</Button> : null}
+          {isFailed ? <Button icon={<EditOutlined />} loading={editRetryTask.isPending} onClick={() => void handleEditRetry()}>创建可编辑重试</Button> : null}
+          {!isTerminal ? <Popconfirm title="确认取消这个任务吗？" onConfirm={() => void handleCancel()}><Button icon={<StopOutlined />} loading={cancelTask.isPending}>取消任务</Button></Popconfirm> : null}
+          <Popconfirm title="确认删除这个任务吗？删除后不可恢复。" onConfirm={() => void handleDelete()}><Button danger icon={<DeleteOutlined />} loading={deleteTask.isPending}>删除</Button></Popconfirm>
         </Space>
       </Card>
     </Flex>

@@ -28,18 +28,18 @@ test.describe('Creative review drawer', () => {
     await page.getByTestId('creative-open-review').click()
     let drawer = page.getByTestId('creative-check-drawer')
 
-    await drawer.getByText('返工', { exact: true }).click()
-    await drawer.locator('.ant-select').click()
-    await page.getByText('镜头返工', { exact: true }).click()
+    await drawer.locator('.ant-radio-group label').nth(1).click()
+    await drawer.getByTestId('creative-rework-type').click()
+    await page.locator('.ant-select-dropdown .ant-select-item-option').nth(2).click()
     await drawer.locator('textarea').fill('镜头节奏需要继续调整')
     await drawer.getByTestId('creative-review-submit').click()
 
     await expect(page.getByTestId('creative-review-summary')).toContainText('返工')
-    await expect(page.getByTestId('creative-review-summary')).toContainText('SHOT_REWORK')
+    await expect(page.getByTestId('creative-review-summary')).toContainText('镜头返工')
 
     await page.getByTestId('creative-open-review').click()
     drawer = page.getByTestId('creative-check-drawer')
-    await drawer.getByText('驳回', { exact: true }).click()
+    await drawer.locator('.ant-radio-group label').nth(2).click()
     await drawer.locator('textarea').fill('不符合当前投放要求')
     await drawer.getByTestId('creative-review-submit').click()
 

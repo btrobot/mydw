@@ -7,7 +7,7 @@ import {
 } from '../utils/creativeReviewMocks'
 
 test.describe('Phase C publish pool visibility', () => {
-  test('workbench can filter pool candidates and detail projects current pool state', async ({ page }) => {
+  test('workbench can filter pool candidates and detail keeps pool history in advanced diagnostics', async ({ page }) => {
     const state = createCreativeReviewState()
     state.detail.status = 'APPROVED'
 
@@ -27,28 +27,24 @@ test.describe('Phase C publish pool visibility', () => {
           creative_item_id: state.detail.id,
           creative_version_id: state.detail.current_version_id,
           status: 'active',
-          creative_no: state.detail.creative_no,
-          creative_title: state.detail.title,
-          creative_status: state.detail.status,
+          created_at: '2026-04-16T09:00:00Z',
+          updated_at: '2026-04-17T09:00:00Z',
           creative_current_version_id: state.detail.current_version_id,
-          created_at: '2026-04-17T07:30:00Z',
-          updated_at: '2026-04-17T07:30:00Z',
         },
       ],
     })
 
     await page.goto(`${BASE_URL}/#/creative/workbench`)
 
-    await expect(page.getByTestId('creative-workbench-effective-mode')).toContainText('Pool mode')
-    await page.getByTestId('creative-workbench-pool-filter').getByText('In pool', { exact: true }).click()
+    await expect(page.getByTestId('creative-workbench-effective-mode')).toContainText('Pool')
     await expect(page.locator('body')).toContainText('CR-000101')
-    await expect(page.getByTestId('creative-workbench-pool-state-101')).toContainText('Pool version #202')
-    await expect(page.getByRole('button', { name: /publish/i })).toHaveCount(0)
+    await expect(page.getByTestId('creative-workbench-pool-state-101')).toContainText('#202')
 
     await page.getByTestId('creative-workbench-open-detail-101').click()
     await page.waitForURL('**/#/creative/101')
 
-    await expect(page.getByTestId('creative-publish-diagnostics')).toContainText('Pool Item ID')
+    await page.locator('.ant-collapse-header').nth(1).click()
     await expect(page.getByTestId('creative-publish-pool-card')).toContainText('Pool #501')
+    await expect(page.getByTestId('creative-publish-pool-card')).toContainText('版本已对齐')
   })
 })

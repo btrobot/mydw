@@ -146,6 +146,10 @@ export default function CheckDrawer({
             </Paragraph>
           </div>
 
+          <Paragraph type="secondary" style={{ margin: 0 }}>
+            审核结论会直接更新当前版本状态，历史审核记录会保留在版本时间线中。
+          </Paragraph>
+
           <Form
             form={form}
             layout="vertical"
@@ -173,7 +177,7 @@ export default function CheckDrawer({
               <Form.Item
                 name="rework_type"
                 label="返工类型"
-                rules={[{ required: true, message: '返工必须选择返工类型' }]}
+                rules={[{ required: true, message: '请选择具体返工类型' }]}
               >
                 <Select
                   placeholder="请选择返工类型"
@@ -183,11 +187,11 @@ export default function CheckDrawer({
               </Form.Item>
             ) : null}
 
-            <Form.Item name="note" label="审核说明">
+            <Form.Item name="note" label="审核备注">
               <TextArea
                 rows={5}
                 maxLength={400}
-                placeholder="补充审核意见，便于后续追溯"
+                placeholder="可填写给运营或制作同学的补充说明"
                 showCount
               />
             </Form.Item>
