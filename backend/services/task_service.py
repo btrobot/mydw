@@ -14,6 +14,7 @@ from core.auth_dependencies import (
 )
 from models import Task, PublishLog, PublishProfile, TaskVideo, TaskCopywriting, TaskCover, TaskAudio, TaskTopic
 from schemas.auth import LocalAuthSessionSummary
+from utils.time import utc_day_start_naive, utc_now_naive
 
 
 # 合法状态转换表
@@ -242,7 +243,7 @@ class TaskService:
             if hasattr(task, field):
                 setattr(task, field, value)
 
-        task.updated_at = datetime.utcnow()
+        task.updated_at = utc_now_naive()
         await self.db.commit()
         await self.db.refresh(task)
         return task
@@ -304,7 +305,7 @@ class TaskService:
         """标记任务为已上传"""
         task = await self.update_task(task_id, {
             "status": "uploaded",
-            "publish_time": datetime.utcnow(),
+            "publish_time": utc_now_naive(),
             "error_msg": None,
         })
 
@@ -373,7 +374,7 @@ class TaskService:
         result = await self.db.execute(select(func.count(Task.id)))
         stats["total"] = result.scalar() or 0
 
-        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start = utc_day_start_naive()
         result = await self.db.execute(
             select(func.count(Task.id)).where(
                 Task.status == "uploaded",
@@ -432,7 +433,7 @@ class TaskService:
 
     async def check_account_daily_limit(self, account_id: int, limit: int = 5) -> bool:
         """检查账号当日发布数是否达到上限"""
-        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start = utc_day_start_naive()
 
         result = await self.db.execute(
             select(func.count(Task.id)).where(

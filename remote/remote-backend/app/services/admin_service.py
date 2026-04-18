@@ -41,6 +41,7 @@ from app.services.admin_authz import (
     require_permission,
 )
 from app.services.control_service import DeviceControlService, SessionControlService, UserControlService
+from app.utils.time import utc_now_naive
 
 
 class AdminServiceError(Exception):
@@ -105,7 +106,7 @@ class AdminService:
             )
 
         access_token = issue_token('admin_access')
-        expires_at = datetime.utcnow() + timedelta(seconds=self.settings.ADMIN_ACCESS_TOKEN_TTL_SECONDS)
+        expires_at = utc_now_naive() + timedelta(seconds=self.settings.ADMIN_ACCESS_TOKEN_TTL_SECONDS)
         session = self.repository.create_admin_session(
             session_id=issue_token('admin_sess'),
             admin_user_id=admin_user.id,
@@ -425,7 +426,7 @@ class AdminService:
 
     def get_metrics_summary(self, access_token: str) -> AdminMetricsSummaryResponse:
         admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_METRICS_READ)
-        generated_at = datetime.utcnow()
+        generated_at = utc_now_naive()
         login_failures = self.repository.count_audit_logs(event_types={'auth_login_failed', 'admin_login_failed'})
         device_mismatches = self.repository.count_audit_logs(
             event_types={'auth_login_failed', 'auth_refresh_failed', 'auth_logout_failed', 'auth_me_failed'},
@@ -540,7 +541,7 @@ class AdminService:
 
         admin_user = session.admin_user
         assert admin_user is not None
-        if session.revoked_at is not None or session.expires_at <= datetime.utcnow():
+        if session.revoked_at is not None or session.expires_at <= utc_now_naive():
             self._raise_with_audit(
                 event_type='admin_session_failed',
                 error_code='token_expired',

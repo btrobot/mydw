@@ -6,6 +6,7 @@ from sqlalchemy import String, cast, func, literal, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.models import AdminSession, AdminUser, AuditLog, Device, EndUserSession, License, User, UserDevice, UserEntitlement
+from app.utils.time import utc_now_naive
 
 
 class AdminRepository:
@@ -44,7 +45,7 @@ class AdminRepository:
         ).scalars().first()
 
     def touch_admin_session(self, session: AdminSession) -> None:
-        session.last_seen_at = datetime.utcnow()
+        session.last_seen_at = utc_now_naive()
 
     @staticmethod
     def _apply_user_filters(query, *, q: str | None = None, status: str | None = None, license_status: str | None = None):

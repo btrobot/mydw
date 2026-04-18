@@ -22,6 +22,7 @@ from schemas import (
 from services.ai_clip_service import AIClipService
 from services.creative_version_service import CreativeVersionService
 from services.media_storage_service import MediaStorageService
+from utils.time import utc_now_naive
 
 
 class CreativeWorkflowError(ValueError):
@@ -100,7 +101,7 @@ class AIClipWorkflowService:
         )
         creative.generation_error_msg = None
         creative.generation_failed_at = None
-        creative.updated_at = datetime.utcnow()
+        creative.updated_at = utc_now_naive()
         await self.db.flush()
 
         logger.info(
@@ -166,7 +167,7 @@ class AIClipWorkflowService:
                     "video_info": video_info,
                 },
                 "metadata": metadata,
-                "submitted_at": datetime.utcnow().isoformat(),
+                "submitted_at": utc_now_naive().isoformat(),
             },
             ensure_ascii=False,
             sort_keys=True,

@@ -5,6 +5,8 @@ from datetime import datetime
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+from app.utils.time import utc_now_naive
+
 
 class Base(DeclarativeBase):
     pass
@@ -20,8 +22,8 @@ class User(Base):
     phone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[str] = mapped_column(String(32), default="active", nullable=False, index=True)
     tenant_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     credential: Mapped["UserCredential | None"] = relationship(back_populates="user", uselist=False)
     license: Mapped["License | None"] = relationship(back_populates="user", uselist=False)
@@ -37,7 +39,7 @@ class UserCredential(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     password_algo: Mapped[str] = mapped_column(String(32), default="pbkdf2_sha256", nullable=False)
-    password_updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    password_updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
 
     user: Mapped[User] = relationship(back_populates="credential")
 
@@ -54,8 +56,8 @@ class License(Base):
     offline_grace_hours: Mapped[int | None] = mapped_column(Integer, nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     user: Mapped[User] = relationship(back_populates="license")
 
@@ -67,7 +69,7 @@ class UserEntitlement(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     entitlement: Mapped[str] = mapped_column(String(128), nullable=False)
     source: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
 
     user: Mapped[User] = relationship(back_populates="entitlements")
 
@@ -81,10 +83,10 @@ class Device(Base):
     platform: Mapped[str | None] = mapped_column(String(64), nullable=True)
     client_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
     status: Mapped[str] = mapped_column(String(32), default="bound", nullable=False, index=True)
-    first_seen_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     bindings: Mapped[list["UserDevice"]] = relationship(back_populates="device")
     sessions: Mapped[list["EndUserSession"]] = relationship(back_populates="device")
@@ -100,8 +102,8 @@ class UserDevice(Base):
     bound_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     unbound_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_auth_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     user: Mapped[User] = relationship(back_populates="bindings")
     device: Mapped[Device] = relationship(back_populates="bindings")
@@ -116,12 +118,12 @@ class EndUserSession(Base):
     device_id: Mapped[int] = mapped_column(ForeignKey("devices.id"), nullable=False, index=True)
     auth_state: Mapped[str] = mapped_column(String(32), default="authenticated_active", nullable=False, index=True)
     access_token_hash: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
-    issued_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    issued_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     user: Mapped[User] = relationship(back_populates="sessions")
     device: Mapped[Device] = relationship(back_populates="sessions")
@@ -134,7 +136,7 @@ class RefreshToken(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     session_id: Mapped[int] = mapped_column(ForeignKey("sessions.id"), nullable=False, index=True)
     token_hash: Mapped[str] = mapped_column(Text, nullable=False)
-    issued_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    issued_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     rotated_from_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -152,8 +154,8 @@ class AdminUser(Base):
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[str] = mapped_column(String(64), default="super_admin", nullable=False)
     status: Mapped[str] = mapped_column(String(32), default="active", nullable=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     sessions: Mapped[list["AdminSession"]] = relationship(back_populates="admin_user")
 
@@ -165,12 +167,12 @@ class AdminSession(Base):
     session_id: Mapped[str] = mapped_column(String(128), unique=True, nullable=False, index=True)
     admin_user_id: Mapped[int] = mapped_column(ForeignKey("admin_users.id"), nullable=False, index=True)
     access_token_hash: Mapped[str] = mapped_column(Text, nullable=False, index=True)
-    issued_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    issued_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     admin_user: Mapped[AdminUser] = relationship(back_populates="sessions")
 
@@ -188,4 +190,4 @@ class AuditLog(Base):
     request_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     trace_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     details_json: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive, index=True)

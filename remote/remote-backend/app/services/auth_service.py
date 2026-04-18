@@ -10,6 +10,7 @@ from app.core.security import fingerprint_token, hash_password, issue_token, ver
 from app.models import Device, License, User, UserCredential, UserDevice, UserEntitlement
 from app.repositories.auth import AuthRepository
 from app.services.control_service import AuthorizationPolicyService
+from app.utils.time import utc_now_naive
 from app.schemas.auth import (
     AuthSuccessResponse,
     LoginRequest,
@@ -75,8 +76,8 @@ class AuthService:
                 user_id=user.id,
                 license_status='active',
                 plan_code='starter',
-                starts_at=datetime.utcnow(),
-                expires_at=datetime.utcnow() + timedelta(days=30),
+                starts_at=utc_now_naive(),
+                expires_at=utc_now_naive() + timedelta(days=30),
                 offline_grace_hours=self.settings.DEFAULT_OFFLINE_GRACE_HOURS,
             )
         )
@@ -132,7 +133,7 @@ class AuthService:
         device, binding = self._ensure_allowed_device(user, payload.device_id, payload.client_version, failure_event='auth_login_failed')
         access_token = issue_token('access')
         refresh_token = issue_token('refresh')
-        expires_at = datetime.utcnow() + timedelta(seconds=self.settings.ACCESS_TOKEN_TTL_SECONDS)
+        expires_at = utc_now_naive() + timedelta(seconds=self.settings.ACCESS_TOKEN_TTL_SECONDS)
         session = self.repository.create_session(
             session_id=issue_token('sess'),
             user_id=user.id,
@@ -143,7 +144,7 @@ class AuthService:
         self.repository.create_refresh_token(
             session_pk=session.id,
             token_hash=hash_password(refresh_token),
-            expires_at=datetime.utcnow() + timedelta(seconds=self.settings.REFRESH_TOKEN_TTL_SECONDS),
+            expires_at=utc_now_naive() + timedelta(seconds=self.settings.REFRESH_TOKEN_TTL_SECONDS),
         )
         self.repository.touch_binding(binding)
         self.repository.touch_device(device, client_version=payload.client_version)
@@ -197,7 +198,7 @@ class AuthService:
                 target_session_id=session.session_id,
                 details={'reason': 'revoked'},
             )
-        if refresh_token.expires_at <= datetime.utcnow():
+        if refresh_token.expires_at <= utc_now_naive():
             self._raise_with_audit(
                 event_type='auth_refresh_failed',
                 error_code='token_expired',
@@ -248,11 +249,11 @@ class AuthService:
 
         access_token = issue_token('access')
         next_refresh_token = issue_token('refresh')
-        expires_at = datetime.utcnow() + timedelta(seconds=self.settings.ACCESS_TOKEN_TTL_SECONDS)
+        expires_at = utc_now_naive() + timedelta(seconds=self.settings.ACCESS_TOKEN_TTL_SECONDS)
         self.repository.rotate_refresh_token(
             source=refresh_token,
             new_token_hash=hash_password(next_refresh_token),
-            expires_at=datetime.utcnow() + timedelta(seconds=self.settings.REFRESH_TOKEN_TTL_SECONDS),
+            expires_at=utc_now_naive() + timedelta(seconds=self.settings.REFRESH_TOKEN_TTL_SECONDS),
         )
         self.repository.update_session_access(
             session,
@@ -311,7 +312,7 @@ class AuthService:
                 target_session_id=session.session_id,
                 details={'reason': 'revoked'},
             )
-        if refresh_token.expires_at <= datetime.utcnow():
+        if refresh_token.expires_at <= utc_now_naive():
             self._raise_with_audit(
                 event_type='auth_logout_failed',
                 error_code='token_expired',
@@ -592,7 +593,7 @@ class AuthService:
                 target_session_id=session.session_id,
                 details={'reason': 'revoked'},
             )
-        if session.expires_at <= datetime.utcnow():
+        if session.expires_at <= utc_now_naive():
             self._raise_with_audit(
                 event_type=failure_event,
                 error_code='token_expired',

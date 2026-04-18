@@ -32,6 +32,7 @@ from core.browser import browser_manager, preview_manager
 from core.config import settings
 from core.dewu_client import get_dewu_client, get_or_create_client, release_client, _active_clients
 from utils.crypto import encrypt_data, decrypt_data, mask_phone
+from utils.time import utc_day_start_naive, utc_now_naive
 
 router = APIRouter()
 
@@ -88,7 +89,7 @@ class ConnectionStatusManager:
             "status": status,
             "message": message,
             "progress": progress,
-            "updated_at": datetime.utcnow(),
+            "updated_at": utc_now_naive(),
             "event": event
         }
 
@@ -126,7 +127,7 @@ class ConnectionStatusManager:
             "status": status,
             "message": message,
             "progress": progress,
-            "updated_at": datetime.utcnow(),
+            "updated_at": utc_now_naive(),
             "event": event
         }
 
@@ -188,7 +189,7 @@ class ConnectionStatusManager:
                     yield status_data
                 except asyncio.TimeoutError:
                     # 发送心跳
-                    yield {"type": "heartbeat", "timestamp": datetime.utcnow().isoformat()}
+                    yield {"type": "heartbeat", "timestamp": utc_now_naive().isoformat()}
                 except asyncio.CancelledError:
                     break
         finally:
@@ -318,7 +319,7 @@ async def get_account_stats(db: AsyncSession = Depends(get_db)):
     active_accounts = active.scalar()
 
     # 今日发布数
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = utc_day_start_naive()
 
     published = await db.execute(
         select(func.count(Task.id)).where(
@@ -358,7 +359,7 @@ class BatchCheckState:
         self.in_progress = True
         self.progress = 0
         self.total = total
-        self.started_at = datetime.utcnow()
+        self.started_at = utc_now_naive()
         self.current_account_name = None
         self.logs = []
 
@@ -412,7 +413,7 @@ async def _do_single_health_check(
 ) -> BatchHealthCheckResultItem:
     """执行单个账号的健康检查（供批量检查调用）"""
     previous_status = account.status
-    checked_at = datetime.utcnow()
+    checked_at = utc_now_naive()
 
     if not account.storage_state:
         return BatchHealthCheckResultItem(
@@ -440,7 +441,7 @@ async def _do_single_health_check(
             checked_at=checked_at,
         )
 
-    now = datetime.utcnow()
+    now = utc_now_naive()
     session_ttl = timedelta(hours=settings.SESSION_TTL_HOURS)
 
     if result.is_valid:
@@ -536,7 +537,7 @@ async def batch_health_check(
     finally:
         batch_check_state.finish()
 
-    completed_at = datetime.utcnow()
+    completed_at = utc_now_naive()
     valid_count = sum(1 for r in results if r.is_valid)
     expired_count = sum(1 for r in results if not r.is_valid and "过期" in r.message)
     error_count = sum(1 for r in results if not r.is_valid and "失败" in r.message)
@@ -709,7 +710,7 @@ async def health_check(
             message=check.error_message,
         )
 
-    now = datetime.utcnow()
+    now = utc_now_naive()
     session_ttl = timedelta(hours=settings.SESSION_TTL_HOURS)
 
     if check.is_valid:
@@ -922,7 +923,7 @@ async def connect_account(
 
             # 连接成功，保存状态
             account.status = AccountStatus.ACTIVE.value
-            account.last_login = datetime.utcnow()
+            account.last_login = utc_now_naive()
 
             # 保存 storage state
             storage_state = await client.save_login_session()
@@ -1183,7 +1184,7 @@ async def verify_sms_code(
 
             # 更新账号状态
             account.status = AccountStatus.ACTIVE.value
-            account.last_login = datetime.utcnow()
+            account.last_login = utc_now_naive()
             await db.commit()
 
             # 写入系统日志

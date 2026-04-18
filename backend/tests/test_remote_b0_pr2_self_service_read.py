@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import sys
 from pathlib import Path
 
@@ -57,8 +57,8 @@ def seed_user(*, username: str, password: str, tenant_id: str) -> None:
                 user_id=user.id,
                 license_status="active",
                 plan_code="starter",
-                starts_at=datetime.utcnow(),
-                expires_at=datetime.utcnow() + timedelta(days=30),
+                starts_at=datetime.now(UTC).replace(tzinfo=None),
+                expires_at=datetime.now(UTC).replace(tzinfo=None) + timedelta(days=30),
                 offline_grace_hours=24,
             )
         )

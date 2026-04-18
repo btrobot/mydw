@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 import fs from 'fs'
 
-// Electron 构建模式
+// Electron build mode
 const isElectronBuild = process.env.ELECTRON_BUILD === 'true'
 
 export default defineConfig({
@@ -27,19 +27,32 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    // The Ant Design + rc-* runtime is intentionally bundled as a shared
+    // design-system chunk. The ceiling is raised to the actual post-split size
+    // so build output stays signal-rich instead of flagging the deliberate bucket.
+    chunkSizeWarningLimit: 1500,
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
       },
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-router': ['react-router-dom'],
+          'vendor-data': ['axios', '@hey-api/client-fetch', '@tanstack/react-query'],
+          'vendor-utils': ['dayjs', 'zustand'],
+          'vendor-icons': ['@ant-design/icons'],
+          'vendor-pro': ['@ant-design/pro-components'],
+          'vendor-antd': ['antd'],
+        },
+      },
     },
   },
-  // 生产环境构建配置
   esbuild: {
     target: 'es2020',
   },
 })
 
-// 热模块替换配置
 if (!isElectronBuild) {
-  // 开发模式配置
+  // Development-only branch reserved for future Vite HMR tweaks.
 }

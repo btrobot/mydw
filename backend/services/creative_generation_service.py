@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import CreativeItem, Task
 from services.creative_version_service import CreativeVersionService
+from utils.time import utc_now_naive
 
 
 class CreativeGenerationService:
@@ -43,7 +44,7 @@ class CreativeGenerationService:
             task.task_kind = "composition"
         creative.generation_error_msg = None
         creative.generation_failed_at = None
-        creative.updated_at = datetime.utcnow()
+        creative.updated_at = utc_now_naive()
         await self.db.flush()
 
     async def record_composition_failure(self, task: Task, error_msg: str) -> None:
@@ -56,8 +57,8 @@ class CreativeGenerationService:
             return
 
         creative.generation_error_msg = error_msg
-        creative.generation_failed_at = datetime.utcnow()
-        creative.updated_at = datetime.utcnow()
+        creative.generation_failed_at = utc_now_naive()
+        creative.updated_at = utc_now_naive()
         if task.task_kind is None:
             task.task_kind = "composition"
         await self.db.flush()

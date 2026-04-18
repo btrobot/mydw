@@ -2,6 +2,7 @@
 ?????? - FastAPI ????
 """
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 # ???????? Python ??
@@ -49,13 +50,29 @@ logger.add(
     format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} - {message}"
 )
 
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Application lifecycle hooks."""
+    logger.info("?????????????...")
+    auth_metrics_collector.register()
+    await init_db()
+    logger.info("????????")
+    await _seed_default_publish_profile()
+    try:
+        yield
+    finally:
+        auth_metrics_collector.unregister()
+        logger.info("????????????")
+
+
 # ?? FastAPI ??
 app = FastAPI(
     title="?????? API",
     description="???????????????",
     version=settings.APP_VERSION,
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # ?? CORS
@@ -92,16 +109,6 @@ app.include_router(creative_workflows.router, prefix="/api/creative-workflows", 
 metrics_exporter = PrometheusMetricsExporter(auth_metrics_collector)
 
 
-@app.on_event("startup")
-async def startup():
-    """??????"""
-    logger.info("?????????????...")
-    auth_metrics_collector.register()
-    await init_db()
-    logger.info("????????")
-    await _seed_default_publish_profile()
-
-
 async def _seed_default_publish_profile() -> None:
     """?????????????????????"""
     async with _models.async_session() as session:
@@ -116,12 +123,6 @@ async def _seed_default_publish_profile() -> None:
             await session.commit()
             logger.info("??????????: name=????")
 
-
-@app.on_event("shutdown")
-async def shutdown():
-    """??????"""
-    auth_metrics_collector.unregister()
-    logger.info("????????????")
 
 
 @app.get("/")

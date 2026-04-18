@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 import importlib
 
 import pytest
@@ -326,7 +326,7 @@ async def test_pool_mode_respects_daily_limit_before_planning_publish_task(
     uploaded = Task(
         account_id=account.id,
         status="uploaded",
-        publish_time=datetime.utcnow(),
+        publish_time=datetime.now(UTC).replace(tzinfo=None),
     )
     db_session.add(uploaded)
     await db_session.commit()

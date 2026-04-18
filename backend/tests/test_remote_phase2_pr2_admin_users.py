@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import sys
 from pathlib import Path
 
@@ -91,7 +91,7 @@ def test_admin_user_patch_updates_profile_and_entitlements() -> None:
         f'/admin/users/{target_user_id}',
         json={
             'display_name': 'Alice Remote',
-            'license_expires_at': (datetime.utcnow() + timedelta(days=90)).isoformat(),
+            'license_expires_at': (datetime.now(UTC).replace(tzinfo=None) + timedelta(days=90)).isoformat(),
             'entitlements': ['dashboard:view', 'auth:admin'],
         },
         headers={'Authorization': f'Bearer {token}'},

@@ -7,6 +7,7 @@ from app.core.config import get_settings
 from app.core.observability import get_request_context
 from app.models import Device, License, User
 from app.repositories.auth import AuthRepository
+from app.utils.time import utc_now_naive
 
 
 class ControlServiceError(Exception):
@@ -106,7 +107,7 @@ class UserControlService(ControlAuditMixin):
             raise ControlServiceError(f'User {user_id} has no license record')
 
         license_record.license_status = 'revoked'
-        license_record.revoked_at = datetime.utcnow()
+        license_record.revoked_at = utc_now_naive()
         user.status = 'active'
         self.session_control.revoke_user_sessions(user_id, reason='authorization_revoked')
         self._write_control_audit(
@@ -148,7 +149,7 @@ class UserControlService(ControlAuditMixin):
 
         user.status = 'disabled'
         license_record.license_status = 'disabled'
-        license_record.disabled_at = datetime.utcnow()
+        license_record.disabled_at = utc_now_naive()
         self.session_control.set_user_sessions_auth_state(user_id, auth_state='authorization_disabled')
         self._write_control_audit(
             'authorization_user_disabled',

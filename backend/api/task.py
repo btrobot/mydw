@@ -24,6 +24,7 @@ from services.scheduler import scheduler
 from services.composition_service import CompositionService
 from services.task_execution_semantics import TaskSemanticsError
 from core.auth_dependencies import ACTIVE_ROUTE_DEPENDENCIES, GRACE_READONLY_ROUTE_DEPENDENCIES
+from utils.time import utc_now_naive
 
 router = APIRouter()
 
@@ -395,11 +396,11 @@ async def cancel_composition(
         raise HTTPException(status_code=404, detail="合成任务不存在")
 
     job.status = "cancelled"
-    job.completed_at = datetime.utcnow()
-    job.updated_at = datetime.utcnow()
+    job.completed_at = utc_now_naive()
+    job.updated_at = utc_now_naive()
 
     task.status = "draft"
-    task.updated_at = datetime.utcnow()
+    task.updated_at = utc_now_naive()
 
     await db.commit()
     await db.refresh(job)

@@ -29,6 +29,7 @@ from models import (
     Topic,
 )
 from core.config import settings
+from utils.time import utc_now_naive
 
 
 # ---------------------------------------------------------------------------
@@ -330,7 +331,7 @@ async def clear_material_tables(session: AsyncSession) -> None:
 
 async def seed(session: AsyncSession) -> None:
     """插入所有种子数据"""
-    now = datetime.utcnow()
+    now = utc_now_naive()
 
     # 1. 商品
     product_objs: list[Product] = []

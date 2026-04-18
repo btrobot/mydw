@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import json
 import sys
 from pathlib import Path
@@ -159,7 +159,7 @@ def test_logout_rejects_expired_refresh_token() -> None:
 
     with session_scope() as session:
         token_row = session.query(RefreshToken).one()
-        token_row.expires_at = datetime.utcnow() - timedelta(seconds=1)
+        token_row.expires_at = datetime.now(UTC).replace(tzinfo=None) - timedelta(seconds=1)
 
     response = client.post('/logout', json={'refresh_token': login_payload['refresh_token'], 'device_id': 'device_abc'})
     assert response.status_code == 401

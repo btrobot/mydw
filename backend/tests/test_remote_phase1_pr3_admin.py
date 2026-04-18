@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import sys
 from pathlib import Path
 
@@ -121,7 +121,7 @@ def test_admin_session_rejects_expired_or_disabled_admin() -> None:
 
     with session_scope() as session:
         admin_session = session.query(AdminSession).one()
-        admin_session.expires_at = datetime.utcnow() - timedelta(seconds=1)
+        admin_session.expires_at = datetime.now(UTC).replace(tzinfo=None) - timedelta(seconds=1)
 
     expired = client.get('/admin/session', headers={'Authorization': f"Bearer {admin_payload['access_token']}"})
     assert expired.status_code == 401

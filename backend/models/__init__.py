@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 from loguru import logger
+from utils.time import utc_now_naive
 
 Base = declarative_base()
 
@@ -27,8 +28,8 @@ class Account(Base):
     storage_state = Column(Text, nullable=True)  # Playwright storage state
     status = Column(String(32), default="active", index=True)  # active, inactive, error, session_expired, disabled
     last_login = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     # 扩展字段（账号管理 P0 — 001_account_management）
     phone_encrypted = Column(Text, nullable=True)            # AES-256-GCM 加密手机号
@@ -90,8 +91,8 @@ class Task(Base):
     creative_version_id = Column(Integer, ForeignKey("creative_versions.id"), nullable=True, index=True)
     task_kind = Column(String(32), nullable=True, index=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     # 关系
     account = relationship("Account", back_populates="tasks")
@@ -124,8 +125,8 @@ class CreativeItem(Base):
     latest_version_no = Column(Integer, nullable=False, default=0)
     generation_error_msg = Column(Text, nullable=True)
     generation_failed_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     current_version = relationship(
         "CreativeVersion",
@@ -164,8 +165,8 @@ class CreativeVersion(Base):
     version_no = Column(Integer, nullable=False, default=1)
     version_type = Column(String(32), nullable=False, default="generated")
     title = Column(String(256), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     __table_args__ = (UniqueConstraint("creative_item_id", "version_no"),)
 
@@ -215,8 +216,8 @@ class PackageRecord(Base):
     creative_version_id = Column(Integer, ForeignKey("creative_versions.id"), nullable=False, index=True)
     package_status = Column(String(32), nullable=False, default="pending", index=True)
     manifest_json = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     __table_args__ = (UniqueConstraint("creative_version_id"),)
 
@@ -237,8 +238,8 @@ class CheckRecord(Base):
     conclusion = Column(String(32), nullable=False, index=True)
     rework_type = Column(String(64), nullable=True)
     note = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     __table_args__ = (
         CheckConstraint(
@@ -275,8 +276,8 @@ class PublishPoolItem(Base):
     invalidated_at = Column(DateTime, nullable=True)
     locked_at = Column(DateTime, nullable=True, index=True)
     locked_by_task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     __table_args__ = (
         UniqueConstraint("creative_version_id"),
@@ -319,8 +320,8 @@ class PublishExecutionSnapshot(Base):
     account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False, index=True)
     profile_id = Column(Integer, ForeignKey("publish_profiles.id"), nullable=True, index=True)
     snapshot_json = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     pool_item = relationship("PublishPoolItem", foreign_keys=[pool_item_id])
     source_task = relationship("Task", foreign_keys=[source_task_id])
@@ -348,8 +349,8 @@ class Product(Base):
     cover_count = Column(Integer, default=0, nullable=False)
     topic_count = Column(Integer, default=0, nullable=False)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     # 关系
     tasks = relationship("Task", foreign_keys="Task.product_id")
@@ -374,8 +375,8 @@ class Video(Base):
     file_hash = Column(String(64), nullable=True)
     source_type = Column(String(32), default="original")
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     # 关系
     product = relationship("Product", back_populates="videos")
@@ -393,8 +394,8 @@ class Copywriting(Base):
     source_type = Column(String(32), default="manual")
     source_ref = Column(String(256), nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     # 关系
     product = relationship("Product", back_populates="copywritings")
@@ -414,7 +415,7 @@ class Cover(Base):
     height = Column(Integer, nullable=True)
     file_hash = Column(String(64), index=True, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now_naive)
 
     # 关系
     video = relationship("Video", back_populates="covers")
@@ -432,7 +433,7 @@ class Audio(Base):
     duration = Column(Integer, nullable=True)  # 秒
     file_hash = Column(String(64), index=True, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now_naive)
 
 
 class Topic(Base):
@@ -445,7 +446,7 @@ class Topic(Base):
     source = Column(String(32), default="manual")
     last_synced = Column(DateTime, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now_naive)
 
 
 class TaskVideo(Base):
@@ -569,8 +570,8 @@ class CompositionJob(Base):
     error_msg = Column(Text, nullable=True)
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     # 关系
     task = relationship("Task", back_populates="composition_jobs")
@@ -587,7 +588,7 @@ class PublishLog(Base):
     status = Column(String(32), nullable=False)  # started, success, failed
     message = Column(Text, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, default=utc_now_naive, index=True)
 
     # 关系
     task = relationship("Task", back_populates="logs")
@@ -607,8 +608,8 @@ class PublishConfig(Base):
     auto_start = Column(Boolean, default=False)
     global_topic_ids = Column(Text, default='[]')  # legacy singleton topic surface；不再代表调度 canonical truth
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
 
 class PublishProfile(Base):
@@ -631,8 +632,8 @@ class PublishProfile(Base):
     auto_retry = Column(Boolean, default=True)
     max_retry_count = Column(Integer, default=3)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     # 关系
     topic_links = relationship("PublishProfileTopic", passive_deletes=True, order_by="PublishProfileTopic.sort_order")
@@ -654,8 +655,8 @@ class ScheduleConfig(Base):
     publish_pool_kill_switch = Column(Boolean, default=False)
     publish_pool_shadow_read = Column(Boolean, default=False)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
 
 class RemoteAuthSession(Base):
@@ -673,8 +674,8 @@ class RemoteAuthSession(Base):
     offline_grace_until = Column(DateTime, nullable=True)
     denial_reason = Column(String(64), nullable=True)
     device_id = Column(String(128), nullable=True, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
 
 class TopicGroup(Base):
@@ -685,8 +686,8 @@ class TopicGroup(Base):
     name = Column(String(128), unique=True, nullable=False, index=True)
     topic_ids = Column(Text, nullable=False, default='[]')  # 命名话题列表 JSON；当前 CRUD-only，不会自动注入 task assembly
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     # 关系
     topic_links = relationship("TopicGroupTopic", passive_deletes=True, order_by="TopicGroupTopic.sort_order")
@@ -702,7 +703,7 @@ class SystemLog(Base):
     message = Column(Text, nullable=False)
     details = Column(Text, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, default=utc_now_naive, index=True)
 
 
 # 数据库会话

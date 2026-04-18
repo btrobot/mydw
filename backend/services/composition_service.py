@@ -20,6 +20,7 @@ from schemas.auth import LocalAuthSessionSummary
 from services.creative_generation_service import CreativeGenerationService
 from services.task_compat_service import resolve_primary_task_video
 from services.task_service import TaskService
+from utils.time import utc_now_naive
 
 
 class CompositionService:
@@ -138,7 +139,7 @@ class CompositionService:
             workflow_id=workflow_id,
             external_job_id=external_job_id,
             status="pending",
-            started_at=datetime.utcnow(),
+            started_at=utc_now_naive(),
         )
         self.db.add(job)
         await self.db.flush()  # 获取 job.id，不提交事务
@@ -146,7 +147,7 @@ class CompositionService:
         # 更新 task
         task.composition_job_id = job.id
         task.status = "composing"
-        task.updated_at = datetime.utcnow()
+        task.updated_at = utc_now_naive()
 
         await self.db.commit()
         await self.db.refresh(job)
@@ -203,13 +204,13 @@ class CompositionService:
         job.progress = 100
         job.output_video_url = video_url
         job.output_video_path = local_path
-        job.completed_at = datetime.utcnow()
-        job.updated_at = datetime.utcnow()
+        job.completed_at = utc_now_naive()
+        job.updated_at = utc_now_naive()
 
         # 更新 Task
         task.status = "ready"
         task.final_video_path = local_path
-        task.updated_at = datetime.utcnow()
+        task.updated_at = utc_now_naive()
 
         if not already_completed:
             await self._creative_generation_service.record_composition_success(task)
@@ -232,14 +233,14 @@ class CompositionService:
         # 更新 CompositionJob
         job.status = "failed"
         job.error_msg = error_msg
-        job.completed_at = datetime.utcnow()
-        job.updated_at = datetime.utcnow()
+        job.completed_at = utc_now_naive()
+        job.updated_at = utc_now_naive()
 
         # 更新 Task（保留 failed_at_status 供快速重试使用）
         task.failed_at_status = "composing"
         task.status = "failed"
         task.error_msg = error_msg
-        task.updated_at = datetime.utcnow()
+        task.updated_at = utc_now_naive()
 
         await self._creative_generation_service.record_composition_failure(task, error_msg)
 

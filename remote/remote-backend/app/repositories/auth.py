@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.security import verify_password
+from app.utils.time import utc_now_naive
 from app.models import AuditLog, Device, EndUserSession, License, RefreshToken, User, UserCredential, UserDevice, UserEntitlement
 
 
@@ -30,7 +31,7 @@ class AuthRepository:
 
     def get_or_create_device(self, device_id: str, *, client_version: str) -> Device:
         device = self.db.execute(select(Device).where(Device.device_id == device_id)).scalars().first()
-        now = datetime.utcnow()
+        now = utc_now_naive()
         if device is None:
             device = Device(device_id=device_id, client_version=client_version, status='bound', first_seen_at=now, last_seen_at=now)
             self.db.add(device)
@@ -84,17 +85,17 @@ class AuthRepository:
         )
 
     def create_binding(self, user_id: int, device_pk: int) -> UserDevice:
-        now = datetime.utcnow()
+        now = utc_now_naive()
         binding = UserDevice(user_id=user_id, device_id=device_pk, binding_status='bound', bound_at=now, last_auth_at=now)
         self.db.add(binding)
         self.db.flush()
         return binding
 
     def touch_binding(self, binding: UserDevice) -> None:
-        binding.last_auth_at = datetime.utcnow()
+        binding.last_auth_at = utc_now_naive()
 
     def set_binding_status(self, binding: UserDevice, *, status: str) -> None:
-        now = datetime.utcnow()
+        now = utc_now_naive()
         binding.binding_status = status
         if status == 'bound':
             binding.bound_at = binding.bound_at or now
@@ -157,7 +158,7 @@ class AuthRepository:
         return None
 
     def rotate_refresh_token(self, *, source: RefreshToken, new_token_hash: str, expires_at: datetime) -> RefreshToken:
-        source.revoked_at = datetime.utcnow()
+        source.revoked_at = utc_now_naive()
         source.revoke_reason = 'rotated'
         rotated = RefreshToken(
             session_id=source.session_id,
@@ -171,7 +172,7 @@ class AuthRepository:
 
     def revoke_refresh_token(self, refresh_token: RefreshToken, *, reason: str) -> None:
         if refresh_token.revoked_at is None:
-            refresh_token.revoked_at = datetime.utcnow()
+            refresh_token.revoked_at = utc_now_naive()
             refresh_token.revoke_reason = reason
 
     def revoke_refresh_tokens_for_session(self, session_pk: int, *, reason: str) -> None:
@@ -180,18 +181,18 @@ class AuthRepository:
             self.revoke_refresh_token(token, reason=reason)
 
     def update_session_access(self, session: EndUserSession, *, access_token_hash: str, expires_at: datetime) -> None:
-        now = datetime.utcnow()
+        now = utc_now_naive()
         session.access_token_hash = access_token_hash
         session.expires_at = expires_at
         session.last_seen_at = now
         session.auth_state = 'authenticated_active'
 
     def touch_session(self, session: EndUserSession) -> None:
-        session.last_seen_at = datetime.utcnow()
+        session.last_seen_at = utc_now_naive()
 
     def revoke_session(self, session: EndUserSession, *, reason: str) -> None:
         if session.revoked_at is None:
-            session.revoked_at = datetime.utcnow()
+            session.revoked_at = utc_now_naive()
         session.auth_state = f'revoked:{reason}'
 
     def set_session_auth_state(self, session: EndUserSession, *, auth_state: str) -> None:
@@ -234,7 +235,7 @@ class AuthRepository:
         return self.db.execute(query).scalar_one()
 
     def touch_device(self, device: Device, *, client_version: str | None = None) -> None:
-        now = datetime.utcnow()
+        now = utc_now_naive()
         if client_version:
             device.client_version = client_version
         device.last_seen_at = now
