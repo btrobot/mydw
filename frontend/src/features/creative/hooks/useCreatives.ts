@@ -23,10 +23,16 @@ import type {
   ScheduleConfigResponse,
 } from '@/api'
 
+export type CreativeListParams = {
+  skip?: number
+  limit?: number
+  enabled?: boolean
+}
+
 export const creativeQueryKeys = {
   all: ['creatives'] as const,
   lists: () => [...creativeQueryKeys.all, 'list'] as const,
-  list: (params?: { skip?: number; limit?: number }) =>
+  list: (params?: CreativeListParams) =>
     [...creativeQueryKeys.lists(), params?.skip ?? 0, params?.limit ?? 50] as const,
   details: () => [...creativeQueryKeys.all, 'detail'] as const,
   detail: (creativeId: number | undefined) => [...creativeQueryKeys.details(), creativeId] as const,
@@ -48,7 +54,7 @@ export const creativeQueryKeys = {
   scheduleConfig: () => [...creativeQueryKeys.all, 'schedule-config'] as const,
 }
 
-export const useCreatives = (params?: { skip?: number; limit?: number }) =>
+export const useCreatives = (params?: CreativeListParams) =>
   useQuery<CreativeWorkbenchListResponse>({
     queryKey: creativeQueryKeys.list(params),
     queryFn: async () => {
@@ -61,6 +67,8 @@ export const useCreatives = (params?: { skip?: number; limit?: number }) =>
 
       return response.data ?? { total: 0, items: [] }
     },
+    enabled: params?.enabled ?? true,
+    retry: false,
   })
 
 export const useCreative = (creativeId: number | undefined) =>

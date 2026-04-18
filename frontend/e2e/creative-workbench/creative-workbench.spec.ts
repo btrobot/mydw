@@ -3,17 +3,47 @@ import { expect, test, type Page } from '@playwright/test'
 const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:4173'
 
 const creativeListPayload = {
-  total: 1,
+  total: 4,
   items: [
     {
       id: 101,
       creative_no: 'CR-000101',
       title: 'Spring campaign',
-      status: 'PENDING_INPUT',
+      status: 'WAITING_REVIEW',
       current_version_id: 201,
       generation_error_msg: null,
       generation_failed_at: null,
       updated_at: '2026-04-16T10:00:00Z',
+    },
+    {
+      id: 102,
+      creative_no: 'CR-000102',
+      title: 'Summer sale teaser',
+      status: 'PENDING_INPUT',
+      current_version_id: 202,
+      generation_error_msg: '素材解析失败',
+      generation_failed_at: '2026-04-16T09:30:00Z',
+      updated_at: '2026-04-16T12:00:00Z',
+    },
+    {
+      id: 103,
+      creative_no: 'CR-000103',
+      title: 'Autumn story board',
+      status: 'APPROVED',
+      current_version_id: 203,
+      generation_error_msg: null,
+      generation_failed_at: null,
+      updated_at: '2026-04-16T08:00:00Z',
+    },
+    {
+      id: 104,
+      creative_no: 'CR-000104',
+      title: 'Winter lookbook',
+      status: 'REWORK_REQUIRED',
+      current_version_id: null,
+      generation_error_msg: null,
+      generation_failed_at: null,
+      updated_at: '2026-04-16T11:00:00Z',
     },
   ],
 }
@@ -22,7 +52,7 @@ const creativeDetailPayload = {
   id: 101,
   creative_no: 'CR-000101',
   title: 'Spring campaign',
-  status: 'PENDING_INPUT',
+  status: 'WAITING_REVIEW',
   current_version_id: 201,
   current_version: {
     id: 201,
@@ -147,7 +177,39 @@ async function mockCreativeApis(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ total: 0, items: [] }),
+      body: JSON.stringify({
+        total: 2,
+        items: [
+          {
+            id: 801,
+            creative_item_id: 101,
+            creative_version_id: 201,
+            status: 'active',
+            invalidation_reason: null,
+            invalidated_at: null,
+            creative_no: 'CR-000101',
+            creative_title: 'Spring campaign',
+            creative_status: 'WAITING_REVIEW',
+            creative_current_version_id: 201,
+            created_at: '2026-04-16T09:50:00Z',
+            updated_at: '2026-04-16T10:00:00Z',
+          },
+          {
+            id: 802,
+            creative_item_id: 102,
+            creative_version_id: 999,
+            status: 'active',
+            invalidation_reason: null,
+            invalidated_at: null,
+            creative_no: 'CR-000102',
+            creative_title: 'Summer sale teaser',
+            creative_status: 'PENDING_INPUT',
+            creative_current_version_id: 202,
+            created_at: '2026-04-16T11:50:00Z',
+            updated_at: '2026-04-16T12:00:00Z',
+          },
+        ],
+      }),
     })
   })
 
@@ -199,27 +261,57 @@ async function mockCreativeApis(page: Page) {
   })
 }
 
+async function chooseAntSelectOption(page: Page, testId: string, optionText: string) {
+  await page.getByTestId(testId).click()
+  const option = page
+    .locator('.ant-select-item-option-content')
+    .filter({ hasText: optionText })
+    .last()
+  await expect(option).toBeVisible()
+  await option.click()
+}
+
 test.describe('Creative workbench baseline', () => {
   test.beforeEach(async ({ page }) => {
     await mockCreativeApis(page)
   })
 
-  test('shows workbench list and the default-entry banner', async ({ page }) => {
+  test('shows the table-first workbench with business-first actions', async ({ page }) => {
     await page.goto(`${BASE_URL}/#/creative/workbench`)
 
-    await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
+    await expect(page.locator('body')).toContainText('默认业务入口：作品工作台')
     await expect(page.getByTestId('creative-workbench-publish-summary')).toBeVisible()
-    await expect(page.locator('body')).toContainText('CR-000101')
-    await expect(page.getByTestId('creative-workbench-pool-state-101')).toContainText('Not in publish pool')
+    await expect(page.locator('body')).toContainText('Spring campaign')
+    await expect(page.locator('body')).toContainText('Summer sale teaser')
+    await expect(page.getByTestId('creative-workbench-pool-state-101')).toContainText('已入发布池')
+    await expect(page.getByTestId('creative-workbench-pool-state-102')).toContainText('版本未对齐')
+    await expect(page.getByTestId('creative-workbench-open-review-101')).toBeVisible()
+    await expect(page.getByTestId('creative-workbench-ai-clip-101')).toBeVisible()
   })
 
-  test('navigates from workbench to detail and task diagnostics', async ({ page }) => {
+  test('supports search and filtering before entering detail', async ({ page }) => {
     await page.goto(`${BASE_URL}/#/creative/workbench`)
+
+    await page.getByTestId('creative-workbench-search-input').fill('Summer sale')
+    await page.getByRole('button', { name: '应用筛选' }).click()
+
+    await expect(page.locator('body')).toContainText('Summer sale teaser')
+    await expect(page.locator('body')).not.toContainText('Spring campaign')
+
+    await page.getByRole('button', { name: '重置筛选' }).click()
+    await chooseAntSelectOption(page, 'creative-workbench-status-filter', '待审核')
+    await chooseAntSelectOption(page, 'creative-workbench-pool-filter', '已入发布池')
+    await page.getByRole('button', { name: '应用筛选' }).click()
+
+    await expect(page.locator('body')).toContainText('Spring campaign')
+    await expect(page.locator('body')).not.toContainText('Summer sale teaser')
+
     await page.getByTestId('creative-workbench-open-detail-101').click()
 
     await page.waitForURL('**/#/creative/101')
-    await expect(page.getByTestId('creative-publish-diagnostics')).toBeVisible()
     await expect(page.getByTestId('creative-open-task-diagnostics')).toBeVisible()
+    await page.getByText('发布运行态', { exact: true }).click()
+    await expect(page.getByTestId('creative-publish-diagnostics')).toBeVisible()
 
     await page.getByTestId('creative-open-task-diagnostics').click()
     await page.waitForURL('**/#/task/901')

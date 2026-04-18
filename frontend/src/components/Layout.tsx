@@ -20,48 +20,48 @@ const items = [
   {
     key: 'creative-group',
     icon: <AppstoreOutlined />,
-    label: 'Creative workspace',
+    label: '创作工作台',
     children: [
-      { key: '/creative/workbench', label: 'Creative workbench' },
+      { key: '/creative/workbench', label: '作品工作台' },
     ],
   },
-  { key: '/dashboard', icon: <DashboardOutlined />, label: 'Runtime dashboard' },
-  { key: '/account', icon: <UserOutlined />, label: 'Accounts' },
+  { key: '/dashboard', icon: <DashboardOutlined />, label: '运行总览' },
+  { key: '/account', icon: <UserOutlined />, label: '账号' },
   {
     key: 'task-group',
     icon: <FileTextOutlined />,
-    label: 'Execution / diagnostics',
+    label: '执行与诊断',
     children: [
-      { key: '/task/list', label: 'Task diagnostics list' },
-      { key: '/task/create', label: 'Create execution task' },
-      { key: '/schedule-config', label: 'Execution scheduling' },
-      { key: '/profile-management', label: 'Execution profiles' },
+      { key: '/task/list', label: '任务诊断列表' },
+      { key: '/task/create', label: '新建执行任务' },
+      { key: '/schedule-config', label: '执行调度' },
+      { key: '/profile-management', label: '执行配置' },
     ],
   },
   {
     key: 'material-group',
     icon: <FolderOutlined />,
-    label: 'Materials',
+    label: '素材',
     children: [
-      { key: '/material/overview', label: 'Overview' },
-      { key: '/material/video', label: 'Videos' },
-      { key: '/material/copywriting', label: 'Copywriting' },
-      { key: '/material/cover', label: 'Covers' },
-      { key: '/material/audio', label: 'Audio' },
-      { key: '/material/topic', label: 'Topics' },
+      { key: '/material/overview', label: '总览' },
+      { key: '/material/video', label: '视频' },
+      { key: '/material/copywriting', label: '文案' },
+      { key: '/material/cover', label: '封面' },
+      { key: '/material/audio', label: '音频' },
+      { key: '/material/topic', label: '话题' },
       { type: 'divider' as const },
-      { key: '/material/product', label: 'Products' },
-      { key: '/material/topic-group', label: 'Topic groups' },
+      { key: '/material/product', label: '商品' },
+      { key: '/material/topic-group', label: '话题组' },
     ],
   },
-  { key: '/ai-clip', icon: <ScissorOutlined />, label: 'AIClip tool page' },
+  { key: '/ai-clip', icon: <ScissorOutlined />, label: 'AIClip 工具页' },
   {
     key: 'settings-group',
     icon: <SettingOutlined />,
-    label: 'Settings',
+    label: '设置',
     children: [
-      { key: '/settings', label: 'General settings' },
-      { key: '/settings/auth-admin', label: 'Auth sessions' },
+      { key: '/settings', label: '通用设置' },
+      { key: '/settings/auth-admin', label: '授权会话' },
     ],
   },
 ]
@@ -115,7 +115,7 @@ export default function LayoutComponent() {
     <Layout style={{ minHeight: '100vh' }}>
       <Header style={{ display: 'flex', alignItems: 'center', padding: '0 24px' }}>
         <Title level={4} style={{ color: 'white', margin: 0, flexShrink: 0 }}>
-          Dewu Creator Console
+          得物创作控制台
         </Title>
         <div style={{ marginLeft: 'auto' }}>
           <AuthSessionHeader />

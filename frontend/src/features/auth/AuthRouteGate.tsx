@@ -10,8 +10,8 @@ const GraceBanner = () => (
     <Alert
       type="warning"
       showIcon
-      message="Offline grace mode"
-      description="This session is in restricted mode. Existing local data remains visible, but high-risk actions are blocked."
+      message="当前处于离线宽限模式"
+      description="你仍可查看现有本地数据，但高风险操作会继续受限。"
     />
   </div>
 )

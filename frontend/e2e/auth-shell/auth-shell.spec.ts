@@ -35,8 +35,8 @@ test.describe('Auth shell pages', () => {
     await page.goto(`${BASE_URL}/#/login`)
     await expect(page.getByTestId('auth-login-page')).toBeVisible()
 
-    await page.getByLabel('Username').fill('alice')
-    await page.getByLabel('Password').fill('secret')
+    await page.getByLabel('用户名').fill('alice')
+    await page.getByLabel('密码').fill('secret')
     await page.locator('button[type="submit"]').click()
 
     await page.waitForURL('**/#/creative/workbench')
@@ -46,24 +46,24 @@ test.describe('Auth shell pages', () => {
   test('renders revoked shell', async ({ page }) => {
     await page.goto(`${BASE_URL}/#/auth/revoked`)
     await expect(page.getByTestId('auth-status-revoked')).toBeVisible()
-    await expect(page.locator('body')).toContainText('Authorization revoked')
+    await expect(page.locator('body')).toContainText('授权已失效')
   })
 
   test('renders device mismatch shell', async ({ page }) => {
     await page.goto(`${BASE_URL}/#/auth/device-mismatch`)
     await expect(page.getByTestId('auth-status-device_mismatch')).toBeVisible()
-    await expect(page.locator('body')).toContainText('Device mismatch')
+    await expect(page.locator('body')).toContainText('设备授权不匹配')
   })
 
   test('renders expired shell', async ({ page }) => {
     await page.goto(`${BASE_URL}/#/auth/expired`)
     await expect(page.getByTestId('auth-status-expired')).toBeVisible()
-    await expect(page.locator('body')).toContainText('Session expired')
+    await expect(page.locator('body')).toContainText('登录已过期')
   })
 
   test('renders grace shell', async ({ page }) => {
     await page.goto(`${BASE_URL}/#/auth/grace`)
     await expect(page.getByTestId('auth-status-grace')).toBeVisible()
-    await expect(page.locator('body')).toContainText('Offline grace mode')
+    await expect(page.locator('body')).toContainText('离线宽限模式')
   })
 })

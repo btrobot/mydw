@@ -24,23 +24,23 @@ const STATUS_CONTENT: Record<
   }
 > = {
   revoked: {
-    title: 'Authorization revoked',
-    description: 'The remote authorization has been revoked or disabled. Please sign in again to continue using local features.',
+    title: '授权已失效',
+    description: '远端授权已被撤销或停用，请重新登录后继续使用本地能力。',
     type: 'error',
   },
   device_mismatch: {
-    title: 'Device mismatch',
-    description: 'This device does not match the remote authorization record. Please sign in again or re-bind this device.',
+    title: '设备授权不匹配',
+    description: '当前设备与远端授权记录不一致，请重新登录或重新绑定设备。',
     type: 'error',
   },
   expired: {
-    title: 'Session expired',
-    description: 'The local authorization session has expired. Please sign in again.',
+    title: '登录已过期',
+    description: '当前本地授权会话已过期，请重新登录。',
     type: 'warning',
   },
   grace: {
-    title: 'Offline grace mode',
-    description: 'The app is running in restricted mode: existing local data is visible, but high-risk actions and new background tasks are blocked.',
+    title: '离线宽限模式',
+    description: '当前处于受限模式：你仍可查看已有本地数据，但高风险操作和新的后台任务会被阻止。',
     type: 'info',
   },
 }
@@ -63,14 +63,14 @@ export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
     onSuccess: (nextSession) => {
       setSession(nextSession)
       setRedirectToLogin(true)
-      message.success('Signed out')
+      message.success('已退出登录')
     },
     onError: (error: unknown) => {
       if (error instanceof Error) {
         message.error(error.message)
         return
       }
-      message.error('Failed to sign out')
+      message.error('退出登录失败')
     },
   })
 
@@ -112,9 +112,11 @@ export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
 
           {session && (
             <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-              State: {session.auth_state}
-              {session.display_name ? ` · User: ${session.display_name}` : ''}
-              {session.denial_reason ? ` · Reason: ${session.denial_reason}` : ''}
+              {session.display_name
+                ? `当前账号：${session.display_name}`
+                : session.device_id
+                  ? `当前设备标识：${session.device_id}`
+                  : '当前授权会话需要重新确认。'}
             </Typography.Paragraph>
           )}
 
@@ -122,17 +124,17 @@ export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
             {isGraceVariant ? (
               <>
                 <Button type="primary" onClick={() => navigate('/creative/workbench')}>
-                  Open creative workbench
+                  打开作品工作台
                 </Button>
                 <Button onClick={() => navigate('/dashboard')}>
-                  Open runtime dashboard
+                  打开运行总览
                 </Button>
                 <Button
                   onClick={() => logoutMutation.mutate()}
                   loading={logoutMutation.isPending}
                   data-testid="auth-status-signout-button"
                 >
-                  Sign out
+                  退出登录
                 </Button>
               </>
             ) : (
@@ -142,7 +144,7 @@ export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
                 loading={logoutMutation.isPending}
                 data-testid="auth-status-signout-button"
               >
-                Sign out and go to login
+                退出登录并返回登录页
               </Button>
             )}
           </Space>

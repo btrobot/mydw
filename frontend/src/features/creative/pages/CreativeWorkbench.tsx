@@ -1,14 +1,12 @@
 import { ArrowRightOutlined } from '@ant-design/icons'
-import { PageContainer } from '@ant-design/pro-components'
-import { useMemo, useState } from 'react'
+import { PageContainer, ProTable } from '@ant-design/pro-components'
+import type { ActionType, ProColumns } from '@ant-design/pro-components'
+import { useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Alert,
   Button,
   Card,
   Flex,
-  List,
-  Segmented,
   Space,
   Spin,
   Statistic,
@@ -23,54 +21,49 @@ import {
   usePublishStatus,
   useScheduleConfig,
 } from '../hooks/useCreatives'
-import type { PublishPoolItem } from '../types/creative'
+import type {
+  CreativeWorkbenchItem,
+  CreativeWorkbenchPoolState,
+  PublishPoolItem,
+} from '../types/creative'
 import {
-  formatCreativeTimestamp,
   creativeStatusMeta,
+  creativeWorkbenchPoolStateMeta,
+  formatCreativeTimestamp,
+  formatModeLabel,
+  formatRuntimeStatusLabel,
+  getCreativeWorkbenchPoolState,
   isPoolVersionAligned,
-  publishPoolStatusMeta,
-  publishSchedulerModeMeta,
-  publishRuntimeStatusMeta,
 } from '../types/creative'
 
-const { Paragraph, Text, Title } = Typography
+const { Paragraph, Text } = Typography
 
-type WorkbenchPoolFilter = 'all' | 'pool' | 'unpooled'
+const WORKBENCH_WINDOW_SIZE = 200
 
-const WORKBENCH_STATUS_LABELS = {
-  PENDING_INPUT: 'Pending input',
-  WAITING_REVIEW: 'Waiting review',
-  APPROVED: 'Approved',
-  REWORK_REQUIRED: 'Rework required',
-  REJECTED: 'Rejected',
-} as const
+type WorkbenchTableRow = CreativeWorkbenchItem & {
+  poolItem: PublishPoolItem | null
+  poolState: CreativeWorkbenchPoolState
+  poolAligned: boolean
+}
 
-const WORKBENCH_POOL_STATUS_LABELS = {
-  active: 'In publish pool',
-  invalidated: 'Invalidated',
-} as const
+const creativeStatusValueEnum = Object.fromEntries(
+  Object.entries(creativeStatusMeta).map(([key, value]) => [key, { text: value.label }]),
+)
 
-const WORKBENCH_SCHEDULER_MODE_LABELS = {
-  task: 'Task mode',
-  pool: 'Pool mode',
-} as const
-
-const WORKBENCH_RUNTIME_LABELS = {
-  idle: 'Idle',
-  running: 'Running',
-  paused: 'Paused',
-} as const
+const creativePoolValueEnum = Object.fromEntries(
+  Object.entries(creativeWorkbenchPoolStateMeta).map(([key, value]) => [key, { text: value.label }]),
+) as Record<CreativeWorkbenchPoolState, { text: string }>
 
 export default function CreativeWorkbench() {
   const navigate = useNavigate()
-  const { data, isLoading } = useCreatives()
+  const actionRef = useRef<ActionType>()
+  const { data, isLoading } = useCreatives({ limit: WORKBENCH_WINDOW_SIZE })
   const { data: poolData, isLoading: poolLoading } = usePublishPoolItems({
-    limit: 200,
+    limit: WORKBENCH_WINDOW_SIZE,
     status: 'active',
   })
   const { data: publishStatus } = usePublishStatus()
   const { data: scheduleConfig } = useScheduleConfig()
-  const [poolFilter, setPoolFilter] = useState<WorkbenchPoolFilter>('all')
 
   const items = data?.items ?? []
   const total = data?.total ?? 0
@@ -81,26 +74,174 @@ export default function CreativeWorkbench() {
     [activePoolItems],
   )
 
-  const filteredItems = useMemo(() => {
-    if (poolFilter === 'pool') {
-      return items.filter((item) => poolByCreativeId.has(item.id))
-    }
-
-    if (poolFilter === 'unpooled') {
-      return items.filter((item) => !poolByCreativeId.has(item.id))
-    }
-
-    return items
-  }, [items, poolByCreativeId, poolFilter])
-
   const alignedPoolCount = useMemo(
     () => activePoolItems.filter((item) => isPoolVersionAligned(item)).length,
     [activePoolItems],
   )
 
+  const waitingReviewCount = useMemo(
+    () => items.filter((item) => item.status === 'WAITING_REVIEW').length,
+    [items],
+  )
+
+  const pendingInputCount = useMemo(
+    () => items.filter((item) => item.status === 'PENDING_INPUT').length,
+    [items],
+  )
+
   const schedulerMode = publishStatus?.scheduler_mode ?? scheduleConfig?.publish_scheduler_mode
   const effectiveSchedulerMode = publishStatus?.effective_scheduler_mode ?? schedulerMode
-  const runtimeStatus = publishStatus?.status
+
+  const rows = useMemo<WorkbenchTableRow[]>(
+    () => items.map((item) => {
+      const poolItem = poolByCreativeId.get(item.id) ?? null
+      return {
+        ...item,
+        poolItem,
+        poolState: getCreativeWorkbenchPoolState(poolItem),
+        poolAligned: poolItem ? isPoolVersionAligned(poolItem) : false,
+      }
+    }),
+    [items, poolByCreativeId],
+  )
+
+  useEffect(() => {
+    if (!isLoading) {
+      actionRef.current?.reload()
+    }
+  }, [isLoading, rows])
+
+  const columns = useMemo<ProColumns<WorkbenchTableRow>[]>(
+    () => [
+      {
+        title: '作品检索',
+        dataIndex: 'keyword',
+        hideInTable: true,
+        fieldProps: {
+          placeholder: '按标题或作品编号搜索',
+          allowClear: true,
+          'data-testid': 'creative-workbench-search-input',
+        },
+      },
+      {
+        title: '作品编号',
+        dataIndex: 'creative_no',
+        width: 160,
+        hideInSearch: true,
+        render: (_, record) => (
+          <Space direction="vertical" size={2}>
+            <Text strong>{record.creative_no}</Text>
+            <Text type="secondary">#{record.id}</Text>
+          </Space>
+        ),
+      },
+      {
+        title: '作品标题',
+        dataIndex: 'title',
+        ellipsis: true,
+        hideInSearch: true,
+        render: (_, record) => (
+          <Space direction="vertical" size={4}>
+            <Text strong>{record.title?.trim() || record.creative_no}</Text>
+            {record.generation_error_msg ? (
+              <Text type="warning">最近一次生成回写失败</Text>
+            ) : (
+              <Text type="secondary">当前版本 #{record.current_version_id ?? '-'}</Text>
+            )}
+          </Space>
+        ),
+      },
+      {
+        title: '作品状态',
+        dataIndex: 'status',
+        width: 140,
+        valueType: 'select',
+        valueEnum: creativeStatusValueEnum,
+        fieldProps: {
+          placeholder: '按作品状态筛选',
+          allowClear: true,
+          'data-testid': 'creative-workbench-status-filter',
+        },
+        render: (_, record) => {
+          const statusMeta = creativeStatusMeta[record.status]
+          return <Tag color={statusMeta.color}>{statusMeta.label}</Tag>
+        },
+      },
+      {
+        title: '发布准备',
+        dataIndex: 'poolState',
+        width: 220,
+        valueType: 'select',
+        valueEnum: creativePoolValueEnum,
+        fieldProps: {
+          placeholder: '按发布准备筛选',
+          allowClear: true,
+          'data-testid': 'creative-workbench-pool-filter',
+        },
+        render: (_, record) => (
+          <Space direction="vertical" size={4} data-testid={`creative-workbench-pool-state-${record.id}`}>
+            <Space wrap size={[4, 4]}>
+              <Tag color={creativeWorkbenchPoolStateMeta[record.poolState].color}>
+                {creativeWorkbenchPoolStateMeta[record.poolState].label}
+              </Tag>
+              {record.poolItem ? (
+                <Tag color={record.poolAligned ? 'success' : 'warning'}>
+                  池版本 #{record.poolItem.creative_version_id}
+                </Tag>
+              ) : null}
+            </Space>
+            <Text type="secondary">
+              {record.poolItem ? `发布池记录 #${record.poolItem.id}` : '当前版本尚未进入发布池'}
+            </Text>
+          </Space>
+        ),
+      },
+      {
+        title: '更新时间',
+        dataIndex: 'updated_at',
+        width: 180,
+        hideInSearch: true,
+        sorter: true,
+        defaultSortOrder: 'descend',
+        render: (_, record) => formatCreativeTimestamp(record.updated_at),
+      },
+      {
+        title: '操作',
+        key: 'actions',
+        width: 220,
+        hideInSearch: true,
+        render: (_, record) => (
+          <Space size={0} wrap>
+            <Button
+              type="link"
+              onClick={() => navigate(`/creative/${record.id}`)}
+              data-testid={`creative-workbench-open-detail-${record.id}`}
+            >
+              详情
+            </Button>
+            <Button
+              type="link"
+              onClick={() => navigate(`/creative/${record.id}`)}
+              disabled={!record.current_version_id}
+              data-testid={`creative-workbench-open-review-${record.id}`}
+            >
+              审核
+            </Button>
+            <Button
+              type="link"
+              icon={<ArrowRightOutlined />}
+              onClick={() => navigate(`/creative/${record.id}?tool=ai-clip`)}
+              disabled={!record.current_version_id}
+              data-testid={`creative-workbench-ai-clip-${record.id}`}
+            >
+              AIClip
+            </Button>
+          </Space>
+        ),
+      },
+    ],
+    [navigate],
+  )
 
   if (isLoading) {
     return (
@@ -112,188 +253,123 @@ export default function CreativeWorkbench() {
 
   return (
     <PageContainer
-      title="Creative workbench"
-      subTitle="Default daily entry for creative operations, review, and publish diagnostics"
-      extra={[
-        <Button
-          key="dashboard"
-          onClick={() => navigate('/dashboard')}
-          data-testid="creative-workbench-open-dashboard"
-        >
-          Open runtime dashboard
-        </Button>,
-        <Button
-          key="tasks"
-          onClick={() => navigate('/task/list')}
-          data-testid="creative-workbench-open-task-list"
-        >
-          Open task diagnostics
-        </Button>,
-      ]}
+      title="作品工作台"
+      subTitle="搜索、筛选并处理当天作品；运行总览与任务诊断继续作为辅助入口保留"
     >
       <Space direction="vertical" size={16} style={{ display: 'flex' }}>
-        <Alert
-          type="info"
-          showIcon
-          message="Creative workbench is the default main entry"
-          description="Use this page for day-to-day creative work: open detail pages, review current versions, enter AIClip workflow, and inspect publish readiness. Task pages remain diagnostics surfaces, and the runtime dashboard stays available as a secondary view."
-          data-testid="creative-workbench-main-entry-banner"
-        />
-
         <Card data-testid="creative-workbench-publish-summary">
           <Flex wrap gap={24}>
-            <Statistic title="Creatives" value={total} />
-            <Statistic title="Active pool items" value={poolData?.total ?? 0} loading={poolLoading} />
-            <Statistic title="Version-aligned pool items" value={alignedPoolCount} loading={poolLoading} />
-            <Statistic title="Publish failures" value={publishStatus?.total_failed ?? 0} />
+            <Statistic title="作品数" value={total} />
+            <Statistic title="待审核" value={waitingReviewCount} />
+            <Statistic title="待补充" value={pendingInputCount} />
+            <Statistic title="已进发布池" value={poolData?.total ?? 0} loading={poolLoading} />
+            <Statistic title="池版本已对齐" value={alignedPoolCount} loading={poolLoading} />
           </Flex>
 
           <Space wrap size={[8, 8]} style={{ marginTop: 16 }}>
-            <Tag
-              color={schedulerMode ? publishSchedulerModeMeta[schedulerMode].color : 'default'}
-              data-testid="creative-workbench-scheduler-mode"
-            >
-              Configured mode: {schedulerMode ? WORKBENCH_SCHEDULER_MODE_LABELS[schedulerMode] : '-'}
-            </Tag>
-            <Tag
-              color={effectiveSchedulerMode ? publishSchedulerModeMeta[effectiveSchedulerMode].color : 'default'}
-              data-testid="creative-workbench-effective-mode"
-            >
-              Effective mode: {effectiveSchedulerMode ? WORKBENCH_SCHEDULER_MODE_LABELS[effectiveSchedulerMode] : '-'}
-            </Tag>
-            <Tag
-              color={runtimeStatus ? publishRuntimeStatusMeta[runtimeStatus].color : 'default'}
-              data-testid="creative-workbench-runtime-status"
-            >
-              Runtime: {runtimeStatus ? WORKBENCH_RUNTIME_LABELS[runtimeStatus] : '-'}
+            <Tag data-testid="creative-workbench-main-entry-banner">默认业务入口：作品工作台</Tag>
+            <Tag data-testid="creative-workbench-scheduler-mode">配置模式：{formatModeLabel(schedulerMode)}</Tag>
+            <Tag data-testid="creative-workbench-effective-mode">生效模式：{formatModeLabel(effectiveSchedulerMode)}</Tag>
+            <Tag data-testid="creative-workbench-runtime-status">
+              运行状态：{formatRuntimeStatusLabel(publishStatus?.status)}
             </Tag>
             <Tag data-testid="creative-workbench-shadow-read">
-              Shadow read: {publishStatus?.publish_pool_shadow_read ? 'ON' : 'OFF'}
+              影子读取（Shadow Read）：{publishStatus?.publish_pool_shadow_read ? '开启' : '关闭'}
             </Tag>
             <Tag data-testid="creative-workbench-kill-switch">
-              Kill switch: {publishStatus?.publish_pool_kill_switch ? 'ON' : 'OFF'}
+              熔断开关（Kill Switch）：{publishStatus?.publish_pool_kill_switch ? '开启' : '关闭'}
             </Tag>
           </Space>
 
           <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
-            Filter the list below to inspect in-pool and unpooled creatives. Open each detail page to review versions, checks, AIClip workflow access, and task diagnostics round-trips without leaving the creative-first flow.
+            先在这里搜索、筛选并安排当天要处理的作品；发布池、调度与运行状态仅作为辅助判断信息，不再占据首屏主流程。
           </Paragraph>
         </Card>
 
-        <Card
-          size="small"
-          title="Pool visibility filter"
-          data-testid="creative-workbench-pool-filter"
-          extra={(
-            <Segmented
-              options={[
-                { label: 'All creatives', value: 'all' },
-                { label: 'In pool', value: 'pool' },
-                { label: 'Not in pool', value: 'unpooled' },
-              ]}
-              value={poolFilter}
-              onChange={(value) => setPoolFilter(value as WorkbenchPoolFilter)}
-            />
-          )}
-        >
-          <Text type="secondary">
-            This filter is read-only. It helps verify creative status, current version alignment, and publish-pool projection readiness before you inspect a specific creative.
-          </Text>
-        </Card>
-
-        {items.length === 0 ? (
+        {total > rows.length ? (
           <Card>
-            <CreativeEmptyState onOpenTaskList={() => navigate('/task/list')} />
+            <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+              当前工作台已加载最近 {rows.length} 条作品，本次搜索、筛选与排序基于当前窗口数据执行；若作品规模继续扩大，后续 PR 会再接入服务端检索能力。
+            </Paragraph>
           </Card>
-        ) : (
-          <List
-            grid={{ gutter: 16, xs: 1, sm: 1, md: 2, xl: 3 }}
-            dataSource={filteredItems}
-            renderItem={(item) => {
-              const statusMeta = creativeStatusMeta[item.status]
-              const poolItem = poolByCreativeId.get(item.id)
-              const poolAligned = poolItem ? isPoolVersionAligned(poolItem) : false
+        ) : null}
 
-              return (
-                <List.Item key={item.id}>
-                  <Card
-                    title={item.title ?? item.creative_no}
-                    extra={(
-                      <Button
-                        type="link"
-                        icon={<ArrowRightOutlined />}
-                        onClick={() => navigate(`/creative/${item.id}`)}
-                        data-testid={`creative-workbench-open-detail-${item.id}`}
-                      >
-                        View detail
-                      </Button>
-                    )}
-                  >
-                    <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                      <div>
-                        <Text type="secondary">Creative number</Text>
-                        <Title level={5} style={{ marginTop: 4, marginBottom: 0 }}>
-                          {item.creative_no}
-                        </Title>
-                      </div>
+        <ProTable<WorkbenchTableRow, { keyword?: string; status?: string; poolState?: string }>
+          actionRef={actionRef}
+          rowKey="id"
+          columns={columns}
+          cardBordered
+          headerTitle="今日待处理作品"
+          options={{ density: false, setting: false }}
+          request={async (params, sort) => {
+            const keyword = params.keyword?.trim().toLowerCase()
+            const status = params.status
+            const poolState = params.poolState as CreativeWorkbenchPoolState | undefined
 
-                      <Space wrap>
-                        <Tag color={statusMeta.color}>{WORKBENCH_STATUS_LABELS[item.status]}</Tag>
-                        <Tag>Current version #{item.current_version_id ?? '-'}</Tag>
-                      </Space>
+            let filtered = rows
 
-                      <Space wrap>
-                        <Button
-                          type="primary"
-                          onClick={() => navigate(`/creative/${item.id}?tool=ai-clip`)}
-                          disabled={!item.current_version_id}
-                          data-testid={`creative-workbench-ai-clip-${item.id}`}
-                        >
-                          AIClip workflow
-                        </Button>
-                      </Space>
-
-                      <Space wrap data-testid={`creative-workbench-pool-state-${item.id}`}>
-                        {poolItem ? (
-                          <>
-                            <Tag color={publishPoolStatusMeta[poolItem.status].color}>
-                              {WORKBENCH_POOL_STATUS_LABELS[poolItem.status]}
-                            </Tag>
-                            <Tag color={poolAligned ? 'success' : 'warning'}>
-                              Pool version #{poolItem.creative_version_id}
-                            </Tag>
-                            <Tag color={poolAligned ? 'success' : 'warning'}>
-                              {poolAligned ? 'Aligned with current version' : 'Not aligned with current version'}
-                            </Tag>
-                          </>
-                        ) : (
-                          <Tag>Not in publish pool</Tag>
-                        )}
-                      </Space>
-
-                      {poolItem ? (
-                        <Text type="secondary">Pool item #{poolItem.id}</Text>
-                      ) : null}
-
-                      {item.generation_error_msg ? (
-                        <Alert
-                          type="warning"
-                          showIcon
-                          message="Latest generation writeback failed"
-                          description={item.generation_error_msg}
-                        />
-                      ) : null}
-
-                      <Text type="secondary">
-                        Updated at: {formatCreativeTimestamp(item.updated_at)}
-                      </Text>
-                    </Space>
-                  </Card>
-                </List.Item>
+            if (keyword) {
+              filtered = filtered.filter((item) =>
+                [item.title ?? '', item.creative_no]
+                  .join(' ')
+                  .toLowerCase()
+                  .includes(keyword),
               )
-            }}
-          />
-        )}
+            }
+
+            if (status) {
+              filtered = filtered.filter((item) => item.status === status)
+            }
+
+            if (poolState) {
+              filtered = filtered.filter((item) => item.poolState === poolState)
+            }
+
+            const updatedAtSort = sort.updated_at
+            const sorted = [...filtered].sort((left, right) => {
+              const delta = Date.parse(left.updated_at) - Date.parse(right.updated_at)
+
+              if (updatedAtSort === 'ascend') {
+                return delta
+              }
+
+              return -delta
+            })
+
+            const current = params.current ?? 1
+            const pageSize = params.pageSize ?? 10
+            const start = (current - 1) * pageSize
+
+            return {
+              data: sorted.slice(start, start + pageSize),
+              success: true,
+              total: sorted.length,
+            }
+          }}
+          loading={isLoading || poolLoading}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showTotal: (count) => `共 ${count} 条作品`,
+          }}
+          search={{
+            labelWidth: 'auto',
+            defaultCollapsed: false,
+            searchText: '应用筛选',
+            resetText: '重置筛选',
+          }}
+          locale={{
+            emptyText: <CreativeEmptyState onOpenTaskList={() => navigate('/task/list')} />,
+          }}
+          toolBarRender={() => [
+            <Button key="dashboard" onClick={() => navigate('/dashboard')}>
+              查看运行总览
+            </Button>,
+            <Button key="task-list" onClick={() => navigate('/task/list')}>
+              查看任务诊断
+            </Button>,
+          ]}
+        />
       </Space>
     </PageContainer>
   )

@@ -56,7 +56,7 @@ export default function LoginPage() {
     onSuccess: (nextSession) => {
       setSubmitError(null)
       setSession(nextSession)
-      message.success('Login succeeded')
+      message.success('登录成功')
       navigate('/creative/workbench', { replace: true })
     },
     onError: (error: unknown) => {
@@ -89,13 +89,16 @@ export default function LoginPage() {
       }}
     >
       <Card
-        title="Remote Auth Login"
+        title="登录本地工作台"
         style={{ width: 480, maxWidth: '100%' }}
         data-testid="auth-login-page"
       >
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            Device ID: {deviceId}
+            登录后即可继续使用作品工作台、运行总览和任务诊断等本地能力。
+          </Typography.Paragraph>
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+            设备标识：{deviceId}
           </Typography.Paragraph>
           {statusAlert}
           <Form
@@ -111,17 +114,17 @@ export default function LoginPage() {
           >
             <Form.Item
               name="username"
-              label="Username"
-              rules={[{ required: true, message: 'Please enter a username' }]}
+              label="用户名"
+              rules={[{ required: true, message: '请输入用户名' }]}
             >
-              <Input placeholder="Enter username" />
+              <Input placeholder="请输入用户名" />
             </Form.Item>
             <Form.Item
               name="password"
-              label="Password"
-              rules={[{ required: true, message: 'Please enter a password' }]}
+              label="密码"
+              rules={[{ required: true, message: '请输入密码' }]}
             >
-              <Input.Password placeholder="Enter password" />
+              <Input.Password placeholder="请输入密码" />
             </Form.Item>
             <Form.Item style={{ marginBottom: 0 }}>
               <Button
@@ -130,7 +133,7 @@ export default function LoginPage() {
                 loading={loginMutation.isPending}
                 style={{ width: '100%' }}
               >
-                Sign in
+                登录
               </Button>
             </Form.Item>
           </Form>

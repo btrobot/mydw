@@ -1,10 +1,122 @@
 # Dev Guide
 
-> Version: 1.0.0 | Updated: 2026-04-07
+> Version: 1.0.0 | Updated: 2026-04-18
 > Owner: Tech Lead
 > Status: Active
 
 Quick start guide for DewuGoJin development environment.
+
+---
+
+## Windows / PowerShell 快速运行与测试
+
+### 最快启动方式
+
+在仓库根目录执行：
+
+```powershell
+cd E:\ais\mydw
+.\dev.bat
+```
+
+该脚本会自动检查 Node / Python 环境、按需安装依赖，并启动：
+
+- 前端：`http://localhost:5173`
+- 后端：`http://localhost:8000`
+- API 文档：`http://localhost:8000/docs`
+
+### 手动分别启动前后端
+
+#### 后端
+
+```powershell
+cd E:\ais\mydw\backend
+.\setup.bat   # 首次运行可先执行
+.\run.bat
+```
+
+#### 前端
+
+```powershell
+cd E:\ais\mydw\frontend
+npm install   # 首次运行时执行
+npm run dev
+```
+
+### 常用测试命令
+
+```powershell
+cd E:\ais\mydw\frontend
+npm run typecheck
+npm run build
+```
+
+E2E 首次需安装 Playwright Chromium：
+
+```powershell
+cd E:\ais\mydw\frontend
+npm run test:e2e:install
+```
+
+运行全部 E2E：
+
+```powershell
+cd E:\ais\mydw\frontend
+npm run test:e2e
+```
+
+运行单个测试文件（例如登录流程）：
+
+```powershell
+cd E:\ais\mydw\frontend
+.\node_modules\.bin\playwright.cmd test --config=e2e/playwright.config.ts e2e\login\login.spec.ts
+```
+
+### Preview 模式说明
+
+如果运行：
+
+```powershell
+cd E:\ais\mydw\frontend
+npm run build
+npm run preview -- --host 127.0.0.1 --port 4173
+```
+
+同时看到 `127.0.0.1:8000 ECONNREFUSED`，通常不是前端 preview 自身故障，而是 **后端未启动**。当前前端会把 `/api/*` 请求代理到 `127.0.0.1:8000`，因此 preview 前请先启动后端：
+
+```powershell
+cd E:\ais\mydw\backend
+.\run.bat
+```
+
+然后再访问：`http://127.0.0.1:4173`
+
+### Electron 开发模式
+
+```powershell
+cd E:\ais\mydw\frontend
+npm run dev:electron
+```
+
+### 辅助脚本
+
+仓库根目录可直接使用以下脚本：
+
+```powershell
+.\scripts\start-backend.bat
+.\scripts\start-frontend.bat
+.\scripts\start-remote.bat
+.\scripts\status-all.bat
+.\scripts\stop-all.bat
+```
+
+其中：
+
+- `start-backend.bat`：启动本地后端
+- `start-frontend.bat`：启动本地前端；若后端未启动会尝试先拉起后端
+- `start-remote.bat`：启动 remote 相关服务
+- `status-all.bat`：查看当前服务状态
+- `stop-all.bat`：停止已启动服务
 
 ---
 

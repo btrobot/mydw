@@ -32,14 +32,14 @@ test.describe('Auth error UX', () => {
     })
 
     await page.goto(`${BASE_URL}/#/login`)
-    await page.getByLabel('Username').fill('alice')
-    await page.getByLabel('Password').fill('wrong-password')
+    await page.getByLabel('用户名').fill('alice')
+    await page.getByLabel('密码').fill('wrong-password')
     await page.locator('button[type="submit"]').click()
 
     await expect(page.getByTestId('auth-login-error-message')).toBeVisible()
-    await expect(page.locator('body')).toContainText('Incorrect username or password')
-    await expect(page.locator('body')).toContainText('Double-check your credentials')
-    await expect(page.getByTestId('auth-login-error-message').getByRole('button', { name: 'Retry' })).toBeVisible()
+    await expect(page.locator('body')).toContainText('账号或密码错误')
+    await expect(page.locator('body')).toContainText('请检查登录信息后重试')
+    await expect(page.getByTestId('auth-login-error-message').locator('button')).toBeVisible()
   })
 
   test('shows an offline-friendly message when auth bootstrap fails', async ({ page }) => {
@@ -59,8 +59,8 @@ test.describe('Auth error UX', () => {
     await page.goto(BASE_URL)
     await expect(page.getByTestId('auth-bootstrap-error')).toBeVisible()
     await expect(page.locator('body')).toContainText(BOOTSTRAP_WARNING)
-    await expect(page.locator('body')).toContainText('We could not reach the authorization service')
-    await expect(page.getByTestId('auth-bootstrap-error').getByRole('button', { name: 'Retry' })).toBeVisible()
+    await expect(page.locator('body')).toContainText('暂时无法连接授权服务')
+    await expect(page.getByTestId('auth-bootstrap-error').locator('button')).toBeVisible()
   })
 
   test('shows a re-login prompt on the revoked auth shell', async ({ page }) => {
@@ -94,8 +94,8 @@ test.describe('Auth error UX', () => {
     await page.goto(`${BASE_URL}/#/auth/revoked`)
     await expect(page.getByTestId('auth-status-revoked')).toBeVisible()
     await expect(page.getByTestId('auth-status-live-revoked')).toBeVisible()
-    await expect(page.locator('body')).toContainText('Authorization revoked')
-    await expect(page.locator('body')).toContainText('Please sign in again')
+    await expect(page.locator('body')).toContainText('授权已失效')
+    await expect(page.locator('body')).toContainText('请重新登录')
     await expect(page.getByTestId('auth-status-signout-button')).toBeVisible()
   })
 })

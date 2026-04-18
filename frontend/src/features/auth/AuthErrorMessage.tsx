@@ -29,7 +29,7 @@ export default function AuthErrorMessage({
         action={
           onRetry ? (
             <Button size="small" onClick={onRetry}>
-              {retryLabel ?? descriptor.retryLabel ?? 'Retry'}
+              {retryLabel ?? descriptor.retryLabel ?? '重试'}
             </Button>
           ) : undefined
         }

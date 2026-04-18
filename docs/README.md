@@ -31,6 +31,8 @@
 这些文档仍然有工程参考价值，但不应自动被当作唯一真相：
 
 - sprint / phase / migration / refactor 相关文档
+- `docs/creative-progressive-rebuild-final-summary.md`（Creative 渐进式重建 A~D 阶段收口总结）
+- `docs/frontend-ui-issues-and-improvements.md`（当前前端界面问题分析与改进方向）
 - 专题设计说明（如 settings、topic、task semantics、generation governance）
 - `docs/adr/` 中的决策记录
 - `docs/auth/README.md`（远程认证 / 本地授权门禁冻结文档入口；Step 0 artifacts）
