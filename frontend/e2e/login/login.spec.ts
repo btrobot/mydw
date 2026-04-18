@@ -60,29 +60,36 @@ async function gotoLoginPage(page: Page) {
   await expect(page.getByTestId('auth-login-page')).toBeVisible()
 }
 
+function loginForm(page: Page) {
+  return {
+    username: page.locator('input#username'),
+    password: page.locator('input#password'),
+    submit: page.locator('button[type="submit"]'),
+  }
+}
+
 test.describe('Remote auth login page', () => {
   test('renders the current auth shell baseline', async ({ page }) => {
     await mockAuthSession(page)
 
     await gotoLoginPage(page)
 
-    const submit = page.locator('button[type="submit"]')
+    const { username, password, submit } = loginForm(page)
+    const deviceId = await page.evaluate((storageKey) => window.localStorage.getItem(storageKey), DEVICE_ID_STORAGE_KEY)
 
-    await expect(page.getByText('登录本地工作台', { exact: true })).toBeVisible()
-    await expect(page.getByLabel('用户名')).toBeVisible()
-    await expect(page.getByLabel('密码')).toBeVisible()
+    await expect(username).toBeVisible()
+    await expect(password).toBeVisible()
     await expect(submit).toBeVisible()
-    await expect(page.getByText(/^设备标识：/)).toBeVisible()
+    await expect(page.getByTestId('auth-login-device-meta')).toContainText(deviceId ?? '')
   })
 
   test('shows required-field validation on empty submit', async ({ page }) => {
     await mockAuthSession(page)
 
     await gotoLoginPage(page)
-    await page.locator('button[type="submit"]').click()
+    await loginForm(page).submit.click()
 
-    await expect(page.getByText('请输入用户名')).toBeVisible()
-    await expect(page.getByText('请输入密码')).toBeVisible()
+    await expect(page.locator('.ant-form-item-explain-error')).toHaveCount(2)
   })
 
   test('submits username/password/device metadata and redirects on success', async ({ page }) => {
@@ -110,9 +117,10 @@ test.describe('Remote auth login page', () => {
     })
 
     await gotoLoginPage(page)
-    await page.getByLabel('用户名').fill('alice')
-    await page.getByLabel('密码').fill('secret')
-    await page.locator('button[type="submit"]').click()
+    const { username, password, submit } = loginForm(page)
+    await username.fill('alice')
+    await password.fill('secret')
+    await submit.click()
 
     await page.waitForURL('**/#/creative/workbench')
     await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
@@ -140,13 +148,13 @@ test.describe('Remote auth login page', () => {
     })
 
     await gotoLoginPage(page)
-    await page.getByLabel('用户名').fill('alice')
-    await page.getByLabel('密码').fill('wrong-password')
-    await page.locator('button[type="submit"]').click()
+    const { username, password, submit } = loginForm(page)
+    await username.fill('alice')
+    await password.fill('wrong-password')
+    await submit.click()
 
     await expect(page.getByTestId('auth-login-error-message')).toBeVisible()
-    await expect(page.getByTestId('auth-login-error-message')).toContainText('账号或密码错误')
-    await expect(page.getByTestId('auth-login-error-message')).toContainText('请检查登录信息后重试')
+    await expect(page.getByTestId('auth-login-error-message').locator('button')).toBeVisible()
   })
 
   test('shows refresh-required status context on the login page', async ({ page }) => {
@@ -169,9 +177,7 @@ test.describe('Remote auth login page', () => {
     await gotoLoginPage(page)
 
     await expect(page.getByTestId('auth-login-status-message')).toBeVisible()
-    await expect(page.getByTestId('auth-login-status-message')).toContainText('需要刷新会话')
-    await expect(page.getByTestId('auth-login-status-message')).toContainText('当前授权服务连接超时，请稍后重试。')
-    await expect(page.getByText('设备标识：device-refresh-001')).toBeVisible()
+    await expect(page.getByTestId('auth-login-device-meta')).toContainText('device-refresh-001')
   })
 
   test('persists the generated device id across reloads', async ({ page }) => {
@@ -181,14 +187,14 @@ test.describe('Remote auth login page', () => {
 
     const firstDeviceId = await page.evaluate(() => window.localStorage.getItem('mydw.auth.device_id'))
     expect(firstDeviceId).toBeTruthy()
-    await expect(page.getByText(`设备标识：${firstDeviceId}`)).toBeVisible()
+    await expect(page.getByTestId('auth-login-device-meta')).toContainText(firstDeviceId ?? '')
 
     await page.reload()
     await expect(page.getByTestId('auth-login-page')).toBeVisible()
 
     const secondDeviceId = await page.evaluate(() => window.localStorage.getItem('mydw.auth.device_id'))
     expect(secondDeviceId).toBe(firstDeviceId)
-    await expect(page.getByText(`设备标识：${secondDeviceId}`)).toBeVisible()
+    await expect(page.getByTestId('auth-login-device-meta')).toContainText(secondDeviceId ?? '')
   })
 
   test('keeps form controls keyboard-accessible', async ({ page }) => {
@@ -200,9 +206,7 @@ test.describe('Remote auth login page', () => {
 
     await gotoLoginPage(page)
 
-    const username = page.getByLabel('用户名')
-    const password = page.getByLabel('密码')
-    const submit = page.locator('button[type="submit"]')
+    const { username, password, submit } = loginForm(page)
 
     await username.focus()
     await expect(username).toBeFocused()

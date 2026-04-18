@@ -133,4 +133,20 @@ test.describe('Task diagnostics positioning', () => {
     await page.waitForURL('**/#/creative/workbench')
     await expect(page.getByTestId('creative-workbench-publish-summary')).toBeVisible()
   })
+
+  test('shows dashboard publish failures as explicit errors instead of idle state', async ({ page }) => {
+    await page.route('**/api/publish/status', async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'publish status failed' }),
+      })
+    })
+
+    await page.goto(`${BASE_URL}/#/dashboard`)
+
+    await expect(page.getByTestId('dashboard-publish-status-error')).toBeVisible()
+    await expect(page.getByTestId('dashboard-publish-status-error').locator('button')).toBeVisible()
+  })
 })
+

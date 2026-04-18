@@ -59,6 +59,7 @@ export const useCreatives = (params?: CreativeListParams) =>
     queryKey: creativeQueryKeys.list(params),
     queryFn: async () => {
       const response = await listCreativesApiCreativesGet({
+        throwOnError: true,
         query: {
           skip: params?.skip ?? 0,
           limit: params?.limit ?? 50,
@@ -76,6 +77,7 @@ export const useCreative = (creativeId: number | undefined) =>
     queryKey: creativeQueryKeys.detail(creativeId),
     queryFn: async () => {
       const response = await getCreativeApiCreativesCreativeIdGet({
+        throwOnError: true,
         path: { creative_id: creativeId! },
       })
 
@@ -96,6 +98,7 @@ export const usePublishPoolItems = (params?: {
     queryKey: creativeQueryKeys.publishPoolList(params),
     queryFn: async () => {
       const response = await listPublishPoolItemsApiCreativePublishPoolGet({
+        throwOnError: true,
         query: {
           skip: params?.skip ?? 0,
           limit: params?.limit ?? 50,
@@ -114,7 +117,9 @@ export const usePublishStatus = () =>
   useQuery<PublishStatusResponse | undefined>({
     queryKey: creativeQueryKeys.publishStatus(),
     queryFn: async () => {
-      const response = await getPublishStatusApiPublishStatusGet()
+      const response = await getPublishStatusApiPublishStatusGet({
+        throwOnError: true,
+      })
       return response.data
     },
     retry: false,
@@ -124,7 +129,9 @@ export const useScheduleConfig = () =>
   useQuery<ScheduleConfigResponse | undefined>({
     queryKey: creativeQueryKeys.scheduleConfig(),
     queryFn: async () => {
-      const response = await getScheduleConfigApiScheduleConfigGet()
+      const response = await getScheduleConfigApiScheduleConfigGet({
+        throwOnError: true,
+      })
       return response.data
     },
     retry: false,

@@ -132,9 +132,9 @@ async function mockCreativeApis(page: Page) {
         display_name: 'Alice',
         license_status: 'active',
         entitlements: ['dashboard:view'],
-        expires_at: '2026-04-20T10:00:00',
-        last_verified_at: '2026-04-14T00:00:00',
-        offline_grace_until: '2026-04-21T10:00:00',
+        expires_at: '2026-04-20T10:00:00Z',
+        last_verified_at: '2026-04-14T00:00:00Z',
+        offline_grace_until: '2026-04-21T10:00:00Z',
         denial_reason: null,
         device_id: 'device-1',
       }),
@@ -316,5 +316,37 @@ test.describe('Creative workbench baseline', () => {
     await page.getByTestId('creative-open-task-diagnostics').click()
     await page.waitForURL('**/#/task/901')
     await expect(page.getByTestId('task-detail-diagnostics-banner')).toBeVisible()
+  })
+
+  test('shows an explicit error state when the workbench list request fails', async ({ page }) => {
+    await page.unroute('**/api/creatives?**')
+    await page.route('**/api/creatives?**', async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'boom' }),
+      })
+    })
+
+    await page.goto(`${BASE_URL}/#/creative/workbench`)
+
+    await expect(page.getByTestId('creative-workbench-error')).toBeVisible()
+    await expect(page.locator('body')).toContainText('作品列表暂时不可用')
+  })
+
+  test('shows an explicit error state when the detail request fails', async ({ page }) => {
+    await page.unroute('**/api/creatives/101')
+    await page.route('**/api/creatives/101', async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'boom' }),
+      })
+    })
+
+    await page.goto(`${BASE_URL}/#/creative/101`)
+
+    await expect(page.getByTestId('creative-detail-error')).toBeVisible()
+    await expect(page.locator('body')).toContainText('作品详情暂时无法加载')
   })
 })

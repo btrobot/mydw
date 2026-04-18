@@ -1,12 +1,12 @@
-import { Button, Card, Form, Input, Space, Typography, message } from 'antd'
+import { Alert, Button, Card, Form, Input, Space, Typography, message } from 'antd'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import AuthErrorMessage from './AuthErrorMessage'
-import { loginAuth } from './api'
 import { useAuth } from './AuthProvider'
 import { getAuthErrorDescriptor, getAuthStateDescriptor, type AuthErrorDescriptor } from './authErrorHandler'
+import { loginAuth } from './api'
 import { getClientVersion, getOrCreateDeviceId, setStoredDeviceId } from './device'
 import { useAuthStatus } from './useAuthStatus'
 
@@ -97,10 +97,28 @@ export default function LoginPage() {
           <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
             登录后即可继续使用作品工作台、运行总览和任务诊断等本地能力。
           </Typography.Paragraph>
-          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            设备标识：{deviceId}
-          </Typography.Paragraph>
+
+          {authStatusQuery.isLoading && session ? (
+            <Alert
+              type="info"
+              showIcon
+              message="正在同步授权状态"
+              description="正在刷新当前设备的授权信息，请稍候。"
+            />
+          ) : null}
+
+          {authStatusQuery.isError && session ? (
+            <Alert
+              type="warning"
+              showIcon
+              message="授权状态暂时无法刷新"
+              description="登录页仍可继续提交，但当前设备状态尚未完成最新同步。"
+              action={<Button size="small" onClick={() => void authStatusQuery.refetch()}>重试</Button>}
+            />
+          ) : null}
+
           {statusAlert}
+
           <Form
             form={form}
             layout="vertical"
@@ -137,6 +155,7 @@ export default function LoginPage() {
               </Button>
             </Form.Item>
           </Form>
+
           {submitError && (
             <AuthErrorMessage
               descriptor={submitError}
@@ -144,6 +163,15 @@ export default function LoginPage() {
               testId="auth-login-error-message"
             />
           )}
+
+          <div data-testid="auth-login-device-meta">
+            <Typography.Paragraph type="secondary" style={{ marginBottom: 4 }}>
+              本机授权信息仅用于当前设备登录校验，不影响页面主流程。
+            </Typography.Paragraph>
+            <Typography.Text type="secondary">设备标识：{deviceId}</Typography.Text>
+            <br />
+            <Typography.Text type="secondary">客户端版本：{clientVersion}</Typography.Text>
+          </div>
         </Space>
       </Card>
     </div>

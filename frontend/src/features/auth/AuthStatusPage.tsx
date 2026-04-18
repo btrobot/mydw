@@ -3,10 +3,10 @@ import { useMutation } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 
-import { logoutAuth } from './api'
-import { useAuth } from './AuthProvider'
 import AuthErrorMessage from './AuthErrorMessage'
+import { useAuth } from './AuthProvider'
 import { getAuthStateDescriptor } from './authErrorHandler'
+import { logoutAuth } from './api'
 import { useAuthStatus } from './useAuthStatus'
 
 type AuthStatusVariant = 'revoked' | 'device_mismatch' | 'expired' | 'grace'
@@ -53,9 +53,10 @@ export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
 
   const content = useMemo(() => STATUS_CONTENT[variant], [variant])
   const isGraceVariant = variant === 'grace'
+  const liveSession = authStatusQuery.data ?? session
   const liveDescriptor = useMemo(
-    () => getAuthStateDescriptor(authStatusQuery.data ?? session),
-    [authStatusQuery.data, session]
+    () => getAuthStateDescriptor(liveSession),
+    [liveSession],
   )
 
   const logoutMutation = useMutation({
@@ -102,6 +103,25 @@ export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
             description={content.description}
           />
 
+          {authStatusQuery.isLoading ? (
+            <Alert
+              type="info"
+              showIcon
+              message="正在刷新授权状态"
+              description="正在同步最新设备授权结果，请稍候。"
+            />
+          ) : null}
+
+          {authStatusQuery.isError && !liveDescriptor ? (
+            <Alert
+              type="warning"
+              showIcon
+              message="授权状态暂时无法刷新"
+              description="当前页面保留最近一次会话信息，请稍后重试。"
+              action={<Button size="small" onClick={() => void authStatusQuery.refetch()}>重试</Button>}
+            />
+          ) : null}
+
           {liveDescriptor && (
             <AuthErrorMessage
               descriptor={liveDescriptor}
@@ -110,24 +130,29 @@ export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
             />
           )}
 
-          {session && (
-            <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-              {session.display_name
-                ? `当前账号：${session.display_name}`
-                : session.device_id
-                  ? `当前设备标识：${session.device_id}`
-                  : '当前授权会话需要重新确认。'}
-            </Typography.Paragraph>
-          )}
+          {liveSession ? (
+            <div data-testid="auth-status-session-meta">
+              <Typography.Paragraph type="secondary" style={{ marginBottom: 4 }}>
+                以下信息仅用于说明当前设备会话状态，主操作请使用下方入口。
+              </Typography.Paragraph>
+              {liveSession.display_name ? (
+                <Typography.Text type="secondary">当前账号：{liveSession.display_name}</Typography.Text>
+              ) : liveSession.device_id ? (
+                <Typography.Text type="secondary">当前设备标识：{liveSession.device_id}</Typography.Text>
+              ) : (
+                <Typography.Text type="secondary">当前授权会话需要重新确认。</Typography.Text>
+              )}
+            </div>
+          ) : null}
 
           <Space wrap>
             {isGraceVariant ? (
               <>
                 <Button type="primary" onClick={() => navigate('/creative/workbench')}>
-                  打开作品工作台
+                  继续进入作品工作台
                 </Button>
                 <Button onClick={() => navigate('/dashboard')}>
-                  打开运行总览
+                  查看运行总览
                 </Button>
                 <Button
                   onClick={() => logoutMutation.mutate()}
