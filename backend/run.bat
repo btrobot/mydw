@@ -26,11 +26,18 @@ if exist "venv\Scripts\python.exe" (
 if not exist "data" mkdir data
 if not exist "logs" mkdir logs
 
+set "LAUNCHER=%~dp0..\frontend\electron\launchers\start-backend-dev.bat"
+
 echo Backend service
 echo ========================
 echo Python: %PYTHON_EXE%
 echo Host:   %HOST%
 echo Port:   %PORT%
 echo.
+
+if exist "%LAUNCHER%" (
+  call "%LAUNCHER%" "%~dp0" "%HOST%" "%PORT%"
+  exit /b %errorlevel%
+)
 
 "%PYTHON_EXE%" -m uvicorn main:app --host %HOST% --port %PORT%

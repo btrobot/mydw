@@ -229,9 +229,11 @@ class TestConnectionStatusManager:
         await manager.set_status(1, ConnectionStatus.WAITING_PHONE, "Initial", 10)
 
         received = []
-        async for event in manager.subscribe(1):
-            received.append(event)
-            break  # Take only the initial event
+        stream = manager.subscribe(1)
+        try:
+            received.append(await anext(stream))
+        finally:
+            await stream.aclose()
 
         assert len(received) == 1
         assert received[0]["status"] == ConnectionStatus.WAITING_PHONE
@@ -242,10 +244,14 @@ class TestConnectionStatusManager:
         received = []
 
         async def subscriber():
-            async for event in manager.subscribe(1):
-                received.append(event)
-                if event.get("status") == ConnectionStatus.SUCCESS:
-                    break
+            stream = manager.subscribe(1)
+            try:
+                async for event in stream:
+                    received.append(event)
+                    if event.get("status") == ConnectionStatus.SUCCESS:
+                        break
+            finally:
+                await stream.aclose()
 
         # Start subscriber in background
         task = asyncio.create_task(subscriber())
@@ -271,9 +277,11 @@ class TestConnectionStatusManager:
         received = []
 
         async def subscriber():
-            async for event in manager.subscribe(1):
-                received.append(event)
-                break
+            stream = manager.subscribe(1)
+            try:
+                received.append(await anext(stream))
+            finally:
+                await stream.aclose()
 
         task = asyncio.create_task(subscriber())
         await asyncio.sleep(0.05)

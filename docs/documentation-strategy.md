@@ -102,3 +102,4 @@
 - `docs/doc-inventory-ledger.md`：当前分类台账
 - `docs/runtime-local-artifact-policy.md`：runtime / local artifact 边界
 - `docs/multi-agent-guide.md`：如何在当前仓库里使用多 agent 协作
+- `docs/archive/reference/system-architecture.md`：历史架构长文，保留作 archive/reference 参考，不再作为当前默认入口

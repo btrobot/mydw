@@ -480,6 +480,11 @@ class AuthService:
             )
             return self._build_summary(session)
 
+        resolved_device_id = self._resolve_device_id(session.device_id)
+        session.device_id = resolved_device_id
+        await self.db.commit()
+        resolved_client_version = client_version or settings.APP_VERSION
+
         # Emit refresh started event
         auth_event_emitter.refresh_started(
             remote_user_id=session.remote_user_id,
@@ -488,7 +493,11 @@ class AuthService:
 
         client = self.remote_client_factory()
         try:
-            payload = await client.refresh(refresh_token=refresh_token)
+            payload = await client.refresh(
+                refresh_token=refresh_token,
+                device_id=resolved_device_id,
+                client_version=resolved_client_version,
+            )
         except RemoteAuthResponseError as exc:
             previous_state = session.auth_state
             await self._apply_remote_rejection(session, exc, device_id=session.device_id)
