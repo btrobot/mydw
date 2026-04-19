@@ -1,30 +1,36 @@
-import { Button, Space, Tag, Typography, message } from 'antd'
+import { App as AntApp, Button, Space, Tag, Typography } from 'antd'
 import { useMutation } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { logoutAuth } from './api'
 import { useAuth } from './AuthProvider'
+import type { AuthState } from './types'
 
 const { Text } = Typography
 
 const STATUS_META: Record<
-  string,
+  AuthState,
   {
     color: string
     label: string
   }
 > = {
-  authenticated_active: { color: 'success', label: '已授权' },
+  authenticated_active: { color: 'success', label: '已登录' },
   authenticated_grace: { color: 'warning', label: '宽限模式' },
-  revoked: { color: 'error', label: '已失效' },
-  device_mismatch: { color: 'error', label: '设备不匹配' },
-  expired: { color: 'warning', label: '已过期' },
+  revoked: { color: 'error', label: '权限失效' },
+  device_mismatch: { color: 'error', label: '设备未校验' },
+  expired: { color: 'warning', label: '登录过期' },
+  refresh_required: { color: 'warning', label: '待重新确认' },
+  authorizing: { color: 'processing', label: '校验中' },
   unauthenticated: { color: 'default', label: '未登录' },
-  error: { color: 'warning', label: '异常' },
+  error: { color: 'warning', label: '状态异常' },
 }
 
+const UNKNOWN_STATUS_META = { color: 'default', label: '状态未知' } as const
+
 export default function AuthSessionHeader() {
+  const { message } = AntApp.useApp()
   const { session, authState, setSession } = useAuth()
   const navigate = useNavigate()
 
@@ -45,14 +51,14 @@ export default function AuthSessionHeader() {
   })
 
   const meta = useMemo(
-    () => STATUS_META[authState] ?? { color: 'default', label: authState },
+    () => (authState === 'unknown' ? UNKNOWN_STATUS_META : STATUS_META[authState]),
     [authState]
   )
 
   return (
     <Space data-testid="auth-session-header">
       {session?.display_name && <Text style={{ color: 'white' }}>{session.display_name}</Text>}
-      <Tag color={meta.color}>{meta.label}</Tag>
+      <Tag color={meta.color} data-testid="auth-session-status-tag">{meta.label}</Tag>
       {authState !== 'unauthenticated' && (
         <Button
           size="small"

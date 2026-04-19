@@ -10,8 +10,8 @@ const GraceBanner = () => (
     <Alert
       type="warning"
       showIcon
-      message="当前处于离线宽限模式"
-      description="你仍可查看现有本地数据，但高风险操作会继续受限。"
+      message="当前处于宽限模式"
+      description="当前网络或授权服务暂不可用，你仍可查看已有内容，但受保护操作会受限。"
     />
   </div>
 )

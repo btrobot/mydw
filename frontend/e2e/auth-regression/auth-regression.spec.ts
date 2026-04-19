@@ -12,9 +12,9 @@ test.describe('Auth regression and polish', () => {
     await page.goto(`${BASE_URL}/#/login`)
     await page.waitForURL('**/#/creative/workbench')
     await expect(page.getByTestId('auth-session-header')).toBeVisible()
+    await expect(page.getByTestId('auth-session-status-tag')).toHaveText('已登录')
     await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
     await expect(page.locator('body')).toContainText('Alice')
-    await expect(page.locator('body')).toContainText('Authenticated')
   })
 
   test('signs out from header and returns to login', async ({ page }) => {
