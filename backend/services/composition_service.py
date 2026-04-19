@@ -18,7 +18,8 @@ from core.auth_dependencies import require_active_service_session
 from models import CompositionJob, Task
 from schemas.auth import LocalAuthSessionSummary
 from services.creative_generation_service import CreativeGenerationService
-from services.task_compat_service import resolve_primary_task_video
+from services.local_ffmpeg_composition_service import LocalFFmpegCompositionService
+from services.task_compat_service import resolve_primary_task_audio, resolve_primary_task_video
 from services.task_service import TaskService
 from utils.time import utc_now_naive
 
@@ -31,6 +32,7 @@ class CompositionService:
         self._auth_summary = auth_summary
         self._task_service = TaskService(db, auth_summary=auth_summary)
         self._creative_generation_service = CreativeGenerationService(db)
+        self._local_ffmpeg_service = LocalFFmpegCompositionService()
 
     # ------------------------------------------------------------------
     # 内部辅助
@@ -53,6 +55,34 @@ class CompositionService:
         if not job:
             raise ValueError(f"合成任务 {job_id} 不存在")
         return job
+
+    async def _execute_local_ffmpeg_composition(
+        self,
+        *,
+        job: CompositionJob,
+        task: Task,
+        composition_params: str | None,
+    ) -> None:
+        video = await resolve_primary_task_video(self.db, task)
+        if not video or not video.file_path:
+            raise ValueError(f"任务 {task.id} 缺少可合成的视频输入")
+
+        audio = await resolve_primary_task_audio(self.db, task)
+        result = await self._local_ffmpeg_service.compose(
+            task_id=task.id,
+            source_video_path=video.file_path,
+            audio_path=audio.file_path if audio and audio.file_path else None,
+            raw_params=composition_params,
+        )
+        await self.handle_success(
+            job.id,
+            {
+                "video_path": result.output_video_path,
+                "duration": result.output_video_duration,
+                "size": result.output_video_size,
+            },
+        )
+        await self.db.refresh(job)
 
     # ------------------------------------------------------------------
     # 公开方法
@@ -123,6 +153,9 @@ class CompositionService:
 
             external_job_id = await coze.submit_composition(workflow_id, params)
 
+        elif composition_mode == "local_ffmpeg":
+            logger.info("composition_mode=local_ffmpeg，将在本地同步执行: task_id={}", task_id)
+
         elif composition_mode == "none":
             logger.info(
                 "composition_mode=none，跳过合成直接创建 job: task_id={}", task_id
@@ -152,6 +185,18 @@ class CompositionService:
         await self.db.commit()
         await self.db.refresh(job)
 
+        if composition_mode == "local_ffmpeg":
+            try:
+                await self._execute_local_ffmpeg_composition(
+                    job=job,
+                    task=task,
+                    composition_params=profile.composition_params,
+                )
+            except Exception as exc:
+                error_msg = str(exc)
+                await self.handle_failure(job.id, error_msg)
+                raise ValueError(error_msg) from exc
+
         logger.info(
             "合成任务已创建: task_id={}, job_id={}, external_job_id={}",
             task_id,
@@ -172,9 +217,11 @@ class CompositionService:
         already_completed = job.status == "completed"
 
         video_url: Optional[str] = output.get("video_url")
-        local_path: Optional[str] = None
+        local_path: Optional[str] = output.get("video_path")
+        duration: Optional[int] = output.get("duration")
+        size: Optional[int] = output.get("size")
 
-        if video_url:
+        if video_url and not local_path:
             dest = Path("data/videos")
             dest.mkdir(parents=True, exist_ok=True)
             local_path = str(dest / f"final_{job.task_id}.mp4")
@@ -196,8 +243,8 @@ class CompositionService:
                 )
                 await self.handle_failure(job_id, f"视频下载失败: {type(e).__name__}")
                 return
-        else:
-            logger.warning("合成输出中未包含 video_url: job_id={}", job_id)
+        elif not local_path:
+            logger.warning("合成输出中既没有 video_url 也没有 video_path: job_id={}", job_id)
 
         # 更新 CompositionJob
         job.status = "completed"
@@ -210,6 +257,8 @@ class CompositionService:
         # 更新 Task
         task.status = "ready"
         task.final_video_path = local_path
+        task.final_video_duration = duration
+        task.final_video_size = size
         task.updated_at = utc_now_naive()
 
         if not already_completed:

@@ -256,3 +256,41 @@ async def test_legacy_task_without_creative_mapping_keeps_existing_composition_s
     assert persisted_task.creative_item_id is None
     assert persisted_task.creative_version_id is None
     assert creative_count == []
+
+
+@pytest.mark.asyncio
+async def test_handle_success_accepts_local_video_path_and_writeback_metadata(
+    db_session: AsyncSession,
+) -> None:
+    account = Account(account_id="legacy-local-path-account", account_name="Legacy Local Path")
+    db_session.add(account)
+    await db_session.flush()
+    task = Task(account_id=account.id, status="composing", name="Legacy Local Path Task")
+    db_session.add(task)
+    await db_session.flush()
+    job = CompositionJob(task_id=task.id, workflow_type="local_ffmpeg", status="pending")
+    db_session.add(job)
+    await db_session.flush()
+    task.composition_job_id = job.id
+    await db_session.commit()
+
+    await CompositionService(db_session).handle_success(
+        job.id,
+        {
+            "video_path": "data/videos/final_legacy_local_path.mp4",
+            "duration": 15,
+            "size": 2048,
+        },
+    )
+
+    persisted_task = await db_session.get(Task, task.id)
+    persisted_job = await db_session.get(CompositionJob, job.id)
+
+    assert persisted_job is not None
+    assert persisted_job.status == "completed"
+    assert persisted_job.output_video_path == "data/videos/final_legacy_local_path.mp4"
+    assert persisted_task is not None
+    assert persisted_task.status == "ready"
+    assert persisted_task.final_video_path == "data/videos/final_legacy_local_path.mp4"
+    assert persisted_task.final_video_duration == 15
+    assert persisted_task.final_video_size == 2048

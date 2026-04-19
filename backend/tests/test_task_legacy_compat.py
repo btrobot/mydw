@@ -11,9 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import (
     Account,
+    Audio,
     Copywriting,
     PublishProfile,
     Task,
+    TaskAudio,
     TaskCopywriting,
     TaskVideo,
     Video,
@@ -22,6 +24,7 @@ from services.composition_service import CompositionService
 from services.task_compat_service import (
     count_tasks_referencing_copywriting,
     count_tasks_referencing_video,
+    resolve_primary_task_audio,
     resolve_primary_task_video,
 )
 
@@ -49,6 +52,13 @@ async def _create_copywriting(db: AsyncSession, suffix: str) -> Copywriting:
     db.add(copywriting)
     await db.flush()
     return copywriting
+
+
+async def _create_audio(db: AsyncSession, suffix: str) -> Audio:
+    audio = Audio(name=f"audio_{suffix}.mp3", file_path=f"audios/audio_{suffix}.mp3")
+    db.add(audio)
+    await db.flush()
+    return audio
 
 
 async def _create_profile(db: AsyncSession, suffix: str) -> PublishProfile:
@@ -116,6 +126,30 @@ async def test_resolve_primary_task_video_prefers_relation_table_but_falls_back_
     assert preferred.id == relation_video.id
     assert fallback is not None
     assert fallback.id == legacy_video.id
+
+
+@pytest.mark.asyncio
+async def test_resolve_primary_task_audio_prefers_relation_table_but_falls_back_to_legacy(
+    db_session: AsyncSession,
+) -> None:
+    account = await _create_account(db_session, "resolve_audio")
+    legacy_audio = await _create_audio(db_session, "legacy_only")
+    relation_audio = await _create_audio(db_session, "relation_first")
+
+    relation_task = Task(account_id=account.id, status="draft", audio_id=legacy_audio.id)
+    legacy_only_task = Task(account_id=account.id, status="draft", audio_id=legacy_audio.id)
+    db_session.add_all([relation_task, legacy_only_task])
+    await db_session.flush()
+    db_session.add(TaskAudio(task_id=relation_task.id, audio_id=relation_audio.id, sort_order=0))
+    await db_session.commit()
+
+    preferred = await resolve_primary_task_audio(db_session, relation_task)
+    fallback = await resolve_primary_task_audio(db_session, legacy_only_task)
+
+    assert preferred is not None
+    assert preferred.id == relation_audio.id
+    assert fallback is not None
+    assert fallback.id == legacy_audio.id
 
 
 @pytest.mark.asyncio

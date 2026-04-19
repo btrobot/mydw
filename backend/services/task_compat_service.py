@@ -13,7 +13,7 @@ from loguru import logger
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import Task, TaskCopywriting, TaskVideo, Video
+from models import Audio, Task, TaskAudio, TaskCopywriting, TaskVideo, Video
 
 
 async def resolve_primary_task_video(db: AsyncSession, task: Task) -> Optional[Video]:
@@ -38,6 +38,33 @@ async def resolve_primary_task_video(db: AsyncSession, task: Task) -> Optional[V
     if task.video_id:
         logger.debug("任务 {} 回退到 legacy tasks.video_id={}", task.id, task.video_id)
         legacy_stmt = select(Video).where(Video.id == task.video_id)
+        return (await db.execute(legacy_stmt)).scalars().first()
+
+    return None
+
+
+async def resolve_primary_task_audio(db: AsyncSession, task: Task) -> Optional[Audio]:
+    """
+    Resolve a task's primary audio track during the compatibility window.
+
+    Preference order:
+    1. ordered `task_audios` relation rows (authoritative source)
+    2. legacy `tasks.audio_id` fallback
+    """
+    relation_stmt = (
+        select(Audio)
+        .join(TaskAudio, TaskAudio.audio_id == Audio.id)
+        .where(TaskAudio.task_id == task.id)
+        .order_by(TaskAudio.sort_order.asc(), TaskAudio.id.asc())
+        .limit(1)
+    )
+    relation_audio = (await db.execute(relation_stmt)).scalars().first()
+    if relation_audio:
+        return relation_audio
+
+    if task.audio_id:
+        logger.debug("任务 {} 回退到 legacy tasks.audio_id={}", task.id, task.audio_id)
+        legacy_stmt = select(Audio).where(Audio.id == task.audio_id)
         return (await db.execute(legacy_stmt)).scalars().first()
 
     return None
