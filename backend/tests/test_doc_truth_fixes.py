@@ -45,3 +45,36 @@ def test_doc_checklist_recognizes_current_vs_archival_docs() -> None:
     assert "current-runtime-truth.md" in checklist
     assert "stale" in checklist or "archival" in checklist or "过时" in checklist
     assert "system-architecture.md" in checklist
+
+
+def test_task_domain_doc_matches_local_ffmpeg_v1_truth() -> None:
+    doc = _read("docs/task-management-domain-model.md")
+
+    assert "local_ffmpeg V1" in doc
+    assert "不走 `CompositionPoller`" in doc
+    assert "1 个视频输入" in doc
+    assert "0/1 个音频输入" in doc
+    assert "multi-video montage" in doc
+    assert "本地同步执行" in doc
+
+
+def test_task_semantics_doc_no_longer_claims_broad_local_ffmpeg_inputs() -> None:
+    doc = _read("docs/task-semantics.md")
+
+    assert "local_ffmpeg V1" in doc
+    assert "broader composition inputs surface" in doc
+    assert "submit_composition()" in doc
+    assert "final_video_path" in doc
+    assert "CompositionPoller" in doc
+    assert "broader composition inputs 仍然允许" not in doc
+
+
+def test_local_ffmpeg_closeout_doc_lists_support_limits_and_regression_commands() -> None:
+    doc = _read("docs/local-ffmpeg-composition.md")
+
+    assert "PR-4 docs + regression closeout" in doc
+    assert "1 个视频输入" in doc
+    assert "0/1 个音频输入" in doc
+    assert "multi-video montage" in doc
+    assert "pytest tests/test_local_ffmpeg_composition.py" in doc
+    assert "npm run typecheck" in doc

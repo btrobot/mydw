@@ -1,420 +1,258 @@
-# 任务管理领域模型设计
+# 任务管理领域模型（当前真实版本）
 
-> 版本: 2.1.0 | 创建日期: 2026-04-09
-> 作者: Tech Lead
-> 状态: Approved (Architecture Review 通过)
+> Status: Current  
+> Last updated: 2026-04-20  
+> Scope: Task / PublishProfile / CompositionJob / 发布执行语义
 
----
-
-## 一、业务全景
-
-```
-素材编排 ──→ 视频合成（Coze / 本地 FFmpeg） ──→ 调度上传（Patchright → 得物）
-```
-
-任务贯穿这三个阶段。合成配置跟任务走（不同任务可用不同工作流），调度配置跟系统走（全局统一的时间窗口和频率控制）。
+本文只描述**当前仓库已经实现并可验证**的任务域模型。  
+历史方案、未落地设想、旧版 Coze/FFmpeg 混合草案，不应再作为当前真相来源。
 
 ---
 
-## 二、核心领域概念
+## 1. 当前任务主链
 
-| 概念 | 实体 | 职责 |
-|------|------|------|
-| 任务 | Task | 单个发布任务的全生命周期 |
-| 合成配置档 | PublishProfile | 可复用的合成配置（合成方式 + 话题 + 重试策略） |
-| 调度配置 | ScheduleConfig | 全局单例，上传调度参数（时间窗口 + 频率 + 限额） |
-| 合成任务 | CompositionJob | 视频合成的执行过程和结果 |
+当前任务系统围绕 `Task` 运转，主链分成三种执行路径：
 
-### 为什么这样划分？
+1. **direct publish / `composition_mode = none`**
+   - 不需要合成
+   - 任务创建后可直接进入可发布语义
+2. **Coze composition / `composition_mode = coze`**
+   - 走远端工作流
+   - 由 `CompositionJob` 跟踪外部执行
+   - 通过 `CompositionPoller` 轮询收口
+3. **local_ffmpeg composition / `composition_mode = local_ffmpeg`**
+   - 走本地 FFmpeg V1
+   - 由 `CompositionJob` 记录执行结果
+   - **不走 `CompositionPoller`**
+   - 当前实现是**本地同步执行并立即写回结果**
 
-- **合成配置跟任务走** — 不同任务可以用不同的 Coze 工作流
-- **调度配置跟系统走** — 时间窗口、间隔、日限额是全局运行参数，不是任务级参数
-- **TaskBatch 降级为内部字段** — 用户日常关心单个任务状态，"批次"作为 Task.batch_id 追溯字段即可，不暴露为一级概念
+可视化理解：
 
----
-
-## 三、实体设计
-
-### 3.1 PublishProfile（合成配置档）
-
-```sql
-CREATE TABLE publish_profiles (
-  id                      INTEGER PRIMARY KEY AUTOINCREMENT,
-  name                    VARCHAR(128) NOT NULL UNIQUE,
-  is_default              BOOLEAN DEFAULT FALSE,          -- 缺省配置标记（全局唯一）
-
-  -- 合成配置
-  composition_mode        VARCHAR(32) DEFAULT 'none',     -- 'none' / 'coze' / 'local_ffmpeg'
-  coze_workflow_id        VARCHAR(128),
-  composition_params      TEXT,                           -- JSON
-
-  -- 话题配置
-  global_topic_ids        TEXT DEFAULT '[]',              -- JSON array
-
-  -- 重试配置
-  auto_retry              BOOLEAN DEFAULT TRUE,
-  max_retry_count         INTEGER DEFAULT 3,
-
-  -- 审计
-  created_at              DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at              DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-缺省配置机制：
-- `is_default=True` 全局唯一（应用层保证）
-- 不指定 profile 的任务自动走缺省配置
-- 系统启动时自动创建 `name="默认配置", is_default=True, composition_mode='none'`
-
-### 3.2 ScheduleConfig（调度配置）
-
-```sql
-CREATE TABLE schedule_config (
-  id                      INTEGER PRIMARY KEY AUTOINCREMENT,
-  name                    VARCHAR(64) DEFAULT 'default',
-
-  -- 调度参数
-  start_hour              INTEGER DEFAULT 9,
-  end_hour                INTEGER DEFAULT 22,
-  interval_minutes        INTEGER DEFAULT 30,
-  max_per_account_per_day INTEGER DEFAULT 5,
-
-  -- 行为参数
-  shuffle                 BOOLEAN DEFAULT FALSE,
-  auto_start              BOOLEAN DEFAULT FALSE,
-
-  created_at              DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at              DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-全局单例，查询 `name='default'`。话题配置统一由 PublishProfile 管理，ScheduleConfig 不存话题。
-
-### 3.3 Task（任务）
-
-```sql
-CREATE TABLE tasks (
-  id                      INTEGER PRIMARY KEY AUTOINCREMENT,
-
-  -- 关联
-  profile_id              INTEGER REFERENCES publish_profiles(id),
-  account_id              INTEGER NOT NULL REFERENCES accounts(id),
-  product_id              INTEGER REFERENCES products(id),
-  batch_id                VARCHAR(64),          -- 批量创建追溯标识（内部用）
-
-  -- 素材
-  video_id                INTEGER REFERENCES videos(id),
-  copywriting_id          INTEGER REFERENCES copywritings(id),
-  audio_id                INTEGER REFERENCES audios(id),
-  cover_id                INTEGER REFERENCES covers(id),
-  source_video_ids        TEXT,                 -- JSON array，多视频输入
-
-  -- 合成结果
-  composition_job_id      INTEGER REFERENCES composition_jobs(id),
-  final_video_path        VARCHAR(512),
-  final_video_duration    INTEGER,
-  final_video_size        INTEGER,
-
-  -- 状态机
-  status                  VARCHAR(32) DEFAULT 'draft',
-  priority                INTEGER DEFAULT 0,
-  scheduled_time          DATETIME,
-  retry_count             INTEGER DEFAULT 0,
-  failed_at_status        VARCHAR(32),          -- 失败前状态（快速重试用）
-
-  -- 上传结果
-  uploaded_at             DATETIME,
-  dewu_video_id           VARCHAR(128),
-  dewu_video_url          VARCHAR(512),
-  error_msg               TEXT,
-
-  -- 审计
-  created_at              DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at              DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-### 3.4 CompositionJob（合成任务）
-
-```sql
-CREATE TABLE composition_jobs (
-  id                      INTEGER PRIMARY KEY AUTOINCREMENT,
-  task_id                 INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
-  workflow_type            VARCHAR(32),          -- 'coze' / 'local_ffmpeg'
-  workflow_id              VARCHAR(128),         -- Coze workflow_id
-  external_job_id          VARCHAR(128),         -- Coze execute_id
-  status                   VARCHAR(32) DEFAULT 'pending',
-  progress                 INTEGER DEFAULT 0,
-  output_video_path        VARCHAR(512),
-  output_video_url         VARCHAR(512),
-  error_msg                TEXT,
-  started_at               DATETIME,
-  completed_at             DATETIME,
-  created_at               DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at               DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-重试策略：
-- 重试合成时创建新的 CompositionJob，不更新旧记录
-- Task.composition_job_id 更新为最新 job ID
-- 旧 CompositionJob 保留作为历史（用于失败原因分析）
-
----
-
-## 四、状态机
-
-### 4.1 状态枚举
-
-```python
-class TaskStatus(str, Enum):
-    DRAFT     = "draft"       # 草稿（可编辑，等待提交合成）
-    COMPOSING = "composing"   # 合成中（等待 Coze/FFmpeg）
-    READY     = "ready"       # 待上传（合成完成或无需合成）
-    UPLOADING = "uploading"   # 上传中（Patchright 执行中）
-    UPLOADED  = "uploaded"    # 已上传（终态-成功）
-    FAILED    = "failed"      # 失败（可重试）
-    CANCELLED = "cancelled"   # 已取消（终态）
-```
-
-### 4.2 状态转换图
-
-```
-创建任务（composition_mode=none）──────────────────► ready
-创建任务（composition_mode=coze/ffmpeg）──► draft
-                                            │
-                                            │ 提交合成
-                                            ▼
-                                         composing
-                                            │
-                              ┌─────────────┼─────────────┐
-                              │ 合成完成     │              │ 合成失败
-                              ▼             │              ▼
-                           ready            │           failed
-                              │             │              │
-                              │ 调度上传     │   ┌──────────┤
-                              ▼             │   │ 快速重试   │ 编辑重试
-                          uploading         │   │ (自动继续)  │ (改素材)
-                              │             │   │           │
-                    ┌─────────┤             │   ▼           ▼
-                    │ 成功     │ 失败        │ composing   draft
-                    ▼         ▼             │ 或 ready
-                 uploaded   failed ─────────┘
-
-任何非终态 ──► cancelled（用户取消）
-```
-
-### 4.3 转换规则
-
-| 从 | 到 | 触发条件 |
-|----|-----|---------|
-| (创建) | ready | composition_mode == 'none'，跳过 draft |
-| (创建) | draft | composition_mode != 'none'，等待提交合成 |
-| draft | composing | 用户提交合成 |
-| composing | ready | CompositionJob 完成 |
-| composing | failed | CompositionJob 失败 |
-| ready | uploading | 调度器选中执行 |
-| uploading | uploaded | 上传成功 |
-| uploading | failed | 上传失败 |
-| failed | composing | 快速重试（合成阶段失败） |
-| failed | ready | 快速重试（上传阶段失败） |
-| failed | draft | 编辑重试（修改素材后重新提交） |
-| 任何非终态 | cancelled | 用户取消 |
-
-### 4.4 两种重试模式
-
-| 模式 | 操作 | 适用场景 | 用户动作 |
-|------|------|---------|---------|
-| 快速重试 | failed → 失败前的状态 | 临时性失败（网络超时、服务抖动） | 点"重试" |
-| 编辑重试 | failed → draft | 素材有问题需要修改 | 点"编辑"，改完再提交 |
-
-快速重试的目标状态由 `failed_at_status` 字段决定：
-
-```python
-# 标记失败时
-task.failed_at_status = task.status  # 记录失败前状态
-task.status = "failed"
-
-# 快速重试时
-task.status = task.failed_at_status  # 回到失败前状态
-task.failed_at_status = None
-task.retry_count += 1
+```text
+素材选择 -> Task -> (none | coze | local_ffmpeg) -> ready -> uploading -> uploaded
 ```
 
 ---
 
-## 五、配置解析机制
+## 2. 核心实体
 
-### 5.1 两级解析
+### 2.1 Task
 
-```
-Task.profile_id（任务级指定）
-  → is_default=True 的 Profile（系统缺省）
-```
+`Task` 是任务域的核心实体，负责承载：
 
-### 5.2 解析逻辑
+- 资源关联
+  - `videos`
+  - `copywritings`
+  - `covers`
+  - `audios`
+  - `topics`
+- 执行状态
+  - `draft`
+  - `composing`
+  - `ready`
+  - `uploading`
+  - `uploaded`
+  - `failed`
+  - `cancelled`
+- 执行结果
+  - `final_video_path`
+  - `final_video_duration`
+  - `final_video_size`
+  - `error_msg`
+  - `failed_at_status`
 
-```python
-async def resolve_profile(task: Task) -> PublishProfile:
-    if task.profile_id:
-        return await get_profile(task.profile_id)
-    return await get_default_profile()
-```
+### 2.2 PublishProfile
 
-### 5.3 配置职责分离
+`PublishProfile` 定义任务的执行模式与默认策略，当前与 PR-4 直接相关的字段有：
 
-| 配置 | 实体 | 跟谁走 | 示例 |
-|------|------|--------|------|
-| 合成方式 | PublishProfile | 跟任务 | "这批任务用 Coze 标准30s工作流" |
-| 话题标签 | PublishProfile | 跟任务 | "这批任务打上球鞋话题" |
-| 重试策略 | PublishProfile | 跟任务 | "最多重试3次" |
-| 时间窗口 | ScheduleConfig | 跟系统 | "全局 9-22 点上传" |
-| 上传间隔 | ScheduleConfig | 跟系统 | "全局每 30 分钟一个" |
-| 账号日限额 | ScheduleConfig | 跟系统 | "全局每账号每天最多 5 个" |
+- `composition_mode`
+  - `none`
+  - `coze`
+  - `local_ffmpeg`
+- `coze_workflow_id`
+- `composition_params`
+- `global_topic_ids`
 
----
+说明：
 
-## 六、调度架构
+- `coze_workflow_id` 只对 `coze` 有意义
+- `local_ffmpeg` 不允许把 `coze_workflow_id` 当成配置输入
+- `composition_params` 在 `local_ffmpeg` 下是 **JSON object**，用于承载 V1 可识别参数
 
-### 6.1 双调度器
+### 2.3 CompositionJob
 
-```
-┌──────────────────────────────────────────────┐
-│              SchedulerManager                 │
-│                                              │
-│  ┌────────────────────┐  ┌─────────────────┐ │
-│  │ CompositionPoller  │  │ UploadScheduler  │ │
-│  │                    │  │                  │ │
-│  │ 每 10s 轮询        │  │ 读 ScheduleConfig│ │
-│  │ composing 任务     │  │ ready 任务        │ │
-│  │ → Coze API 查状态  │  │ → 时间窗口检查    │ │
-│  │ → 成功: task→ready │  │ → 账号限额检查    │ │
-│  │ → 失败: task→failed│  │ → Patchright 上传 │ │
-│  └────────────────────┘  └─────────────────┘ │
-│                                              │
-│  协作：通过 Task.status 解耦，无直接依赖       │
-└──────────────────────────────────────────────┘
-```
+`CompositionJob` 是合成执行记录，不是新的业务主实体。当前主要用于：
 
-### 6.2 CompositionPoller
+- 记录本次执行属于 `coze` 还是 `local_ffmpeg`
+- 跟踪执行状态
+- 挂接输出结果
+- 记录错误原因
 
-- 单循环设计，系统启动时自动启动
-- 轮询间隔：`COZE_POLL_INTERVAL`（默认 10s）
-- 每轮最多查询 10 个 `status=composing` 的任务，防止触发 Coze 速率限制
-- 通过 `CompositionJob.external_job_id` 调 Coze API 查状态
-- 成功：下载视频 → task.status=ready
-- 失败：task.status=failed
+当前字段语义：
 
-### 6.3 UploadScheduler
-
-- 单循环设计，1 个循环避免重复选取任务
-- 从 `status=ready` 取任务
-- 调度参数从全局 ScheduleConfig 读取
-- 时间窗口 + 账号限额 + 间隔控制
+- `workflow_type`
+  - `coze`
+  - `local_ffmpeg`
+- `workflow_id`
+  - 仅 `coze` 路径需要
+- `external_job_id`
+  - 仅 `coze` 路径需要
+- `output_video_path`
+- `output_video_url`
+- `error_msg`
 
 ---
 
-## 七、ER 关系图
+## 3. authoritative 资源模型
 
-```
-┌────────────────┐
-│ PublishProfile │──1:N──► Task（合成配置）
-│ (合成配置档)    │
-└────────────────┘
+当前任务输入的 authoritative model 是**资源集合模型**，而不是旧时代的单 FK 模型。
 
-┌────────────────┐
-│ ScheduleConfig │         全局单例（调度参数）
-│ (调度配置)      │
-└────────────────┘
+真实输入面以这些集合字段为准：
 
-Account ──1:N──► Task
-Product ──1:N──► Task
+- `video_ids`
+- `copywriting_ids`
+- `cover_ids`
+- `audio_ids`
+- `topic_ids`
 
-Task ──1:N──► CompositionJob（可选，重试时创建新记录）
-Task ──N:N──► Topic（via task_topics）
-Task ──N:1──► Video / Copywriting / Audio / Cover
-Task ──1:N──► PublishLog
-```
+对应真实关联表：
 
-```
-┌────────────────┐
-│ PublishProfile │
-│  composition_  │
-│  mode/params   │
-└───────┬────────┘
-        │ 1:N
-        ▼
-┌──────────────────────────────────────────┐
-│                 Task                      │
-│  素材 + 状态机 + 上传结果                  │
-│  draft→composing→ready→uploading→uploaded │
-└───┬──────────────┬───────────────────────┘
-    │ 1:N          │ 1:N
-    ▼              ▼
-┌──────────────┐  ┌────────────┐
-│CompositionJob│  │ PublishLog  │
-└──────────────┘  └────────────┘
-```
+- `task_videos`
+- `task_copywritings`
+- `task_covers`
+- `task_audios`
+- `task_topics`
+
+以下字段仍可能存在于表结构或兼容层，但**不是当前真相来源**：
+
+- `tasks.video_id`
+- `tasks.copywriting_id`
+- `tasks.audio_id`
+- `tasks.cover_id`
+- `tasks.source_video_ids`
 
 ---
 
-## 八、实施计划
+## 4. local_ffmpeg V1 的冻结语义
 
-### Phase 1：数据模型
+`local_ffmpeg` 在当前仓库中已经落地为 **V1 最小可运行能力**。
 
-1. 创建 `publish_profiles` 表 + 默认 Profile
-2. 创建 `composition_jobs` 表
-3. 创建 `schedule_config` 表（替代 publish_config）
-4. Task 表新增 `profile_id`、`batch_id`、`failed_at_status` 字段
-5. 激活 migration 016 已有的合成相关字段
-6. 迁移现有 publish_config 数据到 schedule_config
+### 4.1 支持什么
 
-### Phase 2：状态机 + 调度器
+- **恰好 1 个视频输入**
+- **0/1 个音频输入**
+- **0/1 个文案**
+- **0/1 个封面**
+- **多个话题**
 
-1. 实现 TaskStatus 新枚举（7 状态）
-2. 实现快速重试 / 编辑重试
-3. UploadScheduler 单循环，从 `status=ready` 取任务
-4. 前端状态标签更新
+其中：
 
-### Phase 3：Profile 管理
+- 视频、音频参与本地 FFmpeg 处理
+- 文案、封面、话题继续作为发布层元数据
+- 合成成功后结果写回 `Task.final_video_path`
 
-1. PublishProfileService CRUD + 缺省配置管理
-2. TaskDistributor / TaskAssembler 接受 profile_id
-3. 前端 Profile 管理页面 + 组装弹窗增加 Profile 选择
+### 4.2 不支持什么
 
-### Phase 4：Coze 合成集成
+当前 `local_ffmpeg V1` **不支持**：
 
-1. CozeClient（backend/core/coze_client.py）
-2. CompositionService（提交合成、处理结果）
-3. CompositionPoller（单循环后台轮询）
-4. Task API 新增合成端点
-5. 前端任务详情页展示合成进度
+- multi-video montage
+- multi-audio mixing strategy beyond `0/1`
+- subtitle / copywriting burn-in
+- cover embed into video
+- 基于本地 FFmpeg 的异步 poller 架构
 
----
+### 4.3 执行方式
 
-## 九、关键设计决策
+当前 `local_ffmpeg` 路径不是远端任务轮询模型，而是：
 
-| # | 决策 | 选择 | 理由 |
-|---|------|------|------|
-| 1 | 合成配置和调度配置是否放一起 | 拆开 | 合成跟任务走，调度跟系统走，职责不同 |
-| 2 | TaskBatch 是否暴露为一级概念 | 不暴露 | 用户使用频率低，降级为内部追溯字段 |
-| 3 | 重试是否统一回 draft | 区分两种 | 快速重试覆盖 80% 临时性失败场景 |
-| 4 | none 模式是否经过 draft | 跳过 | 无需合成的任务直接 ready |
-| 5 | Profile 与 Task 的关系 | 1:N（FK） | 简单直接 |
-| 6 | 缺省配置实现 | is_default 标记 | 应用层保证唯一 |
-| 7 | CompositionJob 是否独立表 | 独立 | 有自己的生命周期和外部 ID |
-| 8 | 调度器协作方式 | Task.status 解耦 | 状态驱动，简单可靠 |
-| 9 | 调度器循环数 | 单循环 | 避免重复选取任务 |
-| 10 | 快速重试如何判断目标状态 | failed_at_status 字段 | 比解析 error_msg 可靠 |
-| 11 | 合成重试时 CompositionJob 处理 | 创建新记录 | 旧记录保留为历史 |
+```text
+submit_composition()
+  -> 创建 CompositionJob
+  -> Task: draft -> composing
+  -> 本地同步执行 FFmpeg
+  -> 成功: Task -> ready, 写回 final_video_path
+  -> 失败: Task -> failed, failed_at_status = composing
+```
+
+因此：
+
+- `CompositionPoller` 只负责 `coze`
+- `local_ffmpeg` 不应再被描述成 “等待 poller 回收结果” 的架构
 
 ---
 
-## 附录
+## 5. 状态机（当前真实语义）
 
-### 参考文档
+### 5.1 核心状态
 
-- [扣子接入方式](./coze-integration.md)
-- [任务管理业务流程分析](./archive/analysis/task-management-analysis.md)
-- [任务管理 ER 设计](./archive/analysis/task-management-er-design.md)
-- [任务管理操作清单](./archive/analysis/task-management-operations.md)
+```text
+draft -> composing -> ready -> uploading -> uploaded
+                    \-> failed
+```
+
+以及：
+
+- 任意非终态可取消到 `cancelled`
+- `failed_at_status` 用于支持失败后的快速重试
+
+### 5.2 三种模式的入口差异
+
+| composition_mode | 创建后起始语义 | 合成链路 |
+| --- | --- | --- |
+| `none` | 直接按可发布语义校验 | 无合成 |
+| `coze` | 进入需要合成的任务语义 | 远端工作流 + poller |
+| `local_ffmpeg` | 进入需要合成的任务语义 | 本地同步 FFmpeg V1 |
+
+---
+
+## 6. publish path 的真实规则
+
+发布层读取的是 **publish execution view**：
+
+1. 若 `Task.final_video_path` 存在，优先发布该最终视频
+2. 否则 direct publish 只能消费单视频任务
+3. 文案、封面允许 `0/1`
+4. 话题允许多值
+5. direct publish 不支持独立音频输入
+
+这意味着：
+
+- `local_ffmpeg` 合成后的任务会通过 `final_video_path` 与发布链路衔接
+- 发布服务不需要理解本地 FFmpeg 内部细节，只消费最终输出
+
+---
+
+## 7. 文档与代码的对应关系
+
+当前主题的 authoritative code references：
+
+- `backend/services/task_execution_semantics.py`
+- `backend/services/composition_service.py`
+- `backend/services/local_ffmpeg_composition_service.py`
+- `backend/tests/test_task_creation_semantics.py`
+- `backend/tests/test_local_ffmpeg_contract.py`
+- `backend/tests/test_local_ffmpeg_composition.py`
+
+补充说明文档：
+
+- `docs/task-semantics.md`
+- `docs/local-ffmpeg-composition.md`
+
+---
+
+## 8. 读者应避免的误解
+
+以下说法在当前仓库中都不再成立：
+
+- “`coze / local_ffmpeg` 共用同一套轮询收口模型”
+- “只要开启 `local_ffmpeg`，就天然支持 broader composition inputs”
+- “文案、封面会自动被烧录进本地 FFmpeg 输出视频”
+- “`source_video_ids` 仍然是任务视频输入的 authoritative source”
+
+如果文档与代码冲突，请以：
+
+1. 当前测试
+2. 当前实现
+3. 当前文档
+
+这个顺序回溯真相。
