@@ -54,6 +54,7 @@ Keep runtime marker contracts stable and non-destructive when overlays are appli
 - No new dependencies without explicit request.
 - Keep diffs small, reviewable, and reversible.
 - Run lint, typecheck, tests, and static analysis after changes.
+- After a user-approved slice/PR is implemented and verified, auto-commit it with a Lore-format message without waiting for another confirmation; if unrelated in-progress changes exist, first isolate a clean commit boundary for the slice, then commit.
 - Final reports must include changed files, simplifications made, and remaining risks.
 
 ### Encoding hygiene
