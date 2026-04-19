@@ -170,9 +170,10 @@ async def create_tasks(
         if len(audio_result.scalars().all()) != len(request.audio_ids):
             raise HTTPException(status_code=400, detail="部分音频ID不存在")
 
-    account_result = await db.execute(select(Account).where(Account.id.in_(request.account_ids)))
-    if len(account_result.scalars().all()) != len(request.account_ids):
-        raise HTTPException(status_code=400, detail="部分账号ID不存在")
+    if request.account_ids:
+        account_result = await db.execute(select(Account).where(Account.id.in_(request.account_ids)))
+        if len(account_result.scalars().all()) != len(request.account_ids):
+            raise HTTPException(status_code=400, detail="部分账号ID不存在")
 
     distributor = TaskDistributor(db)
     try:

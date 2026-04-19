@@ -28,8 +28,6 @@ const subMenuKeys = [
   '/material/topic',
   '/material/product',
   '/material/topic-group',
-  '/task/list',
-  '/task/create',
   '/schedule-config',
   '/profile-management',
   '/settings/auth-admin',
@@ -76,10 +74,16 @@ export default function LayoutComponent() {
     {
       key: 'task-group',
       icon: <FileTextOutlined />,
-      label: '执行与诊断',
+      label: (
+        <span
+          onClick={() => {
+            navigate('/task/list')
+          }}
+        >
+          任务管理
+        </span>
+      ),
       children: [
-        { key: '/task/list', label: '任务诊断列表' },
-        { key: '/task/create', label: '新建执行任务' },
         { key: '/schedule-config', label: '执行调度' },
         { key: '/profile-management', label: '执行配置' },
       ],
@@ -121,6 +125,7 @@ export default function LayoutComponent() {
 
   const selectedKey = subMenuKeys.find((key) => location.pathname === key)
     ?? (location.pathname === '/material' ? 'material-group' : undefined)
+    ?? (location.pathname === '/task/list' || location.pathname === '/task/create' ? 'task-group' : undefined)
     ?? (isCreativeRoute ? '/creative/workbench' : undefined)
     ?? location.pathname
 

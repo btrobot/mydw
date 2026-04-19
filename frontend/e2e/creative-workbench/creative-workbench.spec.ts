@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
-const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:4173'
+const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:5173'
 
 const creativeListPayload = {
   total: 4,
@@ -314,8 +314,9 @@ test.describe('Creative workbench baseline', () => {
     await expect(page.getByTestId('creative-publish-diagnostics')).toBeVisible()
 
     await page.getByTestId('creative-open-task-diagnostics').click()
-    await page.waitForURL('**/#/task/901')
-    await expect(page.getByTestId('task-detail-diagnostics-banner')).toBeVisible()
+    await page.waitForURL(/#\/task\/901\?returnTo=/)
+    await expect(page.getByTestId('task-detail-page')).toBeVisible()
+    await expect(page.getByTestId('task-detail-back-to-list')).toBeVisible()
   })
 
   test('shows an explicit error state when the workbench list request fails', async ({ page }) => {

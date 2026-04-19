@@ -51,7 +51,7 @@ class Task(Base):
     __tablename__ = "tasks"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False, index=True)
+    account_id = Column(Integer, ForeignKey("accounts.id"), nullable=True, index=True)
 
     # 旧 FK（兼容保留列，不再是 authoritative 任务语义；新逻辑应读取资源集合关系）
     product_id = Column(Integer, ForeignKey("products.id"), nullable=True)
@@ -796,6 +796,8 @@ async def init_db():
     await migration_028.run_migration(engine)
     migration_029 = importlib.import_module("migrations.029_creative_phase_c_scheduler_cutover")
     await migration_029.run_migration(engine)
+    migration_030 = importlib.import_module("migrations.030_task_optional_account")
+    await migration_030.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

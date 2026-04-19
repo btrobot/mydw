@@ -22,7 +22,7 @@ class TaskDistributor:
     async def distribute(
         self,
         video_ids: List[int],
-        account_ids: List[int],
+        account_ids: Optional[List[int]],
         copywriting_ids: Optional[List[int]] = None,
         cover_ids: Optional[List[int]] = None,
         audio_ids: Optional[List[int]] = None,
@@ -34,13 +34,14 @@ class TaskDistributor:
             self.db,
             auth_summary=self._auth_summary,
         )
-        if not video_ids or not account_ids:
+        if not video_ids:
             return []
 
         assembler = TaskAssembler(self.db, auth_summary=self._auth_summary)
         tasks: List[Task] = []
+        target_account_ids = account_ids or [None]
 
-        for acct_id in account_ids:
+        for acct_id in target_account_ids:
             task = await assembler.assemble(
                 account_id=acct_id,
                 video_ids=video_ids,
@@ -55,6 +56,6 @@ class TaskDistributor:
 
         logger.info(
             "TaskDistributor: 账号数={}, 任务数={}",
-            len(account_ids), len(tasks),
+            len(target_account_ids), len(tasks),
         )
         return tasks

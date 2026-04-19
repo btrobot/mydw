@@ -310,14 +310,15 @@ class TaskService:
         })
 
         if task:
-            log = PublishLog(
-                task_id=task.id,
-                account_id=task.account_id,
-                status="uploaded",
-                message="发布成功",
-            )
-            self.db.add(log)
-            await self.db.commit()
+            if task.account_id is not None:
+                log = PublishLog(
+                    task_id=task.id,
+                    account_id=task.account_id,
+                    status="uploaded",
+                    message="发布成功",
+                )
+                self.db.add(log)
+                await self.db.commit()
 
         return task
 
@@ -335,14 +336,15 @@ class TaskService:
         })
 
         if task:
-            log = PublishLog(
-                task_id=task.id,
-                account_id=task.account_id,
-                status="failed",
-                message=error_msg,
-            )
-            self.db.add(log)
-            await self.db.commit()
+            if task.account_id is not None:
+                log = PublishLog(
+                    task_id=task.id,
+                    account_id=task.account_id,
+                    status="failed",
+                    message=error_msg,
+                )
+                self.db.add(log)
+                await self.db.commit()
 
         return task
 
@@ -431,8 +433,11 @@ class TaskService:
         logger.info("任务 {} 编辑重试: 已重置为 draft", task_id)
         return task
 
-    async def check_account_daily_limit(self, account_id: int, limit: int = 5) -> bool:
+    async def check_account_daily_limit(self, account_id: Optional[int], limit: int = 5) -> bool:
         """检查账号当日发布数是否达到上限"""
+        if account_id is None:
+            return False
+
         today_start = utc_day_start_naive()
 
         result = await self.db.execute(

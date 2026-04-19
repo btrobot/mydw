@@ -52,6 +52,7 @@ export const useAccounts = (params?: AccountQueryParams) =>
           tag: params?.tag,
           search: params?.search,
         },
+        throwOnError: true,
       })
       return (response.data ?? []) as AccountResponseExtended[]
     },

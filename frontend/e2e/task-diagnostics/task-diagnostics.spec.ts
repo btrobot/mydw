@@ -118,11 +118,13 @@ test.describe('Task diagnostics positioning', () => {
   })
 
   test('treats task list/detail as diagnostics surfaces with return links into creative flows', async ({ page }) => {
+    const taskRow = page.locator('tbody tr').filter({ hasText: 'Phase E task diagnostic' })
+
     await page.goto(`${BASE_URL}/#/task/list?status=draft&task_kind=publish&page=1&pageSize=50`)
 
     await expect(page.getByTestId('task-list-semantics')).toBeVisible()
     await expect(page.getByRole('cell', { name: 'Phase E task diagnostic' })).toBeVisible()
-    await page.getByRole('row', { name: /901.*Phase E task diagnostic/i }).click()
+    await taskRow.click()
 
     await page.waitForURL('**/#/task/901?returnTo=*')
     await expect(page).toHaveURL(/#\/task\/901\?returnTo=%2Ftask%2Flist%3Fstatus%3Ddraft%26task_kind%3Dpublish%26page%3D1%26pageSize%3D50$/)
@@ -139,7 +141,7 @@ test.describe('Task diagnostics positioning', () => {
     await expect(page).toHaveURL(/#\/task\/list\?status=draft&task_kind=publish&page=1&pageSize=50$/)
     await expect(page.getByTestId('task-list-semantics')).toBeVisible()
 
-    await page.getByRole('row', { name: /901.*Phase E task diagnostic/i }).click()
+    await taskRow.click()
     await page.waitForURL('**/#/task/901?returnTo=*')
     await page.getByTestId('task-detail-open-workbench').click()
     await page.waitForURL('**/#/creative/workbench')
@@ -147,7 +149,8 @@ test.describe('Task diagnostics positioning', () => {
   })
 
   test('shows dashboard publish failures as explicit errors instead of idle state', async ({ page }) => {
-    await page.route('**/api/publish/status', async (route) => {
+    await page.unroute('**/api/publish/status**')
+    await page.route('**/api/publish/status**', async (route) => {
       await route.fulfill({
         status: 500,
         contentType: 'application/json',

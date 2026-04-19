@@ -4,6 +4,7 @@
 from dataclasses import dataclass
 from typing import Awaitable, Callable, Optional
 from datetime import datetime, time
+import random
 from zoneinfo import ZoneInfo
 from loguru import logger
 
@@ -188,6 +189,9 @@ class PublishService:
         if task is None or max_per_account_per_day is None:
             return task
 
+        if task.account_id is None:
+            return task
+
         task_svc = TaskService(self.db)
         limit_reached = await task_svc.check_account_daily_limit(
             task.account_id,
@@ -270,6 +274,48 @@ class PublishService:
             return task, pool_item_id
         return None, None
 
+    async def _resolve_publish_account(
+        self,
+        task: Task,
+        *,
+        task_svc: TaskService,
+        max_per_account_per_day: int | None,
+    ) -> tuple[Optional[Account], Optional[str]]:
+        if task.account_id is not None:
+            account = await self.db.get(Account, task.account_id)
+            if account is None or account.status != "active":
+                return None, "账号无效"
+            if max_per_account_per_day is not None and await task_svc.check_account_daily_limit(
+                account.id,
+                max_per_account_per_day,
+            ):
+                return None, "账号今日发布数已达上限"
+            return account, None
+
+        result = await self.db.execute(
+            select(Account)
+            .where(Account.status == "active")
+            .order_by(Account.id)
+        )
+        accounts = list(result.scalars().all())
+        if not accounts:
+            return None, "没有可用发布账号"
+
+        candidates = accounts
+        if max_per_account_per_day is not None:
+            candidates = []
+            for account in accounts:
+                if not await task_svc.check_account_daily_limit(account.id, max_per_account_per_day):
+                    candidates.append(account)
+            if not candidates:
+                return None, "没有可用发布账号（今日额度已满）"
+
+        account = random.choice(candidates)
+        task.account_id = account.id
+        await self.db.flush()
+        logger.info("publish_task_assigned_random_account task_id={} account_id={}", task.id, account.id)
+        return account, None
+
     @staticmethod
     def _build_shadow_diff(
         *,
@@ -328,17 +374,19 @@ class PublishService:
             if not task:
                 return False, "任务不存在"
 
-            # 获取账号
-            result = await self.db.execute(
-                select(Account).where(Account.id == task.account_id)
+            config = await self._get_schedule_config()
+            daily_limit = config.max_per_account_per_day if config is not None else None
+            account, account_error = await self._resolve_publish_account(
+                task,
+                task_svc=task_svc,
+                max_per_account_per_day=daily_limit,
             )
-            account = result.scalar_one_or_none()
-
-            if not account or account.status != "active":
-                await task_svc.mark_task_failed(task.id, "账号无效或未登录")
-                await self._release_pool_lock(task.id, reason="账号无效或未登录")
-                await self._log_publish_result(task.id, success=False, message="账号无效或未登录")
-                return False, "账号无效"
+            if account is None:
+                message = account_error or "没有可用发布账号"
+                await task_svc.mark_task_failed(task.id, message)
+                await self._release_pool_lock(task.id, reason=message)
+                await self._log_publish_result(task.id, success=False, message=message)
+                return False, message
 
             try:
                 execution_view = resolve_publish_execution_view(task)

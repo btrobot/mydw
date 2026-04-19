@@ -28,10 +28,10 @@ export default function MaterialSelectModal({ visible, materialType, onConfirm, 
   const [keyword, setKeyword] = useState('')
   const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([])
 
-  const { data: videos = [], isLoading: videosLoading } = useVideos({ keyword })
-  const { data: copywritings = [], isLoading: copywritingsLoading } = useCopywritings({ keyword })
-  const { data: covers = [], isLoading: coversLoading } = useCovers()
-  const { data: audios = [], isLoading: audiosLoading } = useAudios(keyword)
+  const { data: videos = [], isLoading: videosLoading, error: videosError } = useVideos({ keyword })
+  const { data: copywritings = [], isLoading: copywritingsLoading, error: copywritingsError } = useCopywritings({ keyword })
+  const { data: covers = [], isLoading: coversLoading, error: coversError } = useCovers()
+  const { data: audios = [], isLoading: audiosLoading, error: audiosError } = useAudios(keyword)
 
   const dataSource = useMemo(() => {
     switch (materialType) {
@@ -62,6 +62,25 @@ export default function MaterialSelectModal({ visible, materialType, onConfirm, 
         return false
     }
   }, [materialType, videosLoading, copywritingsLoading, coversLoading, audiosLoading])
+
+  const queryError = useMemo(() => {
+    switch (materialType) {
+      case 'video':
+        return videosError
+      case 'copywriting':
+        return copywritingsError
+      case 'cover':
+        return coversError
+      case 'audio':
+        return audiosError
+      default:
+        return null
+    }
+  }, [audiosError, copywritingsError, coversError, materialType, videosError])
+
+  const emptyText = queryError instanceof Error
+    ? `素材加载失败：${queryError.message}`
+    : '暂无可选素材'
 
   const columns = useMemo(() => {
     const baseColumns = [
@@ -181,6 +200,7 @@ export default function MaterialSelectModal({ visible, materialType, onConfirm, 
         columns={columns}
         rowSelection={rowSelection}
         loading={loading}
+        locale={{ emptyText }}
         pagination={{ pageSize: 10, showSizeChanger: false }}
         size="small"
       />

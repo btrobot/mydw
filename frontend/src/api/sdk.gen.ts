@@ -111,6 +111,20 @@ export const createAccountApiAccountsPost = <ThrowOnError extends boolean = fals
 export const getAccountStatsApiAccountsStatsGet = <ThrowOnError extends boolean = false>(options?: Options<GetAccountStatsApiAccountsStatsGetData, ThrowOnError>) => (options?.client ?? client).get<GetAccountStatsApiAccountsStatsGetResponses, unknown, ThrowOnError>({ url: '/api/accounts/stats', ...options });
 
 /**
+ * Batch Delete Accounts
+ *
+ * 批量删除账号。
+ */
+export const batchDeleteAccountsApiAccountsBatchDeletePost = <ThrowOnError extends boolean = false>(options: Options<BatchDeleteAccountsApiAccountsBatchDeletePostData, ThrowOnError>) => (options.client ?? client).post<BatchDeleteAccountsApiAccountsBatchDeletePostResponses, BatchDeleteAccountsApiAccountsBatchDeletePostErrors, ThrowOnError>({
+    url: '/api/accounts/batch-delete',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
  * Batch Health Check
  *
  * 批量健康检查 - 串行执行，带间隔和熔断
@@ -155,20 +169,6 @@ export const getAccountApiAccountsAccountIdGet = <ThrowOnError extends boolean =
  */
 export const updateAccountApiAccountsAccountIdPut = <ThrowOnError extends boolean = false>(options: Options<UpdateAccountApiAccountsAccountIdPutData, ThrowOnError>) => (options.client ?? client).put<UpdateAccountApiAccountsAccountIdPutResponses, UpdateAccountApiAccountsAccountIdPutErrors, ThrowOnError>({
     url: '/api/accounts/{account_id}',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * Batch Delete Accounts
- *
- * 批量删除账号。
- */
-export const batchDeleteAccountsApiAccountsBatchDeletePost = <ThrowOnError extends boolean = false>(options: Options<BatchDeleteAccountsApiAccountsBatchDeletePostData, ThrowOnError>) => (options.client ?? client).post<BatchDeleteAccountsApiAccountsBatchDeletePostResponses, BatchDeleteAccountsApiAccountsBatchDeletePostErrors, ThrowOnError>({
-    url: '/api/accounts/batch-delete',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -1464,13 +1464,13 @@ export const submitAiClipWorkflowApiCreativeWorkflowsCreativeIdAiClipSubmitPost 
 /**
  * Root
  *
- * ???
+ * ????
  */
 export const rootGet = <ThrowOnError extends boolean = false>(options?: Options<RootGetData, ThrowOnError>) => (options?.client ?? client).get<RootGetResponses, unknown, ThrowOnError>({ url: '/', ...options });
 
 /**
  * Health
  *
- * ????
+ * ?????
  */
 export const healthHealthGet = <ThrowOnError extends boolean = false>(options?: Options<HealthHealthGetData, ThrowOnError>) => (options?.client ?? client).get<HealthHealthGetResponses, unknown, ThrowOnError>({ url: '/health', ...options });

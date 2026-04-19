@@ -30,7 +30,7 @@ class TaskAssembler:
 
     async def assemble(
         self,
-        account_id: int,
+        account_id: Optional[int],
         video_ids: List[int],
         copywriting_ids: Optional[List[int]] = None,
         cover_ids: Optional[List[int]] = None,

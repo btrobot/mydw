@@ -312,7 +312,7 @@ export type AssembleTasksRequest = {
     /**
      * Account Ids
      */
-    account_ids: Array<number>;
+    account_ids?: Array<number>;
     /**
      * Profile Id
      */
@@ -580,9 +580,9 @@ export type BatchAssembleRequest = {
     /**
      * Account Ids
      *
-     * 账号ID列表
+     * 账号ID列表；为空则发布时随机选择可用账号
      */
-    account_ids: Array<number>;
+    account_ids?: Array<number>;
     /**
      * Profile Id
      */
@@ -674,7 +674,7 @@ export type BatchHealthCheckResultItem = {
     /**
      * Account Id
      */
-    account_id: number;
+    account_id: number | null;
     /**
      * Account Name
      */
@@ -2937,9 +2937,9 @@ export type TaskCreateRequest = {
     /**
      * Account Ids
      *
-     * 账号ID列表
+     * 账号ID列表；为空则发布时随机选择可用账号
      */
-    account_ids: Array<number>;
+    account_ids?: Array<number>;
     /**
      * Profile Id
      */
@@ -2992,7 +2992,7 @@ export type TaskResponse = {
     /**
      * Account Id
      */
-    account_id: number;
+    account_id: number | null;
     /**
      * Creative Item Id
      */
@@ -3686,7 +3686,7 @@ export type TaskResponseWritable = {
     /**
      * Account Id
      */
-    account_id: number;
+    account_id: number | null;
     /**
      * Creative Item Id
      */
@@ -4072,6 +4072,31 @@ export type GetAccountStatsApiAccountsStatsGetResponses = {
 
 export type GetAccountStatsApiAccountsStatsGetResponse = GetAccountStatsApiAccountsStatsGetResponses[keyof GetAccountStatsApiAccountsStatsGetResponses];
 
+export type BatchDeleteAccountsApiAccountsBatchDeletePostData = {
+    body: SchemasBatchDeleteRequest;
+    path?: never;
+    query?: never;
+    url: '/api/accounts/batch-delete';
+};
+
+export type BatchDeleteAccountsApiAccountsBatchDeletePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BatchDeleteAccountsApiAccountsBatchDeletePostError = BatchDeleteAccountsApiAccountsBatchDeletePostErrors[keyof BatchDeleteAccountsApiAccountsBatchDeletePostErrors];
+
+export type BatchDeleteAccountsApiAccountsBatchDeletePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SchemasBatchDeleteResponse;
+};
+
+export type BatchDeleteAccountsApiAccountsBatchDeletePostResponse = BatchDeleteAccountsApiAccountsBatchDeletePostResponses[keyof BatchDeleteAccountsApiAccountsBatchDeletePostResponses];
+
 export type BatchHealthCheckApiAccountsBatchHealthCheckPostData = {
     body: BatchHealthCheckRequest;
     path?: never;
@@ -4202,31 +4227,6 @@ export type UpdateAccountApiAccountsAccountIdPutResponses = {
 };
 
 export type UpdateAccountApiAccountsAccountIdPutResponse = UpdateAccountApiAccountsAccountIdPutResponses[keyof UpdateAccountApiAccountsAccountIdPutResponses];
-
-export type BatchDeleteAccountsApiAccountsBatchDeletePostData = {
-    body: SchemasBatchDeleteRequest;
-    path?: never;
-    query?: never;
-    url: '/api/accounts/batch-delete';
-};
-
-export type BatchDeleteAccountsApiAccountsBatchDeletePostErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type BatchDeleteAccountsApiAccountsBatchDeletePostError = BatchDeleteAccountsApiAccountsBatchDeletePostErrors[keyof BatchDeleteAccountsApiAccountsBatchDeletePostErrors];
-
-export type BatchDeleteAccountsApiAccountsBatchDeletePostResponses = {
-    /**
-     * Successful Response
-     */
-    200: SchemasBatchDeleteResponse;
-};
-
-export type BatchDeleteAccountsApiAccountsBatchDeletePostResponse = BatchDeleteAccountsApiAccountsBatchDeletePostResponses[keyof BatchDeleteAccountsApiAccountsBatchDeletePostResponses];
 
 export type HealthCheckApiAccountsAccountIdHealthCheckPostData = {
     body?: never;

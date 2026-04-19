@@ -202,6 +202,32 @@ async def test_create_tasks_returns_collection_ids_for_all_selected_resources(
 
 
 @pytest.mark.asyncio
+async def test_create_tasks_allows_missing_account_and_keeps_task_unassigned(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    vid = await _create_video(db_session, "collection_no_account_v1")
+    await db_session.commit()
+
+    resp = await client.post(
+        "/api/tasks/",
+        json={
+            "video_ids": [vid.id],
+            "copywriting_ids": [],
+            "cover_ids": [],
+            "audio_ids": [],
+            "topic_ids": [],
+            "account_ids": [],
+        },
+    )
+    assert resp.status_code == 201
+    tasks = resp.json()
+    assert len(tasks) == 1
+    assert tasks[0]["account_id"] is None
+    assert tasks[0]["video_ids"] == [vid.id]
+    assert tasks[0]["status"] == "ready"
+
+
+@pytest.mark.asyncio
 async def test_create_tasks_with_composition_profile_start_in_draft(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:

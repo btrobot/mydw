@@ -98,7 +98,7 @@ async def _get_task(db: AsyncSession, task_id: int) -> Task:
 async def _create_raw_task_with_resources(
     db: AsyncSession,
     *,
-    account_id: int,
+    account_id: int | None,
     video_ids: list[int],
     copywriting_ids: list[int] | None = None,
     cover_ids: list[int] | None = None,
@@ -285,6 +285,42 @@ async def test_publish_task_uses_final_video_path_for_composed_task(
     assert kwargs["content"] == copywriting.content
     assert kwargs["cover_path"] == cover.file_path
     assert kwargs["topic"] == topic.name
+
+
+@pytest.mark.asyncio
+async def test_publish_task_assigns_random_active_account_when_task_has_no_account(
+    db_session: AsyncSession,
+    active_remote_auth_session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fallback_account = await _create_account(db_session, "random_assign")
+    video = await _create_video(db_session, "random_assign")
+    task = await _create_raw_task_with_resources(
+        db_session,
+        account_id=None,
+        video_ids=[video.id],
+        status="ready",
+    )
+
+    mock_client = MagicMock()
+    mock_client.check_login_status = AsyncMock(return_value=(True, "ok"))
+    mock_client.upload_video = AsyncMock(return_value=(True, "ok"))
+    monkeypatch.setattr("services.publish_service.get_dewu_client", AsyncMock(return_value=mock_client))
+    monkeypatch.setattr(
+        "services.publish_service.browser_manager",
+        SimpleNamespace(
+            get_or_create_context=AsyncMock(return_value=SimpleNamespace(pages=[MagicMock()])),
+            new_page=AsyncMock(return_value=MagicMock()),
+        ),
+    )
+    monkeypatch.setattr("services.publish_service.random.choice", lambda accounts: accounts[0])
+
+    success, message = await PublishService(db_session).publish_task(task)
+
+    persisted = await _get_task(db_session, task.id)
+    assert success is True
+    assert message == "发布成功"
+    assert persisted.account_id == fallback_account.id
 
 
 @pytest.mark.asyncio

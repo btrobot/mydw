@@ -200,7 +200,7 @@ class BatchHealthCheckRequest(BaseModel):
 
 class BatchHealthCheckResultItem(BaseModel):
     """单个账号检测结果"""
-    account_id: int
+    account_id: Optional[int]
     account_name: str
     previous_status: str
     current_status: str
@@ -239,7 +239,7 @@ class AccountLoginRequest(BaseModel):
 
 class AccountTestRequest(BaseModel):
     """账号测试请求"""
-    account_id: int
+    account_id: Optional[int]
 
 
 class ConnectionRequest(BaseModel):
@@ -335,7 +335,7 @@ class TaskCreateRequest(BaseModel):
     cover_ids: List[int] = Field(default_factory=list, description="封面ID列表")
     audio_ids: List[int] = Field(default_factory=list, description="音频ID列表")
     topic_ids: List[int] = Field(default_factory=list, description="话题ID列表")
-    account_ids: List[int] = Field(..., min_length=1, description="账号ID列表")
+    account_ids: List[int] = Field(default_factory=list, description="账号ID列表；为空则发布时随机选择可用账号")
     profile_id: Optional[int] = None
     name: Optional[str] = Field(None, max_length=256)
     scheduled_time: Optional[datetime] = None
@@ -386,7 +386,7 @@ class TaskResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    account_id: int
+    account_id: Optional[int]
     creative_item_id: Optional[int] = None
     creative_version_id: Optional[int] = None
     task_kind: Optional[TaskKind] = None
@@ -531,7 +531,7 @@ class PublishExecutionSnapshotResponse(BaseModel):
     task_id: Optional[int] = None
     creative_item_id: int
     creative_version_id: int
-    account_id: int
+    account_id: Optional[int]
     profile_id: Optional[int] = None
     snapshot_json: str
     created_at: datetime
@@ -704,7 +704,7 @@ class TaskBatchCreateRequest(BaseModel):
 class AssembleTasksRequest(BaseModel):
     """组装任务请求（已废弃，保留兼容；authoritative 语义以 TaskCreateRequest 为准）"""
     video_ids: List[int] = Field(..., min_length=1)
-    account_ids: List[int] = Field(..., min_length=1)
+    account_ids: List[int] = Field(default_factory=list)
     profile_id: Optional[int] = None
 
 
@@ -714,7 +714,7 @@ class BatchAssembleRequest(BaseModel):
     copywriting_ids: List[int] = Field(default_factory=list, description="文案ID列表")
     cover_ids: List[int] = Field(default_factory=list, description="封面ID列表")
     audio_ids: List[int] = Field(default_factory=list, description="音频ID列表")
-    account_ids: List[int] = Field(..., min_length=1, description="账号ID列表")
+    account_ids: List[int] = Field(default_factory=list, description="账号ID列表；为空则发布时随机选择可用账号")
     profile_id: Optional[int] = None
 
 

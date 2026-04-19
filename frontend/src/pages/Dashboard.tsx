@@ -136,7 +136,7 @@ export default function Dashboard() {
         action={(
           <Space wrap data-testid="dashboard-primary-cta">
             <Button type="primary" onClick={() => navigate('/creative/workbench')} data-testid="dashboard-open-workbench">进入作品工作台</Button>
-            <Button onClick={() => navigate('/task/list')} icon={<UnorderedListOutlined />} data-testid="dashboard-open-task-list">查看任务诊断</Button>
+            <Button onClick={() => navigate('/task/list')} icon={<UnorderedListOutlined />} data-testid="dashboard-open-task-list">查看任务管理</Button>
           </Space>
         )}
       />
