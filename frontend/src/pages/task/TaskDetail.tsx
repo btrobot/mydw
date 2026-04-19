@@ -52,6 +52,14 @@ const priorityColor = (priority: number): string => {
   return 'default'
 }
 
+const compositionStatusMeta: Record<string, { color: string; text: string }> = {
+  pending: { color: 'gold', text: '待处理' },
+  processing: { color: 'processing', text: '处理中' },
+  completed: { color: 'success', text: '已完成' },
+  failed: { color: 'error', text: '失败' },
+  cancelled: { color: 'default', text: '已取消' },
+}
+
 export default function TaskDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -161,6 +169,22 @@ export default function TaskDetail() {
   const compositionActive = compositionJob?.status === 'pending' || compositionJob?.status === 'processing'
   const semantics = getTaskSemanticsSummary(task as TaskResponse, profiles)
   const renderIds = (ids?: number[]) => (ids && ids.length > 0 ? ids.map((item) => `#${item}`).join(', ') : '-')
+  const workflowType = compositionJob?.workflow_type
+    ?? (semantics.mode === 'local_ffmpeg' ? 'local_ffmpeg' : semantics.mode === 'coze' ? 'coze' : 'none')
+  const compositionStatus = compositionJob?.status
+    ?? (task.final_video_path ? 'completed' : semantics.mode === 'none' ? 'not_required' : 'not_started')
+  const compositionStatusLabel = compositionStatus === 'not_required'
+    ? { color: 'default', text: '无需合成' }
+    : compositionStatus === 'not_started'
+      ? { color: 'default', text: '未提交' }
+      : compositionStatusMeta[compositionStatus] ?? { color: 'default', text: compositionStatus }
+  const outputVideoPath = compositionJob?.output_video_path ?? task.final_video_path ?? '-'
+  const outputVideoUrl = compositionJob?.output_video_url ?? null
+  const compositionError = compositionJob?.error_msg ?? task.error_msg ?? null
+  const shouldShowCompositionSummary = semantics.mode !== 'none'
+    || compositionJob !== undefined
+    || task.final_video_path !== null
+    || compositionError !== null
 
   return (
     <Flex vertical gap={16} style={{ padding: 24, maxWidth: 960 }} data-testid="task-detail-page">
@@ -207,8 +231,8 @@ export default function TaskDetail() {
         <Descriptions bordered size="small" column={1}>
           <Descriptions.Item label="模式">{semantics.modeLabel}</Descriptions.Item>
           <Descriptions.Item label="可直接发布"><Tag color={semantics.directPublishAllowed ? 'success' : 'warning'}>{semantics.directPublishAllowed ? '兼容' : '不兼容'}</Tag></Descriptions.Item>
-          <Descriptions.Item label="最终发布视频来源">{semantics.usesFinalVideo ? '使用 final_video_path 作为最终成片' : '使用素材集合参与发布'}</Descriptions.Item>
-          <Descriptions.Item label="语义说明">{semantics.mode === 'none' ? '直接发布要求最终成片唯一，且文案、封面数量受限；独立音频需先进入合成流程。' : '当前任务使用合成模式，需先完成合成，再进入发布链路。'}</Descriptions.Item>
+          <Descriptions.Item label="最终发布视频来源">{semantics.finalVideoSourceLabel}</Descriptions.Item>
+          <Descriptions.Item label="语义说明">{semantics.modeDescription}</Descriptions.Item>
         </Descriptions>
         {semantics.violations.length > 0 ? (
           <>
@@ -222,6 +246,42 @@ export default function TaskDetail() {
           </>
         ) : null}
       </Card>
+
+      {shouldShowCompositionSummary ? (
+        <Card title="合成执行概览" size="small" data-testid="task-detail-composition-summary">
+          <Descriptions bordered size="small" column={1}>
+            <Descriptions.Item label="工作流类型">{workflowType}</Descriptions.Item>
+            <Descriptions.Item label="Job 状态">
+              <Tag color={compositionStatusLabel.color}>{compositionStatusLabel.text}</Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="进度">
+              {compositionJob ? (
+                <Space>
+                  <Progress percent={compositionJob.progress} size="small" style={{ width: 200, marginBottom: 0 }} />
+                  <Text type="secondary">{compositionJob.progress}%</Text>
+                </Space>
+              ) : '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label="输出路径">{outputVideoPath}</Descriptions.Item>
+            <Descriptions.Item label="输出链接">
+              {outputVideoUrl ? (
+                <a href={outputVideoUrl} target="_blank" rel="noreferrer">
+                  {outputVideoUrl}
+                </a>
+              ) : '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label="错误原因">
+              {compositionError ? <Text type="danger">{compositionError}</Text> : '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label="开始时间">
+              {compositionJob?.started_at ? new Date(compositionJob.started_at).toLocaleString('zh-CN') : '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label="完成时间">
+              {compositionJob?.completed_at ? new Date(compositionJob.completed_at).toLocaleString('zh-CN') : '-'}
+            </Descriptions.Item>
+          </Descriptions>
+        </Card>
+      ) : null}
 
       <Card title="素材信息" size="small">
         <Descriptions bordered size="small" column={1}>
@@ -238,7 +298,7 @@ export default function TaskDetail() {
         <Card title="合成执行" size="small">
           {compositionActive && compositionJob ? (
             <Flex vertical gap={12}>
-              <Flex align="center" gap={12}><Text>当前进度</Text><Progress percent={compositionJob.progress} status="active" style={{ flex: 1 }} /><Text type="secondary">{compositionJob.status}</Text></Flex>
+              <Flex align="center" gap={12}><Text>当前进度</Text><Progress percent={compositionJob.progress} status="active" style={{ flex: 1 }} /><Text type="secondary">{compositionStatusLabel.text}</Text></Flex>
               {compositionJob.error_msg ? <Alert type="error" message={compositionJob.error_msg} /> : null}
               <Flex justify="flex-end"><Popconfirm title="确认取消当前合成吗？" onConfirm={() => void handleCancelComposition()}><Button danger icon={<StopOutlined />} loading={cancelComposition.isPending}>取消合成</Button></Popconfirm></Flex>
             </Flex>

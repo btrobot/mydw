@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
+  Alert,
   Card,
   Form,
   Button,
@@ -42,6 +43,33 @@ interface ProfileModalProps {
   open: boolean
   editing: PublishProfileResponse | null
   onClose: () => void
+}
+
+const compositionModeGuidance: Record<CompositionMode, { message: string; points: string[] }> = {
+  none: {
+    message: '直接发布模式',
+    points: [
+      '只适合已经准备好最终视频的任务。',
+      '直接发布只支持 1 个最终视频、0/1 个文案、0/1 个封面。',
+      '独立音频输入需先走合成流程。',
+    ],
+  },
+  coze: {
+    message: 'Coze 工作流模式',
+    points: [
+      '由 Coze workflow 负责素材编排与合成。',
+      '前端只负责提交素材，并在产出 final video 后进入发布链路。',
+      '适合仍依赖外部工作流的组合场景。',
+    ],
+  },
+  local_ffmpeg: {
+    message: '本地 FFmpeg V1 模式',
+    points: [
+      '当前只支持 1 个视频 + 可选 1 个音频。',
+      '不支持多视频 montage，也不支持多音频混剪。',
+      '文案、封面、话题仍作为发布层输入，不参与视频合成。',
+    ],
+  },
 }
 
 function ProfileModal({ open, editing, onClose }: ProfileModalProps) {
@@ -148,6 +176,36 @@ function ProfileModal({ open, editing, onClose }: ProfileModalProps) {
               { value: 'local_ffmpeg', label: '本地 FFmpeg' },
             ]}
           />
+        </Form.Item>
+
+        <Form.Item
+          noStyle
+          shouldUpdate={(prev: ProfileFormValues, cur: ProfileFormValues) =>
+            prev.composition_mode !== cur.composition_mode
+          }
+        >
+          {({ getFieldValue }) => {
+            const mode = getFieldValue('composition_mode') as CompositionMode | undefined
+            const guidance = mode ? compositionModeGuidance[mode] : null
+            if (!guidance) return null
+
+            return (
+              <Alert
+                type="info"
+                showIcon
+                data-testid="profile-composition-mode-guidance"
+                style={{ marginBottom: 16 }}
+                message={guidance.message}
+                description={
+                  <ul style={{ margin: 0, paddingInlineStart: 18 }}>
+                    {guidance.points.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                }
+              />
+            )
+          }}
         </Form.Item>
 
         <Form.Item

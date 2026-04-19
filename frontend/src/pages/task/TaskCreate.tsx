@@ -15,6 +15,7 @@ import MaterialSelectModal from '@/components/MaterialSelectModal'
 import type { TableColumnsType } from 'antd'
 import {
   getDirectPublishViolations,
+  getLocalFfmpegViolations,
   getTaskMaterialCounts,
   resolveCompositionMode,
 } from './taskSemantics'
@@ -22,7 +23,7 @@ import {
 const { Text, Title } = Typography
 
 interface TaskCreateFormValues {
-  account_ids: number[]
+  account_id?: number | null
   profile_id?: number | null
 }
 
@@ -55,15 +56,20 @@ export default function TaskCreate() {
   const [modalMaterialType, setModalMaterialType] = useState<MaterialType>('video')
   const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([])
 
-  const { data: accounts = [] } = useAccounts()
+  const {
+    data: accounts = [],
+    isLoading: accountsLoading,
+    error: accountsError,
+  } = useAccounts({ status: 'active' })
   const { data: profilesData } = useProfiles()
   const batchAssemble = useBatchAssemble()
 
   const profiles = profilesData?.items ?? []
   const defaultProfile = profiles.find((p: PublishProfileResponse) => p.is_default)
+  const selectedProfileId = Form.useWatch('profile_id', form)
   const selectedMode = useMemo(
-    () => resolveCompositionMode(form.getFieldValue('profile_id'), profiles),
-    [form, profiles],
+    () => resolveCompositionMode(selectedProfileId, profiles),
+    [selectedProfileId, profiles],
   )
   const basketCounts = useMemo(
     () => getTaskMaterialCounts({
@@ -79,6 +85,13 @@ export default function TaskCreate() {
     () => (selectedMode === 'none' ? getDirectPublishViolations(basketCounts) : []),
     [basketCounts, selectedMode],
   )
+  const localFfmpegViolations = useMemo(
+    () => (selectedMode === 'local_ffmpeg' ? getLocalFfmpegViolations(basketCounts) : []),
+    [basketCounts, selectedMode],
+  )
+  const submitDisabled = basket.videos.length === 0
+    || directPublishViolations.length > 0
+    || localFfmpegViolations.length > 0
 
   const addToBasket = useCallback((materials: Partial<MaterialBasketState>) => {
     setBasket((prev) => {
@@ -178,8 +191,8 @@ export default function TaskCreate() {
         return
       }
 
-      if (values.account_ids.length === 0) {
-        message.warning('请至少选择一个账号')
+      if (selectedMode === 'local_ffmpeg' && localFfmpegViolations.length > 0) {
+        message.warning(localFfmpegViolations[0])
         return
       }
 
@@ -189,7 +202,7 @@ export default function TaskCreate() {
         cover_ids: basket.covers.map((c) => c.id),
         audio_ids: basket.audios.map((a) => a.id),
         topic_ids: [],
-        account_ids: values.account_ids,
+        account_ids: values.account_id ? [values.account_id] : [],
         profile_id: values.profile_id,
       })
 
@@ -204,7 +217,7 @@ export default function TaskCreate() {
         message.error('创建失败')
       }
     }
-  }, [form, basket, batchAssemble, navigate])
+  }, [form, basket, batchAssemble, localFfmpegViolations, navigate, selectedMode])
 
   const basketCount = basket.videos.length + basket.copywritings.length + basket.covers.length + basket.audios.length
 
@@ -451,15 +464,28 @@ export default function TaskCreate() {
             profile_id: defaultProfile?.id,
           }}
         >
+          {accountsError ? (
+            <Alert
+              type="warning"
+              showIcon
+              style={{ marginBottom: 16 }}
+              message="账号列表加载失败"
+              description={accountsError instanceof Error ? accountsError.message : '请稍后重试'}
+            />
+          ) : null}
+
           <Form.Item
-            name="account_ids"
-            label="选择账号"
-            rules={[{ required: true, message: '请选择至少一个账号' }]}
+            name="account_id"
+            label="发布账号（可选）"
+            help="不选则创建无账号任务，发布时随机选择一个可用账号。"
           >
             <Select
-              mode="multiple"
-              placeholder="请选择账号"
+              allowClear
+              showSearch
+              loading={accountsLoading}
+              placeholder="可选；不选则发布时随机选择可用账号"
               optionFilterProp="label"
+              notFoundContent={accountsError ? '账号加载失败' : undefined}
               options={accounts.map((a: AccountResponseExtended) => ({
                 value: a.id,
                 label: a.account_name,
@@ -481,7 +507,7 @@ export default function TaskCreate() {
 
           {profiles.length > 0 && (
             <Form.Item>
-              <Text type="secondary">
+              <Text type="secondary" data-testid="task-create-mode-label">
                 合成方式：{COMPOSITION_MODE_LABEL[selectedMode] ?? selectedMode}
               </Text>
             </Form.Item>
@@ -493,6 +519,7 @@ export default function TaskCreate() {
                 <Alert
                   type="info"
                   showIcon
+                  data-testid="task-create-mode-guidance"
                   message="当前为直接发布模式"
                   description="只支持 1 个最终视频、0/1 个文案、0/1 个封面；多话题允许；独立音频输入需先走合成。"
                 />
@@ -500,6 +527,7 @@ export default function TaskCreate() {
                   <Alert
                     type="warning"
                     showIcon
+                    data-testid="task-create-mode-violations"
                     message="当前素材组合不满足直接发布语义"
                     description={
                       <ul style={{ margin: 0, paddingInlineStart: 18 }}>
@@ -511,12 +539,45 @@ export default function TaskCreate() {
                   />
                 )}
               </Space>
+            ) : selectedMode === 'local_ffmpeg' ? (
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Alert
+                  type="info"
+                  showIcon
+                  data-testid="task-create-mode-guidance"
+                  message="当前为本地 FFmpeg V1 合成模式"
+                  description={
+                    <ul style={{ margin: 0, paddingInlineStart: 18 }}>
+                      <li>只支持 1 个视频 + 可选 1 个音频。</li>
+                      <li>不支持多视频 montage，也不支持多音频混剪。</li>
+                      <li>文案、封面、话题仍作为发布层输入，不参与视频合成。</li>
+                      <li>合成完成后使用 final video 进入发布链路。</li>
+                    </ul>
+                  }
+                />
+                {localFfmpegViolations.length > 0 && (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    data-testid="task-create-mode-violations"
+                    message="当前素材组合不满足 local_ffmpeg V1 语义"
+                    description={
+                      <ul style={{ margin: 0, paddingInlineStart: 18 }}>
+                        {localFfmpegViolations.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    }
+                  />
+                )}
+              </Space>
             ) : (
               <Alert
                 type="info"
                 showIcon
-                message="当前为合成模式"
-                description="素材篮中的多视频 / 多文案 / 多封面 / 音频会被视为合成输入；最终直接发布使用合成后的 final video。"
+                data-testid="task-create-mode-guidance"
+                message="当前为 Coze 合成模式"
+                description="Coze workflow 负责素材编排与合成；前端负责提交素材，并在产出 final video 后进入发布链路。"
               />
             )}
           </Form.Item>
@@ -527,7 +588,8 @@ export default function TaskCreate() {
                 type="primary"
                 onClick={handleSubmit}
                 loading={batchAssemble.isPending}
-                disabled={basket.videos.length === 0 || directPublishViolations.length > 0}
+                disabled={submitDisabled}
+                data-testid="task-create-submit"
               >
                 创建任务
               </Button>
@@ -537,12 +599,14 @@ export default function TaskCreate() {
         </Form>
       </Card>
 
-      <MaterialSelectModal
-        visible={modalVisible}
-        materialType={modalMaterialType}
-        onConfirm={handleModalConfirm}
-        onCancel={() => setModalVisible(false)}
-      />
+      {modalVisible && (
+        <MaterialSelectModal
+          visible={modalVisible}
+          materialType={modalMaterialType}
+          onConfirm={handleModalConfirm}
+          onCancel={() => setModalVisible(false)}
+        />
+      )}
     </div>
   )
 }
