@@ -34,38 +34,38 @@ const STATE_MESSAGES: Record<
     severity: 'info',
   },
   authenticated_active: {
-    title: '授权有效',
-    description: '当前本地授权会话可正常使用。',
+    title: '已登录',
+    description: '当前可正常访问应用。',
     severity: 'info',
   },
   authenticated_grace: {
-    title: '离线宽限模式',
-    description: '你仍可查看现有本地数据，但高风险操作会继续受限，直到授权服务恢复可用。',
+    title: '宽限模式',
+    description: '当前网络或授权服务暂不可用，你仍可查看已有内容，但受保护操作会受限。',
     severity: 'warning',
   },
   refresh_required: {
-    title: '需要刷新会话',
-    description: '继续执行受保护操作前，需要先刷新当前授权会话。',
+    title: '需要重新确认登录状态',
+    description: '当前会话需要刷新后才能继续，请重新登录或稍后重试。',
     severity: 'warning',
   },
   revoked: {
-    title: '授权已失效',
-    description: '远端授权已被撤销或停用，请重新登录后继续使用。',
+    title: '访问权限已失效',
+    description: '当前账号的应用访问权限已失效，请联系管理员恢复权限后再登录。',
     severity: 'error',
   },
   device_mismatch: {
-    title: '设备授权不匹配',
-    description: '当前设备与远端授权记录不一致，请重新登录或重新绑定设备。',
+    title: '当前设备未通过校验',
+    description: '请退出后重新登录；若问题持续，请联系管理员重新绑定设备。',
     severity: 'error',
   },
   expired: {
     title: '登录已过期',
-    description: '当前本地授权会话已过期，请重新登录。',
+    description: '当前登录已过期，请重新登录继续使用。',
     severity: 'warning',
   },
   error: {
     title: '授权服务暂不可用',
-    description: '当前无法连接授权服务，请稍后重试。',
+    description: '当前无法完成授权校验，请稍后重试；若你刚刚提交过登录，请确认网络后再次尝试。',
     severity: 'warning',
   },
 }
@@ -73,7 +73,7 @@ const STATE_MESSAGES: Record<
 const BACKEND_MESSAGES: Record<string, AuthErrorDescriptor> = {
   invalid_credentials: {
     title: '账号或密码错误',
-    description: '请检查登录信息后重试。',
+    description: '请检查用户名和密码后重新提交。',
     severity: 'error',
   },
   network_timeout: {

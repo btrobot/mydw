@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Space, Typography, message } from 'antd'
+import { App as AntApp, Alert, Button, Card, Collapse, Space, Typography } from 'antd'
 import { useMutation } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
@@ -24,28 +24,29 @@ const STATUS_CONTENT: Record<
   }
 > = {
   revoked: {
-    title: '授权已失效',
-    description: '远端授权已被撤销或停用，请重新登录后继续使用本地能力。',
+    title: '访问权限已失效',
+    description: '当前账号的应用访问权限已失效，请联系管理员恢复权限后再登录。',
     type: 'error',
   },
   device_mismatch: {
-    title: '设备授权不匹配',
-    description: '当前设备与远端授权记录不一致，请重新登录或重新绑定设备。',
+    title: '当前设备未通过校验',
+    description: '请退出后重新登录；若问题持续，请联系管理员重新绑定设备。',
     type: 'error',
   },
   expired: {
     title: '登录已过期',
-    description: '当前本地授权会话已过期，请重新登录。',
+    description: '当前登录已过期，请重新登录继续使用。',
     type: 'warning',
   },
   grace: {
-    title: '离线宽限模式',
-    description: '当前处于受限模式：你仍可查看已有本地数据，但高风险操作和新的后台任务会被阻止。',
+    title: '宽限模式',
+    description: '当前网络或授权服务暂不可用，你仍可查看已有内容，但受保护操作会受限。',
     type: 'info',
   },
 }
 
 export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
+  const { message } = AntApp.useApp()
   const { session, setSession } = useAuth()
   const navigate = useNavigate()
   const [redirectToLogin, setRedirectToLogin] = useState(false)
@@ -58,6 +59,19 @@ export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
     () => getAuthStateDescriptor(liveSession),
     [liveSession],
   )
+  const diagnosticRows = useMemo(() => {
+    if (!liveSession) {
+      return []
+    }
+
+    return [
+      liveSession.display_name ? `当前账号：${liveSession.display_name}` : null,
+      liveSession.device_id ? `当前设备标识：${liveSession.device_id}` : null,
+      liveSession.auth_state ? `当前授权状态：${liveSession.auth_state}` : null,
+      liveSession.denial_reason ? `当前受限原因：${liveSession.denial_reason}` : null,
+      liveSession.last_verified_at ? `最近校验时间：${liveSession.last_verified_at}` : null,
+    ].filter((value): value is string => Boolean(value))
+  }, [liveSession])
 
   const logoutMutation = useMutation({
     mutationFn: logoutAuth,
@@ -99,6 +113,7 @@ export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
           <Alert
             type={content.type}
             showIcon
+            data-testid="auth-status-primary-alert"
             message={content.title}
             description={content.description}
           />
@@ -118,48 +133,58 @@ export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
               showIcon
               message="授权状态暂时无法刷新"
               description="当前页面保留最近一次会话信息，请稍后重试。"
-              action={<Button size="small" onClick={() => void authStatusQuery.refetch()}>重试</Button>}
             />
           ) : null}
 
           {liveDescriptor && (
             <AuthErrorMessage
               descriptor={liveDescriptor}
-              onRetry={() => void authStatusQuery.refetch()}
+              label="实时状态补充"
               testId={`auth-status-live-${variant}`}
             />
           )}
 
-          {liveSession ? (
-            <div data-testid="auth-status-session-meta">
-              <Typography.Paragraph type="secondary" style={{ marginBottom: 4 }}>
-                以下信息仅用于说明当前设备会话状态，主操作请使用下方入口。
-              </Typography.Paragraph>
-              {liveSession.display_name ? (
-                <Typography.Text type="secondary">当前账号：{liveSession.display_name}</Typography.Text>
-              ) : liveSession.device_id ? (
-                <Typography.Text type="secondary">当前设备标识：{liveSession.device_id}</Typography.Text>
-              ) : (
-                <Typography.Text type="secondary">当前授权会话需要重新确认。</Typography.Text>
-              )}
-            </div>
-          ) : null}
+          <Collapse
+            bordered={false}
+            size="small"
+            items={[
+              {
+                key: 'diagnostics',
+                label: <span data-testid="auth-status-diagnostics-trigger">查看会话与诊断信息</span>,
+                children: (
+                  <div data-testid="auth-status-session-meta">
+                    <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
+                      以下信息仅用于说明当前设备会话状态，不影响下方主操作路径。
+                    </Typography.Paragraph>
+                    {diagnosticRows.length > 0 ? (
+                      <Space direction="vertical" size={4}>
+                        {diagnosticRows.map((row) => (
+                          <Typography.Text key={row} type="secondary">
+                            {row}
+                          </Typography.Text>
+                        ))}
+                      </Space>
+                    ) : (
+                      <Typography.Text type="secondary">当前授权会话需要重新确认。</Typography.Text>
+                    )}
+                  </div>
+                ),
+              },
+            ]}
+          />
 
-          <Space wrap>
+          <Space wrap data-testid="auth-status-actions">
             {isGraceVariant ? (
               <>
                 <Button type="primary" onClick={() => navigate('/creative/workbench')}>
-                  继续进入作品工作台
-                </Button>
-                <Button onClick={() => navigate('/dashboard')}>
-                  查看运行总览
+                  继续进入工作台
                 </Button>
                 <Button
                   onClick={() => logoutMutation.mutate()}
                   loading={logoutMutation.isPending}
                   data-testid="auth-status-signout-button"
                 >
-                  退出登录
+                  退出登录并返回登录页
                 </Button>
               </>
             ) : (

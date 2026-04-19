@@ -1,6 +1,6 @@
-import { Alert, Button, Card, Form, Input, Space, Typography, message } from 'antd'
+import { App as AntApp, Button, Card, Collapse, Form, Input, Space, Typography } from 'antd'
 import { useMutation } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import AuthErrorMessage from './AuthErrorMessage'
@@ -18,6 +18,7 @@ interface LoginFormValues {
 export default function LoginPage() {
   const [form] = Form.useForm<LoginFormValues>()
   const navigate = useNavigate()
+  const { message } = AntApp.useApp()
   const { session, setSession } = useAuth()
   const [deviceId, setDeviceId] = useState(() => getOrCreateDeviceId())
   const [clientVersion, setClientVersion] = useState('web-dev')
@@ -62,20 +63,24 @@ export default function LoginPage() {
     onError: (error: unknown) => {
       const descriptor = getAuthErrorDescriptor(error)
       setSubmitError(descriptor)
-      message.error(descriptor.title)
     },
   })
 
-  const statusAlert = useMemo(() => {
-    const source = authStatusQuery.data ?? session
-    if (!source || source.auth_state === 'unauthenticated' || source.auth_state === 'authenticated_active') {
-      return null
-    }
-    const descriptor = getAuthStateDescriptor(source)
-    return descriptor ? (
-      <AuthErrorMessage descriptor={descriptor} testId="auth-login-status-message" />
-    ) : null
-  }, [authStatusQuery.data, session])
+  const loginStateSource = authStatusQuery.data ?? session
+  let loginStateDescriptor: AuthErrorDescriptor | null = null
+  if (
+    loginStateSource
+    && (loginStateSource.auth_state === 'refresh_required' || loginStateSource.auth_state === 'error')
+  ) {
+    loginStateDescriptor = getAuthStateDescriptor(loginStateSource)
+  }
+  const statusSyncMode = session && !submitError && !loginStateDescriptor
+    ? authStatusQuery.isLoading
+      ? 'loading'
+      : authStatusQuery.isError
+        ? 'error'
+        : null
+    : null
 
   return (
     <div
@@ -89,35 +94,23 @@ export default function LoginPage() {
       }}
     >
       <Card
-        title="登录本地工作台"
+        title={(
+          <Space direction="vertical" size={2}>
+            <Typography.Title level={4} style={{ margin: 0 }}>
+              登录应用
+            </Typography.Title>
+            <Typography.Text type="secondary">
+              登录后即可继续使用作品工作台、任务管理和素材管理。
+            </Typography.Text>
+          </Space>
+        )}
         style={{ width: 480, maxWidth: '100%' }}
         data-testid="auth-login-page"
       >
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
           <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            登录后即可继续使用作品工作台、运行总览和任务诊断等本地能力。
+            当前登录会绑定到本设备，用于保护你的应用访问权限。
           </Typography.Paragraph>
-
-          {authStatusQuery.isLoading && session ? (
-            <Alert
-              type="info"
-              showIcon
-              message="正在同步授权状态"
-              description="正在刷新当前设备的授权信息，请稍候。"
-            />
-          ) : null}
-
-          {authStatusQuery.isError && session ? (
-            <Alert
-              type="warning"
-              showIcon
-              message="授权状态暂时无法刷新"
-              description="登录页仍可继续提交，但当前设备状态尚未完成最新同步。"
-              action={<Button size="small" onClick={() => void authStatusQuery.refetch()}>重试</Button>}
-            />
-          ) : null}
-
-          {statusAlert}
 
           <Form
             form={form}
@@ -156,22 +149,54 @@ export default function LoginPage() {
             </Form.Item>
           </Form>
 
-          {submitError && (
+          {submitError ? (
             <AuthErrorMessage
               descriptor={submitError}
               onRetry={() => form.submit()}
+              retryLabel="重新提交"
               testId="auth-login-error-message"
             />
-          )}
+          ) : loginStateDescriptor ? (
+            <AuthErrorMessage descriptor={loginStateDescriptor} testId="auth-login-status-message" />
+          ) : null}
 
-          <div data-testid="auth-login-device-meta">
-            <Typography.Paragraph type="secondary" style={{ marginBottom: 4 }}>
-              本机授权信息仅用于当前设备登录校验，不影响页面主流程。
-            </Typography.Paragraph>
-            <Typography.Text type="secondary">设备标识：{deviceId}</Typography.Text>
-            <br />
-            <Typography.Text type="secondary">客户端版本：{clientVersion}</Typography.Text>
-          </div>
+          {statusSyncMode ? (
+            <div data-testid="auth-login-status-sync">
+              <Space size={8} wrap>
+                <Typography.Text type="secondary">
+                  {statusSyncMode === 'loading'
+                    ? '正在同步当前登录状态，请稍候。'
+                    : '状态同步暂时不可用，你仍可继续提交登录。'}
+                </Typography.Text>
+                {statusSyncMode === 'error' ? (
+                  <Button type="link" size="small" onClick={() => void authStatusQuery.refetch()}>
+                    重试同步
+                  </Button>
+                ) : null}
+              </Space>
+            </div>
+          ) : null}
+
+          <Collapse
+            bordered={false}
+            size="small"
+            items={[
+              {
+                key: 'diagnostics',
+                label: <span data-testid="auth-login-diagnostics-trigger">设备与版本信息</span>,
+                children: (
+                  <div data-testid="auth-login-device-meta">
+                    <Typography.Paragraph type="secondary" style={{ marginBottom: 4 }}>
+                      以下信息仅用于支持排查当前设备的登录环境，不影响页面主流程。
+                    </Typography.Paragraph>
+                    <Typography.Text type="secondary">设备标识：{deviceId}</Typography.Text>
+                    <br />
+                    <Typography.Text type="secondary">客户端版本：{clientVersion}</Typography.Text>
+                  </div>
+                ),
+              },
+            ]}
+          />
         </Space>
       </Card>
     </div>

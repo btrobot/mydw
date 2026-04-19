@@ -56,7 +56,7 @@ async function mockAuthStatus(page: Page, status = createStatus()) {
 }
 
 async function gotoLoginPage(page: Page) {
-  await page.goto(`${BASE_URL}/#/login`)
+  await page.goto(`${BASE_URL}/#/login`, { waitUntil: 'domcontentloaded' })
   await expect(page.getByTestId('auth-login-page')).toBeVisible()
 }
 
@@ -69,22 +69,29 @@ function loginForm(page: Page) {
 }
 
 test.describe('Remote auth login page', () => {
-  test('renders the current auth shell baseline', async ({ page }) => {
+  test('renders a user-facing login shell with folded diagnostics by default', async ({ page }) => {
     await mockAuthSession(page)
+    await mockAuthStatus(page)
+    await page.addInitScript((storageKey) => {
+      window.localStorage.setItem(storageKey, 'device-shell-001')
+    }, DEVICE_ID_STORAGE_KEY)
 
     await gotoLoginPage(page)
 
     const { username, password, submit } = loginForm(page)
-    const deviceId = await page.evaluate((storageKey) => window.localStorage.getItem(storageKey), DEVICE_ID_STORAGE_KEY)
 
+    await expect(page.getByRole('heading', { name: '登录应用' })).toBeVisible()
+    await expect(page.getByText('登录后即可继续使用作品工作台、任务管理和素材管理。')).toBeVisible()
     await expect(username).toBeVisible()
     await expect(password).toBeVisible()
     await expect(submit).toBeVisible()
-    await expect(page.getByTestId('auth-login-device-meta')).toContainText(deviceId ?? '')
+    await expect(page.getByTestId('auth-login-diagnostics-trigger')).toBeVisible()
+    await expect(page.getByTestId('auth-login-device-meta')).toBeHidden()
   })
 
   test('shows required-field validation on empty submit', async ({ page }) => {
     await mockAuthSession(page)
+    await mockAuthStatus(page)
 
     await gotoLoginPage(page)
     await loginForm(page).submit.click()
@@ -94,6 +101,7 @@ test.describe('Remote auth login page', () => {
 
   test('submits username/password/device metadata and redirects on success', async ({ page }) => {
     await mockWorkbenchLandingApis(page, { authState: 'unauthenticated' })
+    await mockAuthStatus(page)
 
     let receivedPayload: Record<string, unknown> | null = null
     await page.route('**/api/auth/login', async (route) => {
@@ -133,6 +141,7 @@ test.describe('Remote auth login page', () => {
 
   test('shows auth error messaging for invalid credentials', async ({ page }) => {
     await mockAuthSession(page)
+    await mockAuthStatus(page)
 
     await page.route('**/api/auth/login', async (route) => {
       await route.fulfill({
@@ -154,7 +163,48 @@ test.describe('Remote auth login page', () => {
     await submit.click()
 
     await expect(page.getByTestId('auth-login-error-message')).toBeVisible()
-    await expect(page.getByTestId('auth-login-error-message').locator('button')).toBeVisible()
+    await expect(page.getByTestId('auth-login-error-message')).toContainText('账号或密码错误')
+    await expect(page.locator('.ant-message-notice')).toHaveCount(0)
+  })
+
+  test('prioritizes submit errors over existing login state hints', async ({ page }) => {
+    const session = createSession({
+      auth_state: 'refresh_required',
+      denial_reason: 'network_timeout',
+      device_id: 'device-refresh-submit-001',
+    })
+
+    await mockAuthSession(page, session)
+    await mockAuthStatus(page, createStatus({
+      auth_state: 'refresh_required',
+      is_authenticated: true,
+      requires_reauth: true,
+      denial_reason: 'network_timeout',
+      device_id: 'device-refresh-submit-001',
+    }))
+
+    await page.route('**/api/auth/login', async (route) => {
+      await route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          detail: {
+            error_code: 'invalid_credentials',
+            message: 'Incorrect username or password',
+          },
+        }),
+      })
+    })
+
+    await gotoLoginPage(page)
+    const { username, password, submit } = loginForm(page)
+    await username.fill('alice')
+    await password.fill('wrong-password')
+    await submit.click()
+
+    await expect(page.getByTestId('auth-login-error-message')).toBeVisible()
+    await expect(page.getByTestId('auth-login-status-message')).toHaveCount(0)
+    await expect(page.getByTestId('auth-login-status-sync')).toHaveCount(0)
   })
 
   test('shows refresh-required status context on the login page', async ({ page }) => {
@@ -177,16 +227,61 @@ test.describe('Remote auth login page', () => {
     await gotoLoginPage(page)
 
     await expect(page.getByTestId('auth-login-status-message')).toBeVisible()
-    await expect(page.getByTestId('auth-login-device-meta')).toContainText('device-refresh-001')
+    await expect(page.getByTestId('auth-login-status-message')).toContainText('需要重新确认登录状态')
+    await expect(page.getByTestId('auth-login-status-message')).toContainText('请重新登录或稍后重试')
+  })
+
+  test('prioritizes the login state hint over status-sync feedback', async ({ page }) => {
+    const session = createSession({
+      auth_state: 'refresh_required',
+      entitlements: ['dashboard:view'],
+      denial_reason: 'network_timeout',
+      device_id: 'device-refresh-sync-001',
+    })
+
+    await mockAuthSession(page, session)
+    await page.route('**/api/auth/status', async (route) => {
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          detail: {
+            error_code: 'network_timeout',
+            message: 'network timeout',
+          },
+        }),
+      })
+    })
+
+    await gotoLoginPage(page)
+
+    await expect(page.getByTestId('auth-login-status-message')).toBeVisible()
+    await expect(page.getByTestId('auth-login-status-sync')).toHaveCount(0)
+  })
+
+  test('keeps login diagnostics folded until expanded', async ({ page }) => {
+    await mockAuthSession(page)
+    await mockAuthStatus(page)
+
+    await gotoLoginPage(page)
+    const deviceId = await page.evaluate((storageKey) => window.localStorage.getItem(storageKey), DEVICE_ID_STORAGE_KEY)
+
+    await expect(page.getByTestId('auth-login-device-meta')).toBeHidden()
+    await page.getByTestId('auth-login-diagnostics-trigger').click()
+    await expect(page.getByTestId('auth-login-device-meta')).toBeVisible()
+    await expect(page.getByTestId('auth-login-device-meta')).toContainText(deviceId ?? '')
+    await expect(page.getByTestId('auth-login-device-meta')).toContainText('0.2.0')
   })
 
   test('persists the generated device id across reloads', async ({ page }) => {
     await mockAuthSession(page)
+    await mockAuthStatus(page)
 
     await gotoLoginPage(page)
 
     const firstDeviceId = await page.evaluate(() => window.localStorage.getItem('mydw.auth.device_id'))
     expect(firstDeviceId).toBeTruthy()
+    await page.getByTestId('auth-login-diagnostics-trigger').click()
     await expect(page.getByTestId('auth-login-device-meta')).toContainText(firstDeviceId ?? '')
 
     await page.reload()
@@ -194,11 +289,13 @@ test.describe('Remote auth login page', () => {
 
     const secondDeviceId = await page.evaluate(() => window.localStorage.getItem('mydw.auth.device_id'))
     expect(secondDeviceId).toBe(firstDeviceId)
+    await page.getByTestId('auth-login-diagnostics-trigger').click()
     await expect(page.getByTestId('auth-login-device-meta')).toContainText(secondDeviceId ?? '')
   })
 
   test('keeps form controls keyboard-accessible', async ({ page }) => {
     await mockAuthSession(page)
+    await mockAuthStatus(page)
 
     await page.addInitScript((storageKey) => {
       window.localStorage.setItem(storageKey, 'device-keyboard-001')
