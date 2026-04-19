@@ -7,6 +7,8 @@ from datetime import datetime
 from enum import Enum
 import json
 
+from utils.local_ffmpeg_contract import parse_local_ffmpeg_params
+
 
 # ============ 枚举定义 ============
 
@@ -1205,7 +1207,10 @@ class PublishProfileCreate(BaseModel):
     coze_workflow_id: Optional[str] = Field(None, max_length=128)
     composition_params: Optional[str] = Field(
         None,
-        description="profile 级 opaque JSON 配置；Phase 6 结论为 keep-json。",
+        description=(
+            "profile 级 JSON 配置。local_ffmpeg V1 当前仅支持 JSON object，"
+            "允许字段：audio_mix_volume、video_codec、audio_codec、preset、crf。"
+        ),
     )
     global_topic_ids: List[int] = Field(
         default_factory=list,
@@ -1224,6 +1229,12 @@ class PublishProfileCreate(BaseModel):
                 raise ValueError("composition_params 必须是合法的 JSON 字符串")
         return v
 
+    @model_validator(mode="after")
+    def validate_mode_specific_contract(self) -> "PublishProfileCreate":
+        if self.composition_mode == CompositionMode.LOCAL_FFMPEG:
+            parse_local_ffmpeg_params(self.composition_params)
+        return self
+
 
 class PublishProfileUpdate(BaseModel):
     """更新合成配置档"""
@@ -1233,7 +1244,10 @@ class PublishProfileUpdate(BaseModel):
     coze_workflow_id: Optional[str] = Field(None, max_length=128)
     composition_params: Optional[str] = Field(
         None,
-        description="profile 级 opaque JSON 配置；Phase 6 结论为 keep-json。",
+        description=(
+            "profile 级 JSON 配置。local_ffmpeg V1 当前仅支持 JSON object，"
+            "允许字段：audio_mix_volume、video_codec、audio_codec、preset、crf。"
+        ),
     )
     global_topic_ids: Optional[List[int]] = Field(
         None,
@@ -1251,6 +1265,12 @@ class PublishProfileUpdate(BaseModel):
             except (ValueError, TypeError):
                 raise ValueError("composition_params 必须是合法的 JSON 字符串")
         return v
+
+    @model_validator(mode="after")
+    def validate_mode_specific_contract(self) -> "PublishProfileUpdate":
+        if self.composition_mode == CompositionMode.LOCAL_FFMPEG:
+            parse_local_ffmpeg_params(self.composition_params)
+        return self
 
 
 class PublishProfileResponse(BaseModel):

@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from models import Task
+from utils.local_ffmpeg_contract import validate_local_ffmpeg_task_inputs
 
 
 class TaskSemanticsError(ValueError):
@@ -56,8 +57,23 @@ def validate_task_resource_inputs(
     covers = cover_ids or []
     audios = audio_ids or []
 
-    if mode != "none":
+    if mode == "coze":
         return
+
+    if mode == "local_ffmpeg":
+        try:
+            validate_local_ffmpeg_task_inputs(
+                video_ids=video_ids,
+                copywriting_ids=copywritings,
+                cover_ids=covers,
+                audio_ids=audios,
+            )
+        except ValueError as exc:
+            raise TaskSemanticsError(str(exc)) from exc
+        return
+
+    if mode != "none":
+        raise TaskSemanticsError(f"不支持的 composition_mode: {mode}")
 
     if len(video_ids) != 1:
         raise TaskSemanticsError(

@@ -57,6 +57,33 @@ def test_validate_task_resource_inputs_allows_broader_inputs_for_composition_mod
     )
 
 
+def test_validate_task_resource_inputs_accepts_local_ffmpeg_v1_combo() -> None:
+    validate_task_resource_inputs(
+        video_ids=[1],
+        copywriting_ids=[10],
+        cover_ids=[20],
+        audio_ids=[30],
+        composition_mode="local_ffmpeg",
+    )
+
+
+def test_validate_task_resource_inputs_rejects_multiple_videos_for_local_ffmpeg() -> None:
+    with pytest.raises(TaskSemanticsError, match="local_ffmpeg V1 仅支持 1 个视频输入"):
+        validate_task_resource_inputs(
+            video_ids=[1, 2],
+            composition_mode="local_ffmpeg",
+        )
+
+
+def test_validate_task_resource_inputs_rejects_multiple_audios_for_local_ffmpeg() -> None:
+    with pytest.raises(TaskSemanticsError, match="local_ffmpeg V1 仅支持 0 或 1 个音频输入"):
+        validate_task_resource_inputs(
+            video_ids=[1],
+            audio_ids=[20, 21],
+            composition_mode="local_ffmpeg",
+        )
+
+
 def test_validate_task_resource_inputs_allows_single_copywriting_and_cover_for_direct_publish() -> None:
     validate_task_resource_inputs(
         video_ids=[1],

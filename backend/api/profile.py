@@ -16,6 +16,7 @@ from schemas import (
     PublishProfileListResponse,
 )
 from services.topic_relation_service import get_profile_topic_ids, sync_profile_topic_ids
+from utils.local_ffmpeg_contract import validate_publish_profile_contract
 
 router = APIRouter()
 
@@ -36,6 +37,15 @@ async def create_profile(
     # 若新档设为默认，先清除其他默认
     if data.is_default:
         await _clear_default(db)
+
+    try:
+        validate_publish_profile_contract(
+            composition_mode=data.composition_mode.value,
+            composition_params=data.composition_params,
+            coze_workflow_id=data.coze_workflow_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     profile = PublishProfile(
         name=data.name,
@@ -108,6 +118,25 @@ async def update_profile(
     # 若设为默认，先清除其他默认
     if data.is_default is True and not profile.is_default:
         await _clear_default(db)
+
+    next_composition_mode = (
+        data.composition_mode.value if data.composition_mode is not None else profile.composition_mode
+    )
+    next_composition_params = (
+        data.composition_params if data.composition_params is not None else profile.composition_params
+    )
+    next_coze_workflow_id = (
+        data.coze_workflow_id if data.coze_workflow_id is not None else profile.coze_workflow_id
+    )
+
+    try:
+        validate_publish_profile_contract(
+            composition_mode=next_composition_mode,
+            composition_params=next_composition_params,
+            coze_workflow_id=next_coze_workflow_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     if data.name is not None:
         profile.name = data.name

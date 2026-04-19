@@ -228,6 +228,62 @@ async def test_create_tasks_with_composition_profile_start_in_draft(
 
 
 @pytest.mark.asyncio
+async def test_create_tasks_with_local_ffmpeg_profile_accepts_v1_input_and_starts_in_draft(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    acct = await _create_account(db_session, "profile_ffmpeg_a1")
+    vid = await _create_video(db_session, "profile_ffmpeg_v1")
+    audio = await _create_audio(db_session, "profile_ffmpeg_audio")
+    profile = await _create_profile(db_session, "local-ffmpeg-profile", "local_ffmpeg")
+    await db_session.commit()
+
+    resp = await client.post(
+        "/api/tasks/",
+        json={
+            "video_ids": [vid.id],
+            "audio_ids": [audio.id],
+            "copywriting_ids": [],
+            "cover_ids": [],
+            "topic_ids": [],
+            "account_ids": [acct.id],
+            "profile_id": profile.id,
+        },
+    )
+    assert resp.status_code == 201
+    tasks = resp.json()
+    assert len(tasks) == 1
+    assert tasks[0]["status"] == "draft"
+    assert tasks[0]["video_ids"] == [vid.id]
+    assert tasks[0]["audio_ids"] == [audio.id]
+
+
+@pytest.mark.asyncio
+async def test_create_tasks_rejects_invalid_local_ffmpeg_combo_early(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    acct = await _create_account(db_session, "invalid_ffmpeg_a1")
+    vid1 = await _create_video(db_session, "invalid_ffmpeg_v1")
+    vid2 = await _create_video(db_session, "invalid_ffmpeg_v2")
+    profile = await _create_profile(db_session, "invalid-ffmpeg-profile", "local_ffmpeg")
+    await db_session.commit()
+
+    response = await client.post(
+        "/api/tasks/",
+        json={
+            "video_ids": [vid1.id, vid2.id],
+            "audio_ids": [],
+            "copywriting_ids": [],
+            "cover_ids": [],
+            "topic_ids": [],
+            "account_ids": [acct.id],
+            "profile_id": profile.id,
+        },
+    )
+    assert response.status_code == 400
+    assert "local_ffmpeg V1 仅支持 1 个视频输入" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
 async def test_delete_task_removes_task_video_relations(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
