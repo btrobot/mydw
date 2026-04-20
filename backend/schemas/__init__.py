@@ -92,6 +92,12 @@ class PublishSchedulerMode(str, Enum):
     POOL = "pool"
 
 
+class CreativeFlowMode(str, Enum):
+    TASK_FIRST = "task_first"
+    DUAL = "dual"
+    CREATIVE_FIRST = "creative_first"
+
+
 class CompositionJobStatus(str, Enum):
     PENDING = "pending"
     PROCESSING = "processing"
@@ -1207,7 +1213,15 @@ class SystemConfigResponse(BaseModel):
     """系统配置响应（真实 runtime-config + 只读系统信息）"""
     material_base_path: str = Field(
         ...,
-        description="当前唯一支持运行时修改的设置项；优先读取 runtime-config，缺失时回退到 startup-env。",
+        description="受支持的 runtime-config 字段；优先读取 runtime-config，缺失时回退到 startup-env。",
+    )
+    creative_flow_mode: CreativeFlowMode = Field(
+        ...,
+        description="作品驱动入口控制面；控制默认入口、主 CTA 与默认跳转，运行时可修改。",
+    )
+    creative_flow_shadow_compare: bool = Field(
+        ...,
+        description="作品驱动双轨对账开关；开启后允许记录新旧入口 payload diff，运行时可修改。",
     )
     auto_backup: bool = Field(
         ...,
@@ -1220,11 +1234,19 @@ class SystemConfigResponse(BaseModel):
 
 
 class SystemConfigUpdateResponse(BaseModel):
-    """系统配置更新响应（仅 material_base_path 可真实写入）"""
+    """系统配置更新响应（仅 matrix-approved runtime-config 可真实写入）"""
     success: bool
     material_base_path: Optional[str] = Field(
         None,
-        description="成功写入后的素材根目录；当前唯一支持运行时修改的设置项。",
+        description="成功写入后的素材根目录；属于受支持的 runtime-config 字段。",
+    )
+    creative_flow_mode: Optional[CreativeFlowMode] = Field(
+        None,
+        description="成功写入后的作品驱动入口模式；控制默认入口、主 CTA 与默认跳转。",
+    )
+    creative_flow_shadow_compare: Optional[bool] = Field(
+        None,
+        description="成功写入后的双轨对账开关；开启后允许记录新旧入口 diff。",
     )
     auto_backup: Optional[bool] = Field(
         None,

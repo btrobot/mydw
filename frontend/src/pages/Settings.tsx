@@ -1,28 +1,42 @@
 import { useEffect } from 'react'
-import { Alert, Button, Card, Descriptions, Form, Input, Space, Typography, message } from 'antd'
+import { Alert, App, Button, Card, Descriptions, Form, Input, Select, Space, Switch, Typography } from 'antd'
 import { useBackup, useSystemConfig, useUpdateSystemConfig } from '@/hooks/useSystem'
+import { creativeFlowModeMeta } from '@/features/creative/creativeFlow'
 
 const { Paragraph, Text } = Typography
 
 // ============ Settings Page ============
 
 export default function Settings() {
-  const [form] = Form.useForm<{ material_base_path: string }>()
+  const { message } = App.useApp()
+  const [form] = Form.useForm<{
+    material_base_path: string
+    creative_flow_mode: 'task_first' | 'dual' | 'creative_first'
+    creative_flow_shadow_compare: boolean
+  }>()
   const { data: systemConfig, isLoading } = useSystemConfig()
   const updateSystemConfig = useUpdateSystemConfig()
   const backup = useBackup()
 
   useEffect(() => {
     if (systemConfig) {
-      form.setFieldsValue({ material_base_path: systemConfig.material_base_path })
+      form.setFieldsValue({
+        material_base_path: systemConfig.material_base_path,
+        creative_flow_mode: systemConfig.creative_flow_mode,
+        creative_flow_shadow_compare: systemConfig.creative_flow_shadow_compare,
+      })
     }
   }, [form, systemConfig])
 
   const handleSave = async () => {
     try {
       const values = await form.validateFields()
-      await updateSystemConfig.mutateAsync({ material_base_path: values.material_base_path })
-      message.success('素材路径已更新')
+      await updateSystemConfig.mutateAsync({
+        material_base_path: values.material_base_path,
+        creative_flow_mode: values.creative_flow_mode,
+        creative_flow_shadow_compare: values.creative_flow_shadow_compare,
+      })
+      message.success('运行时设置已更新')
     } catch (error: unknown) {
       if (error instanceof Error && error.message !== 'Validation failed') {
         message.error(error.message)
@@ -47,8 +61,9 @@ export default function Settings() {
     <Space direction="vertical" style={{ width: '100%' }} size="large">
       <Card title="运行时设置">
         <Paragraph type="secondary">
-          当前唯一支持的运行时设置项：<Text code>material_base_path</Text>。保存后会写入
-          <Text code>data/system_config.json</Text>，不需要改动启动期环境变量。
+          当前受支持的 runtime-config 项：<Text code>material_base_path</Text>、
+          <Text code>creative_flow_mode</Text>、<Text code>creative_flow_shadow_compare</Text>。
+          保存后会写入 <Text code>data/system_config.json</Text>，不需要改动启动期环境变量。
         </Paragraph>
         <Form form={form} layout="vertical">
           <Form.Item
@@ -58,8 +73,26 @@ export default function Settings() {
           >
             <Input placeholder="请输入素材根目录" />
           </Form.Item>
+
+          <Form.Item name="creative_flow_mode" label="作品驱动入口模式" rules={[{ required: true, message: '请选择入口模式' }]}>
+            <Select
+              options={Object.entries(creativeFlowModeMeta).map(([value, meta]) => ({
+                value,
+                label: `${meta.label}：${meta.description}`,
+              }))}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="creative_flow_shadow_compare"
+            label="双轨对账（Shadow Compare）"
+            valuePropName="checked"
+          >
+            <Switch checkedChildren="开启" unCheckedChildren="关闭" />
+          </Form.Item>
+
           <Button type="primary" onClick={handleSave} loading={updateSystemConfig.isPending || isLoading}>
-            保存素材路径
+            保存运行时设置
           </Button>
         </Form>
       </Card>

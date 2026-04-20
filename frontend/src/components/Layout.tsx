@@ -20,7 +20,6 @@ const { Title } = Typography
 const { useBreakpoint } = Grid
 
 const subMenuKeys = [
-  '/creative/workbench',
   '/material/video',
   '/material/copywriting',
   '/material/cover',
@@ -33,7 +32,7 @@ const subMenuKeys = [
   '/settings/auth-admin',
 ]
 
-const rootMenuKeys = new Set(['material-group', 'creative-group', 'settings-group', 'task-group'])
+const rootMenuKeys = new Set(['material-group', 'settings-group', 'task-group'])
 
 export default function LayoutComponent() {
   const navigate = useNavigate()
@@ -52,7 +51,6 @@ export default function LayoutComponent() {
 
   const initialOpenKeys = [
     ...(isMaterialRoute ? ['material-group'] : []),
-    ...(isCreativeRoute ? ['creative-group'] : []),
     ...(isSettingsRoute ? ['settings-group'] : []),
     ...(isTaskRoute ? ['task-group'] : []),
   ]
@@ -61,14 +59,7 @@ export default function LayoutComponent() {
   const [isBroken, setIsBroken] = useState(false)
 
   const items = useMemo(() => ([
-    {
-      key: 'creative-group',
-      icon: <AppstoreOutlined />,
-      label: '创作工作台',
-      children: [
-        { key: '/creative/workbench', label: '作品工作台' },
-      ],
-    },
+    { key: '/creative/workbench', icon: <AppstoreOutlined />, label: '作品工作台' },
     { key: '/dashboard', icon: <DashboardOutlined />, label: '运行总览' },
     { key: '/account', icon: <UserOutlined />, label: '账号' },
     {

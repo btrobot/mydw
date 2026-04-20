@@ -1,28 +1,49 @@
 import { Button, Empty, Space, Typography } from 'antd'
 
+import type { CreativeFlowMode } from '../creativeFlow'
+import { creativeFlowModeMeta } from '../creativeFlow'
+
 const { Paragraph, Text } = Typography
 
 interface CreativeEmptyStateProps {
-  onOpenTaskList?: () => void
+  mode?: CreativeFlowMode
+  onCreateCreative?: () => void
+  onOpenLegacyTaskEntry?: () => void
 }
 
-export default function CreativeEmptyState({ onOpenTaskList }: CreativeEmptyStateProps) {
+export default function CreativeEmptyState({
+  mode = 'creative_first',
+  onCreateCreative,
+  onOpenLegacyTaskEntry,
+}: CreativeEmptyStateProps) {
+  const modeMeta = creativeFlowModeMeta[mode]
+
   return (
     <Empty
       description={(
         <Space direction="vertical" size={4}>
-          <Text strong>还没有可处理的作品</Text>
+          <Text strong>还没有作品</Text>
           <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            当执行结果还没有回写到作品域时，这里会暂时为空。你可以先到“任务诊断”查看执行进度，等作品生成后再回到工作台继续处理。
+            先创建一条作品，再逐步补齐素材、合成配置与执行动作。当前入口模式：{modeMeta.label}。
+          </Paragraph>
+          <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+            {modeMeta.description}
           </Paragraph>
         </Space>
       )}
     >
-      {onOpenTaskList ? (
-        <Button type="primary" onClick={onOpenTaskList}>
-          打开任务诊断
-        </Button>
-      ) : null}
+      <Space wrap>
+        {onCreateCreative ? (
+          <Button type="primary" onClick={onCreateCreative}>
+            新建作品
+          </Button>
+        ) : null}
+        {onOpenLegacyTaskEntry ? (
+          <Button onClick={onOpenLegacyTaskEntry}>
+            兼容入口：新建任务
+          </Button>
+        ) : null}
+      </Space>
     </Empty>
   )
 }

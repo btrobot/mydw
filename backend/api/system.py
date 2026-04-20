@@ -106,7 +106,15 @@ async def get_system_config():
 async def update_system_config(
     material_base_path: str = Query(
         default=None,
-        description="当前唯一支持运行时修改的设置项；写入 data/system_config.json。",
+        description="受支持的 runtime-config 字段；写入 data/system_config.json。",
+    ),
+    creative_flow_mode: str = Query(
+        default=None,
+        description="作品驱动入口模式：task_first | dual | creative_first；控制默认入口、主 CTA 与默认跳转。",
+    ),
+    creative_flow_shadow_compare: bool = Query(
+        default=None,
+        description="作品驱动双轨对账开关；开启后允许记录新旧入口 payload diff。",
     ),
     auto_backup: bool = Query(
         default=None,
@@ -121,17 +129,26 @@ async def update_system_config(
     try:
         updated = SystemConfigService().update_config(
             material_base_path=material_base_path,
+            creative_flow_mode=creative_flow_mode,
+            creative_flow_shadow_compare=creative_flow_shadow_compare,
             auto_backup=auto_backup,
             log_level=log_level,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    logger.info("更新系统配置: material_path={}", updated["material_base_path"])
+    logger.info(
+        "更新系统配置: material_path={} creative_flow_mode={} creative_flow_shadow_compare={}",
+        updated["material_base_path"],
+        updated["creative_flow_mode"],
+        updated["creative_flow_shadow_compare"],
+    )
 
     return SystemConfigUpdateResponse(
         success=True,
         material_base_path=updated["material_base_path"],
+        creative_flow_mode=updated["creative_flow_mode"],
+        creative_flow_shadow_compare=updated["creative_flow_shadow_compare"],
         auto_backup=updated["auto_backup"],
         log_level=updated["log_level"],
     )

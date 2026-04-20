@@ -22,6 +22,7 @@ from services.task_service import TaskDeleteConflictError, TaskService
 from services.task_distributor import TaskDistributor
 from services.scheduler import scheduler
 from services.composition_service import CompositionService
+from services.system_config_service import SystemConfigService
 from services.task_execution_semantics import TaskSemanticsError
 from core.auth_dependencies import ACTIVE_ROUTE_DEPENDENCIES, GRACE_READONLY_ROUTE_DEPENDENCIES
 from utils.time import utc_now_naive
@@ -453,6 +454,21 @@ async def batch_assemble_tasks(
     db: AsyncSession = Depends(get_db)
 ):
     """批量组装任务（兼容旧接口，内部转发到新逻辑）"""
+    runtime_config = SystemConfigService().get_config()
+    logger.info(
+        "event_name=creative_flow_entry_legacy route=/task/create profile_id={} material_counts={} account_mode={} creative_flow_mode={} shadow_compare={}",
+        request.profile_id,
+        {
+            "videos": len(request.video_ids),
+            "copywritings": len(request.copywriting_ids),
+            "covers": len(request.cover_ids),
+            "audios": len(request.audio_ids),
+            "topics": 0,
+        },
+        "fixed" if request.account_ids else "random",
+        runtime_config["creative_flow_mode"],
+        runtime_config["creative_flow_shadow_compare"],
+    )
     distributor = TaskDistributor(db)
     try:
         tasks = await distributor.distribute(

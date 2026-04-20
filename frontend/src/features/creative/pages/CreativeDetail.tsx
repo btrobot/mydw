@@ -1,9 +1,10 @@
 import { ReloadOutlined } from '@ant-design/icons'
 import { PageContainer } from '@ant-design/pro-components'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Alert,
+  App,
   Button,
   Card,
   Collapse,
@@ -11,9 +12,12 @@ import {
   Drawer,
   Empty,
   Flex,
+  Form,
   Grid,
+  Input,
   List,
   Result,
+  Select,
   Space,
   Spin,
   Tag,
@@ -23,15 +27,24 @@ import {
 import AIClipWorkflowPanel from '../components/AIClipWorkflowPanel'
 import CheckDrawer from '../components/CheckDrawer'
 import VersionPanel from '../components/VersionPanel'
+import { creativeFlowModeMeta, resolveCreativeFlowMode, resolveCreativeFlowShadowCompare } from '../creativeFlow'
 import {
   useCreative,
   usePublishPoolItems,
   usePublishStatus,
   useScheduleConfig,
+  useUpdateCreative,
 } from '../hooks/useCreatives'
+import { useSystemConfig } from '@/hooks/useSystem'
+import { useProfiles } from '@/hooks/useProfile'
+import { useVideos } from '@/hooks/useVideo'
+import { useCopywritings } from '@/hooks/useCopywriting'
+import { useCovers } from '@/hooks/useCover'
+import { useAudios } from '@/hooks/useAudio'
+import { useTopics } from '@/hooks/useTopic'
 import {
-  creativeReviewConclusionMeta,
   creativeStatusMeta,
+  creativeReviewConclusionMeta,
   formatCheckConclusion,
   formatCreativeTimestamp,
   formatModeLabel,
@@ -49,18 +62,38 @@ import {
 const { Paragraph, Text } = Typography
 const { useBreakpoint } = Grid
 
+type CreativeInputFormValues = {
+  title?: string
+  profile_id?: number
+  video_ids: number[]
+  copywriting_ids: number[]
+  cover_ids: number[]
+  audio_ids: number[]
+  topic_ids: number[]
+}
+
 export default function CreativeDetail() {
   const navigate = useNavigate()
+  const { message } = App.useApp()
   const screens = useBreakpoint()
   const { id } = useParams<{ id: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
+  const [form] = Form.useForm<CreativeInputFormValues>()
   const creativeId = id ? Number.parseInt(id, 10) : undefined
   const requestedTaskId = Number.parseInt(searchParams.get('taskId') ?? '', 10)
   const prioritizedTaskId = Number.isFinite(requestedTaskId) ? requestedTaskId : undefined
   const taskReturnTo = searchParams.get('returnTo') || '/task/list'
   const creativeQuery = useCreative(creativeId)
+  const updateCreative = useUpdateCreative(creativeId)
   const publishStatusQuery = usePublishStatus()
   const scheduleConfigQuery = useScheduleConfig()
+  const systemConfigQuery = useSystemConfig()
+  const { data: profilesData } = useProfiles()
+  const videosQuery = useVideos()
+  const copywritingsQuery = useCopywritings()
+  const coversQuery = useCovers()
+  const audiosQuery = useAudios()
+  const topicsQuery = useTopics()
   const activePoolQuery = usePublishPoolItems({
     creativeId,
     status: 'active',
@@ -78,6 +111,26 @@ export default function CreativeDetail() {
   const creative = creativeQuery.data
   const publishStatus = publishStatusQuery.data
   const scheduleConfig = scheduleConfigQuery.data
+  const systemConfig = systemConfigQuery.data
+  const creativeFlowMode = resolveCreativeFlowMode(systemConfig)
+  const creativeFlowShadowCompare = resolveCreativeFlowShadowCompare(systemConfig)
+  const creativeFlowMeta = creativeFlowModeMeta[creativeFlowMode]
+  const profiles = profilesData?.items ?? []
+  const videos = videosQuery.data ?? []
+  const copywritings = copywritingsQuery.data ?? []
+  const covers = coversQuery.data ?? []
+  const audios = audiosQuery.data ?? []
+  const topics = topicsQuery.data ?? []
+  const inputSnapshot = creative?.input_snapshot ?? {
+    profile_id: undefined,
+    video_ids: [],
+    copywriting_ids: [],
+    cover_ids: [],
+    audio_ids: [],
+    topic_ids: [],
+    snapshot_hash: undefined,
+  }
+  const eligibilityReasons = creative?.eligibility_reasons ?? []
   const currentVersion = creative?.versions?.find((version) => version.is_current) ?? null
   const aiClipOpen = searchParams.get('tool') === 'ai-clip' && Boolean(currentVersion)
   const detailCardMinWidth = screens.md ? 320 : '100%'
@@ -155,15 +208,89 @@ export default function CreativeDetail() {
     void Promise.all([
       publishStatusQuery.refetch(),
       scheduleConfigQuery.refetch(),
+      systemConfigQuery.refetch(),
       activePoolQuery.refetch(),
       invalidatedPoolQuery.refetch(),
     ])
-  }, [activePoolQuery, invalidatedPoolQuery, publishStatusQuery, scheduleConfigQuery])
+  }, [activePoolQuery, invalidatedPoolQuery, publishStatusQuery, scheduleConfigQuery, systemConfigQuery])
 
   const openTaskDiagnostics = useCallback((taskId: number) => {
     const params = new URLSearchParams({ returnTo: taskReturnTo })
     navigate(`/task/${taskId}?${params.toString()}`)
   }, [navigate, taskReturnTo])
+
+  useEffect(() => {
+    if (!creative) {
+      return
+    }
+    form.setFieldsValue({
+      title: creative.title ?? undefined,
+      profile_id: inputSnapshot.profile_id ?? undefined,
+      video_ids: inputSnapshot.video_ids ?? [],
+      copywriting_ids: inputSnapshot.copywriting_ids ?? [],
+      cover_ids: inputSnapshot.cover_ids ?? [],
+      audio_ids: inputSnapshot.audio_ids ?? [],
+      topic_ids: inputSnapshot.topic_ids ?? [],
+    })
+  }, [creative, form, inputSnapshot])
+
+  const handleSaveInput = useCallback(async () => {
+    try {
+      const values = await form.validateFields()
+      await updateCreative.mutateAsync({
+        title: values.title?.trim() ? values.title.trim() : undefined,
+        profile_id: values.profile_id ?? null,
+        video_ids: values.video_ids ?? [],
+        copywriting_ids: values.copywriting_ids ?? [],
+        cover_ids: values.cover_ids ?? [],
+        audio_ids: values.audio_ids ?? [],
+        topic_ids: values.topic_ids ?? [],
+      })
+      message.success('作品输入已保存')
+      void Promise.all([
+        creativeQuery.refetch(),
+        activePoolQuery.refetch(),
+        invalidatedPoolQuery.refetch(),
+      ])
+    } catch (error: unknown) {
+      if (error !== null && typeof error === 'object' && 'errorFields' in error) {
+        return
+      }
+      if (error instanceof Error) {
+        message.error(error.message)
+      } else {
+        message.error('保存作品输入失败')
+      }
+    }
+  }, [activePoolQuery, creativeQuery, form, invalidatedPoolQuery, message, updateCreative])
+
+  const profileOptions = useMemo(
+    () => profiles.map((profile) => ({
+      value: profile.id,
+      label: profile.is_default ? `${profile.name}（默认）` : profile.name,
+    })),
+    [profiles],
+  )
+  const videoOptions = useMemo(
+    () => videos.map((item) => ({ value: item.id, label: item.name || `视频 #${item.id}` })),
+    [videos],
+  )
+  const copywritingOptions = useMemo(
+    () => copywritings.map((item) => ({ value: item.id, label: item.name || `文案 #${item.id}` })),
+    [copywritings],
+  )
+  const coverOptions = useMemo(
+    () => covers.map((item) => ({ value: item.id, label: item.name || `封面 #${item.id}` })),
+    [covers],
+  )
+  const audioOptions = useMemo(
+    () => audios.map((item) => ({ value: item.id, label: item.name || `音频 #${item.id}` })),
+    [audios],
+  )
+  const topicOptions = useMemo(
+    () => topics.map((item) => ({ value: item.id, label: item.name || `话题 #${item.id}` })),
+    [topics],
+  )
 
   const schedulerModeLabel =
     publishStatusQuery.isError && scheduleConfigQuery.isError
@@ -187,6 +314,18 @@ export default function CreativeDetail() {
       : (publishStatus?.publish_pool_kill_switch ?? scheduleConfig?.publish_pool_kill_switch)
         ? '开启'
         : '关闭'
+  const eligibilityColor =
+    creative?.eligibility_status === 'READY_TO_COMPOSE'
+      ? 'processing'
+      : creative?.eligibility_status === 'INVALID'
+        ? 'error'
+        : 'default'
+  const eligibilityLabel =
+    creative?.eligibility_status === 'READY_TO_COMPOSE'
+      ? '待提交合成'
+      : creative?.eligibility_status === 'INVALID'
+        ? '输入无效'
+        : '待补输入'
 
   if (creativeQuery.isLoading && !creative) {
     return (
@@ -371,6 +510,9 @@ export default function CreativeDetail() {
       subTitle={creative.creative_no}
       onBack={() => navigate('/creative/workbench')}
       extra={[
+        <Button key="legacy-task-create" onClick={() => navigate('/task/create')}>
+          兼容入口：新建任务
+        </Button>,
         primaryTaskId ? (
           <Button key="task-detail" onClick={() => openTaskDiagnostics(primaryTaskId)} data-testid="creative-open-task-diagnostics">
             查看任务诊断
@@ -402,12 +544,134 @@ export default function CreativeDetail() {
           <Descriptions bordered size="small" column={screens.md ? 2 : 1}>
             <Descriptions.Item label="作品编号">{creative.creative_no}</Descriptions.Item>
             <Descriptions.Item label="状态"><Tag color={statusMeta.color}>{statusMeta.label}</Tag></Descriptions.Item>
+            <Descriptions.Item label="入口模式">
+              <Space wrap>
+                <Tag>{creativeFlowMeta.label}</Tag>
+                <Tag>{creativeFlowShadowCompare ? 'Shadow Compare：开启' : 'Shadow Compare：关闭'}</Tag>
+              </Space>
+            </Descriptions.Item>
+            <Descriptions.Item label="合成准备"><Tag color={eligibilityColor}>{eligibilityLabel}</Tag></Descriptions.Item>
             <Descriptions.Item label="当前版本 ID">{creative.current_version_id ?? '-'}</Descriptions.Item>
             <Descriptions.Item label="最近更新时间">{formatCreativeTimestamp(creative.updated_at)}</Descriptions.Item>
           </Descriptions>
           <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
-            这里优先展示运营决策所需的信息；发布链路、调度与 Cutover 诊断请展开下方高级诊断查看。
+            这里先维护作品输入与业务判断，再决定是否发起合成；任务、发布链路与 Cutover 诊断继续作为辅助入口保留。
           </Paragraph>
+        </Card>
+
+        <Card
+          title="作品输入"
+          extra={(
+            <Space>
+              <Text type="secondary">Snapshot Hash：{inputSnapshot.snapshot_hash ?? '-'}</Text>
+              <Button type="primary" loading={updateCreative.isPending} onClick={() => void handleSaveInput()}>
+                保存作品输入
+              </Button>
+            </Space>
+          )}
+        >
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Form form={form} layout="vertical">
+              <Form.Item name="title" label="作品标题">
+                <Input placeholder="给这条作品起一个便于检索和协作的名字" allowClear />
+              </Form.Item>
+
+              <Form.Item name="profile_id" label="合成配置">
+                <Select
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  placeholder="选择合成配置"
+                  options={profileOptions}
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="video_ids"
+                label="视频素材"
+                rules={[{ required: true, type: 'array', min: 1, message: '至少选择 1 个视频' }]}
+              >
+                <Select
+                  mode="multiple"
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  placeholder="选择视频素材"
+                  options={videoOptions}
+                  loading={videosQuery.isLoading}
+                />
+              </Form.Item>
+
+              <Form.Item name="copywriting_ids" label="文案素材">
+                <Select
+                  mode="multiple"
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  placeholder="可选：选择文案素材"
+                  options={copywritingOptions}
+                  loading={copywritingsQuery.isLoading}
+                />
+              </Form.Item>
+
+              <Form.Item name="cover_ids" label="封面素材">
+                <Select
+                  mode="multiple"
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  placeholder="可选：选择封面素材"
+                  options={coverOptions}
+                  loading={coversQuery.isLoading}
+                />
+              </Form.Item>
+
+              <Form.Item name="audio_ids" label="音频素材">
+                <Select
+                  mode="multiple"
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  placeholder="可选：选择音频素材"
+                  options={audioOptions}
+                  loading={audiosQuery.isLoading}
+                />
+              </Form.Item>
+
+              <Form.Item name="topic_ids" label="话题">
+                <Select
+                  mode="multiple"
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  placeholder="可选：选择话题"
+                  options={topicOptions}
+                  loading={topicsQuery.isLoading}
+                />
+              </Form.Item>
+            </Form>
+
+            <Alert
+              type={creative.eligibility_status === 'INVALID' ? 'warning' : creative.eligibility_status === 'READY_TO_COMPOSE' ? 'success' : 'info'}
+              showIcon
+              message={
+                creative.eligibility_status === 'READY_TO_COMPOSE'
+                  ? '当前作品已满足提交合成条件'
+                  : creative.eligibility_status === 'INVALID'
+                    ? '当前作品输入存在无效项'
+                    : '当前作品仍待补齐输入'
+              }
+              description={
+                eligibilityReasons.length > 0 ? (
+                  <ul style={{ margin: 0, paddingInlineStart: 18 }}>
+                    {eligibilityReasons.map((reason) => (
+                      <li key={reason}>{reason}</li>
+                    ))}
+                  </ul>
+                ) : '当前输入已满足最小前置条件，可继续进入合成执行链。'
+              }
+            />
+          </Space>
         </Card>
 
         <Flex gap={16} wrap="wrap" align="stretch">
@@ -470,7 +734,7 @@ export default function CreativeDetail() {
           {diagnosticTaskIds.length > 0 ? (
             <Space direction="vertical" size={12} style={{ width: '100%' }}>
               <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                任务页用于查看执行、重试、发布链路与排障细节；业务判断仍以当前作品详情为准。
+                任务页用于查看执行、重试、发布链路与排障细节；作品详情仍是当前业务输入与状态判断的主视图。
               </Paragraph>
               <Space wrap>
                 {diagnosticTaskIds.map((taskId) => (
@@ -481,7 +745,17 @@ export default function CreativeDetail() {
                 <Button onClick={() => navigate(taskReturnTo)}>返回任务列表</Button>
               </Space>
             </Space>
-          ) : <Empty description="当前没有关联任务" />}
+          ) : (
+            <Space direction="vertical" size={12} style={{ width: '100%' }}>
+              <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                这条作品还没有关联执行任务。先保存作品输入，达到“待提交合成”后，再从后续 PR 的作品驱动动作发起执行。
+              </Paragraph>
+              <Space wrap>
+                <Button onClick={() => navigate('/task/create')}>兼容入口：新建任务</Button>
+                <Button onClick={() => navigate('/task/list')}>查看任务管理</Button>
+              </Space>
+            </Space>
+          )}
         </Card>
 
         <Card title="高级诊断" extra={<Text type="secondary">展开查看发布池 / 调度 / Cutover 差异</Text>}>

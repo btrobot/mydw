@@ -12,8 +12,11 @@ from pathlib import Path
 from typing import Any
 
 from core.config import settings
+from schemas import CreativeFlowMode
 
 RUNTIME_CONFIG_PATH = Path("data/system_config.json")
+DEFAULT_CREATIVE_FLOW_MODE = CreativeFlowMode.CREATIVE_FIRST.value
+DEFAULT_CREATIVE_FLOW_SHADOW_COMPARE = False
 
 
 class SystemConfigService:
@@ -39,8 +42,15 @@ class SystemConfigService:
 
     def get_config(self) -> dict[str, Any]:
         raw = self._read_raw()
+        creative_flow_mode = raw.get("creative_flow_mode", DEFAULT_CREATIVE_FLOW_MODE)
+        if creative_flow_mode not in {mode.value for mode in CreativeFlowMode}:
+            creative_flow_mode = DEFAULT_CREATIVE_FLOW_MODE
         return {
             "material_base_path": raw.get("material_base_path", settings.MATERIAL_BASE_PATH),
+            "creative_flow_mode": creative_flow_mode,
+            "creative_flow_shadow_compare": bool(
+                raw.get("creative_flow_shadow_compare", DEFAULT_CREATIVE_FLOW_SHADOW_COMPARE)
+            ),
             # Phase 5 matrix: auto_backup is not a supported runtime setting yet.
             "auto_backup": False,
             # Phase 5 matrix: log_level remains startup-env.
@@ -51,6 +61,8 @@ class SystemConfigService:
         self,
         *,
         material_base_path: str | None = None,
+        creative_flow_mode: str | None = None,
+        creative_flow_shadow_compare: bool | None = None,
         auto_backup: bool | None = None,
         log_level: str | None = None,
     ) -> dict[str, Any]:
@@ -63,10 +75,27 @@ class SystemConfigService:
             joined = ", ".join(unsupported)
             raise ValueError(f"以下设置当前不支持运行时修改: {joined}")
 
-        if material_base_path is None:
-            raise ValueError("material_base_path 是当前唯一支持的运行时设置项")
+        if creative_flow_mode is not None and creative_flow_mode not in {
+            mode.value for mode in CreativeFlowMode
+        }:
+            allowed = ", ".join(mode.value for mode in CreativeFlowMode)
+            raise ValueError(f"creative_flow_mode 非法，允许值: {allowed}")
+
+        if (
+            material_base_path is None
+            and creative_flow_mode is None
+            and creative_flow_shadow_compare is None
+        ):
+            raise ValueError(
+                "至少提供一个受支持的运行时设置项: material_base_path / creative_flow_mode / creative_flow_shadow_compare"
+            )
 
         current = self._read_raw()
-        current["material_base_path"] = material_base_path
+        if material_base_path is not None:
+            current["material_base_path"] = material_base_path
+        if creative_flow_mode is not None:
+            current["creative_flow_mode"] = creative_flow_mode
+        if creative_flow_shadow_compare is not None:
+            current["creative_flow_shadow_compare"] = bool(creative_flow_shadow_compare)
         self._write_raw(current)
         return self.get_config()

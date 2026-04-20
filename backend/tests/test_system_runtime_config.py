@@ -29,31 +29,46 @@ async def test_system_config_falls_back_to_startup_env_when_runtime_file_missing
     assert response.status_code == 200
     payload = response.json()
     assert payload["material_base_path"] == settings.MATERIAL_BASE_PATH
+    assert payload["creative_flow_mode"] == "creative_first"
+    assert payload["creative_flow_shadow_compare"] is False
     assert payload["log_level"] == settings.LOG_LEVEL
     assert payload["auto_backup"] is False
     assert not runtime_config_file.exists()
 
 
 @pytest.mark.asyncio
-async def test_system_config_put_persists_material_base_path_only(
+async def test_system_config_put_persists_supported_runtime_fields(
     client,
     runtime_config_file: Path,
 ) -> None:
-    response = await client.put("/api/system/config", params={"material_base_path": "E:/runtime-path"})
+    response = await client.put(
+        "/api/system/config",
+        params={
+            "material_base_path": "E:/runtime-path",
+            "creative_flow_mode": "dual",
+            "creative_flow_shadow_compare": "true",
+        },
+    )
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["success"] is True
     assert payload["material_base_path"] == "E:/runtime-path"
+    assert payload["creative_flow_mode"] == "dual"
+    assert payload["creative_flow_shadow_compare"] is True
     assert payload["log_level"] == settings.LOG_LEVEL
     assert payload["auto_backup"] is False
 
     persisted = json.loads(runtime_config_file.read_text(encoding="utf-8"))
     assert persisted["material_base_path"] == "E:/runtime-path"
+    assert persisted["creative_flow_mode"] == "dual"
+    assert persisted["creative_flow_shadow_compare"] is True
 
     get_again = await client.get("/api/system/config")
     assert get_again.status_code == 200
     assert get_again.json()["material_base_path"] == "E:/runtime-path"
+    assert get_again.json()["creative_flow_mode"] == "dual"
+    assert get_again.json()["creative_flow_shadow_compare"] is True
 
 
 @pytest.mark.asyncio
@@ -72,4 +87,19 @@ async def test_system_config_rejects_unsupported_runtime_fields(
 
     assert response.status_code == 400
     assert "不支持运行时修改" in response.json()["detail"]
+    assert not runtime_config_file.exists()
+
+
+@pytest.mark.asyncio
+async def test_system_config_rejects_invalid_creative_flow_mode(
+    client,
+    runtime_config_file: Path,
+) -> None:
+    response = await client.put(
+        "/api/system/config",
+        params={"creative_flow_mode": "unknown-mode"},
+    )
+
+    assert response.status_code == 400
+    assert "creative_flow_mode 非法" in response.json()["detail"]
     assert not runtime_config_file.exists()

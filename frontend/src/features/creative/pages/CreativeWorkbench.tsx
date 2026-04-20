@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Alert,
+  App,
   Button,
   Card,
   Flex,
@@ -18,11 +19,18 @@ import {
 
 import CreativeEmptyState from '../components/CreativeEmptyState'
 import {
+  creativeFlowModeMeta,
+  resolveCreativeFlowMode,
+  resolveCreativeFlowShadowCompare,
+} from '../creativeFlow'
+import {
   useCreatives,
+  useCreateCreative,
   usePublishPoolItems,
   usePublishStatus,
   useScheduleConfig,
 } from '../hooks/useCreatives'
+import { useSystemConfig } from '@/hooks/useSystem'
 import type {
   CreativeWorkbenchItem,
   CreativeWorkbenchPoolState,
@@ -58,14 +66,17 @@ const creativePoolValueEnum = Object.fromEntries(
 
 export default function CreativeWorkbench() {
   const navigate = useNavigate()
+  const { message } = App.useApp()
   const actionRef = useRef<ActionType>()
   const creativesQuery = useCreatives({ limit: WORKBENCH_WINDOW_SIZE })
+  const createCreative = useCreateCreative()
   const poolQuery = usePublishPoolItems({
     limit: WORKBENCH_WINDOW_SIZE,
     status: 'active',
   })
   const publishStatusQuery = usePublishStatus()
   const scheduleConfigQuery = useScheduleConfig()
+  const systemConfigQuery = useSystemConfig()
 
   const items = creativesQuery.data?.items ?? []
   const total = creativesQuery.data?.total ?? 0
@@ -93,6 +104,9 @@ export default function CreativeWorkbench() {
 
   const schedulerMode = publishStatusQuery.data?.scheduler_mode ?? scheduleConfigQuery.data?.publish_scheduler_mode
   const effectiveSchedulerMode = publishStatusQuery.data?.effective_scheduler_mode ?? schedulerMode
+  const creativeFlowMode = resolveCreativeFlowMode(systemConfigQuery.data)
+  const creativeFlowShadowCompare = resolveCreativeFlowShadowCompare(systemConfigQuery.data)
+  const creativeFlowMeta = creativeFlowModeMeta[creativeFlowMode]
 
   const rows = useMemo<WorkbenchTableRow[]>(
     () => items.map((item) => {
@@ -122,8 +136,23 @@ export default function CreativeWorkbench() {
       poolQuery.refetch(),
       publishStatusQuery.refetch(),
       scheduleConfigQuery.refetch(),
+      systemConfigQuery.refetch(),
     ])
-  }, [poolQuery, publishStatusQuery, scheduleConfigQuery])
+  }, [poolQuery, publishStatusQuery, scheduleConfigQuery, systemConfigQuery])
+
+  const handleCreateCreative = useCallback(async () => {
+    try {
+      const created = await createCreative.mutateAsync({})
+      message.success('已创建空白作品，请继续补齐素材与配置')
+      navigate(`/creative/${created.id}`)
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        message.error(error.message)
+      } else {
+        message.error('创建作品失败')
+      }
+    }
+  }, [createCreative, message, navigate])
 
   const columns = useMemo<ProColumns<WorkbenchTableRow>[]>(
     () => [
@@ -292,7 +321,7 @@ export default function CreativeWorkbench() {
     return (
       <PageContainer
         title="作品工作台"
-        subTitle="当前无法加载作品列表，请先恢复主业务入口，再进入筛选与处理流程。"
+      subTitle="当前无法加载作品列表，请先恢复主业务入口，再进入筛选与处理流程。"
       >
         <div data-testid="creative-workbench-error">
           <Result
@@ -306,8 +335,8 @@ export default function CreativeWorkbench() {
               <Button key="dashboard" onClick={() => navigate('/dashboard')}>
                 查看运行总览
               </Button>,
-              <Button key="task-list" onClick={() => navigate('/task/list')}>
-                查看任务诊断
+              <Button key="create" type="primary" onClick={() => void handleCreateCreative()}>
+                新建作品
               </Button>,
             ]}
           />
@@ -319,7 +348,7 @@ export default function CreativeWorkbench() {
   return (
     <PageContainer
       title="作品工作台"
-      subTitle="搜索、筛选并处理当天作品；运行总览与任务诊断继续作为辅助入口保留。"
+      subTitle="先创建作品，再补齐素材、合成配置与执行动作；任务入口继续作为兼容/排障路径保留。"
     >
       <Space direction="vertical" size={16} style={{ display: 'flex' }}>
         {(publishStatusQuery.isError || scheduleConfigQuery.isError) && (
@@ -370,7 +399,10 @@ export default function CreativeWorkbench() {
           </Flex>
 
           <Space wrap size={[8, 8]} style={{ marginTop: 16 }}>
-            <Tag data-testid="creative-workbench-main-entry-banner">默认业务入口：作品工作台</Tag>
+            <Tag data-testid="creative-workbench-main-entry-banner">入口模式：{creativeFlowMeta.label}</Tag>
+            <Tag data-testid="creative-workbench-shadow-compare">
+              Shadow Compare：{creativeFlowShadowCompare ? '开启' : '关闭'}
+            </Tag>
             <Tag data-testid="creative-workbench-scheduler-mode">配置模式：{schedulerModeLabel}</Tag>
             <Tag data-testid="creative-workbench-effective-mode">生效模式：{effectiveSchedulerModeLabel}</Tag>
             <Tag data-testid="creative-workbench-runtime-status">运行状态：{runtimeStatusLabel}</Tag>
@@ -379,13 +411,17 @@ export default function CreativeWorkbench() {
           </Space>
 
           <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
-            先在这里搜索、筛选并安排当天要处理的作品；发布池、调度与运行状态仅作为辅助判断信息，不再占据首屏主流程。
+            {creativeFlowMeta.description} 发布池、调度与运行状态仅作为辅助判断信息，不再占据首屏主流程。
           </Paragraph>
         </Card>
 
         {rows.length === 0 ? (
           <Card data-testid="creative-workbench-empty">
-            <CreativeEmptyState onOpenTaskList={() => navigate('/task/list')} />
+            <CreativeEmptyState
+              mode={creativeFlowMode}
+              onCreateCreative={() => void handleCreateCreative()}
+              onOpenLegacyTaskEntry={() => navigate('/task/create')}
+            />
           </Card>
         ) : (
           <>
@@ -462,9 +498,24 @@ export default function CreativeWorkbench() {
                 resetText: '重置筛选',
               }}
               locale={{
-                emptyText: <CreativeEmptyState onOpenTaskList={() => navigate('/task/list')} />,
+                emptyText: (
+                  <CreativeEmptyState
+                    mode={creativeFlowMode}
+                    onCreateCreative={() => void handleCreateCreative()}
+                    onOpenLegacyTaskEntry={() => navigate('/task/create')}
+                  />
+                ),
               }}
               toolBarRender={() => [
+                <Button
+                  key="create"
+                  type="primary"
+                  loading={createCreative.isPending}
+                  onClick={() => void handleCreateCreative()}
+                  data-testid="creative-workbench-create"
+                >
+                  新建作品
+                </Button>,
                 <Button
                   key="dashboard"
                   onClick={() => navigate('/dashboard')}
@@ -473,11 +524,11 @@ export default function CreativeWorkbench() {
                   查看运行总览
                 </Button>,
                 <Button
-                  key="task-list"
-                  onClick={() => navigate('/task/list')}
-                  data-testid="creative-workbench-open-task-list"
+                  key="task-create"
+                  onClick={() => navigate('/task/create')}
+                  data-testid="creative-workbench-open-task-create"
                 >
-                  查看任务诊断
+                  兼容入口：新建任务
                 </Button>,
               ]}
             />

@@ -1,7 +1,9 @@
-import { Alert } from 'antd'
+import { Alert, Flex, Spin } from 'antd'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
 import LayoutComponent from '@/components/Layout'
+import { useSystemConfig } from '@/hooks/useSystem'
+import { getCreativeFlowDefaultPath } from '@/features/creative/creativeFlow'
 
 import { useAuth } from './AuthProvider'
 import { AUTH_ROUTE_COPY } from './authErrorHandler'
@@ -23,6 +25,20 @@ const canAccessGraceShell = (pathname: string) => (
   || pathname === '/creative'
   || pathname === '/creative/workbench'
 )
+
+const AuthenticatedHomeRedirect = () => {
+  const { data, isLoading } = useSystemConfig()
+
+  if (isLoading) {
+    return (
+      <Flex justify="center" align="center" style={{ minHeight: '100vh' }}>
+        <Spin size="large" />
+      </Flex>
+    )
+  }
+
+  return <Navigate to={getCreativeFlowDefaultPath(data)} replace />
+}
 
 export const ProtectedAppShell = () => {
   const { authState } = useAuth()
@@ -63,7 +79,7 @@ export const PublicLoginRoute = () => {
   const { authState } = useAuth()
 
   if (authState === 'authenticated_active') {
-    return <Navigate to="/creative/workbench" replace />
+    return <AuthenticatedHomeRedirect />
   }
 
   if (authState === 'authenticated_grace') {

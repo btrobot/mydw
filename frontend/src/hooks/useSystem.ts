@@ -58,11 +58,21 @@ export const useSystemConfig = () =>
 
 export const useUpdateSystemConfig = () => {
   const queryClient = useQueryClient()
-  return useMutation<SystemConfigUpdateResponse | undefined, Error, { material_base_path?: string }>({
-    mutationFn: async (data: { material_base_path?: string }) => {
+  return useMutation<
+    SystemConfigUpdateResponse | undefined,
+    Error,
+    {
+      material_base_path?: string
+      creative_flow_mode?: SystemConfigResponse['creative_flow_mode']
+      creative_flow_shadow_compare?: boolean
+    }
+  >({
+    mutationFn: async (data) => {
       const response = await updateSystemConfigApiSystemConfigPut({
         query: {
           material_base_path: data.material_base_path,
+          creative_flow_mode: data.creative_flow_mode,
+          creative_flow_shadow_compare: data.creative_flow_shadow_compare,
         },
       })
       return response.data as SystemConfigUpdateResponse

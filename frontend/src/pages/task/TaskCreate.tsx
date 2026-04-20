@@ -6,6 +6,7 @@ import {
 import { ArrowLeftOutlined, DeleteOutlined, PlusOutlined, VideoCameraOutlined, FileTextOutlined, PictureOutlined, AudioOutlined, ClearOutlined } from '@ant-design/icons'
 import { useAccounts } from '@/hooks/useAccount'
 import { useProfiles } from '@/hooks/useProfile'
+import { useSystemConfig } from '@/hooks/useSystem'
 import { useBatchAssemble } from '@/hooks/useTask'
 import type { PublishProfileResponse } from '@/hooks/useProfile'
 import type { AccountResponseExtended } from '@/hooks/useAccount'
@@ -19,6 +20,7 @@ import {
   getTaskMaterialCounts,
   resolveCompositionMode,
 } from './taskSemantics'
+import { creativeFlowModeMeta, resolveCreativeFlowMode } from '@/features/creative/creativeFlow'
 
 const { Text, Title } = Typography
 
@@ -63,9 +65,12 @@ export default function TaskCreate() {
     error: accountsError,
   } = useAccounts({ status: 'active' })
   const { data: profilesData } = useProfiles()
+  const systemConfigQuery = useSystemConfig()
   const batchAssemble = useBatchAssemble()
 
   const profiles = profilesData?.items ?? []
+  const creativeFlowMode = resolveCreativeFlowMode(systemConfigQuery.data)
+  const creativeFlowMeta = creativeFlowModeMeta[creativeFlowMode]
   const defaultProfile = profiles.find((p: PublishProfileResponse) => p.is_default)
   const selectedProfileId = Form.useWatch('profile_id', form)
   const selectedMode = useMemo(
@@ -422,6 +427,27 @@ export default function TaskCreate() {
       <Card title="商品快速导入" style={{ marginBottom: 16 }}>
         <ProductQuickImport onImport={addToBasket} />
       </Card>
+
+      <Alert
+        type={creativeFlowMode === 'task_first' ? 'info' : 'warning'}
+        showIcon
+        style={{ marginBottom: 16 }}
+        message={
+          creativeFlowMode === 'task_first'
+            ? `当前运行于${creativeFlowMeta.label}模式`
+            : '当前页面是兼容 / 高级入口'
+        }
+        description={
+          creativeFlowMode === 'task_first'
+            ? '当前 kill switch 指向任务优先路径，因此默认入口会先落到这里；作品工作台仍可作为新入口继续验证。'
+            : '推荐先到作品工作台创建作品，再补齐素材与配置。这里保留给兼容迁移、排障或高级操作使用。'
+        }
+        action={(
+          <Button size="small" onClick={() => navigate('/creative/workbench')}>
+            去作品工作台
+          </Button>
+        )}
+      />
 
       <Card
         title={

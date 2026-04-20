@@ -29,7 +29,9 @@ async def test_system_openapi_describes_runtime_and_startup_boundaries(
     assert "真实" in config_schema["description"]
 
     config_properties = config_schema["properties"]
-    assert "唯一支持运行时修改" in config_properties["material_base_path"]["description"]
+    assert "runtime-config" in config_properties["material_base_path"]["description"]
+    assert "主 CTA" in config_properties["creative_flow_mode"]["description"]
+    assert "payload diff" in config_properties["creative_flow_shadow_compare"]["description"]
     assert "不支持运行时修改" in config_properties["auto_backup"]["description"]
     assert "启动期" in config_properties["log_level"]["description"]
 
@@ -37,7 +39,9 @@ async def test_system_openapi_describes_runtime_and_startup_boundaries(
         item["name"]: item["description"]
         for item in spec["paths"]["/api/system/config"]["put"]["parameters"]
     }
-    assert "唯一支持运行时修改" in put_parameters["material_base_path"]
+    assert "runtime-config" in put_parameters["material_base_path"]
+    assert "task_first | dual | creative_first" in put_parameters["creative_flow_mode"]
+    assert "payload diff" in put_parameters["creative_flow_shadow_compare"]
     assert "不支持运行时修改" in put_parameters["auto_backup"]
     assert "启动期" in put_parameters["log_level"]
 
@@ -45,7 +49,9 @@ async def test_system_openapi_describes_runtime_and_startup_boundaries(
 def test_settings_page_copy_matches_current_system_truth() -> None:
     settings_page = _read_repo_file("frontend/src/pages/Settings.tsx")
 
-    assert "当前唯一支持的运行时设置项" in settings_page
+    assert "当前受支持的 runtime-config 项" in settings_page
+    assert "creative_flow_mode" in settings_page
+    assert "creative_flow_shadow_compare" in settings_page
     assert "自动备份" in settings_page
     assert "不支持运行时配置" in settings_page
     assert "最小真实备份产物" in settings_page
@@ -59,6 +65,8 @@ def test_operational_notes_document_runtime_boundary_and_backup_scope() -> None:
     assert "startup-env" in notes
     assert "runtime-config" in notes
     assert "material_base_path" in notes
+    assert "creative_flow_mode" in notes
+    assert "creative_flow_shadow_compare" in notes
     assert "auto_backup" in notes
     assert "log_level" in notes
     assert "data/system_config.json" in notes

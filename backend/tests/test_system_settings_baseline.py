@@ -17,6 +17,8 @@ async def test_system_config_get_returns_current_placeholder_shape(
     payload = response.json()
     assert payload == {
         "material_base_path": "D:/系统/桌面/得物剪辑/待上传数据",
+        "creative_flow_mode": "creative_first",
+        "creative_flow_shadow_compare": False,
         "auto_backup": False,
         "log_level": "INFO",
     }
@@ -39,6 +41,8 @@ async def test_system_config_put_rejects_unsupported_runtime_fields(
     assert get_response.status_code == 200
     assert get_response.json() == {
         "material_base_path": "D:/系统/桌面/得物剪辑/待上传数据",
+        "creative_flow_mode": "creative_first",
+        "creative_flow_shadow_compare": False,
         "auto_backup": False,
         "log_level": "INFO",
     }

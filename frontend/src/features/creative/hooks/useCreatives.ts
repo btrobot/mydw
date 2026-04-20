@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
   approveCreativeApiCreativeReviewsCreativeIdApprovePost,
+  createCreativeApiCreativesPost,
   getCreativeApiCreativesCreativeIdGet,
   getPublishStatusApiPublishStatusGet,
   getScheduleConfigApiScheduleConfigGet,
@@ -9,13 +10,16 @@ import {
   listPublishPoolItemsApiCreativePublishPoolGet,
   rejectCreativeApiCreativeReviewsCreativeIdRejectPost,
   reworkCreativeApiCreativeReviewsCreativeIdReworkPost,
+  updateCreativeApiCreativesCreativeIdPatch,
 } from '@/api'
 import type {
   CreativeApproveRequest,
+  CreativeCreateRequest,
   CreativeDetailResponse,
   CreativeRejectRequest,
   CreativeReviewActionResponse,
   CreativeReworkRequest,
+  CreativeUpdateRequest,
   CreativeWorkbenchListResponse,
   PublishPoolListResponse,
   PublishPoolStatus,
@@ -124,6 +128,48 @@ export const usePublishStatus = () =>
     },
     retry: false,
   })
+
+export const useCreateCreative = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation<CreativeDetailResponse, Error, CreativeCreateRequest>({
+    mutationFn: async (body) => {
+      const response = await createCreativeApiCreativesPost({
+        body,
+        throwOnError: true,
+      })
+
+      return response.data!
+    },
+    onSuccess: async (creative) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: creativeQueryKeys.lists() }),
+        queryClient.invalidateQueries({ queryKey: creativeQueryKeys.detail(creative.id) }),
+      ])
+    },
+  })
+}
+
+export const useUpdateCreative = (creativeId: number | undefined) => {
+  const queryClient = useQueryClient()
+
+  return useMutation<CreativeDetailResponse, Error, CreativeUpdateRequest>({
+    mutationFn: async (body) => {
+      const response = await updateCreativeApiCreativesCreativeIdPatch({
+        path: { creative_id: creativeId! },
+        body,
+        throwOnError: true,
+      })
+
+      return response.data!
+    },
+    onSuccess: async () => {
+      if (creativeId !== undefined) {
+        await invalidateCreativeQueries(queryClient, creativeId)
+      }
+    },
+  })
+}
 
 export const useScheduleConfig = () =>
   useQuery<ScheduleConfigResponse | undefined>({

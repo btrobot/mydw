@@ -7,6 +7,7 @@ import hashlib
 import json
 from typing import Any, Optional
 
+from loguru import logger
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -107,6 +108,19 @@ class CreativeService:
         )
         await self._sync_pre_compose_status(creative)
         await self.db.commit()
+        logger.info(
+            "event_name=creative_flow_entry_new creative_item_id={} snapshot_hash={} profile_id={} material_counts={} account_mode=creative_only",
+            creative.id,
+            creative.input_snapshot_hash,
+            creative.input_profile_id,
+            {
+                "videos": len(self._decode_id_list(creative.input_video_ids)),
+                "copywritings": len(self._decode_id_list(creative.input_copywriting_ids)),
+                "covers": len(self._decode_id_list(creative.input_cover_ids)),
+                "audios": len(self._decode_id_list(creative.input_audio_ids)),
+                "topics": len(self._decode_id_list(creative.input_topic_ids)),
+            },
+        )
         return await self.get_creative_detail(creative.id)  # type: ignore[return-value]
 
     async def get_creative_detail(self, creative_id: int) -> Optional[CreativeDetailResponse]:

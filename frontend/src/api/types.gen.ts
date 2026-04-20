@@ -1368,6 +1368,11 @@ export type CreativeDetailResponse = {
 export type CreativeEligibilityStatus = 'PENDING_INPUT' | 'READY_TO_COMPOSE' | 'INVALID';
 
 /**
+ * CreativeFlowMode
+ */
+export type CreativeFlowMode = 'task_first' | 'dual' | 'creative_first';
+
+/**
  * CreativeInputSnapshotResponse
  */
 export type CreativeInputSnapshotResponse = {
@@ -2843,9 +2848,19 @@ export type SystemConfigResponse = {
     /**
      * Material Base Path
      *
-     * 当前唯一支持运行时修改的设置项；优先读取 runtime-config，缺失时回退到 startup-env。
+     * 受支持的 runtime-config 字段；优先读取 runtime-config，缺失时回退到 startup-env。
      */
     material_base_path: string;
+    /**
+     * 作品驱动入口控制面；控制默认入口、主 CTA 与默认跳转，运行时可修改。
+     */
+    creative_flow_mode: CreativeFlowMode;
+    /**
+     * Creative Flow Shadow Compare
+     *
+     * 作品驱动双轨对账开关；开启后允许记录新旧入口 payload diff，运行时可修改。
+     */
+    creative_flow_shadow_compare: boolean;
     /**
      * Auto Backup
      *
@@ -2863,7 +2878,7 @@ export type SystemConfigResponse = {
 /**
  * SystemConfigUpdateResponse
  *
- * 系统配置更新响应（仅 material_base_path 可真实写入）
+ * 系统配置更新响应（仅 matrix-approved runtime-config 可真实写入）
  */
 export type SystemConfigUpdateResponse = {
     /**
@@ -2873,9 +2888,19 @@ export type SystemConfigUpdateResponse = {
     /**
      * Material Base Path
      *
-     * 成功写入后的素材根目录；当前唯一支持运行时修改的设置项。
+     * 成功写入后的素材根目录；属于受支持的 runtime-config 字段。
      */
     material_base_path?: string | null;
+    /**
+     * 成功写入后的作品驱动入口模式；控制默认入口、主 CTA 与默认跳转。
+     */
+    creative_flow_mode?: CreativeFlowMode | null;
+    /**
+     * Creative Flow Shadow Compare
+     *
+     * 成功写入后的双轨对账开关；开启后允许记录新旧入口 diff。
+     */
+    creative_flow_shadow_compare?: boolean | null;
     /**
      * Auto Backup
      *
@@ -5887,9 +5912,21 @@ export type UpdateSystemConfigApiSystemConfigPutData = {
         /**
          * Material Base Path
          *
-         * 当前唯一支持运行时修改的设置项；写入 data/system_config.json。
+         * 受支持的 runtime-config 字段；写入 data/system_config.json。
          */
         material_base_path?: string;
+        /**
+         * Creative Flow Mode
+         *
+         * 作品驱动入口模式：task_first | dual | creative_first；控制默认入口、主 CTA 与默认跳转。
+         */
+        creative_flow_mode?: string;
+        /**
+         * Creative Flow Shadow Compare
+         *
+         * 作品驱动双轨对账开关；开启后允许记录新旧入口 payload diff。
+         */
+        creative_flow_shadow_compare?: boolean;
         /**
          * Auto Backup
          *

@@ -10,15 +10,19 @@
 - **startup-env**：启动期读取，权威来源是 `.env` / `backend/core/config.py`
 - **runtime-config**：运行期真实可写，权威来源是 `data/system_config.json`
 
-当前唯一批准进入 `runtime-config` 的字段只有：
+当前批准进入 `runtime-config` 的字段有：
 
 - `material_base_path`
+- `creative_flow_mode`
+- `creative_flow_shadow_compare`
 
 ## 2. Per-field operational truth
 
 | Field | Classification | Authoritative source | Operator action |
 |---|---|---|---|
 | `material_base_path` | `runtime-config` | `data/system_config.json`（缺失时回退到 startup-env） | 在 Settings 页保存，或直接维护该 JSON 文件 |
+| `creative_flow_mode` | `runtime-config` | `data/system_config.json`（缺失时回退到默认 `creative_first`） | 在 Settings 页切换 `task_first / dual / creative_first` |
+| `creative_flow_shadow_compare` | `runtime-config` | `data/system_config.json`（缺失时回退到 `false`） | 在 Settings 页开启/关闭双轨 payload diff 对账 |
 | `log_level` | `startup-env` | `.env` / `backend/core/config.py` | 修改启动期配置后重启 |
 | `auto_backup` | `remove` / unsupported | 无真实 runtime source；兼容字段仅用于明确拒绝旧写请求 | 不要在 UI 或脚本中把它当作可编辑设置 |
 
@@ -33,6 +37,8 @@
 - 路径：`data/system_config.json`
 - 当前允许的 key：
   - `material_base_path`
+  - `creative_flow_mode`
+  - `creative_flow_shadow_compare`
 - 生效规则：
   - 若文件存在且含值，则优先于 startup-env
   - 若文件不存在或字段缺失，则回退到 `backend/core/config.py`
@@ -59,7 +65,7 @@
 
 Settings 页面当前必须保持以下表达：
 
-- 只暴露 `material_base_path` 为可编辑项
+- 暴露 `material_base_path`、`creative_flow_mode`、`creative_flow_shadow_compare` 为可编辑 runtime-config 项
 - 将 `log_level` 展示为只读启动期信息
 - 明确 `auto_backup` 当前不支持运行时修改
 - 明确 backup 是“最小真实备份产物”，并说明 manifest / `data/backups`

@@ -22,6 +22,8 @@ import {
   useRetryTask,
   useSubmitComposition,
 } from '@/hooks'
+import { useSystemConfig } from '@/hooks/useSystem'
+import { creativeFlowModeMeta, resolveCreativeFlowMode } from '@/features/creative/creativeFlow'
 
 import {
   getTaskActionAvailability,
@@ -344,6 +346,9 @@ export default function TaskList() {
   const [creationSummary, setCreationSummary] = useState<CreationSummary | null>(
     (location.state as TaskListRouteState | null)?.creationSummary ?? null,
   )
+  const systemConfigQuery = useSystemConfig()
+  const creativeFlowMode = resolveCreativeFlowMode(systemConfigQuery.data)
+  const creativeFlowMeta = creativeFlowModeMeta[creativeFlowMode]
 
   const accountValueEnum = useMemo(
     () => Object.fromEntries(accounts.map((account) => [account.id, { text: account.account_name }])),
@@ -960,13 +965,14 @@ export default function TaskList() {
       toolBarRender={() => [
         <Button
           key="workbench"
+          type="primary"
           onClick={() => navigate('/creative/workbench')}
           data-testid="task-list-open-workbench"
         >
-          返回作品工作台
+          去作品工作台
         </Button>,
-        <Button key="create" type="primary" icon={<PlusOutlined />} onClick={() => navigate('/task/create')}>
-          新建任务
+        <Button key="create" icon={<PlusOutlined />} onClick={() => navigate('/task/create')}>
+          {creativeFlowMeta.legacyEntryProminence === 'primary' ? '新建任务' : '兼容入口：新建任务'}
         </Button>,
         <Popconfirm key="clear" title="确认清空全部任务吗？" onConfirm={() => void handleClearAll()}>
           <Button danger loading={deleteAllTasks.isPending}>清空全部任务</Button>

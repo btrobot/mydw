@@ -1,5 +1,5 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { ConfigProvider, App as AntApp } from 'antd'
+import { ConfigProvider, App as AntApp, Flex, Spin } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import dayjs from 'dayjs'
 
@@ -30,6 +30,8 @@ import CreativeWorkbench from './features/creative/pages/CreativeWorkbench'
 import CreativeDetail from './features/creative/pages/CreativeDetail'
 
 import TaskCreate from './pages/task/TaskCreate'
+import { useSystemConfig } from './hooks/useSystem'
+import { getCreativeFlowDefaultPath } from './features/creative/creativeFlow'
 
 dayjs.locale('zh-cn')
 
@@ -44,6 +46,20 @@ const theme = {
       headerBg: '#fafafa',
     },
   },
+}
+
+function BusinessEntryRedirect() {
+  const { data, isLoading } = useSystemConfig()
+
+  if (isLoading) {
+    return (
+      <Flex justify="center" align="center" style={{ minHeight: '100vh' }}>
+        <Spin size="large" />
+      </Flex>
+    )
+  }
+
+  return <Navigate to={getCreativeFlowDefaultPath(data)} replace />
 }
 
 function App() {
@@ -65,10 +81,10 @@ function App() {
                   <Route path="auth/grace" element={<AuthStatusPage variant="grace" />} />
 
                   <Route path="/" element={<ProtectedAppShell />}>
-                    <Route index element={<Navigate to="/creative/workbench" replace />} />
+                    <Route index element={<BusinessEntryRedirect />} />
                     <Route path="dashboard" element={<Dashboard />} />
                     <Route path="account" element={<Account />} />
-                    <Route path="creative" element={<Navigate to="/creative/workbench" replace />} />
+                    <Route path="creative" element={<BusinessEntryRedirect />} />
                     <Route path="creative/workbench" element={<CreativeWorkbench />} />
                     <Route path="creative/:id" element={<CreativeDetail />} />
                     <Route path="task" element={<Navigate to="/task/list" replace />} />
