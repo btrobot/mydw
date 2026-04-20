@@ -212,7 +212,7 @@ export default function TaskDetail() {
               ? '随机分配'
               : (task.account_name ? `${task.account_name} (${task.account_id})` : `#${task.account_id}`)}
           </Descriptions.Item>
-          <Descriptions.Item label="配置档">{task.profile_id ?? '默认/未指定'}</Descriptions.Item>
+          <Descriptions.Item label="合成配置">{task.profile_id ?? '默认/未指定'}</Descriptions.Item>
           <Descriptions.Item label="作品 ID">{task.creative_item_id ?? '-'}</Descriptions.Item>
           <Descriptions.Item label="作品版本 ID">{task.creative_version_id ?? '-'}</Descriptions.Item>
           <Descriptions.Item label="批次">{task.batch_id ?? '-'}</Descriptions.Item>

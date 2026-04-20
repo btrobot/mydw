@@ -456,7 +456,7 @@ export default function TaskCreate() {
         />
       </Card>
 
-      <Card title="发布配置">
+      <Card title="合成配置">
         <Form
           form={form}
           layout="vertical"
@@ -493,10 +493,10 @@ export default function TaskCreate() {
             />
           </Form.Item>
 
-          <Form.Item name="profile_id" label="发布配置档（可选）">
+          <Form.Item name="profile_id" label="合成配置（可选）">
             <Select
               allowClear
-              placeholder="选择配置档（不选则使用默认）"
+              placeholder="选择合成配置（不选则使用默认）"
               optionFilterProp="label"
               options={profiles.map((p: PublishProfileResponse) => ({
                 value: p.id,

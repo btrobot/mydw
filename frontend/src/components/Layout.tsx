@@ -85,7 +85,7 @@ export default function LayoutComponent() {
       ),
       children: [
         { key: '/schedule-config', label: '执行调度' },
-        { key: '/profile-management', label: '执行配置' },
+        { key: '/profile-management', label: '合成配置' },
       ],
     },
     {

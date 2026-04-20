@@ -54,7 +54,7 @@ export const useCreateProfile = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] })
-      message.success('配置档创建成功')
+      message.success('合成配置创建成功')
     },
     onError: (error: unknown) => handleError(error, '创建失败'),
   })
@@ -72,7 +72,7 @@ export const useUpdateProfile = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] })
-      message.success('配置档更新成功')
+      message.success('合成配置更新成功')
     },
     onError: (error: unknown) => handleError(error, '更新失败'),
   })
@@ -86,7 +86,7 @@ export const useDeleteProfile = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] })
-      message.success('配置档删除成功')
+      message.success('合成配置删除成功')
     },
     onError: (error: unknown) => handleError(error, '删除失败'),
   })
@@ -103,7 +103,7 @@ export const useSetDefaultProfile = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] })
-      message.success('已设为默认配置档')
+      message.success('已设为默认合成配置')
     },
     onError: (error: unknown) => handleError(error, '操作失败'),
   })

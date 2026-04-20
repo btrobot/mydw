@@ -40,6 +40,7 @@ import models as _models
 from core.auth_metrics import PrometheusMetricsExporter, auth_metrics_collector
 from models import init_db, PublishProfile
 from core.config import settings
+from utils.local_ffmpeg_contract import DEFAULT_LOCAL_FFMPEG_PARAMS_JSON
 
 # ????
 logger.add(
@@ -108,21 +109,53 @@ app.include_router(creative_publish_pool.router, prefix="/api/creative-publish-p
 app.include_router(creative_workflows.router, prefix="/api/creative-workflows", tags=["Creative workflow"])
 
 metrics_exporter = PrometheusMetricsExporter(auth_metrics_collector)
+DEFAULT_PUBLISH_PROFILE_NAME = "默认合成配置"
+LEGACY_DEFAULT_PUBLISH_PROFILE_NAMES = {"默认配置", DEFAULT_PUBLISH_PROFILE_NAME}
 
 
 async def _seed_default_publish_profile() -> None:
     """???????????????"""
     async with _models.async_session() as session:
-        result = await session.execute(select(PublishProfile))
-        if result.scalars().first() is None:
+        result = await session.execute(select(PublishProfile).order_by(PublishProfile.created_at.asc()))
+        profiles = result.scalars().all()
+        if not profiles:
             default_profile = PublishProfile(
-                name="????",
+                name=DEFAULT_PUBLISH_PROFILE_NAME,
                 is_default=True,
-                composition_mode="none",
+                composition_mode="local_ffmpeg",
+                composition_params=DEFAULT_LOCAL_FFMPEG_PARAMS_JSON,
             )
             session.add(default_profile)
             await session.commit()
-            logger.info("?????????: name=????")
+            logger.info("Seeded default composition profile: name={}", DEFAULT_PUBLISH_PROFILE_NAME)
+            return
+
+        legacy_default = next(
+            (
+                profile
+                for profile in profiles
+                if profile.is_default
+                and profile.name in LEGACY_DEFAULT_PUBLISH_PROFILE_NAMES
+                and profile.coze_workflow_id is None
+            ),
+            None,
+        )
+        if legacy_default is None:
+            return
+
+        needs_upgrade = (
+            legacy_default.name != DEFAULT_PUBLISH_PROFILE_NAME
+            or legacy_default.composition_mode != "local_ffmpeg"
+            or legacy_default.composition_params != DEFAULT_LOCAL_FFMPEG_PARAMS_JSON
+        )
+        if not needs_upgrade:
+            return
+
+        legacy_default.name = DEFAULT_PUBLISH_PROFILE_NAME
+        legacy_default.composition_mode = "local_ffmpeg"
+        legacy_default.composition_params = DEFAULT_LOCAL_FFMPEG_PARAMS_JSON
+        await session.commit()
+        logger.info("Upgraded legacy default composition profile to local_ffmpeg: id={}", legacy_default.id)
 
 
 @app.get("/")

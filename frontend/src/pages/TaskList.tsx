@@ -519,13 +519,13 @@ export default function TaskList() {
       },
     },
     {
-      title: '配置档',
+      title: '合成配置',
       dataIndex: 'profile_id',
       width: 180,
       valueType: 'select',
       valueEnum: profileValueEnum,
       order: 6,
-      fieldProps: { placeholder: '筛选配置档', allowClear: true },
+      fieldProps: { placeholder: '筛选合成配置', allowClear: true },
       render: (_, record) => (
         record.profile_id == null
           ? <Typography.Text type="secondary">默认/未指定</Typography.Text>

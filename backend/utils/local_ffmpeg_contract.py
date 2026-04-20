@@ -15,6 +15,20 @@ LOCAL_FFMPEG_ALLOWED_PARAM_KEYS = {
     "crf",
 }
 
+DEFAULT_LOCAL_FFMPEG_PARAMS = {
+    "audio_mix_volume": 0.3,
+    "video_codec": "libx264",
+    "audio_codec": "aac",
+    "preset": "medium",
+    "crf": 23,
+}
+
+DEFAULT_LOCAL_FFMPEG_PARAMS_JSON = json.dumps(
+    DEFAULT_LOCAL_FFMPEG_PARAMS,
+    ensure_ascii=False,
+    separators=(",", ":"),
+)
+
 
 def parse_local_ffmpeg_params(raw_params: str | None) -> dict[str, Any]:
     """Parse local_ffmpeg params into a validated JSON object."""

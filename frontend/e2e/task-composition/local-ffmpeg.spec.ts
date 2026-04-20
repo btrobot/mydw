@@ -45,7 +45,7 @@ async function mockLocalFfmpegApis(page: Page) {
         items: [
           {
             id: 2,
-            name: 'Local FFmpeg 默认配置',
+            name: 'Local FFmpeg 默认合成配置',
             composition_mode: 'local_ffmpeg',
             is_default: true,
             coze_workflow_id: null,
@@ -228,7 +228,7 @@ test.describe('local_ffmpeg frontend alignment', () => {
   test('shows accurate local_ffmpeg V1 guidance in profile management', async ({ page }) => {
     await page.goto(`${BASE_URL}/#/profile-management`)
 
-    await page.getByRole('button', { name: '新建配置档' }).click()
+    await page.getByRole('button', { name: '新建合成配置' }).click()
     await page.locator('.ant-select').first().click()
     await page.getByText('本地 FFmpeg', { exact: true }).click()
 

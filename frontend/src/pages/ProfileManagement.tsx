@@ -91,7 +91,7 @@ function ProfileModal({ open, editing, onClose }: ProfileModalProps) {
       } else {
         form.resetFields()
         form.setFieldsValue({
-          composition_mode: 'none',
+          composition_mode: 'local_ffmpeg',
           auto_retry: true,
           max_retry_count: 3,
           global_topic_ids: '',
@@ -147,7 +147,7 @@ function ProfileModal({ open, editing, onClose }: ProfileModalProps) {
 
   return (
     <Modal
-      title={editing ? '编辑配置档' : '新建配置档'}
+      title={editing ? '编辑合成配置' : '新建合成配置'}
       open={open}
       onOk={handleOk}
       onCancel={onClose}
@@ -158,10 +158,10 @@ function ProfileModal({ open, editing, onClose }: ProfileModalProps) {
       <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
         <Form.Item
           name="name"
-          label="配置档名称"
+          label="合成配置名称"
           rules={[{ required: true, message: '请输入名称' }, { max: 128, message: '最多 128 个字符' }]}
         >
-          <Input placeholder="例如：默认配置" />
+          <Input placeholder="例如：默认合成配置" />
         </Form.Item>
 
         <Form.Item
@@ -270,8 +270,8 @@ export default function ProfileManagement() {
 
   const compositionModeLabel: Record<CompositionMode, string> = {
     none: '不合成',
-    coze: 'Coze',
-    local_ffmpeg: 'FFmpeg',
+    coze: 'Coze 工作流',
+    local_ffmpeg: '本地 FFmpeg',
   }
 
   const columns: TableColumnsType<PublishProfileResponse> = [
@@ -321,9 +321,9 @@ export default function ProfileManagement() {
               />
             </Tooltip>
           )}
-          <Tooltip title={record.is_default ? '默认配置档不可删除' : '删除'}>
+          <Tooltip title={record.is_default ? '默认合成配置不可删除' : '删除'}>
             <Popconfirm
-              title="确认删除该配置档？"
+              title="确认删除该合成配置？"
               onConfirm={() => deleteProfile.mutate(record.id)}
               disabled={record.is_default}
             >
@@ -343,10 +343,10 @@ export default function ProfileManagement() {
   return (
     <>
       <Card
-        title="配置档管理"
+        title="合成配置"
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-            新建配置档
+            新建合成配置
           </Button>
         }
       >

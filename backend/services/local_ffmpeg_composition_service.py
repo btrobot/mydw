@@ -10,7 +10,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from utils.local_ffmpeg_contract import parse_local_ffmpeg_params
+from utils.local_ffmpeg_contract import DEFAULT_LOCAL_FFMPEG_PARAMS, parse_local_ffmpeg_params
 
 
 @dataclass(frozen=True)
@@ -45,7 +45,10 @@ class LocalFFmpegCompositionService:
         raw_params: str | None = None,
     ) -> LocalFFmpegCompositionResult:
         """Compose a final video locally via FFmpeg."""
-        params = parse_local_ffmpeg_params(raw_params)
+        params = {
+            **DEFAULT_LOCAL_FFMPEG_PARAMS,
+            **parse_local_ffmpeg_params(raw_params),
+        }
         output_path = self.output_dir / f"final_{task_id}.mp4"
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -83,11 +86,15 @@ class LocalFFmpegCompositionService:
         source_has_audio: bool,
         params: dict,
     ) -> list[str]:
-        video_codec = str(params.get("video_codec", "libx264"))
-        audio_codec = str(params.get("audio_codec", "aac"))
-        preset = str(params.get("preset", "medium"))
-        crf = int(params.get("crf", 23))
-        audio_mix_volume = float(params.get("audio_mix_volume", 0.3))
+        params = {
+            **DEFAULT_LOCAL_FFMPEG_PARAMS,
+            **params,
+        }
+        video_codec = str(params["video_codec"])
+        audio_codec = str(params["audio_codec"])
+        preset = str(params["preset"])
+        crf = int(params["crf"])
+        audio_mix_volume = float(params["audio_mix_volume"])
 
         command = [
             self.ffmpeg_path,
