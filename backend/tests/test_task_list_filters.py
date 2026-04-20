@@ -152,6 +152,12 @@ async def test_list_tasks_supports_exact_filters(
 ) -> None:
     seeded = await _seed_task_list_dataset(db_session)
 
+    assert await _get_task_ids(client, name="task-a") == [seeded["task_a"].id]
+    assert await _get_task_ids(client, name="ask-") == [
+        seeded["task_a"].id,
+        seeded["task_b"].id,
+        seeded["task_c"].id,
+    ]
     assert await _get_task_ids(client, status="failed") == [seeded["task_a"].id]
     assert await _get_task_ids(client, account_id=seeded["account_a"].id) == [seeded["task_a"].id]
     assert await _get_task_ids(client, task_kind="composition") == [seeded["task_a"].id]
@@ -212,6 +218,7 @@ async def test_list_tasks_supports_combined_filters(
 
     assert await _get_task_ids(
         client,
+        name="task-a",
         status="failed",
         task_kind="composition",
         has_error=True,

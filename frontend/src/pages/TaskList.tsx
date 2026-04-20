@@ -33,6 +33,7 @@ type QuickFilterKey =
   | 'recentlyPublished'
 
 type TaskListFormValues = {
+  name?: string
   status?: TaskStatus
   task_kind?: TaskKind
   account_id?: number
@@ -64,7 +65,7 @@ const presetControlledQueryKeys: Array<keyof QueryShape> = [
   'publish_to',
 ]
 
-const stringFieldKeys = ['status', 'task_kind', 'failed_at_status'] as const
+const stringFieldKeys = ['name', 'status', 'task_kind', 'failed_at_status'] as const
 const numberFieldKeys = ['account_id', 'profile_id'] as const
 const hiddenPresetDateFieldKeys = ['scheduled_from', 'scheduled_to', 'publish_from', 'publish_to'] as const
 
@@ -89,6 +90,7 @@ const serializeDateTime = (value: unknown): string | undefined => {
 const buildTaskListQuery = (params: TaskListFormValues): QueryShape => {
   const query: QueryShape = {}
 
+  if (typeof params.name === 'string' && params.name.trim()) query.name = params.name.trim()
   if (params.status) query.status = params.status
   if (params.task_kind) query.task_kind = params.task_kind
 
@@ -407,11 +409,19 @@ export default function TaskList() {
 
   const columns: ProColumns<TaskRow>[] = [
     {
+      title: '名称',
+      dataIndex: 'name',
+      hideInTable: true,
+      order: 1,
+      renderFormItem: () => <Input placeholder="按任务名称搜索" allowClear />,
+    },
+    {
       title: '状态',
       dataIndex: 'status',
       width: 110,
       valueType: 'select',
       valueEnum: statusValueEnum,
+      order: 4,
       fieldProps: { placeholder: '筛选状态', allowClear: true },
       render: (_, record) => {
         const meta = taskStatusMeta[record.status] ?? { color: 'default', text: record.status }
@@ -437,6 +447,7 @@ export default function TaskList() {
       width: 120,
       valueType: 'select',
       valueEnum: taskKindValueEnum,
+      order: 3,
       fieldProps: { placeholder: '筛选类型', allowClear: true },
       render: (_, record) => {
         if (!record.task_kind) return <Tag>未标记</Tag>
@@ -450,6 +461,7 @@ export default function TaskList() {
       width: 180,
       valueType: 'select',
       valueEnum: accountValueEnum,
+      order: 2,
       fieldProps: { placeholder: '筛选账号', allowClear: true },
       render: (_, record) => (
         record.account_id == null
@@ -462,6 +474,7 @@ export default function TaskList() {
       dataIndex: 'updated_range',
       hideInTable: true,
       valueType: 'dateTimeRange',
+      order: 5,
       fieldProps: {
         placeholder: ['开始时间', '结束时间'],
       },
@@ -472,6 +485,7 @@ export default function TaskList() {
       width: 180,
       valueType: 'select',
       valueEnum: profileValueEnum,
+      order: 6,
       fieldProps: { placeholder: '筛选配置档', allowClear: true },
       render: (_, record) => (
         record.profile_id == null
@@ -483,6 +497,7 @@ export default function TaskList() {
       title: '失败阶段',
       dataIndex: 'failed_at_status',
       hideInTable: true,
+      order: 7,
       renderFormItem: () => <Input placeholder="例如 uploading / composing" allowClear />,
     },
     {

@@ -39,6 +39,7 @@ def _normalize_query_datetime(value: Optional[datetime]) -> Optional[datetime]:
 
 def _build_task_list_filters(
     *,
+    name: Optional[str],
     status: Optional[str],
     account_id: Optional[int],
     task_kind: Optional[str],
@@ -61,7 +62,10 @@ def _build_task_list_filters(
     has_final_video: Optional[bool],
 ) -> list:
     filters = []
+    normalized_name = name.strip() if name else None
 
+    if normalized_name:
+        filters.append(Task.name.ilike(f"%{normalized_name}%"))
     if status:
         filters.append(Task.status == status)
     if account_id is not None:
@@ -199,6 +203,7 @@ async def create_tasks(
 
 @router.get("/", response_model=TaskListResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def list_tasks(
+    name: Optional[str] = None,
     status: Optional[str] = None,
     account_id: Optional[int] = None,
     task_kind: Optional[str] = None,
@@ -225,6 +230,7 @@ async def list_tasks(
 ):
     """获取任务列表"""
     filters = _build_task_list_filters(
+        name=name,
         status=status,
         account_id=account_id,
         task_kind=task_kind,

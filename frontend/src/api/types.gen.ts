@@ -4867,6 +4867,10 @@ export type ListTasksApiTasksGetData = {
     path?: never;
     query?: {
         /**
+         * Name
+         */
+        name?: string | null;
+        /**
          * Status
          */
         status?: string | null;
