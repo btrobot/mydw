@@ -106,11 +106,18 @@ async def test_creative_openapi_exposes_phase_a_workbench_and_detail_contracts(
     schemas = spec["components"]["schemas"]
 
     assert paths["/api/creatives"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeWorkbenchListResponse")
+    assert paths["/api/creatives"]["post"]["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeCreateRequest")
+    assert paths["/api/creatives"]["post"]["responses"]["201"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeDetailResponse")
     assert paths["/api/creatives/{creative_id}"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeDetailResponse")
+    assert paths["/api/creatives/{creative_id}"]["patch"]["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeUpdateRequest")
+    assert paths["/api/creatives/{creative_id}"]["patch"]["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeDetailResponse")
     assert schemas["CreativeCurrentVersionResponse"]["properties"]["package_record_id"]["anyOf"][0]["type"] == "integer"
     assert schemas["CreativeDetailResponse"]["properties"]["linked_task_ids"]["type"] == "array"
     assert schemas["CreativeDetailResponse"]["properties"]["versions"]["type"] == "array"
     assert schemas["CreativeDetailResponse"]["properties"]["review_summary"]["anyOf"][0]["$ref"].endswith("/CreativeReviewSummaryResponse")
+    assert schemas["CreativeDetailResponse"]["properties"]["input_snapshot"]["$ref"].endswith("/CreativeInputSnapshotResponse")
+    assert schemas["CreativeDetailResponse"]["properties"]["eligibility_status"]["$ref"].endswith("/CreativeEligibilityStatus")
+    assert schemas["CreativeDetailResponse"]["properties"]["latest_task_summary"]["anyOf"][0]["$ref"].endswith("/CreativeLatestTaskSummaryResponse")
 
 
 @pytest.mark.asyncio
@@ -130,6 +137,8 @@ async def test_creative_review_openapi_exposes_phase_b_review_contracts(
     assert paths["/api/creative-reviews/{creative_id}/approve"]["post"]["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeReviewActionResponse")
     assert schemas["CheckRecordResponse"]["properties"]["conclusion"]["$ref"].endswith("/CreativeReviewConclusion")
     assert "WAITING_REVIEW" in schemas["CreativeStatus"]["enum"]
+    assert "READY_TO_COMPOSE" in schemas["CreativeStatus"]["enum"]
+    assert "FAILED" in schemas["CreativeStatus"]["enum"]
     assert "REWORK_REQUIRED" in schemas["CreativeReviewConclusion"]["enum"]
 
 

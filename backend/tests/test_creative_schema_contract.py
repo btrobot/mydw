@@ -4,10 +4,13 @@ import pytest
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from schemas import (
+    CreativeEligibilityStatus,
     CreativeItemResponse,
     CreativeStatus,
     CreativeVersionSummaryResponse,
     PackageRecordResponse,
+    CreativeCreateRequest,
+    CreativeUpdateRequest,
     TaskCreateRequest,
     TaskKind,
     TaskResponse,
@@ -58,9 +61,57 @@ async def test_migration_024_is_idempotent_and_creative_columns_exist() -> None:
         await engine.dispose()
 
 
+@pytest.mark.asyncio
+async def test_migration_031_creative_snapshot_columns_are_additive() -> None:
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+    try:
+        async with engine.begin() as conn:
+            await conn.exec_driver_sql(
+                """
+                CREATE TABLE tasks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    account_id INTEGER NOT NULL,
+                    status VARCHAR(32) DEFAULT 'draft'
+                )
+                """
+            )
+            await conn.exec_driver_sql(
+                """
+                CREATE TABLE publish_profiles (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name VARCHAR(128) NOT NULL
+                )
+                """
+            )
+
+        migration_024 = importlib.import_module("migrations.024_creative_phase_a_skeleton")
+        migration_031 = importlib.import_module("migrations.031_creative_workdriven_phase1")
+        await migration_024.run_migration(engine)
+        await migration_031.run_migration(engine)
+        await migration_031.run_migration(engine)
+
+        async with engine.begin() as conn:
+            creative_columns = {
+                row[1]
+                for row in (await conn.exec_driver_sql("PRAGMA table_info(creative_items)")).fetchall()
+            }
+
+        assert "input_profile_id" in creative_columns
+        assert "input_snapshot_hash" in creative_columns
+    finally:
+        await engine.dispose()
+
+
 def test_phase_a_task_write_contracts_do_not_expose_task_kind() -> None:
     assert "task_kind" not in TaskCreateRequest.model_fields
     assert "task_kind" not in TaskUpdate.model_fields
+
+
+def test_work_driven_creative_write_contracts_expose_snapshot_inputs_but_not_status() -> None:
+    assert "status" not in CreativeCreateRequest.model_fields
+    assert "status" not in CreativeUpdateRequest.model_fields
+    assert "profile_id" in CreativeCreateRequest.model_fields
+    assert "video_ids" in CreativeUpdateRequest.model_fields
 
 
 def test_phase_a_response_contracts_are_instantiable() -> None:
@@ -89,6 +140,8 @@ def test_phase_a_response_contracts_are_instantiable() -> None:
         latest_version_no=1,
         generation_error_msg="last render failed",
         generation_failed_at="2026-04-17T00:00:00",
+        eligibility_status=CreativeEligibilityStatus.PENDING_INPUT,
+        eligibility_reasons=["请选择合成配置"],
         created_at="2026-04-17T00:00:00",
         updated_at="2026-04-17T00:00:00",
     )
@@ -113,5 +166,6 @@ def test_phase_a_response_contracts_are_instantiable() -> None:
     assert task.task_kind == TaskKind.COMPOSITION
     assert creative.current_version_id == 20
     assert creative.generation_error_msg == "last render failed"
+    assert creative.eligibility_status == CreativeEligibilityStatus.PENDING_INPUT
     assert version.version_no == 1
     assert package.creative_version_id == 20

@@ -4,9 +4,14 @@ Creative Phase A API.
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth_dependencies import GRACE_READONLY_ROUTE_DEPENDENCIES
+from core.auth_dependencies import ACTIVE_ROUTE_DEPENDENCIES, GRACE_READONLY_ROUTE_DEPENDENCIES
 from models import get_db
-from schemas import CreativeDetailResponse, CreativeWorkbenchListResponse
+from schemas import (
+    CreativeCreateRequest,
+    CreativeDetailResponse,
+    CreativeUpdateRequest,
+    CreativeWorkbenchListResponse,
+)
 from services.creative_service import CreativeService
 
 router = APIRouter()
@@ -23,6 +28,19 @@ async def list_creatives(
     return await service.list_creatives(skip=skip, limit=limit)
 
 
+@router.post("", response_model=CreativeDetailResponse, status_code=201, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
+async def create_creative(
+    payload: CreativeCreateRequest,
+    db: AsyncSession = Depends(get_db),
+) -> CreativeDetailResponse:
+    """Create a work-driven creative that may exist before its first version."""
+    service = CreativeService(db)
+    try:
+        return await service.create_creative(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.get("/{creative_id}", response_model=CreativeDetailResponse, dependencies=GRACE_READONLY_ROUTE_DEPENDENCIES)
 async def get_creative(
     creative_id: int,
@@ -31,6 +49,20 @@ async def get_creative(
     """Return the minimal Creative detail projection for Phase A."""
     service = CreativeService(db)
     creative = await service.get_creative_detail(creative_id)
+    if creative is None:
+        raise HTTPException(status_code=404, detail="作品不存在")
+    return creative
+
+
+@router.patch("/{creative_id}", response_model=CreativeDetailResponse, dependencies=ACTIVE_ROUTE_DEPENDENCIES)
+async def update_creative(
+    creative_id: int,
+    payload: CreativeUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+) -> CreativeDetailResponse:
+    """Update work-driven creative input snapshot and title."""
+    service = CreativeService(db)
+    creative = await service.update_creative(creative_id, payload)
     if creative is None:
         raise HTTPException(status_code=404, detail="作品不存在")
     return creative

@@ -1,26 +1,60 @@
 """
-Creative Phase A service helpers.
+Creative aggregate helpers for work-driven flow.
 """
 from __future__ import annotations
 
-from typing import Optional
+import hashlib
+import json
+from typing import Any, Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from models import CreativeItem, CreativeVersion, Task
+from models import (
+    Audio,
+    Copywriting,
+    Cover,
+    CreativeItem,
+    CreativeVersion,
+    PublishProfile,
+    Task,
+    Topic,
+    Video,
+)
 from schemas import (
+    CreativeCreateRequest,
     CreativeDetailResponse,
+    CreativeEligibilityStatus,
+    CreativeInputSnapshotResponse,
+    CreativeItemResponse,
+    CreativeLatestTaskSummaryResponse,
     CreativeReviewSummaryResponse,
+    CreativeStatus,
+    CreativeUpdateRequest,
     CreativeWorkbenchItemResponse,
     CreativeWorkbenchListResponse,
+    TaskKind,
+    TaskStatus,
 )
 from services.creative_version_service import CreativeVersionService
+from services.task_execution_semantics import TaskSemanticsError, validate_task_resource_inputs
+from utils.time import utc_now_naive
+
+
+REVIEW_AND_BEYOND_STATUS_VALUES = {
+    CreativeStatus.WAITING_REVIEW.value,
+    CreativeStatus.APPROVED.value,
+    CreativeStatus.REWORK_REQUIRED.value,
+    CreativeStatus.REJECTED.value,
+    CreativeStatus.IN_PUBLISH_POOL.value,
+    CreativeStatus.PUBLISHING.value,
+    CreativeStatus.PUBLISHED.value,
+}
 
 
 class CreativeService:
-    """Minimal Creative workbench/detail service for Phase A."""
+    """Creative aggregate service for work-driven creation and projection."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -40,27 +74,81 @@ class CreativeService:
             .order_by(CreativeItem.updated_at.desc(), CreativeItem.id.desc())
             .offset(skip)
             .limit(limit)
-        )
-        items = [
-            CreativeWorkbenchItemResponse(
-                id=item.id,
-                creative_no=item.creative_no,
-                title=item.title,
-                status=item.status,
-                current_version_id=item.current_version_id,
-                generation_error_msg=item.generation_error_msg,
-                generation_failed_at=item.generation_failed_at,
-                updated_at=item.updated_at,
+            .options(
+                selectinload(CreativeItem.input_profile),
+                selectinload(CreativeItem.tasks).selectinload(Task.profile),
+                selectinload(CreativeItem.publish_pool_items),
             )
-            for item in result.scalars().all()
-        ]
+        )
+        items = [await self._build_workbench_item_response(item) for item in result.scalars().all()]
         return CreativeWorkbenchListResponse(total=total, items=items)
+
+    async def create_creative(self, payload: CreativeCreateRequest) -> CreativeDetailResponse:
+        creative_no = payload.creative_no or await self._generate_creative_no()
+        if await self._creative_no_exists(creative_no):
+            raise ValueError("作品编号已存在")
+
+        creative = CreativeItem(
+            creative_no=creative_no,
+            title=payload.title,
+            status=CreativeStatus.PENDING_INPUT.value,
+            latest_version_no=0,
+        )
+        self.db.add(creative)
+        await self.db.flush()
+        self._apply_input_snapshot(
+            creative,
+            profile_id=payload.profile_id,
+            video_ids=payload.video_ids,
+            copywriting_ids=payload.copywriting_ids,
+            cover_ids=payload.cover_ids,
+            audio_ids=payload.audio_ids,
+            topic_ids=payload.topic_ids,
+        )
+        await self._sync_pre_compose_status(creative)
+        await self.db.commit()
+        return await self.get_creative_detail(creative.id)  # type: ignore[return-value]
 
     async def get_creative_detail(self, creative_id: int) -> Optional[CreativeDetailResponse]:
         creative = await self._load_creative_detail(creative_id)
         if creative is None:
             return None
-        return self._build_creative_detail_response(creative)
+        return await self._build_creative_detail_response(creative)
+
+    async def update_creative(
+        self,
+        creative_id: int,
+        payload: CreativeUpdateRequest,
+    ) -> Optional[CreativeDetailResponse]:
+        creative = await self._load_creative_detail(creative_id)
+        if creative is None:
+            return None
+
+        if "title" in payload.model_fields_set:
+            creative.title = payload.title
+
+        snapshot = self._extract_input_snapshot(creative)
+        if "profile_id" in payload.model_fields_set:
+            snapshot["profile_id"] = payload.profile_id
+
+        for field_name in ("video_ids", "copywriting_ids", "cover_ids", "audio_ids", "topic_ids"):
+            if field_name not in payload.model_fields_set:
+                continue
+            value = getattr(payload, field_name)
+            snapshot[field_name] = value or []
+
+        self._apply_input_snapshot(
+            creative,
+            profile_id=snapshot["profile_id"],
+            video_ids=snapshot["video_ids"],
+            copywriting_ids=snapshot["copywriting_ids"],
+            cover_ids=snapshot["cover_ids"],
+            audio_ids=snapshot["audio_ids"],
+            topic_ids=snapshot["topic_ids"],
+        )
+        await self._sync_pre_compose_status(creative)
+        await self.db.commit()
+        return await self.get_creative_detail(creative.id)
 
     async def attach_task_to_creative_sample(
         self,
@@ -81,7 +169,7 @@ class CreativeService:
         creative = CreativeItem(
             creative_no=creative_no or f"CR-{task.id:06d}",
             title=title or task.name or f"Task {task.id}",
-            status="PENDING_INPUT",
+            status=CreativeStatus.PENDING_INPUT.value,
             latest_version_no=1,
         )
         self.db.add(creative)
@@ -107,16 +195,34 @@ class CreativeService:
             .where(CreativeItem.id == creative_id)
             .execution_options(populate_existing=True)
             .options(
+                selectinload(CreativeItem.input_profile),
                 selectinload(CreativeItem.current_version).selectinload(CreativeVersion.package_records),
                 selectinload(CreativeItem.current_version).selectinload(CreativeVersion.check_records),
                 selectinload(CreativeItem.versions).selectinload(CreativeVersion.package_records),
                 selectinload(CreativeItem.versions).selectinload(CreativeVersion.check_records),
-                selectinload(CreativeItem.tasks),
+                selectinload(CreativeItem.tasks).selectinload(Task.profile),
+                selectinload(CreativeItem.publish_pool_items),
             )
         )
         return result.scalars().first()
 
-    def _build_creative_detail_response(self, creative: CreativeItem) -> CreativeDetailResponse:
+    async def _build_workbench_item_response(self, creative: CreativeItem) -> CreativeWorkbenchItemResponse:
+        projection = await self._build_projection(creative)
+        return CreativeWorkbenchItemResponse(
+            id=creative.id,
+            creative_no=creative.creative_no,
+            title=creative.title,
+            status=projection["status"],
+            current_version_id=creative.current_version_id,
+            generation_error_msg=creative.generation_error_msg,
+            generation_failed_at=creative.generation_failed_at,
+            eligibility_status=projection["eligibility_status"],
+            eligibility_reasons=projection["eligibility_reasons"],
+            latest_task_summary=projection["latest_task_summary"],
+            updated_at=creative.updated_at,
+        )
+
+    async def _build_creative_detail_response(self, creative: CreativeItem) -> CreativeDetailResponse:
         linked_task_ids = sorted(task.id for task in creative.tasks)
         current_version = self.version_service.build_current_version_response(creative.current_version)
         ordered_versions = sorted(
@@ -142,18 +248,332 @@ class CreativeService:
             current_check=current_check,
             total_checks=total_checks,
         )
+        projection = await self._build_projection(creative)
 
         return CreativeDetailResponse(
             id=creative.id,
             creative_no=creative.creative_no,
             title=creative.title,
-            status=creative.status,
+            status=projection["status"],
             current_version_id=creative.current_version_id,
             current_version=current_version,
-            generation_error_msg=creative.generation_error_msg,
-            generation_failed_at=creative.generation_failed_at,
             versions=versions,
             review_summary=review_summary,
             linked_task_ids=linked_task_ids,
+            generation_error_msg=creative.generation_error_msg,
+            generation_failed_at=creative.generation_failed_at,
+            input_snapshot=projection["input_snapshot"],
+            eligibility_status=projection["eligibility_status"],
+            eligibility_reasons=projection["eligibility_reasons"],
+            latest_task_summary=projection["latest_task_summary"],
+            created_at=creative.created_at,
+            updated_at=creative.updated_at,
+        )
+
+    async def _build_projection(self, creative: CreativeItem) -> dict[str, Any]:
+        input_snapshot = self._build_input_snapshot_response(creative)
+        eligibility_status, eligibility_reasons = await self._build_eligibility_projection(
+            creative,
+            input_snapshot=input_snapshot,
+        )
+        latest_task_summary = self._build_latest_task_summary(self._pick_latest_task(creative.tasks))
+        status = self._project_creative_status(
+            creative,
+            eligibility_status=eligibility_status,
+        )
+        return {
+            "status": status,
+            "input_snapshot": input_snapshot,
+            "eligibility_status": eligibility_status,
+            "eligibility_reasons": eligibility_reasons,
+            "latest_task_summary": latest_task_summary,
+        }
+
+    async def _build_eligibility_projection(
+        self,
+        creative: CreativeItem,
+        *,
+        input_snapshot: CreativeInputSnapshotResponse,
+    ) -> tuple[CreativeEligibilityStatus, list[str]]:
+        pending_reasons: list[str] = []
+        invalid_reasons: list[str] = []
+
+        profile = creative.__dict__.get("input_profile")
+        if input_snapshot.profile_id is None:
+            pending_reasons.append("请选择合成配置")
+        elif profile is None:
+            profile = await self.db.get(PublishProfile, input_snapshot.profile_id)
+            if profile is None:
+                invalid_reasons.append("所选合成配置不存在")
+
+        if not input_snapshot.video_ids:
+            pending_reasons.append("至少选择 1 个视频")
+
+        resource_errors = await self._validate_snapshot_resource_ids(input_snapshot)
+        invalid_reasons.extend(resource_errors)
+
+        if profile is not None and not invalid_reasons and not pending_reasons:
+            try:
+                validate_task_resource_inputs(
+                    video_ids=input_snapshot.video_ids,
+                    copywriting_ids=input_snapshot.copywriting_ids,
+                    cover_ids=input_snapshot.cover_ids,
+                    audio_ids=input_snapshot.audio_ids,
+                    composition_mode=profile.composition_mode,
+                )
+            except TaskSemanticsError as exc:
+                invalid_reasons.append(str(exc))
+
+        reasons = [*pending_reasons, *invalid_reasons]
+        if invalid_reasons:
+            return CreativeEligibilityStatus.INVALID, reasons
+        if pending_reasons:
+            return CreativeEligibilityStatus.PENDING_INPUT, reasons
+        return CreativeEligibilityStatus.READY_TO_COMPOSE, []
+
+    async def _validate_snapshot_resource_ids(
+        self,
+        input_snapshot: CreativeInputSnapshotResponse,
+    ) -> list[str]:
+        errors: list[str] = []
+        checks = [
+            ("视频", Video, input_snapshot.video_ids),
+            ("文案", Copywriting, input_snapshot.copywriting_ids),
+            ("封面", Cover, input_snapshot.cover_ids),
+            ("音频", Audio, input_snapshot.audio_ids),
+            ("话题", Topic, input_snapshot.topic_ids),
+        ]
+        for label, model, ids in checks:
+            if not ids:
+                continue
+            rows = await self.db.execute(select(model.id).where(model.id.in_(ids)))
+            existing_ids = set(rows.scalars().all())
+            missing_ids = [item_id for item_id in ids if item_id not in existing_ids]
+            if missing_ids:
+                errors.append(f"{label}素材不存在: {', '.join(str(item_id) for item_id in missing_ids)}")
+        return errors
+
+    def _project_creative_status(
+        self,
+        creative: CreativeItem,
+        *,
+        eligibility_status: CreativeEligibilityStatus,
+    ) -> CreativeStatus:
+        latest_publish_task = self._pick_latest_task(
+            [task for task in creative.tasks if task.task_kind == TaskKind.PUBLISH.value]
+        )
+        if latest_publish_task is not None:
+            if latest_publish_task.status == TaskStatus.UPLOADING.value:
+                return CreativeStatus.PUBLISHING
+            if latest_publish_task.status == TaskStatus.UPLOADED.value:
+                return CreativeStatus.PUBLISHED
+
+        if creative.current_version_id is not None and any(
+            pool_item.status == "active" and pool_item.creative_version_id == creative.current_version_id
+            for pool_item in creative.publish_pool_items
+        ):
+            return CreativeStatus.IN_PUBLISH_POOL
+
+        stored_status = self._coerce_creative_status(creative.status)
+        if stored_status in {
+            CreativeStatus.WAITING_REVIEW,
+            CreativeStatus.APPROVED,
+            CreativeStatus.REWORK_REQUIRED,
+            CreativeStatus.REJECTED,
+            CreativeStatus.IN_PUBLISH_POOL,
+            CreativeStatus.PUBLISHING,
+            CreativeStatus.PUBLISHED,
+        }:
+            return stored_status
+
+        latest_composition_task = self._pick_latest_task(
+            [task for task in creative.tasks if task.task_kind != TaskKind.PUBLISH.value]
+        )
+        if latest_composition_task is not None:
+            if latest_composition_task.status == TaskStatus.COMPOSING.value:
+                return CreativeStatus.COMPOSING
+            if (
+                latest_composition_task.status == TaskStatus.FAILED.value
+                and creative.status not in REVIEW_AND_BEYOND_STATUS_VALUES
+                and creative.generation_failed_at is not None
+            ):
+                return CreativeStatus.FAILED
+
+        if eligibility_status == CreativeEligibilityStatus.READY_TO_COMPOSE:
+            return CreativeStatus.READY_TO_COMPOSE
+        if eligibility_status == CreativeEligibilityStatus.INVALID and creative.generation_failed_at is not None:
+            return CreativeStatus.FAILED
+        return CreativeStatus.PENDING_INPUT
+
+    def _build_input_snapshot_response(self, creative: CreativeItem) -> CreativeInputSnapshotResponse:
+        return CreativeInputSnapshotResponse(
+            profile_id=creative.input_profile_id,
+            video_ids=self._decode_id_list(creative.input_video_ids),
+            copywriting_ids=self._decode_id_list(creative.input_copywriting_ids),
+            cover_ids=self._decode_id_list(creative.input_cover_ids),
+            audio_ids=self._decode_id_list(creative.input_audio_ids),
+            topic_ids=self._decode_id_list(creative.input_topic_ids),
+            snapshot_hash=creative.input_snapshot_hash,
+        )
+
+    def _build_latest_task_summary(self, task: Optional[Task]) -> Optional[CreativeLatestTaskSummaryResponse]:
+        if task is None:
+            return None
+        return CreativeLatestTaskSummaryResponse(
+            task_id=task.id,
+            task_kind=self._coerce_task_kind(task.task_kind),
+            task_status=self._coerce_task_status(task.status),
+            composition_job_id=task.composition_job_id,
+            error_msg=task.error_msg,
+            updated_at=task.updated_at,
+        )
+
+    def _pick_latest_task(self, tasks: list[Task]) -> Optional[Task]:
+        if not tasks:
+            return None
+        return max(tasks, key=lambda task: (task.updated_at, task.id))
+
+    async def _sync_pre_compose_status(self, creative: CreativeItem) -> None:
+        if creative.current_version_id is not None and creative.status in REVIEW_AND_BEYOND_STATUS_VALUES:
+            return
+        input_snapshot = self._build_input_snapshot_response(creative)
+        eligibility_status, _ = await self._build_eligibility_projection(
+            creative,
+            input_snapshot=input_snapshot,
+        )
+        if eligibility_status == CreativeEligibilityStatus.READY_TO_COMPOSE:
+            creative.status = CreativeStatus.READY_TO_COMPOSE.value
+        else:
+            creative.status = CreativeStatus.PENDING_INPUT.value
+        creative.updated_at = utc_now_naive()
+        await self.db.flush()
+
+    def _apply_input_snapshot(
+        self,
+        creative: CreativeItem,
+        *,
+        profile_id: Optional[int],
+        video_ids: list[int],
+        copywriting_ids: list[int],
+        cover_ids: list[int],
+        audio_ids: list[int],
+        topic_ids: list[int],
+    ) -> None:
+        creative.input_profile_id = profile_id
+        creative.input_video_ids = self._encode_id_list(video_ids)
+        creative.input_copywriting_ids = self._encode_id_list(copywriting_ids)
+        creative.input_cover_ids = self._encode_id_list(cover_ids)
+        creative.input_audio_ids = self._encode_id_list(audio_ids)
+        creative.input_topic_ids = self._encode_id_list(topic_ids)
+        creative.input_snapshot_hash = self._build_snapshot_hash(
+            profile_id=profile_id,
+            video_ids=video_ids,
+            copywriting_ids=copywriting_ids,
+            cover_ids=cover_ids,
+            audio_ids=audio_ids,
+            topic_ids=topic_ids,
+        )
+        creative.updated_at = utc_now_naive()
+
+    def _extract_input_snapshot(self, creative: CreativeItem) -> dict[str, Any]:
+        return {
+            "profile_id": creative.input_profile_id,
+            "video_ids": self._decode_id_list(creative.input_video_ids),
+            "copywriting_ids": self._decode_id_list(creative.input_copywriting_ids),
+            "cover_ids": self._decode_id_list(creative.input_cover_ids),
+            "audio_ids": self._decode_id_list(creative.input_audio_ids),
+            "topic_ids": self._decode_id_list(creative.input_topic_ids),
+        }
+
+    def _build_snapshot_hash(
+        self,
+        *,
+        profile_id: Optional[int],
+        video_ids: list[int],
+        copywriting_ids: list[int],
+        cover_ids: list[int],
+        audio_ids: list[int],
+        topic_ids: list[int],
+    ) -> str:
+        payload = {
+            "profile_id": profile_id,
+            "video_ids": video_ids,
+            "copywriting_ids": copywriting_ids,
+            "cover_ids": cover_ids,
+            "audio_ids": audio_ids,
+            "topic_ids": topic_ids,
+        }
+        canonical = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    def _encode_id_list(self, values: list[int]) -> str:
+        return json.dumps(values, ensure_ascii=False, separators=(",", ":"))
+
+    def _decode_id_list(self, raw_value: Optional[str]) -> list[int]:
+        if raw_value in (None, ""):
+            return []
+        try:
+            parsed = json.loads(raw_value)
+        except (TypeError, ValueError):
+            return []
+        if not isinstance(parsed, list):
+            return []
+        return [int(item) for item in parsed]
+
+    async def _creative_no_exists(self, creative_no: str) -> bool:
+        result = await self.db.execute(
+            select(CreativeItem.id).where(CreativeItem.creative_no == creative_no)
+        )
+        return result.scalars().first() is not None
+
+    async def _generate_creative_no(self) -> str:
+        while True:
+            candidate = f"CR-{utc_now_naive():%Y%m%d%H%M%S%f}"
+            if not await self._creative_no_exists(candidate):
+                return candidate
+
+    def _coerce_creative_status(self, value: str | CreativeStatus) -> CreativeStatus:
+        if isinstance(value, CreativeStatus):
+            return value
+        try:
+            return CreativeStatus(value)
+        except ValueError:
+            return CreativeStatus.PENDING_INPUT
+
+    def _coerce_task_kind(self, value: Optional[str]) -> Optional[TaskKind]:
+        if value is None:
+            return None
+        try:
+            return TaskKind(value)
+        except ValueError:
+            return None
+
+    def _coerce_task_status(self, value: str | TaskStatus) -> TaskStatus:
+        if isinstance(value, TaskStatus):
+            return value
+        try:
+            return TaskStatus(value)
+        except ValueError:
+            return TaskStatus.DRAFT
+
+    def build_item_response(self, creative: CreativeItem) -> CreativeItemResponse:
+        """
+        Legacy helper kept for schema-instantiation compatibility in tests.
+        """
+        input_snapshot = self._build_input_snapshot_response(creative)
+        return CreativeItemResponse(
+            id=creative.id,
+            creative_no=creative.creative_no,
+            title=creative.title,
+            status=self._coerce_creative_status(creative.status),
+            current_version_id=creative.current_version_id,
+            latest_version_no=creative.latest_version_no,
+            generation_error_msg=creative.generation_error_msg,
+            generation_failed_at=creative.generation_failed_at,
+            input_snapshot=input_snapshot,
+            eligibility_status=CreativeEligibilityStatus.PENDING_INPUT,
+            eligibility_reasons=[],
+            latest_task_summary=None,
+            created_at=creative.created_at,
             updated_at=creative.updated_at,
         )

@@ -58,10 +58,22 @@ class TaskKind(str, Enum):
 
 class CreativeStatus(str, Enum):
     PENDING_INPUT = "PENDING_INPUT"
+    READY_TO_COMPOSE = "READY_TO_COMPOSE"
+    COMPOSING = "COMPOSING"
     WAITING_REVIEW = "WAITING_REVIEW"
     APPROVED = "APPROVED"
     REWORK_REQUIRED = "REWORK_REQUIRED"
     REJECTED = "REJECTED"
+    IN_PUBLISH_POOL = "IN_PUBLISH_POOL"
+    PUBLISHING = "PUBLISHING"
+    PUBLISHED = "PUBLISHED"
+    FAILED = "FAILED"
+
+
+class CreativeEligibilityStatus(str, Enum):
+    PENDING_INPUT = "PENDING_INPUT"
+    READY_TO_COMPOSE = "READY_TO_COMPOSE"
+    INVALID = "INVALID"
 
 
 class CreativeReviewConclusion(str, Enum):
@@ -555,6 +567,58 @@ class CreativeVersionSummaryResponse(BaseModel):
     updated_at: datetime
 
 
+class CreativeInputSnapshotResponse(BaseModel):
+    profile_id: Optional[int] = None
+    video_ids: List[int] = Field(default_factory=list)
+    copywriting_ids: List[int] = Field(default_factory=list)
+    cover_ids: List[int] = Field(default_factory=list)
+    audio_ids: List[int] = Field(default_factory=list)
+    topic_ids: List[int] = Field(default_factory=list)
+    snapshot_hash: Optional[str] = None
+
+
+class CreativeLatestTaskSummaryResponse(BaseModel):
+    task_id: int
+    task_kind: Optional[TaskKind] = None
+    task_status: TaskStatus
+    composition_job_id: Optional[int] = None
+    error_msg: Optional[str] = None
+    updated_at: datetime
+
+
+class CreativeCreateRequest(BaseModel):
+    creative_no: Optional[str] = Field(None, min_length=1, max_length=64)
+    title: Optional[str] = Field(None, max_length=256)
+    profile_id: Optional[int] = None
+    video_ids: List[int] = Field(default_factory=list)
+    copywriting_ids: List[int] = Field(default_factory=list)
+    cover_ids: List[int] = Field(default_factory=list)
+    audio_ids: List[int] = Field(default_factory=list)
+    topic_ids: List[int] = Field(default_factory=list)
+
+    @field_validator("video_ids", "copywriting_ids", "cover_ids", "audio_ids", "topic_ids")
+    @classmethod
+    def deduplicate_ids(cls, value: List[int]) -> List[int]:
+        return list(dict.fromkeys(value))
+
+
+class CreativeUpdateRequest(BaseModel):
+    title: Optional[str] = Field(None, max_length=256)
+    profile_id: Optional[int] = None
+    video_ids: Optional[List[int]] = None
+    copywriting_ids: Optional[List[int]] = None
+    cover_ids: Optional[List[int]] = None
+    audio_ids: Optional[List[int]] = None
+    topic_ids: Optional[List[int]] = None
+
+    @field_validator("video_ids", "copywriting_ids", "cover_ids", "audio_ids", "topic_ids")
+    @classmethod
+    def deduplicate_optional_ids(cls, value: Optional[List[int]]) -> Optional[List[int]]:
+        if value is None:
+            return None
+        return list(dict.fromkeys(value))
+
+
 class CreativeItemResponse(BaseModel):
     """???????Phase A?"""
     model_config = ConfigDict(from_attributes=True)
@@ -567,6 +631,10 @@ class CreativeItemResponse(BaseModel):
     latest_version_no: int = 0
     generation_error_msg: Optional[str] = None
     generation_failed_at: Optional[datetime] = None
+    input_snapshot: CreativeInputSnapshotResponse = Field(default_factory=CreativeInputSnapshotResponse)
+    eligibility_status: CreativeEligibilityStatus = CreativeEligibilityStatus.PENDING_INPUT
+    eligibility_reasons: List[str] = Field(default_factory=list)
+    latest_task_summary: Optional[CreativeLatestTaskSummaryResponse] = None
     created_at: datetime
     updated_at: datetime
 
@@ -582,6 +650,9 @@ class CreativeWorkbenchItemResponse(BaseModel):
     current_version_id: Optional[int] = None
     generation_error_msg: Optional[str] = None
     generation_failed_at: Optional[datetime] = None
+    eligibility_status: CreativeEligibilityStatus = CreativeEligibilityStatus.PENDING_INPUT
+    eligibility_reasons: List[str] = Field(default_factory=list)
+    latest_task_summary: Optional[CreativeLatestTaskSummaryResponse] = None
     updated_at: datetime
 
 
@@ -666,6 +737,11 @@ class CreativeDetailResponse(BaseModel):
     linked_task_ids: List[int] = Field(default_factory=list)
     generation_error_msg: Optional[str] = None
     generation_failed_at: Optional[datetime] = None
+    input_snapshot: CreativeInputSnapshotResponse = Field(default_factory=CreativeInputSnapshotResponse)
+    eligibility_status: CreativeEligibilityStatus = CreativeEligibilityStatus.PENDING_INPUT
+    eligibility_reasons: List[str] = Field(default_factory=list)
+    latest_task_summary: Optional[CreativeLatestTaskSummaryResponse] = None
+    created_at: datetime
     updated_at: datetime
 
 

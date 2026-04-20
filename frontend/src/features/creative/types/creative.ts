@@ -28,10 +28,16 @@ export type CreativeWorkbenchPoolState = 'in_pool' | 'out_pool' | 'version_misma
 
 export const creativeStatusMeta: Record<CreativeStatus, { color: string; label: string }> = {
   PENDING_INPUT: { color: 'default', label: '待补输入' },
+  READY_TO_COMPOSE: { color: 'processing', label: '待提交合成' },
+  COMPOSING: { color: 'processing', label: '合成中' },
   WAITING_REVIEW: { color: 'processing', label: '待审核' },
   APPROVED: { color: 'success', label: '已通过' },
   REWORK_REQUIRED: { color: 'warning', label: '需返工' },
   REJECTED: { color: 'error', label: '已驳回' },
+  IN_PUBLISH_POOL: { color: 'processing', label: '待发布' },
+  PUBLISHING: { color: 'processing', label: '发布中' },
+  PUBLISHED: { color: 'success', label: '已发布' },
+  FAILED: { color: 'error', label: '已失败' },
 }
 
 export const creativeReviewConclusionMeta: Record<

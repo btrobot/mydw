@@ -1238,6 +1238,44 @@ export type CreativeApproveRequest = {
 };
 
 /**
+ * CreativeCreateRequest
+ */
+export type CreativeCreateRequest = {
+    /**
+     * Creative No
+     */
+    creative_no?: string | null;
+    /**
+     * Title
+     */
+    title?: string | null;
+    /**
+     * Profile Id
+     */
+    profile_id?: number | null;
+    /**
+     * Video Ids
+     */
+    video_ids?: Array<number>;
+    /**
+     * Copywriting Ids
+     */
+    copywriting_ids?: Array<number>;
+    /**
+     * Cover Ids
+     */
+    cover_ids?: Array<number>;
+    /**
+     * Audio Ids
+     */
+    audio_ids?: Array<number>;
+    /**
+     * Topic Ids
+     */
+    topic_ids?: Array<number>;
+};
+
+/**
  * CreativeCurrentVersionResponse
  *
  * Current-version projection for the Creative detail endpoint.
@@ -1307,6 +1345,80 @@ export type CreativeDetailResponse = {
      * Generation Failed At
      */
     generation_failed_at?: string | null;
+    input_snapshot?: CreativeInputSnapshotResponse;
+    eligibility_status?: CreativeEligibilityStatus;
+    /**
+     * Eligibility Reasons
+     */
+    eligibility_reasons?: Array<string>;
+    latest_task_summary?: CreativeLatestTaskSummaryResponse | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * CreativeEligibilityStatus
+ */
+export type CreativeEligibilityStatus = 'PENDING_INPUT' | 'READY_TO_COMPOSE' | 'INVALID';
+
+/**
+ * CreativeInputSnapshotResponse
+ */
+export type CreativeInputSnapshotResponse = {
+    /**
+     * Profile Id
+     */
+    profile_id?: number | null;
+    /**
+     * Video Ids
+     */
+    video_ids?: Array<number>;
+    /**
+     * Copywriting Ids
+     */
+    copywriting_ids?: Array<number>;
+    /**
+     * Cover Ids
+     */
+    cover_ids?: Array<number>;
+    /**
+     * Audio Ids
+     */
+    audio_ids?: Array<number>;
+    /**
+     * Topic Ids
+     */
+    topic_ids?: Array<number>;
+    /**
+     * Snapshot Hash
+     */
+    snapshot_hash?: string | null;
+};
+
+/**
+ * CreativeLatestTaskSummaryResponse
+ */
+export type CreativeLatestTaskSummaryResponse = {
+    /**
+     * Task Id
+     */
+    task_id: number;
+    task_kind?: TaskKind | null;
+    task_status: TaskStatus;
+    /**
+     * Composition Job Id
+     */
+    composition_job_id?: number | null;
+    /**
+     * Error Msg
+     */
+    error_msg?: string | null;
     /**
      * Updated At
      */
@@ -1386,7 +1498,41 @@ export type CreativeReworkRequest = {
 /**
  * CreativeStatus
  */
-export type CreativeStatus = 'PENDING_INPUT' | 'WAITING_REVIEW' | 'APPROVED' | 'REWORK_REQUIRED' | 'REJECTED';
+export type CreativeStatus = 'PENDING_INPUT' | 'READY_TO_COMPOSE' | 'COMPOSING' | 'WAITING_REVIEW' | 'APPROVED' | 'REWORK_REQUIRED' | 'REJECTED' | 'IN_PUBLISH_POOL' | 'PUBLISHING' | 'PUBLISHED' | 'FAILED';
+
+/**
+ * CreativeUpdateRequest
+ */
+export type CreativeUpdateRequest = {
+    /**
+     * Title
+     */
+    title?: string | null;
+    /**
+     * Profile Id
+     */
+    profile_id?: number | null;
+    /**
+     * Video Ids
+     */
+    video_ids?: Array<number> | null;
+    /**
+     * Copywriting Ids
+     */
+    copywriting_ids?: Array<number> | null;
+    /**
+     * Cover Ids
+     */
+    cover_ids?: Array<number> | null;
+    /**
+     * Audio Ids
+     */
+    audio_ids?: Array<number> | null;
+    /**
+     * Topic Ids
+     */
+    topic_ids?: Array<number> | null;
+};
 
 /**
  * CreativeVersionSummaryResponse
@@ -1468,6 +1614,12 @@ export type CreativeWorkbenchItemResponse = {
      * Generation Failed At
      */
     generation_failed_at?: string | null;
+    eligibility_status?: CreativeEligibilityStatus;
+    /**
+     * Eligibility Reasons
+     */
+    eligibility_reasons?: Array<string>;
+    latest_task_summary?: CreativeLatestTaskSummaryResponse | null;
     /**
      * Updated At
      */
@@ -2178,7 +2330,7 @@ export type PublishProfileCreate = {
     /**
      * Composition Params
      *
-     * profile 级 opaque JSON 配置；Phase 6 结论为 keep-json。
+     * profile 级 JSON 配置。local_ffmpeg V1 当前仅支持 JSON object，允许字段：audio_mix_volume、video_codec、audio_codec、preset、crf。
      */
     composition_params?: string | null;
     /**
@@ -2286,7 +2438,7 @@ export type PublishProfileUpdate = {
     /**
      * Composition Params
      *
-     * profile 级 opaque JSON 配置；Phase 6 结论为 keep-json。
+     * profile 级 JSON 配置。local_ffmpeg V1 当前仅支持 JSON object，允许字段：audio_mix_volume、video_codec、audio_codec、preset、crf。
      */
     composition_params?: string | null;
     /**
@@ -7630,6 +7782,31 @@ export type ListCreativesApiCreativesGetResponses = {
 
 export type ListCreativesApiCreativesGetResponse = ListCreativesApiCreativesGetResponses[keyof ListCreativesApiCreativesGetResponses];
 
+export type CreateCreativeApiCreativesPostData = {
+    body: CreativeCreateRequest;
+    path?: never;
+    query?: never;
+    url: '/api/creatives';
+};
+
+export type CreateCreativeApiCreativesPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateCreativeApiCreativesPostError = CreateCreativeApiCreativesPostErrors[keyof CreateCreativeApiCreativesPostErrors];
+
+export type CreateCreativeApiCreativesPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: CreativeDetailResponse;
+};
+
+export type CreateCreativeApiCreativesPostResponse = CreateCreativeApiCreativesPostResponses[keyof CreateCreativeApiCreativesPostResponses];
+
 export type GetCreativeApiCreativesCreativeIdGetData = {
     body?: never;
     path: {
@@ -7659,6 +7836,36 @@ export type GetCreativeApiCreativesCreativeIdGetResponses = {
 };
 
 export type GetCreativeApiCreativesCreativeIdGetResponse = GetCreativeApiCreativesCreativeIdGetResponses[keyof GetCreativeApiCreativesCreativeIdGetResponses];
+
+export type UpdateCreativeApiCreativesCreativeIdPatchData = {
+    body: CreativeUpdateRequest;
+    path: {
+        /**
+         * Creative Id
+         */
+        creative_id: number;
+    };
+    query?: never;
+    url: '/api/creatives/{creative_id}';
+};
+
+export type UpdateCreativeApiCreativesCreativeIdPatchErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateCreativeApiCreativesCreativeIdPatchError = UpdateCreativeApiCreativesCreativeIdPatchErrors[keyof UpdateCreativeApiCreativesCreativeIdPatchErrors];
+
+export type UpdateCreativeApiCreativesCreativeIdPatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: CreativeDetailResponse;
+};
+
+export type UpdateCreativeApiCreativesCreativeIdPatchResponse = UpdateCreativeApiCreativesCreativeIdPatchResponses[keyof UpdateCreativeApiCreativesCreativeIdPatchResponses];
 
 export type ApproveCreativeApiCreativeReviewsCreativeIdApprovePostData = {
     body: CreativeApproveRequest;

@@ -125,9 +125,17 @@ class CreativeItem(Base):
     latest_version_no = Column(Integer, nullable=False, default=0)
     generation_error_msg = Column(Text, nullable=True)
     generation_failed_at = Column(DateTime, nullable=True)
+    input_profile_id = Column(Integer, ForeignKey("publish_profiles.id"), nullable=True, index=True)
+    input_video_ids = Column(Text, nullable=False, default="[]")
+    input_copywriting_ids = Column(Text, nullable=False, default="[]")
+    input_cover_ids = Column(Text, nullable=False, default="[]")
+    input_audio_ids = Column(Text, nullable=False, default="[]")
+    input_topic_ids = Column(Text, nullable=False, default="[]")
+    input_snapshot_hash = Column(String(64), nullable=True, index=True)
     created_at = Column(DateTime, default=utc_now_naive)
     updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
+    input_profile = relationship("PublishProfile", foreign_keys=[input_profile_id])
     current_version = relationship(
         "CreativeVersion",
         foreign_keys=[current_version_id],
@@ -798,6 +806,8 @@ async def init_db():
     await migration_029.run_migration(engine)
     migration_030 = importlib.import_module("migrations.030_task_optional_account")
     await migration_030.run_migration(engine)
+    migration_031 = importlib.import_module("migrations.031_creative_workdriven_phase1")
+    await migration_031.run_migration(engine)
 
     logger.info("数据库初始化完成")
 
