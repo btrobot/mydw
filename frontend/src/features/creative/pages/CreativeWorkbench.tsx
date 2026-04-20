@@ -348,7 +348,7 @@ export default function CreativeWorkbench() {
   return (
     <PageContainer
       title="作品工作台"
-      subTitle="先创建作品，再补齐素材、合成配置与执行动作；任务入口继续作为兼容/排障路径保留。"
+      subTitle="先创建作品，再补齐素材、合成配置与执行动作；任务管理只承接执行记录、失败重试与排障。"
     >
       <Space direction="vertical" size={16} style={{ display: 'flex' }}>
         {(publishStatusQuery.isError || scheduleConfigQuery.isError) && (
@@ -420,7 +420,6 @@ export default function CreativeWorkbench() {
             <CreativeEmptyState
               mode={creativeFlowMode}
               onCreateCreative={() => void handleCreateCreative()}
-              onOpenLegacyTaskEntry={() => navigate('/task/create')}
             />
           </Card>
         ) : (
@@ -502,7 +501,6 @@ export default function CreativeWorkbench() {
                   <CreativeEmptyState
                     mode={creativeFlowMode}
                     onCreateCreative={() => void handleCreateCreative()}
-                    onOpenLegacyTaskEntry={() => navigate('/task/create')}
                   />
                 ),
               }}
@@ -522,13 +520,6 @@ export default function CreativeWorkbench() {
                   data-testid="creative-workbench-open-dashboard"
                 >
                   查看运行总览
-                </Button>,
-                <Button
-                  key="task-create"
-                  onClick={() => navigate('/task/create')}
-                  data-testid="creative-workbench-open-task-create"
-                >
-                  兼容入口：新建任务
                 </Button>,
               ]}
             />

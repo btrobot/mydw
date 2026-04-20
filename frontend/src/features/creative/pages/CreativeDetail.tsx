@@ -83,7 +83,7 @@ export default function CreativeDetail() {
   const creativeId = id ? Number.parseInt(id, 10) : undefined
   const requestedTaskId = Number.parseInt(searchParams.get('taskId') ?? '', 10)
   const prioritizedTaskId = Number.isFinite(requestedTaskId) ? requestedTaskId : undefined
-  const taskReturnTo = searchParams.get('returnTo') || '/task/list'
+  const taskReturnTo = searchParams.get('returnTo') || (creativeId ? `/creative/${creativeId}` : '/creative/workbench')
   const creativeQuery = useCreative(creativeId)
   const updateCreative = useUpdateCreative(creativeId)
   const submitCreativeComposition = useSubmitCreativeComposition(creativeId)
@@ -289,11 +289,11 @@ export default function CreativeDetail() {
       setSearchParams(nextParams, { replace: true })
 
       const actionMessages: Record<string, string> = {
-        created_and_submitted: `已提交合成任务 #${result.task_id}，可前往任务诊断查看进度`,
+        created_and_submitted: `已提交合成任务 #${result.task_id}，当前作品会持续同步执行进度`,
         reused_draft_and_submitted: `已复用草稿任务 #${result.task_id} 并提交合成`,
         reused_composing: `已有进行中的合成任务 #${result.task_id}，已直接复用`,
-        created_ready_task: `已生成直发版本，作品进入待审核（任务 #${result.task_id}）`,
-        reused_ready_task: `已复用现有直发结果（任务 #${result.task_id}）`,
+        created_ready_task: `已生成直发版本，作品进入待审核（执行记录 #${result.task_id}）`,
+        reused_ready_task: `已复用现有直发结果（执行记录 #${result.task_id}）`,
       }
       message.success(actionMessages[result.submission_action] ?? `操作成功（任务 #${result.task_id}）`)
       void Promise.all([
@@ -443,7 +443,7 @@ export default function CreativeDetail() {
               type="warning"
               showIcon
               message="高级诊断暂不可用"
-              description="发布状态、调度配置或发布池数据加载失败，请稍后重试，或转到任务诊断页继续排查。"
+              description="发布状态、调度配置或发布池数据加载失败，请稍后重试，或转到任务管理继续排查。"
               action={(
                 <Button size="small" icon={<ReloadOutlined />} onClick={retryDiagnostics}>
                   重试
@@ -573,12 +573,9 @@ export default function CreativeDetail() {
       subTitle={creative.creative_no}
       onBack={() => navigate('/creative/workbench')}
       extra={[
-        <Button key="legacy-task-create" onClick={() => navigate('/task/create')}>
-          兼容入口：新建任务
-        </Button>,
         primaryTaskId ? (
           <Button key="task-detail" onClick={() => openTaskDiagnostics(primaryTaskId)} data-testid="creative-open-task-diagnostics">
-            查看任务诊断
+            查看执行记录
           </Button>
         ) : null,
         currentVersion ? (
@@ -803,25 +800,25 @@ export default function CreativeDetail() {
           }}
         />
 
-        <Card title="任务诊断入口">
+        <Card title="执行记录">
           {diagnosticTaskIds.length > 0 ? (
             <Space direction="vertical" size={12} style={{ width: '100%' }}>
               <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                任务页用于查看执行、重试、发布链路与排障细节；作品详情仍是当前业务输入与状态判断的主视图。
+                任务管理只承接执行进度、失败重试与排障细节；作品详情仍是当前创作输入与状态判断的主视图。
               </Paragraph>
               <Space wrap>
                 {diagnosticTaskIds.map((taskId) => (
                   <Button key={taskId} onClick={() => openTaskDiagnostics(taskId)} data-testid={`creative-open-task-${taskId}`}>
-                    任务 #{taskId}
+                    执行记录 #{taskId}
                   </Button>
                 ))}
-                <Button onClick={() => navigate(taskReturnTo)}>返回任务列表</Button>
+                <Button onClick={() => navigate('/task/list')}>打开任务管理</Button>
               </Space>
             </Space>
           ) : (
             <Space direction="vertical" size={12} style={{ width: '100%' }}>
               <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                这条作品还没有关联执行任务。先保存作品输入，达到“待提交合成”后，可直接在本页提交合成或生成直发准备。
+                这条作品还没有关联执行记录。先保存作品输入，达到“待提交合成”后，可直接在本页提交合成或生成直发准备。
               </Paragraph>
               <Space wrap>
                 <Button
@@ -833,7 +830,7 @@ export default function CreativeDetail() {
                 >
                   {submitButtonLabel}
                 </Button>
-                <Button onClick={() => navigate('/task/list')}>查看任务管理</Button>
+                <Button onClick={() => navigate('/task/list')}>打开任务管理</Button>
               </Space>
             </Space>
           )}
@@ -841,7 +838,7 @@ export default function CreativeDetail() {
 
         <Card title="高级诊断" extra={<Text type="secondary">展开查看发布池 / 调度 / Cutover 差异</Text>}>
           <Paragraph type="secondary">
-            以下信息用于排查发布池、调度切换与 Cutover 问题，不作为作品业务状态的首要阅读区。
+            以下信息用于排查发布池、调度切换与 Cutover 问题；只有在需要定位异常时再展开查看。
           </Paragraph>
           <Collapse items={diagnosticsPanels} />
         </Card>

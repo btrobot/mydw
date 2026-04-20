@@ -333,6 +333,8 @@ test.describe('task list action column', () => {
   test('shows a status-specific primary action for each row', async ({ page }) => {
     await page.goto(`${BASE_URL}/#/task/list`)
 
+    await expect(page.getByRole('button', { name: '去作品工作台' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '兼容入口：新建任务' })).toBeVisible()
     await expect(page.getByTestId('task-list-submit-composition-1001')).toBeVisible()
     await expect(page.getByTestId('task-list-open-detail-1002')).toBeVisible()
     await expect(page.getByTestId('task-list-publish-1003')).toBeVisible()

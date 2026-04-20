@@ -279,7 +279,8 @@ test.describe('Creative workbench baseline', () => {
   test('shows the table-first workbench with business-first actions', async ({ page }) => {
     await page.goto(`${BASE_URL}/#/creative/workbench`)
 
-    await expect(page.locator('body')).toContainText('默认业务入口：作品工作台')
+    await expect(page.locator('body')).toContainText('任务管理只承接执行记录、失败重试与排障')
+    await expect(page.locator('body')).not.toContainText('兼容入口：新建任务')
     await expect(page.getByTestId('creative-workbench-publish-summary')).toBeVisible()
     await expect(page.locator('body')).toContainText('Spring campaign')
     await expect(page.locator('body')).toContainText('Summer sale teaser')
@@ -310,6 +311,8 @@ test.describe('Creative workbench baseline', () => {
 
     await page.waitForURL('**/#/creative/101')
     await expect(page.getByTestId('creative-open-task-diagnostics')).toBeVisible()
+    await expect(page.locator('body')).toContainText('执行记录')
+    await expect(page.locator('body')).not.toContainText('任务诊断入口')
     await page.getByText('发布运行态', { exact: true }).click()
     await expect(page.getByTestId('creative-publish-diagnostics')).toBeVisible()
 

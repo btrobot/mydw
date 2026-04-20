@@ -421,7 +421,7 @@ export default function TaskCreate() {
     <div>
       <Space style={{ marginBottom: 16 }}>
         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/task/list')}>返回</Button>
-        <Title level={4} style={{ margin: 0 }}>创建任务</Title>
+        <Title level={4} style={{ margin: 0 }}>兼容任务创建</Title>
       </Space>
 
       <Card title="商品快速导入" style={{ marginBottom: 16 }}>
@@ -429,19 +429,11 @@ export default function TaskCreate() {
       </Card>
 
       <Alert
-        type={creativeFlowMode === 'task_first' ? 'info' : 'warning'}
+        type="warning"
         showIcon
         style={{ marginBottom: 16 }}
-        message={
-          creativeFlowMode === 'task_first'
-            ? `当前运行于${creativeFlowMeta.label}模式`
-            : '当前页面是兼容 / 高级入口'
-        }
-        description={
-          creativeFlowMode === 'task_first'
-            ? '当前 kill switch 指向任务优先路径，因此默认入口会先落到这里；作品工作台仍可作为新入口继续验证。'
-            : '推荐先到作品工作台创建作品，再补齐素材与配置。这里保留给兼容迁移、排障或高级操作使用。'
-        }
+        message={`当前页面是兼容 / 高级入口（${creativeFlowMeta.label}）`}
+        description="日常创作请先到作品工作台创建作品，再补齐素材与配置。这里保留给兼容迁移、批量装配或排障场景使用。"
         action={(
           <Button size="small" onClick={() => navigate('/creative/workbench')}>
             去作品工作台
