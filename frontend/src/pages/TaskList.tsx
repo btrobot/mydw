@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import dayjs, { type Dayjs } from 'dayjs'
-import { App, Button, Popconfirm, Space, Tag, Tooltip, Typography } from 'antd'
+import { App, Button, Input, Popconfirm, Space, Tag, Tooltip, Typography } from 'antd'
 import { DeleteOutlined, PlusOutlined, ReloadOutlined, StopOutlined } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ActionType, ProColumns, ProFormInstance } from '@ant-design/pro-components'
@@ -21,6 +21,8 @@ import { handleApiError } from '@/utils/error'
 import { getTaskActionAvailability, taskKindMeta, taskStatusMeta } from './task/taskPresentation'
 
 type TaskRow = TaskResponse
+type QueryShape = NonNullable<ListTasksApiTasksGetData['query']>
+type DateRangeValue = [Dayjs, Dayjs]
 
 type QuickFilterKey =
   | 'all'
@@ -30,29 +32,17 @@ type QuickFilterKey =
   | 'scheduled'
   | 'recentlyPublished'
 
-type QueryShape = NonNullable<ListTasksApiTasksGetData['query']>
-
 type TaskListFormValues = {
   status?: TaskStatus
   task_kind?: TaskKind
   account_id?: number
   profile_id?: number
-  creative_item_id?: number
-  creative_version_id?: number
-  batch_id?: string
   failed_at_status?: string
-  retry_count_min?: number
-  retry_count_max?: number
-  created_from?: Dayjs | string
-  created_to?: Dayjs | string
-  updated_from?: Dayjs | string
-  updated_to?: Dayjs | string
+  updated_range?: DateRangeValue
   scheduled_from?: Dayjs | string
   scheduled_to?: Dayjs | string
   publish_from?: Dayjs | string
   publish_to?: Dayjs | string
-  has_error?: boolean
-  has_final_video?: boolean
   current?: number
   pageSize?: number
 }
@@ -65,11 +55,6 @@ const taskKindValueEnum = Object.fromEntries(
   Object.entries(taskKindMeta).map(([key, value]) => [key, { text: value.text }]),
 )
 
-const booleanOptions = [
-  { label: '是', value: true },
-  { label: '否', value: false },
-]
-
 const presetControlledQueryKeys: Array<keyof QueryShape> = [
   'status',
   'task_kind',
@@ -79,36 +64,11 @@ const presetControlledQueryKeys: Array<keyof QueryShape> = [
   'publish_to',
 ]
 
+const stringFieldKeys = ['status', 'task_kind', 'failed_at_status'] as const
+const numberFieldKeys = ['account_id', 'profile_id'] as const
+const hiddenPresetDateFieldKeys = ['scheduled_from', 'scheduled_to', 'publish_from', 'publish_to'] as const
+
 const hasValue = (value: unknown): boolean => value !== undefined && value !== null && value !== ''
-
-const dateFieldKeys = [
-  'created_from',
-  'created_to',
-  'updated_from',
-  'updated_to',
-  'scheduled_from',
-  'scheduled_to',
-  'publish_from',
-  'publish_to',
-] as const
-
-const numberFieldKeys = [
-  'account_id',
-  'profile_id',
-  'creative_item_id',
-  'creative_version_id',
-  'retry_count_min',
-  'retry_count_max',
-] as const
-
-const stringFieldKeys = [
-  'status',
-  'task_kind',
-  'batch_id',
-  'failed_at_status',
-] as const
-
-const booleanFieldKeys = ['has_error', 'has_final_video'] as const
 
 const parseNumber = (value: unknown): number | undefined => {
   if (typeof value === 'number' && Number.isFinite(value)) return value
@@ -116,13 +76,6 @@ const parseNumber = (value: unknown): number | undefined => {
     const parsed = Number(value)
     return Number.isFinite(parsed) ? parsed : undefined
   }
-  return undefined
-}
-
-const parseBoolean = (value: unknown): boolean | undefined => {
-  if (typeof value === 'boolean') return value
-  if (value === 'true') return true
-  if (value === 'false') return false
   return undefined
 }
 
@@ -145,32 +98,19 @@ const buildTaskListQuery = (params: TaskListFormValues): QueryShape => {
   const profileId = parseNumber(params.profile_id)
   if (profileId !== undefined) query.profile_id = profileId
 
-  const creativeItemId = parseNumber(params.creative_item_id)
-  if (creativeItemId !== undefined) query.creative_item_id = creativeItemId
+  if (
+    params.status === 'failed'
+    && typeof params.failed_at_status === 'string'
+    && params.failed_at_status.trim()
+  ) {
+    query.failed_at_status = params.failed_at_status.trim()
+  }
 
-  const creativeVersionId = parseNumber(params.creative_version_id)
-  if (creativeVersionId !== undefined) query.creative_version_id = creativeVersionId
-
-  if (typeof params.batch_id === 'string' && params.batch_id.trim()) query.batch_id = params.batch_id.trim()
-  if (typeof params.failed_at_status === 'string' && params.failed_at_status.trim()) query.failed_at_status = params.failed_at_status.trim()
-
-  const retryCountMin = parseNumber(params.retry_count_min)
-  if (retryCountMin !== undefined) query.retry_count_min = retryCountMin
-
-  const retryCountMax = parseNumber(params.retry_count_max)
-  if (retryCountMax !== undefined) query.retry_count_max = retryCountMax
-
-  const createdFrom = serializeDateTime(params.created_from)
-  if (createdFrom) query.created_from = createdFrom
-
-  const createdTo = serializeDateTime(params.created_to)
-  if (createdTo) query.created_to = createdTo
-
-  const updatedFrom = serializeDateTime(params.updated_from)
-  if (updatedFrom) query.updated_from = updatedFrom
-
-  const updatedTo = serializeDateTime(params.updated_to)
-  if (updatedTo) query.updated_to = updatedTo
+  if (params.updated_range?.length === 2) {
+    const [updatedFrom, updatedTo] = params.updated_range
+    query.updated_from = updatedFrom.toISOString()
+    query.updated_to = updatedTo.toISOString()
+  }
 
   const scheduledFrom = serializeDateTime(params.scheduled_from)
   if (scheduledFrom) query.scheduled_from = scheduledFrom
@@ -183,12 +123,6 @@ const buildTaskListQuery = (params: TaskListFormValues): QueryShape => {
 
   const publishTo = serializeDateTime(params.publish_to)
   if (publishTo) query.publish_to = publishTo
-
-  const hasError = parseBoolean(params.has_error)
-  if (hasError !== undefined) query.has_error = hasError
-
-  const hasFinalVideo = parseBoolean(params.has_final_video)
-  if (hasFinalVideo !== undefined) query.has_final_video = hasFinalVideo
 
   if (params.current) query.offset = (params.current - 1) * (params.pageSize ?? 20)
   if (params.pageSize) query.limit = params.pageSize
@@ -298,19 +232,24 @@ const parseTaskListStateFromSearchParams = (searchParams: URLSearchParams) => {
     ;(searchSnapshot as Record<string, unknown>)[key] = value
   }
 
-  for (const key of booleanFieldKeys) {
-    const value = parseBoolean(searchParams.get(key))
-    if (value === undefined) continue
-    ;(formValues as Record<string, unknown>)[key] = value
-    ;(searchSnapshot as Record<string, unknown>)[key] = value
-  }
-
-  for (const key of dateFieldKeys) {
+  for (const key of hiddenPresetDateFieldKeys) {
     const value = searchParams.get(key)
     if (!value) continue
     const parsed = dayjs(value)
     ;(formValues as Record<string, unknown>)[key] = parsed.isValid() ? parsed : value
     ;(searchSnapshot as Record<string, unknown>)[key] = value
+  }
+
+  const updatedFrom = searchParams.get('updated_from')
+  const updatedTo = searchParams.get('updated_to')
+  if (updatedFrom) searchSnapshot.updated_from = updatedFrom
+  if (updatedTo) searchSnapshot.updated_to = updatedTo
+  if (updatedFrom && updatedTo) {
+    const parsedFrom = dayjs(updatedFrom)
+    const parsedTo = dayjs(updatedTo)
+    if (parsedFrom.isValid() && parsedTo.isValid()) {
+      formValues.updated_range = [parsedFrom, parsedTo]
+    }
   }
 
   const current = parseNumber(searchParams.get('page')) ?? 1
@@ -384,7 +323,10 @@ export default function TaskList() {
     setSearchSnapshot((prev) => {
       const prevKeys = Object.keys(prev)
       const nextKeys = Object.keys(next)
-      if (prevKeys.length === nextKeys.length && prevKeys.every((key) => prev[key as keyof QueryShape] === next[key as keyof QueryShape])) {
+      if (
+        prevKeys.length === nextKeys.length
+        && prevKeys.every((key) => prev[key as keyof QueryShape] === next[key as keyof QueryShape])
+      ) {
         return prev
       }
       return next
@@ -449,7 +391,7 @@ export default function TaskList() {
   }, [deleteAllTasks, message])
 
   const handleQuickFilter = useCallback((key: QuickFilterKey) => {
-    const currentValues = (formRef.current?.getFieldsValue?.() ?? {}) as TaskListFormValues
+    const currentValues = (formRef.current?.getFieldsValue?.(true) ?? {}) as TaskListFormValues
     const clearedPresetValues = Object.fromEntries(
       presetControlledQueryKeys.map((field) => [field, undefined]),
     ) as Partial<TaskListFormValues>
@@ -457,6 +399,7 @@ export default function TaskList() {
     formRef.current?.setFieldsValue({
       ...currentValues,
       ...clearedPresetValues,
+      failed_at_status: undefined,
       ...getPresetFormValues(key),
     })
     formRef.current?.submit?.()
@@ -515,6 +458,15 @@ export default function TaskList() {
       ),
     },
     {
+      title: '最近更新',
+      dataIndex: 'updated_range',
+      hideInTable: true,
+      valueType: 'dateTimeRange',
+      fieldProps: {
+        placeholder: ['开始时间', '结束时间'],
+      },
+    },
+    {
       title: '配置档',
       dataIndex: 'profile_id',
       width: 180,
@@ -526,6 +478,12 @@ export default function TaskList() {
           ? <Typography.Text type="secondary">默认/未指定</Typography.Text>
           : profileValueEnum[record.profile_id]?.text ?? `#${record.profile_id}`
       ),
+    },
+    {
+      title: '失败阶段',
+      dataIndex: 'failed_at_status',
+      hideInTable: true,
+      renderFormItem: () => <Input placeholder="例如 uploading / composing" allowClear />,
     },
     {
       title: '作品链路',
@@ -544,7 +502,7 @@ export default function TaskList() {
       dataIndex: 'batch_id',
       width: 180,
       ellipsis: true,
-      fieldProps: { placeholder: '按批次筛选', allowClear: true },
+      hideInSearch: true,
       render: (_, record) => record.batch_id ?? '-',
     },
     {
@@ -579,102 +537,6 @@ export default function TaskList() {
       width: 180,
       hideInSearch: true,
       render: (_, record) => formatDateTime(record.updated_at),
-    },
-    {
-      title: '作品 ID',
-      dataIndex: 'creative_item_id',
-      hideInTable: true,
-      valueType: 'digit',
-      fieldProps: { placeholder: '按作品 ID 筛选' },
-    },
-    {
-      title: '版本 ID',
-      dataIndex: 'creative_version_id',
-      hideInTable: true,
-      valueType: 'digit',
-      fieldProps: { placeholder: '按版本 ID 筛选' },
-    },
-    {
-      title: '失败阶段',
-      dataIndex: 'failed_at_status',
-      hideInTable: true,
-      fieldProps: { placeholder: '例如 uploading / composing' },
-    },
-    {
-      title: '最少重试次数',
-      dataIndex: 'retry_count_min',
-      hideInTable: true,
-      valueType: 'digit',
-      fieldProps: { placeholder: '最少重试次数' },
-    },
-    {
-      title: '最多重试次数',
-      dataIndex: 'retry_count_max',
-      hideInTable: true,
-      valueType: 'digit',
-      fieldProps: { placeholder: '最多重试次数' },
-    },
-    {
-      title: '创建起始',
-      dataIndex: 'created_from',
-      hideInTable: true,
-      valueType: 'dateTime',
-    },
-    {
-      title: '创建截止',
-      dataIndex: 'created_to',
-      hideInTable: true,
-      valueType: 'dateTime',
-    },
-    {
-      title: '更新起始',
-      dataIndex: 'updated_from',
-      hideInTable: true,
-      valueType: 'dateTime',
-    },
-    {
-      title: '更新截止',
-      dataIndex: 'updated_to',
-      hideInTable: true,
-      valueType: 'dateTime',
-    },
-    {
-      title: '计划发布起始',
-      dataIndex: 'scheduled_from',
-      hideInTable: true,
-      valueType: 'dateTime',
-    },
-    {
-      title: '计划发布截止',
-      dataIndex: 'scheduled_to',
-      hideInTable: true,
-      valueType: 'dateTime',
-    },
-    {
-      title: '实际发布起始',
-      dataIndex: 'publish_from',
-      hideInTable: true,
-      valueType: 'dateTime',
-    },
-    {
-      title: '实际发布截止',
-      dataIndex: 'publish_to',
-      hideInTable: true,
-      valueType: 'dateTime',
-    },
-    {
-      title: '有错误信息',
-      dataIndex: 'has_error',
-      hideInTable: true,
-      valueType: 'select',
-      fieldProps: { options: booleanOptions, placeholder: '是否已有错误信息', allowClear: true },
-    },
-    {
-      title: '有最终视频',
-      dataIndex: 'has_final_video',
-      hideInTable: true,
-      valueType: 'select',
-      fieldProps: { options: booleanOptions, placeholder: '是否已有最终视频', allowClear: true },
     },
     {
       title: '操作',
@@ -827,7 +689,7 @@ export default function TaskList() {
       }}
       search={{
         labelWidth: 'auto',
-        defaultCollapsed: false,
+        defaultCollapsed: true,
         span: 6,
       }}
       size="small"
