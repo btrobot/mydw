@@ -4,7 +4,8 @@ import { mockWorkbenchLandingApis } from '../utils/workbenchEntryMocks'
 
 const BASE_URL = process.env.E2E_BASE_URL || ''
 const ROOT_URL = BASE_URL || '/'
-const BOOTSTRAP_WARNING = 'Local auth bootstrap failed, but app startup can continue.'
+const BOOTSTRAP_WARNING = '暂时无法完成登录准备'
+const BOOTSTRAP_RETRY_LABEL = '重新检查'
 
 test.describe('Auth regression and polish', () => {
   test('redirects authenticated users away from login and shows auth session header', async ({ page }) => {
@@ -142,7 +143,7 @@ test.describe('Auth regression and polish', () => {
 
     await page.goto(ROOT_URL)
     await expect(page.locator('body')).toContainText(BOOTSTRAP_WARNING)
-    await page.getByRole('button', { name: 'Retry' }).click()
+    await page.getByRole('button', { name: BOOTSTRAP_RETRY_LABEL }).click()
     await page.waitForFunction(() => document.documentElement.dataset.authBootstrapStatus === 'ready')
   })
 })

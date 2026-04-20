@@ -172,6 +172,7 @@ test.describe('Auth shell pages', () => {
       await expect(page.getByTestId('auth-status-signout-button')).toHaveText('退出登录并返回登录页')
 
       await expect(page.getByTestId('auth-status-session-meta')).not.toBeVisible()
+      await expect(page.getByTestId('auth-status-diagnostics-trigger')).toHaveText('查看诊断信息')
       await page.getByTestId('auth-status-diagnostics-trigger').click()
       await expect(page.getByTestId('auth-status-session-meta')).toBeVisible()
       await expect(page.getByTestId('auth-status-session-meta')).toContainText('Alice')
@@ -194,6 +195,7 @@ test.describe('Auth shell pages', () => {
     await expect(page.getByTestId('auth-status-signout-button')).toHaveText('退出登录并返回登录页')
 
     await expect(page.getByTestId('auth-status-session-meta')).not.toBeVisible()
+    await expect(page.getByTestId('auth-status-diagnostics-trigger')).toHaveText('查看诊断信息')
     await page.getByTestId('auth-status-diagnostics-trigger').click()
     await expect(page.getByTestId('auth-status-session-meta')).toBeVisible()
     await expect(page.getByTestId('auth-status-session-meta')).toContainText('Alice')

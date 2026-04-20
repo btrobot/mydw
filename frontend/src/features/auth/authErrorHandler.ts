@@ -42,6 +42,11 @@ export interface AuthBootstrapCopy {
 
 export type AuthStatusVariant = 'revoked' | 'device_mismatch' | 'expired' | 'grace'
 
+export interface AuthStatusTagMeta {
+  color: string
+  label: string
+}
+
 export interface AuthStatusPageCopy {
   descriptor: AuthErrorDescriptor
   loadingTitle: string
@@ -60,6 +65,10 @@ export interface AuthRouteCopy {
   graceBannerDescription: string
 }
 
+export interface AuthHeaderCopy {
+  logoutLabel: string
+}
+
 type BackendErrorLike = {
   response?: {
     data?: {
@@ -71,6 +80,9 @@ type BackendErrorLike = {
   }
   message?: string
 }
+
+const AUTH_GRACE_DESCRIPTION = '当前授权服务暂不可用，你仍可查看已有内容，但受保护操作会受到限制。'
+const AUTH_DIAGNOSTICS_TRIGGER_LABEL = '查看诊断信息'
 
 export const AUTH_LOGIN_COPY: AuthLoginCopy = {
   title: '登录创作控制台',
@@ -89,7 +101,7 @@ export const AUTH_LOGIN_COPY: AuthLoginCopy = {
   statusSyncLoading: '正在检查当前登录状态，请稍候。',
   statusSyncError: '当前状态检查暂不可用，你仍可继续提交登录。',
   statusSyncRetryLabel: '重新检查',
-  diagnosticsLabel: '登录环境信息',
+  diagnosticsLabel: AUTH_DIAGNOSTICS_TRIGGER_LABEL,
   diagnosticsDescription: '以下信息仅用于排查当前登录环境问题，默认不会影响主流程阅读。',
   diagnosticsDeviceIdLabel: '设备标识',
   diagnosticsClientVersionLabel: '客户端版本',
@@ -107,7 +119,11 @@ export const AUTH_BOOTSTRAP_COPY: AuthBootstrapCopy = {
 
 export const AUTH_ROUTE_COPY: AuthRouteCopy = {
   graceBannerTitle: '当前处于宽限模式',
-  graceBannerDescription: '当前网络或授权服务暂不可用，你仍可查看已有内容，但受保护操作会受限。',
+  graceBannerDescription: AUTH_GRACE_DESCRIPTION,
+}
+
+export const AUTH_HEADER_COPY: AuthHeaderCopy = {
+  logoutLabel: '退出登录',
 }
 
 const STATE_MESSAGES: Record<AuthState, Omit<AuthErrorDescriptor, 'retryLabel'>> = {
@@ -128,7 +144,7 @@ const STATE_MESSAGES: Record<AuthState, Omit<AuthErrorDescriptor, 'retryLabel'>>
   },
   authenticated_grace: {
     title: '宽限模式',
-    description: '当前授权服务暂不可用，你仍可查看已有内容，但受保护操作会受到限制。',
+    description: AUTH_GRACE_DESCRIPTION,
     severity: 'warning',
   },
   refresh_required: {
@@ -193,12 +209,24 @@ const DENIAL_REASON_HINTS: Record<string, string> = {
   transport_error: '当前授权服务连接异常，请稍后重试。',
 }
 
+const AUTH_STATUS_TAG_META: Record<AuthState, AuthStatusTagMeta> = {
+  authenticated_active: { color: 'success', label: '已登录' },
+  authenticated_grace: { color: 'warning', label: '宽限模式' },
+  revoked: { color: 'error', label: '权限失效' },
+  device_mismatch: { color: 'error', label: '设备校验失败' },
+  expired: { color: 'warning', label: '登录已过期' },
+  refresh_required: { color: 'warning', label: '待重新确认' },
+  authorizing: { color: 'processing', label: '校验中' },
+  unauthenticated: { color: 'default', label: '未登录' },
+  error: { color: 'warning', label: '状态异常' },
+}
+
 const AUTH_STATUS_PAGE_SHARED_COPY = {
   loadingTitle: '正在刷新授权状态',
   loadingDescription: '正在同步最新的设备授权结果，请稍候。',
   refreshErrorTitle: '授权状态暂时无法刷新',
   refreshErrorDescription: '当前页面保留最近一次会话信息，请稍后重试。',
-  diagnosticsLabel: '查看会话与诊断信息',
+  diagnosticsLabel: AUTH_DIAGNOSTICS_TRIGGER_LABEL,
   diagnosticsDescription: '以下信息仅用于说明当前设备会话状态，不影响下方主操作路径。',
   emptyDiagnosticsText: '当前授权会话需要重新确认。',
   signoutLabel: '退出登录并返回登录页',
@@ -264,6 +292,14 @@ export const getBootstrapErrorDescriptor = (_error: unknown): AuthErrorDescripto
   severity: 'warning',
   retryLabel: AUTH_BOOTSTRAP_COPY.retryLabel,
 })
+
+export const getAuthStatusTagMeta = (
+  authState: AuthState | 'unknown'
+): AuthStatusTagMeta => (
+  authState === 'unknown'
+    ? { color: 'default', label: '状态未知' }
+    : AUTH_STATUS_TAG_META[authState]
+)
 
 export const getAuthStatusPageCopy = (variant: AuthStatusVariant): AuthStatusPageCopy =>
   AUTH_STATUS_PAGE_COPY[variant]

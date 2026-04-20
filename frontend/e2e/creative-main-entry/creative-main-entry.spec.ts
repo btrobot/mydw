@@ -32,7 +32,7 @@ test.describe('Creative main entry cutover', () => {
     await page.waitForURL('**/#/creative/workbench')
     await expect(page.getByTestId('auth-grace-banner')).toBeVisible()
     await expect(page.getByTestId('auth-grace-banner')).toContainText('当前处于宽限模式')
-    await expect(page.getByTestId('auth-grace-banner')).toContainText('当前网络或授权服务暂不可用，你仍可查看已有内容，但受保护操作会受限。')
+    await expect(page.getByTestId('auth-grace-banner')).toContainText('当前授权服务暂不可用，你仍可查看已有内容，但受保护操作会受到限制。')
     await expect(page.getByTestId('auth-session-status-tag')).toHaveText('宽限模式')
     await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
 

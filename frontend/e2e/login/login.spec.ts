@@ -90,6 +90,7 @@ test.describe('Remote auth login page', () => {
     await expect(page.getByTestId('auth-login-remember-me-hint')).toContainText('不会改变设备绑定、会话有效期或后端登录策略')
     await expect(submit).toBeVisible()
     await expect(page.getByTestId('auth-login-diagnostics-trigger')).toBeVisible()
+    await expect(page.getByTestId('auth-login-diagnostics-trigger')).toHaveText('查看诊断信息')
     await expect(page.getByTestId('auth-login-device-meta')).toBeHidden()
     await expect(page.getByRole('link', { name: /忘记密码|需要帮助|联系支持/ })).toHaveCount(0)
   })

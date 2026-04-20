@@ -5,29 +5,9 @@ import { useNavigate } from 'react-router-dom'
 
 import { logoutAuth } from './api'
 import { useAuth } from './AuthProvider'
-import type { AuthState } from './types'
+import { AUTH_HEADER_COPY, getAuthStatusTagMeta } from './authErrorHandler'
 
 const { Text } = Typography
-
-const STATUS_META: Record<
-  AuthState,
-  {
-    color: string
-    label: string
-  }
-> = {
-  authenticated_active: { color: 'success', label: '已登录' },
-  authenticated_grace: { color: 'warning', label: '宽限模式' },
-  revoked: { color: 'error', label: '权限失效' },
-  device_mismatch: { color: 'error', label: '设备未校验' },
-  expired: { color: 'warning', label: '登录过期' },
-  refresh_required: { color: 'warning', label: '待重新确认' },
-  authorizing: { color: 'processing', label: '校验中' },
-  unauthenticated: { color: 'default', label: '未登录' },
-  error: { color: 'warning', label: '状态异常' },
-}
-
-const UNKNOWN_STATUS_META = { color: 'default', label: '状态未知' } as const
 
 export default function AuthSessionHeader() {
   const { message } = AntApp.useApp()
@@ -51,7 +31,7 @@ export default function AuthSessionHeader() {
   })
 
   const meta = useMemo(
-    () => (authState === 'unknown' ? UNKNOWN_STATUS_META : STATUS_META[authState]),
+    () => getAuthStatusTagMeta(authState),
     [authState]
   )
 
@@ -66,7 +46,7 @@ export default function AuthSessionHeader() {
           loading={logoutMutation.isPending}
           data-testid="auth-logout-button"
         >
-          退出登录
+          {AUTH_HEADER_COPY.logoutLabel}
         </Button>
       )}
     </Space>
