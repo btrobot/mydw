@@ -6,7 +6,9 @@ import { useNavigate } from 'react-router-dom'
 import AuthErrorMessage from './AuthErrorMessage'
 import { useAuth } from './AuthProvider'
 import {
+  AUTH_BOOTSTRAP_COPY,
   AUTH_LOGIN_COPY,
+  getBootstrapErrorDescriptor,
   getAuthErrorDescriptor,
   getAuthStateDescriptor,
   type AuthErrorDescriptor,
@@ -23,7 +25,7 @@ interface LoginFormValues {
 export default function LoginPage() {
   const [form] = Form.useForm<LoginFormValues>()
   const navigate = useNavigate()
-  const { session, setSession } = useAuth()
+  const { session, bootstrapStatus, bootstrapError, refreshSession, setSession } = useAuth()
   const [deviceId, setDeviceId] = useState(() => getOrCreateDeviceId())
   const [clientVersion, setClientVersion] = useState('web-dev')
   const [rememberChoice, setRememberChoice] = useState(false)
@@ -78,6 +80,9 @@ export default function LoginPage() {
   ) {
     loginStateDescriptor = getAuthStateDescriptor(loginStateSource)
   }
+  const bootstrapErrorDescriptor = bootstrapStatus === 'error'
+    ? getBootstrapErrorDescriptor(bootstrapError)
+    : null
   const statusSyncMode = session && !submitError && !loginStateDescriptor
     ? authStatusQuery.isLoading
       ? 'loading'
@@ -115,6 +120,24 @@ export default function LoginPage() {
           <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
             {AUTH_LOGIN_COPY.helper}
           </Typography.Paragraph>
+
+          {submitError ? (
+            <AuthErrorMessage
+              descriptor={submitError}
+              onRetry={() => form.submit()}
+              retryLabel={AUTH_LOGIN_COPY.retryLabel}
+              testId="auth-login-error-message"
+            />
+          ) : bootstrapErrorDescriptor ? (
+            <AuthErrorMessage
+              descriptor={bootstrapErrorDescriptor}
+              onRetry={() => void refreshSession()}
+              retryLabel={AUTH_BOOTSTRAP_COPY.retryLabel}
+              testId="auth-bootstrap-error"
+            />
+          ) : loginStateDescriptor ? (
+            <AuthErrorMessage descriptor={loginStateDescriptor} testId="auth-login-status-message" />
+          ) : null}
 
           <Form
             form={form}
@@ -169,17 +192,6 @@ export default function LoginPage() {
               </Button>
             </Form.Item>
           </Form>
-
-          {submitError ? (
-            <AuthErrorMessage
-              descriptor={submitError}
-              onRetry={() => form.submit()}
-              retryLabel={AUTH_LOGIN_COPY.retryLabel}
-              testId="auth-login-error-message"
-            />
-          ) : loginStateDescriptor ? (
-            <AuthErrorMessage descriptor={loginStateDescriptor} testId="auth-login-status-message" />
-          ) : null}
 
           {statusSyncMode ? (
             <div data-testid="auth-login-status-sync">

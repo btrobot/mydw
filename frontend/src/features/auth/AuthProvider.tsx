@@ -10,8 +10,7 @@ import {
 } from 'react'
 
 import { AUTH_SESSION_QUERY_KEY, fetchAuthSession } from './api'
-import AuthErrorMessage from './AuthErrorMessage'
-import { AUTH_BOOTSTRAP_COPY, getBootstrapErrorDescriptor } from './authErrorHandler'
+import { AUTH_BOOTSTRAP_COPY } from './authErrorHandler'
 import { installAuthTransportSync } from './transport'
 import type { AuthBootstrapStatus, AuthState, LocalAuthSessionSummary } from './types'
 
@@ -132,21 +131,7 @@ export const AuthBootstrapProvider = ({ children }: AuthProviderProps) => {
       {bootstrapStatus === 'loading' ? (
         <AuthBootstrapScreen />
       ) : (
-        <>
-          {bootstrapStatus === 'error' && (
-            <div style={{ padding: 16 }}>
-              <AuthErrorMessage
-                descriptor={getBootstrapErrorDescriptor(
-                  authSessionQuery.error ?? new Error(bootstrapError ?? BOOTSTRAP_ERROR_FALLBACK)
-                )}
-                onRetry={() => void refreshSession()}
-                retryLabel={authSessionQuery.isFetching ? AUTH_BOOTSTRAP_COPY.retryingLabel : AUTH_BOOTSTRAP_COPY.retryLabel}
-                testId="auth-bootstrap-error"
-              />
-            </div>
-          )}
-          {children}
-        </>
+        children
       )}
     </AuthContext.Provider>
   )
