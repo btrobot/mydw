@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 
-const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:5173'
+const BASE_URL = process.env.E2E_BASE_URL || ''
+const ROOT_URL = BASE_URL || '/'
 
 test.describe('Auth bootstrap', () => {
   test('shows bootstrap loading state before auth session resolves', async ({ page }) => {
@@ -18,7 +19,7 @@ test.describe('Auth bootstrap', () => {
       })
     })
 
-    await page.goto(BASE_URL)
+    await page.goto(ROOT_URL)
 
     await expect(page.getByTestId('auth-bootstrap-loading')).toBeVisible()
     await page.waitForFunction(() => document.documentElement.dataset.authBootstrapStatus === 'ready')
@@ -39,7 +40,7 @@ test.describe('Auth bootstrap', () => {
       })
     })
 
-    await page.goto(BASE_URL)
+    await page.goto(ROOT_URL)
     await page.waitForFunction(() => document.documentElement.dataset.authBootstrapStatus === 'ready')
 
     const authState = await page.evaluate(() => document.documentElement.dataset.authState)
@@ -66,7 +67,7 @@ test.describe('Auth bootstrap', () => {
       })
     })
 
-    await page.goto(BASE_URL)
+    await page.goto(ROOT_URL)
     await page.waitForFunction(() => document.documentElement.dataset.authBootstrapStatus === 'ready')
 
     const authState = await page.evaluate(() => document.documentElement.dataset.authState)
@@ -87,7 +88,7 @@ test.describe('Auth bootstrap', () => {
       })
     })
 
-    await page.goto(BASE_URL)
+    await page.goto(ROOT_URL)
     await page.waitForFunction(() => document.documentElement.dataset.authBootstrapStatus === 'error')
 
     await expect(page.locator('body')).toContainText('Local auth bootstrap failed, but app startup can continue.')

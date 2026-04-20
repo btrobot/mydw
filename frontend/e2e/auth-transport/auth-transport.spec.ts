@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:5173'
+const BASE_URL = process.env.E2E_BASE_URL || ''
 
 test.describe('Auth transport sync', () => {
   test('syncs machine-session state from local backend when a protected dashboard request returns 403', async ({ page }) => {

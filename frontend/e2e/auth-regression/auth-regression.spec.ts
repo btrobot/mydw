@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test'
 
 import { mockWorkbenchLandingApis } from '../utils/workbenchEntryMocks'
 
-const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:5173'
+const BASE_URL = process.env.E2E_BASE_URL || ''
+const ROOT_URL = BASE_URL || '/'
 const BOOTSTRAP_WARNING = 'Local auth bootstrap failed, but app startup can continue.'
 
 test.describe('Auth regression and polish', () => {
@@ -139,7 +140,7 @@ test.describe('Auth regression and polish', () => {
       })
     })
 
-    await page.goto(BASE_URL)
+    await page.goto(ROOT_URL)
     await expect(page.locator('body')).toContainText(BOOTSTRAP_WARNING)
     await page.getByRole('button', { name: 'Retry' }).click()
     await page.waitForFunction(() => document.documentElement.dataset.authBootstrapStatus === 'ready')

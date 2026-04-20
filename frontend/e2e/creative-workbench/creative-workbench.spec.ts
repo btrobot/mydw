@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
-const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:5173'
+const BASE_URL = process.env.E2E_BASE_URL || ''
 
 const creativeListPayload = {
   total: 4,

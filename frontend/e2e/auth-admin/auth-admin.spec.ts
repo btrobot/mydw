@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:5173'
+const BASE_URL = process.env.E2E_BASE_URL || ''
 
 const ACTIVE_SESSION = {
   auth_state: 'authenticated_active',

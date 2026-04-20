@@ -6,7 +6,7 @@ import {
   mockWorkbenchLandingApis,
 } from '../utils/workbenchEntryMocks'
 
-const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:5173'
+const BASE_URL = process.env.E2E_BASE_URL || ''
 
 const createLockedSession = (authState: 'revoked' | 'device_mismatch' | 'expired') => ({
   auth_state: authState,

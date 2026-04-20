@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 
-const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:5173'
+const BASE_URL = process.env.E2E_BASE_URL || ''
+const ROOT_URL = BASE_URL || '/'
 const BOOTSTRAP_WARNING = 'Local auth bootstrap failed, but app startup can continue.'
 
 const createSession = (overrides: Record<string, unknown> = {}) => ({
@@ -156,7 +157,7 @@ test.describe('Auth error UX', () => {
       })
     })
 
-    await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' })
+    await page.goto(ROOT_URL, { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('auth-bootstrap-error')).toBeVisible()
     await expect(page.locator('body')).toContainText(BOOTSTRAP_WARNING)
     await expect(page.getByTestId('auth-bootstrap-error').locator('button')).toBeVisible()
