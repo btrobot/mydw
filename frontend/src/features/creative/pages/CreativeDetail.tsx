@@ -33,6 +33,7 @@ import {
   usePublishPoolItems,
   usePublishStatus,
   useScheduleConfig,
+  useSubmitCreativeComposition,
   useUpdateCreative,
 } from '../hooks/useCreatives'
 import { useSystemConfig } from '@/hooks/useSystem'
@@ -85,6 +86,7 @@ export default function CreativeDetail() {
   const taskReturnTo = searchParams.get('returnTo') || '/task/list'
   const creativeQuery = useCreative(creativeId)
   const updateCreative = useUpdateCreative(creativeId)
+  const submitCreativeComposition = useSubmitCreativeComposition(creativeId)
   const publishStatusQuery = usePublishStatus()
   const scheduleConfigQuery = useScheduleConfig()
   const systemConfigQuery = useSystemConfig()
@@ -107,6 +109,7 @@ export default function CreativeDetail() {
     enabled: creativeId !== undefined,
   })
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const selectedProfileId = Form.useWatch('profile_id', form)
 
   const creative = creativeQuery.data
   const publishStatus = publishStatusQuery.data
@@ -234,7 +237,7 @@ export default function CreativeDetail() {
     })
   }, [creative, form, inputSnapshot])
 
-  const handleSaveInput = useCallback(async () => {
+  const persistCreativeInput = useCallback(async (successMessage?: string) => {
     try {
       const values = await form.validateFields()
       await updateCreative.mutateAsync({
@@ -246,23 +249,76 @@ export default function CreativeDetail() {
         audio_ids: values.audio_ids ?? [],
         topic_ids: values.topic_ids ?? [],
       })
-      message.success('作品输入已保存')
+      if (successMessage) {
+        message.success(successMessage)
+      }
       void Promise.all([
         creativeQuery.refetch(),
         activePoolQuery.refetch(),
         invalidatedPoolQuery.refetch(),
       ])
+      return true
     } catch (error: unknown) {
       if (error !== null && typeof error === 'object' && 'errorFields' in error) {
-        return
+        return false
       }
       if (error instanceof Error) {
         message.error(error.message)
       } else {
         message.error('保存作品输入失败')
       }
+      return false
     }
   }, [activePoolQuery, creativeQuery, form, invalidatedPoolQuery, message, updateCreative])
+
+  const handleSaveInput = useCallback(async () => {
+    await persistCreativeInput('作品输入已保存')
+  }, [persistCreativeInput])
+
+  const handleSubmitComposition = useCallback(async () => {
+    const saved = await persistCreativeInput()
+    if (!saved) {
+      return
+    }
+
+    try {
+      const result = await submitCreativeComposition.mutateAsync()
+      const nextParams = new URLSearchParams(searchParams)
+      nextParams.set('taskId', String(result.task_id))
+      nextParams.set('returnTo', taskReturnTo)
+      setSearchParams(nextParams, { replace: true })
+
+      const actionMessages: Record<string, string> = {
+        created_and_submitted: `已提交合成任务 #${result.task_id}，可前往任务诊断查看进度`,
+        reused_draft_and_submitted: `已复用草稿任务 #${result.task_id} 并提交合成`,
+        reused_composing: `已有进行中的合成任务 #${result.task_id}，已直接复用`,
+        created_ready_task: `已生成直发版本，作品进入待审核（任务 #${result.task_id}）`,
+        reused_ready_task: `已复用现有直发结果（任务 #${result.task_id}）`,
+      }
+      message.success(actionMessages[result.submission_action] ?? `操作成功（任务 #${result.task_id}）`)
+      void Promise.all([
+        creativeQuery.refetch(),
+        activePoolQuery.refetch(),
+        invalidatedPoolQuery.refetch(),
+      ])
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        message.error(error.message)
+      } else {
+        message.error('提交作品合成失败')
+      }
+    }
+  }, [
+    activePoolQuery,
+    creativeQuery,
+    invalidatedPoolQuery,
+    message,
+    persistCreativeInput,
+    searchParams,
+    setSearchParams,
+    submitCreativeComposition,
+    taskReturnTo,
+  ])
 
   const profileOptions = useMemo(
     () => profiles.map((profile) => ({
@@ -291,6 +347,13 @@ export default function CreativeDetail() {
     () => topics.map((item) => ({ value: item.id, label: item.name || `话题 #${item.id}` })),
     [topics],
   )
+  const activeProfile = useMemo(
+    () => profiles.find((profile) => profile.id === (selectedProfileId ?? inputSnapshot.profile_id)),
+    [inputSnapshot.profile_id, profiles, selectedProfileId],
+  )
+  const submitButtonLabel = activeProfile?.composition_mode === 'none'
+    ? '提交直发准备'
+    : (currentVersion ? '重新提交合成' : '提交合成')
 
   const schedulerModeLabel =
     publishStatusQuery.isError && scheduleConfigQuery.isError
@@ -567,6 +630,16 @@ export default function CreativeDetail() {
               <Button type="primary" loading={updateCreative.isPending} onClick={() => void handleSaveInput()}>
                 保存作品输入
               </Button>
+              <Button
+                type="primary"
+                ghost
+                loading={submitCreativeComposition.isPending}
+                disabled={creative.eligibility_status !== 'READY_TO_COMPOSE' || updateCreative.isPending}
+                onClick={() => void handleSubmitComposition()}
+                data-testid="creative-submit-composition"
+              >
+                {submitButtonLabel}
+              </Button>
             </Space>
           )}
         >
@@ -748,10 +821,18 @@ export default function CreativeDetail() {
           ) : (
             <Space direction="vertical" size={12} style={{ width: '100%' }}>
               <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                这条作品还没有关联执行任务。先保存作品输入，达到“待提交合成”后，再从后续 PR 的作品驱动动作发起执行。
+                这条作品还没有关联执行任务。先保存作品输入，达到“待提交合成”后，可直接在本页提交合成或生成直发准备。
               </Paragraph>
               <Space wrap>
-                <Button onClick={() => navigate('/task/create')}>兼容入口：新建任务</Button>
+                <Button
+                  type="primary"
+                  ghost
+                  disabled={creative.eligibility_status !== 'READY_TO_COMPOSE'}
+                  loading={submitCreativeComposition.isPending}
+                  onClick={() => void handleSubmitComposition()}
+                >
+                  {submitButtonLabel}
+                </Button>
                 <Button onClick={() => navigate('/task/list')}>查看任务管理</Button>
               </Space>
             </Space>

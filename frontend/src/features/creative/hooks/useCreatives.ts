@@ -10,10 +10,12 @@ import {
   listPublishPoolItemsApiCreativePublishPoolGet,
   rejectCreativeApiCreativeReviewsCreativeIdRejectPost,
   reworkCreativeApiCreativeReviewsCreativeIdReworkPost,
+  submitCreativeCompositionApiCreativesCreativeIdSubmitCompositionPost,
   updateCreativeApiCreativesCreativeIdPatch,
 } from '@/api'
 import type {
   CreativeApproveRequest,
+  CreativeComposeSubmitResponse,
   CreativeCreateRequest,
   CreativeDetailResponse,
   CreativeRejectRequest,
@@ -166,6 +168,29 @@ export const useUpdateCreative = (creativeId: number | undefined) => {
     onSuccess: async () => {
       if (creativeId !== undefined) {
         await invalidateCreativeQueries(queryClient, creativeId)
+      }
+    },
+  })
+}
+
+export const useSubmitCreativeComposition = (creativeId: number | undefined) => {
+  const queryClient = useQueryClient()
+
+  return useMutation<CreativeComposeSubmitResponse, Error>({
+    mutationFn: async () => {
+      const response = await submitCreativeCompositionApiCreativesCreativeIdSubmitCompositionPost({
+        path: { creative_id: creativeId! },
+        throwOnError: true,
+      })
+
+      return response.data!
+    },
+    onSuccess: async () => {
+      if (creativeId !== undefined) {
+        await Promise.all([
+          invalidateCreativeQueries(queryClient, creativeId),
+          queryClient.invalidateQueries({ queryKey: creativeQueryKeys.publishPool() }),
+        ])
       }
     },
   })

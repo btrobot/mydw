@@ -38,6 +38,8 @@ class TaskAssembler:
         topic_ids: Optional[List[int]] = None,
         profile_id: Optional[int] = None,
         name: Optional[str] = None,
+        creative_item_id: Optional[int] = None,
+        task_kind: Optional[str] = None,
     ) -> Task:
         """
         创建一个 Task 并关联所有资源。
@@ -75,6 +77,8 @@ class TaskAssembler:
             name=name,
             status=initial_status,
             priority=0,
+            creative_item_id=creative_item_id,
+            task_kind=task_kind,
         )
         self.db.add(task)
         await self.db.flush()

@@ -9,6 +9,7 @@ from models import get_db
 from schemas import (
     CreativeCreateRequest,
     CreativeDetailResponse,
+    CreativeComposeSubmitResponse,
     CreativeUpdateRequest,
     CreativeWorkbenchListResponse,
 )
@@ -66,3 +67,23 @@ async def update_creative(
     if creative is None:
         raise HTTPException(status_code=404, detail="作品不存在")
     return creative
+
+
+@router.post(
+    "/{creative_id}/submit-composition",
+    response_model=CreativeComposeSubmitResponse,
+    dependencies=ACTIVE_ROUTE_DEPENDENCIES,
+)
+async def submit_creative_composition(
+    creative_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> CreativeComposeSubmitResponse:
+    """Submit composition directly from the creative detail workflow."""
+    service = CreativeService(db)
+    try:
+        return await service.submit_composition(creative_id)
+    except ValueError as exc:
+        detail = str(exc)
+        if detail == "作品不存在":
+            raise HTTPException(status_code=404, detail=detail) from exc
+        raise HTTPException(status_code=400, detail=detail) from exc

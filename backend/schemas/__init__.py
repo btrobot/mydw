@@ -751,6 +751,21 @@ class CreativeDetailResponse(BaseModel):
     updated_at: datetime
 
 
+class CreativeComposeSubmitResponse(BaseModel):
+    creative_id: int
+    task_id: int
+    task_status: TaskStatus
+    task_kind: TaskKind = TaskKind.COMPOSITION
+    creative_status: CreativeStatus
+    current_version_id: Optional[int] = None
+    composition_mode: str
+    composition_job_id: Optional[int] = None
+    composition_job_status: Optional[CompositionJobStatus] = None
+    submission_action: str
+    reused_existing_task: bool = False
+    created_new_task: bool = False
+
+
 # ============ CompositionJob Schema (BE-TM-02) ============
 
 class CompositionJobResponse(BaseModel):

@@ -1238,6 +1238,48 @@ export type CreativeApproveRequest = {
 };
 
 /**
+ * CreativeComposeSubmitResponse
+ */
+export type CreativeComposeSubmitResponse = {
+    /**
+     * Creative Id
+     */
+    creative_id: number;
+    /**
+     * Task Id
+     */
+    task_id: number;
+    task_status: TaskStatus;
+    task_kind?: TaskKind;
+    creative_status: CreativeStatus;
+    /**
+     * Current Version Id
+     */
+    current_version_id?: number | null;
+    /**
+     * Composition Mode
+     */
+    composition_mode: string;
+    /**
+     * Composition Job Id
+     */
+    composition_job_id?: number | null;
+    composition_job_status?: CompositionJobStatus | null;
+    /**
+     * Submission Action
+     */
+    submission_action: string;
+    /**
+     * Reused Existing Task
+     */
+    reused_existing_task?: boolean;
+    /**
+     * Created New Task
+     */
+    created_new_task?: boolean;
+};
+
+/**
  * CreativeCreateRequest
  */
 export type CreativeCreateRequest = {
@@ -7903,6 +7945,36 @@ export type UpdateCreativeApiCreativesCreativeIdPatchResponses = {
 };
 
 export type UpdateCreativeApiCreativesCreativeIdPatchResponse = UpdateCreativeApiCreativesCreativeIdPatchResponses[keyof UpdateCreativeApiCreativesCreativeIdPatchResponses];
+
+export type SubmitCreativeCompositionApiCreativesCreativeIdSubmitCompositionPostData = {
+    body?: never;
+    path: {
+        /**
+         * Creative Id
+         */
+        creative_id: number;
+    };
+    query?: never;
+    url: '/api/creatives/{creative_id}/submit-composition';
+};
+
+export type SubmitCreativeCompositionApiCreativesCreativeIdSubmitCompositionPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SubmitCreativeCompositionApiCreativesCreativeIdSubmitCompositionPostError = SubmitCreativeCompositionApiCreativesCreativeIdSubmitCompositionPostErrors[keyof SubmitCreativeCompositionApiCreativesCreativeIdSubmitCompositionPostErrors];
+
+export type SubmitCreativeCompositionApiCreativesCreativeIdSubmitCompositionPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: CreativeComposeSubmitResponse;
+};
+
+export type SubmitCreativeCompositionApiCreativesCreativeIdSubmitCompositionPostResponse = SubmitCreativeCompositionApiCreativesCreativeIdSubmitCompositionPostResponses[keyof SubmitCreativeCompositionApiCreativesCreativeIdSubmitCompositionPostResponses];
 
 export type ApproveCreativeApiCreativeReviewsCreativeIdApprovePostData = {
     body: CreativeApproveRequest;

@@ -14,12 +14,18 @@ from sqlalchemy.orm import selectinload
 
 from models import (
     Audio,
+    CompositionJob,
     Copywriting,
     Cover,
     CreativeItem,
     CreativeVersion,
     PublishProfile,
     Task,
+    TaskAudio,
+    TaskCopywriting,
+    TaskCover,
+    TaskTopic,
+    TaskVideo,
     Topic,
     Video,
 )
@@ -30,16 +36,23 @@ from schemas import (
     CreativeInputSnapshotResponse,
     CreativeItemResponse,
     CreativeLatestTaskSummaryResponse,
+    CreativeComposeSubmitResponse,
     CreativeReviewSummaryResponse,
     CreativeStatus,
     CreativeUpdateRequest,
     CreativeWorkbenchItemResponse,
     CreativeWorkbenchListResponse,
+    CompositionJobStatus,
     TaskKind,
     TaskStatus,
 )
+from services.composition_service import CompositionService
 from services.creative_version_service import CreativeVersionService
+from services.task_assembler import TaskAssembler
 from services.task_execution_semantics import TaskSemanticsError, validate_task_resource_inputs
+from services.task_service import TaskService
+from services.topic_relation_service import get_profile_topic_ids
+from services.topic_semantics import merge_task_topic_ids
 from utils.time import utc_now_naive
 
 
@@ -164,6 +177,151 @@ class CreativeService:
         await self.db.commit()
         return await self.get_creative_detail(creative.id)
 
+    async def submit_composition(
+        self,
+        creative_id: int,
+    ) -> CreativeComposeSubmitResponse:
+        creative = await self._load_creative_detail(creative_id)
+        if creative is None:
+            raise ValueError("作品不存在")
+
+        input_snapshot = self._build_input_snapshot_response(creative)
+        eligibility_status, eligibility_reasons = await self._build_eligibility_projection(
+            creative,
+            input_snapshot=input_snapshot,
+        )
+        if eligibility_status != CreativeEligibilityStatus.READY_TO_COMPOSE:
+            detail = "；".join(eligibility_reasons) if eligibility_reasons else "当前作品输入尚未满足提交条件"
+            raise ValueError(detail)
+
+        profile = creative.__dict__.get("input_profile")
+        if profile is None and input_snapshot.profile_id is not None:
+            profile = await self.db.get(PublishProfile, input_snapshot.profile_id)
+        if profile is None:
+            raise ValueError("所选合成配置不存在")
+
+        expected_inputs = await self._build_expected_task_inputs(
+            input_snapshot=input_snapshot,
+            profile=profile,
+        )
+        composition_service = CompositionService(self.db)
+
+        matching_composing_task = await self._find_matching_task(
+            creative.tasks,
+            expected_inputs,
+            status=TaskStatus.COMPOSING.value,
+        )
+        if matching_composing_task is not None:
+            return await self._build_submit_response(
+                creative=creative,
+                task=matching_composing_task,
+                profile=profile,
+                submission_action="reused_composing",
+                reused_existing_task=True,
+                created_new_task=False,
+            )
+
+        if profile.composition_mode == "none":
+            matching_ready_task = await self._find_matching_task(
+                creative.tasks,
+                expected_inputs,
+                status=TaskStatus.READY.value,
+            )
+            if matching_ready_task is not None and matching_ready_task.creative_version_id is not None:
+                return await self._build_submit_response(
+                    creative=creative,
+                    task=matching_ready_task,
+                    profile=profile,
+                    submission_action="reused_ready_task",
+                    reused_existing_task=True,
+                    created_new_task=False,
+                )
+
+        matching_draft_task = await self._find_matching_task(
+            creative.tasks,
+            expected_inputs,
+            status=TaskStatus.DRAFT.value,
+        )
+
+        created_new_task = False
+        submission_action = "reused_draft_and_submitted"
+        task = matching_draft_task
+
+        if task is None:
+            stale_draft_tasks = [
+                item for item in creative.tasks
+                if item.task_kind != TaskKind.PUBLISH.value and item.status == TaskStatus.DRAFT.value
+            ]
+            for stale_task in stale_draft_tasks:
+                await TaskService(self.db).delete_task(stale_task.id)
+
+            task = await TaskAssembler(self.db).assemble(
+                account_id=None,
+                video_ids=input_snapshot.video_ids,
+                copywriting_ids=input_snapshot.copywriting_ids,
+                cover_ids=input_snapshot.cover_ids,
+                audio_ids=input_snapshot.audio_ids,
+                topic_ids=input_snapshot.topic_ids,
+                profile_id=profile.id,
+                name=self._build_task_name(creative),
+                creative_item_id=creative.id,
+                task_kind=TaskKind.COMPOSITION.value,
+            )
+            created_new_task = True
+            submission_action = "created_ready_task" if profile.composition_mode == "none" else "created_and_submitted"
+
+        if profile.composition_mode == "none":
+            if task.creative_version_id is None:
+                version = await self.version_service.create_next_version(
+                    creative,
+                    title=task.name or creative.title,
+                    version_type="generated",
+                    package_status="ready",
+                    status_on_activate=CreativeStatus.WAITING_REVIEW.value,
+                )
+                task.creative_version_id = version.id
+                task.task_kind = TaskKind.COMPOSITION.value
+                task.status = TaskStatus.READY.value
+                task.error_msg = None
+                task.failed_at_status = None
+                task.updated_at = utc_now_naive()
+                creative.generation_error_msg = None
+                creative.generation_failed_at = None
+                creative.updated_at = utc_now_naive()
+                await self.db.commit()
+
+            refreshed = await self._load_creative_detail(creative.id)
+            if refreshed is None:
+                raise ValueError("作品不存在")
+            refreshed_task = next((item for item in refreshed.tasks if item.id == task.id), None)
+            if refreshed_task is None:
+                raise ValueError("任务不存在")
+            return await self._build_submit_response(
+                creative=refreshed,
+                task=refreshed_task,
+                profile=profile,
+                submission_action=submission_action,
+                reused_existing_task=not created_new_task,
+                created_new_task=created_new_task,
+            )
+
+        job = await composition_service.submit_composition(task.id)
+        refreshed = await self._load_creative_detail(creative.id)
+        if refreshed is None:
+            raise ValueError("作品不存在")
+        refreshed_task = next((item for item in refreshed.tasks if item.id == task.id), None)
+        if refreshed_task is None:
+            raise ValueError("任务不存在")
+        return await self._build_submit_response(
+            creative=refreshed,
+            task=refreshed_task,
+            profile=profile,
+            composition_job=job,
+            submission_action=submission_action,
+            reused_existing_task=not created_new_task,
+            created_new_task=created_new_task,
+        )
+
     async def attach_task_to_creative_sample(
         self,
         task_id: int,
@@ -215,6 +373,12 @@ class CreativeService:
                 selectinload(CreativeItem.versions).selectinload(CreativeVersion.package_records),
                 selectinload(CreativeItem.versions).selectinload(CreativeVersion.check_records),
                 selectinload(CreativeItem.tasks).selectinload(Task.profile),
+                selectinload(CreativeItem.tasks).selectinload(Task.videos),
+                selectinload(CreativeItem.tasks).selectinload(Task.copywritings),
+                selectinload(CreativeItem.tasks).selectinload(Task.covers),
+                selectinload(CreativeItem.tasks).selectinload(Task.audios),
+                selectinload(CreativeItem.tasks).selectinload(Task.topics),
+                selectinload(CreativeItem.tasks).selectinload(Task.composition_jobs),
                 selectinload(CreativeItem.publish_pool_items),
             )
         )
@@ -446,6 +610,123 @@ class CreativeService:
         if not tasks:
             return None
         return max(tasks, key=lambda task: (task.updated_at, task.id))
+
+    async def _build_expected_task_inputs(
+        self,
+        *,
+        input_snapshot: CreativeInputSnapshotResponse,
+        profile: PublishProfile,
+    ) -> dict[str, Any]:
+        merged_topic_ids = merge_task_topic_ids(
+            explicit_topic_ids=input_snapshot.topic_ids,
+            profile_default_topic_ids=await get_profile_topic_ids(self.db, profile),
+        )
+        return {
+            "profile_id": input_snapshot.profile_id,
+            "video_ids": input_snapshot.video_ids,
+            "copywriting_ids": input_snapshot.copywriting_ids,
+            "cover_ids": input_snapshot.cover_ids,
+            "audio_ids": input_snapshot.audio_ids,
+            "topic_ids": merged_topic_ids,
+        }
+
+    async def _find_matching_task(
+        self,
+        tasks: list[Task],
+        expected_inputs: dict[str, Any],
+        *,
+        status: str,
+    ) -> Optional[Task]:
+        candidates = sorted(
+            [
+                task for task in tasks
+                if task.task_kind != TaskKind.PUBLISH.value and task.status == status
+            ],
+            key=lambda task: (task.updated_at, task.id),
+            reverse=True,
+        )
+        for task in candidates:
+            if await self._task_matches_expected_inputs(task, expected_inputs):
+                return task
+        return None
+
+    async def _task_matches_expected_inputs(
+        self,
+        task: Task,
+        expected_inputs: dict[str, Any],
+    ) -> bool:
+        if task.profile_id != expected_inputs["profile_id"]:
+            return False
+        task_inputs = await self._load_task_resource_ids(task.id)
+        return (
+            task_inputs["video_ids"] == expected_inputs["video_ids"]
+            and task_inputs["copywriting_ids"] == expected_inputs["copywriting_ids"]
+            and task_inputs["cover_ids"] == expected_inputs["cover_ids"]
+            and task_inputs["audio_ids"] == expected_inputs["audio_ids"]
+            and task_inputs["topic_ids"] == expected_inputs["topic_ids"]
+        )
+
+    async def _load_task_resource_ids(self, task_id: int) -> dict[str, list[int]]:
+        async def _ordered_ids(model, field_name: str) -> list[int]:
+            result = await self.db.execute(
+                select(getattr(model, field_name))
+                .where(model.task_id == task_id)
+                .order_by(model.sort_order.asc(), model.id.asc())
+            )
+            return [int(value) for value in result.scalars().all()]
+
+        topic_rows = await self.db.execute(
+            select(TaskTopic.topic_id)
+            .where(TaskTopic.task_id == task_id)
+            .order_by(TaskTopic.id.asc())
+        )
+        return {
+            "video_ids": await _ordered_ids(TaskVideo, "video_id"),
+            "copywriting_ids": await _ordered_ids(TaskCopywriting, "copywriting_id"),
+            "cover_ids": await _ordered_ids(TaskCover, "cover_id"),
+            "audio_ids": await _ordered_ids(TaskAudio, "audio_id"),
+            "topic_ids": [int(value) for value in topic_rows.scalars().all()],
+        }
+
+    def _build_task_name(self, creative: CreativeItem) -> str:
+        title = (creative.title or "").strip()
+        if title:
+            return title
+        return creative.creative_no
+
+    async def _build_submit_response(
+        self,
+        *,
+        creative: CreativeItem,
+        task: Task,
+        profile: PublishProfile,
+        submission_action: str,
+        reused_existing_task: bool,
+        created_new_task: bool,
+        composition_job: CompositionJob | None = None,
+    ) -> CreativeComposeSubmitResponse:
+        projection = await self._build_projection(creative)
+        resolved_job = composition_job
+        if resolved_job is None and task.composition_jobs:
+            resolved_job = task.composition_jobs[-1]
+        return CreativeComposeSubmitResponse(
+            creative_id=creative.id,
+            task_id=task.id,
+            task_status=self._coerce_task_status(task.status),
+            task_kind=self._coerce_task_kind(task.task_kind) or TaskKind.COMPOSITION,
+            creative_status=projection["status"],
+            current_version_id=creative.current_version_id,
+            composition_mode=profile.composition_mode or "none",
+            composition_job_id=resolved_job.id if resolved_job is not None else task.composition_job_id,
+            composition_job_status=(
+                CompositionJobStatus(resolved_job.status)
+                if resolved_job is not None and resolved_job.status is not None
+                else None
+            ),
+            submission_action=submission_action,
+            reused_existing_task=reused_existing_task,
+            created_new_task=created_new_task,
+        )
 
     async def _sync_pre_compose_status(self, creative: CreativeItem) -> None:
         if creative.current_version_id is not None and creative.status in REVIEW_AND_BEYOND_STATUS_VALUES:
