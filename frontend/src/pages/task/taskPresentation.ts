@@ -20,10 +20,34 @@ export const terminalTaskStates: ReadonlySet<TaskStatus> = new Set<TaskStatus>([
   'cancelled',
 ])
 
+export type TaskPrimaryActionKey =
+  | 'detail'
+  | 'submitComposition'
+  | 'publish'
+  | 'retry'
+
 export function getTaskActionAvailability(status: TaskStatus) {
+  const canSubmitComposition = status === 'draft'
+  const canCancelComposition = status === 'composing'
+  const canPublish = status === 'ready'
+  const canRetry = status === 'failed'
+  const canEditRetry = status === 'failed'
+  const canCancel = !terminalTaskStates.has(status) && status !== 'failed'
+
   return {
-    canSubmitComposition: status === 'draft',
-    canRetry: status === 'failed',
-    canCancel: !terminalTaskStates.has(status) && status !== 'failed',
+    canSubmitComposition,
+    canCancelComposition,
+    canPublish,
+    canRetry,
+    canEditRetry,
+    canCancel,
+    canDelete: true,
   }
+}
+
+export function getTaskPrimaryAction(status: TaskStatus): TaskPrimaryActionKey {
+  if (status === 'draft') return 'submitComposition'
+  if (status === 'ready') return 'publish'
+  if (status === 'failed') return 'retry'
+  return 'detail'
 }

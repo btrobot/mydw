@@ -92,13 +92,18 @@ export const useDeleteTask = () => {
   })
 }
 
-export const usePublishTask = () =>
-  useMutation({
+export const usePublishTask = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
     mutationFn: async (taskId: number) => {
       const response = await publishTaskApiTasksTaskIdPublishPost({ path: { task_id: taskId } })
       return response.data
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    },
   })
+}
 
 export const useBatchCreateTasks = () => {
   const queryClient = useQueryClient()

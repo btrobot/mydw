@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import dayjs, { type Dayjs } from 'dayjs'
-import { Alert, App, Button, Input, Popconfirm, Space, Tag, Tooltip, Typography } from 'antd'
-import { DeleteOutlined, PlayCircleOutlined, PlusOutlined, ReloadOutlined, StopOutlined } from '@ant-design/icons'
+import { Alert, App, Button, Dropdown, Input, Popconfirm, Space, Tag, Tooltip, Typography } from 'antd'
+import { DeleteOutlined, DownOutlined, EyeOutlined, PlayCircleOutlined, PlusOutlined, ReloadOutlined, RocketOutlined, StopOutlined } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
+import type { MenuProps } from 'antd'
 import type { ActionType, ProColumns, ProFormInstance } from '@ant-design/pro-components'
 
 import { listTasksApiTasksGet } from '@/api'
@@ -11,15 +12,23 @@ import type { ListTasksApiTasksGetData, TaskKind, TaskResponse, TaskStatus } fro
 import {
   useAccounts,
   useBatchSubmitComposition,
+  useCancelComposition,
   useCancelTask,
   useDeleteAllTasks,
   useDeleteTask,
+  useEditRetryTask,
+  usePublishTask,
   useProfiles,
   useRetryTask,
   useSubmitComposition,
 } from '@/hooks'
 
-import { getTaskActionAvailability, taskKindMeta, taskStatusMeta } from './task/taskPresentation'
+import {
+  getTaskActionAvailability,
+  getTaskPrimaryAction,
+  taskKindMeta,
+  taskStatusMeta,
+} from './task/taskPresentation'
 
 type TaskRow = TaskResponse
 type QueryShape = NonNullable<ListTasksApiTasksGetData['query']>
@@ -308,7 +317,7 @@ export default function TaskList() {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { message } = App.useApp()
+  const { message, modal } = App.useApp()
   const actionRef = useRef<ActionType>()
   const formRef = useRef<ProFormInstance<TaskListFormValues>>()
   const [selectedIds, setSelectedIds] = useState<number[]>([])
@@ -326,7 +335,10 @@ export default function TaskList() {
   const deleteTask = useDeleteTask()
   const deleteAllTasks = useDeleteAllTasks()
   const retryTask = useRetryTask()
+  const editRetryTask = useEditRetryTask()
   const cancelTask = useCancelTask()
+  const cancelComposition = useCancelComposition()
+  const publishTask = usePublishTask()
   const submitComposition = useSubmitComposition()
   const batchSubmitComposition = useBatchSubmitComposition()
   const [creationSummary, setCreationSummary] = useState<CreationSummary | null>(
@@ -430,6 +442,26 @@ export default function TaskList() {
     }
   }, [message, showTaskActionError, submitComposition])
 
+  const handleCancelComposition = useCallback(async (taskId: number) => {
+    try {
+      await cancelComposition.mutateAsync(taskId)
+      message.success('已取消合成，任务已回到待合成')
+      actionRef.current?.reload()
+    } catch (error: unknown) {
+      showTaskActionError(error, '取消合成失败')
+    }
+  }, [cancelComposition, message, showTaskActionError])
+
+  const handlePublish = useCallback(async (taskId: number) => {
+    try {
+      await publishTask.mutateAsync(taskId)
+      message.success('已加入发布队列')
+      actionRef.current?.reload()
+    } catch (error: unknown) {
+      showTaskActionError(error, '加入发布队列失败')
+    }
+  }, [message, publishTask, showTaskActionError])
+
   const handleSubmitCreatedDrafts = useCallback(async () => {
     const draftTaskIds = creationSummary?.draftTaskIds ?? []
     if (draftTaskIds.length === 0) return
@@ -449,6 +481,16 @@ export default function TaskList() {
       showTaskActionError(error, '批量提交合成失败')
     }
   }, [batchSubmitComposition, creationSummary, message, showTaskActionError])
+
+  const handleEditRetry = useCallback(async (taskId: number) => {
+    try {
+      await editRetryTask.mutateAsync(taskId)
+      message.success('已重置为待合成，可重新检查素材后提交')
+      actionRef.current?.reload()
+    } catch (error: unknown) {
+      showTaskActionError(error, '重置任务失败')
+    }
+  }, [editRetryTask, message, showTaskActionError])
 
   const handleBatchDelete = useCallback(async () => {
     let deletedCount = 0
@@ -648,24 +690,96 @@ export default function TaskList() {
     {
       title: '操作',
       key: 'action',
-      width: 220,
+      width: 188,
+      fixed: 'right',
       hideInSearch: true,
       render: (_, record) => {
-        const { canSubmitComposition, canRetry, canCancel } = getTaskActionAvailability(record.status)
+        const {
+          canCancelComposition,
+          canEditRetry,
+          canCancel,
+          canDelete,
+        } = getTaskActionAvailability(record.status)
+        const primaryAction = getTaskPrimaryAction(record.status)
+        const menuItems: MenuProps['items'] = [
+          {
+            key: 'detail',
+            label: '查看详情',
+            icon: <EyeOutlined />,
+          },
+          canCancelComposition ? {
+            key: 'cancelComposition',
+            label: '取消合成',
+            icon: <StopOutlined />,
+          } : null,
+          canEditRetry ? {
+            key: 'editRetry',
+            label: '重置为待合成',
+            icon: <ReloadOutlined />,
+          } : null,
+          canCancel ? {
+            key: 'cancelTask',
+            label: '取消任务',
+            icon: <StopOutlined />,
+          } : null,
+          canDelete ? {
+            key: 'delete',
+            danger: true,
+            label: '删除任务',
+            icon: <DeleteOutlined />,
+          } : null,
+        ].filter(Boolean)
 
-        return (
-          <Space size={4}>
-            <Button
-              type="link"
-              size="small"
-              onClick={(event) => {
-                event.stopPropagation()
-                openTaskDetail(record.id)
-              }}
-            >
-              查看详情
-            </Button>
-            {canSubmitComposition ? (
+        const handleMenuClick: MenuProps['onClick'] = ({ key, domEvent }) => {
+          domEvent.stopPropagation()
+          if (key === 'detail') {
+            openTaskDetail(record.id)
+            return
+          }
+          if (key === 'cancelComposition') {
+            modal.confirm({
+              title: '确认取消当前合成吗？',
+              content: '取消后任务会回到待合成，可重新提交。',
+              okText: '确认取消',
+              cancelText: '返回',
+              onOk: async () => handleCancelComposition(record.id),
+            })
+            return
+          }
+          if (key === 'editRetry') {
+            modal.confirm({
+              title: '确认重置为待合成吗？',
+              content: '失败信息会被清空，任务将回到待合成状态，便于重新检查素材与配置。',
+              okText: '确认重置',
+              cancelText: '返回',
+              onOk: async () => handleEditRetry(record.id),
+            })
+            return
+          }
+          if (key === 'cancelTask') {
+            modal.confirm({
+              title: '确认取消这个任务吗？',
+              okText: '确认取消',
+              cancelText: '返回',
+              onOk: async () => handleCancel(record.id),
+            })
+            return
+          }
+          if (key === 'delete') {
+            modal.confirm({
+              title: '确认删除这个任务吗？',
+              content: '删除后不可恢复。',
+              okText: '确认删除',
+              cancelText: '返回',
+              okButtonProps: { danger: true },
+              onOk: async () => handleDelete(record.id),
+            })
+          }
+        }
+
+        const primaryButton = (() => {
+          if (primaryAction === 'submitComposition') {
+            return (
               <Button
                 type="link"
                 size="small"
@@ -679,55 +793,78 @@ export default function TaskList() {
               >
                 提交合成
               </Button>
-            ) : null}
-            {canRetry ? (
+            )
+          }
+
+          if (primaryAction === 'publish') {
+            return (
+              <Button
+                type="link"
+                size="small"
+                icon={<RocketOutlined />}
+                data-testid={`task-list-publish-${record.id}`}
+                loading={publishTask.isPending}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  void handlePublish(record.id)
+                }}
+              >
+                立即发布
+              </Button>
+            )
+          }
+
+          if (primaryAction === 'retry') {
+            return (
               <Button
                 type="link"
                 size="small"
                 icon={<ReloadOutlined />}
+                data-testid={`task-list-retry-${record.id}`}
+                loading={retryTask.isPending}
                 onClick={(event) => {
                   event.stopPropagation()
                   void handleRetry(record.id)
                 }}
               >
-                重试
+                快速重试
               </Button>
-            ) : null}
-            {canCancel ? (
-              <Popconfirm
-                title="确认取消这个任务吗？"
-                onConfirm={(event) => {
-                  event?.stopPropagation()
-                  void handleCancel(record.id)
-                }}
-              >
-                <Button
-                  type="link"
-                  size="small"
-                  icon={<StopOutlined />}
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  取消
-                </Button>
-              </Popconfirm>
-            ) : null}
-            <Popconfirm
-              title="确认删除这个任务吗？"
-              onConfirm={(event) => {
-                event?.stopPropagation()
-                void handleDelete(record.id)
+            )
+          }
+
+          return (
+            <Button
+              type="link"
+              size="small"
+              icon={<EyeOutlined />}
+              data-testid={`task-list-open-detail-${record.id}`}
+              onClick={(event) => {
+                event.stopPropagation()
+                openTaskDetail(record.id)
               }}
+            >
+              查看详情
+            </Button>
+          )
+        })()
+
+        return (
+          <Space size={0} onClick={(event) => event.stopPropagation()}>
+            {primaryButton}
+            <Dropdown
+              trigger={['click']}
+              menu={{ items: menuItems, onClick: handleMenuClick }}
             >
               <Button
                 type="link"
-                danger
                 size="small"
-                icon={<DeleteOutlined />}
+                icon={<DownOutlined />}
+                data-testid={`task-list-more-actions-${record.id}`}
                 onClick={(event) => event.stopPropagation()}
               >
-                删除
+                更多
               </Button>
-            </Popconfirm>
+            </Dropdown>
           </Space>
         )
       },
