@@ -80,7 +80,10 @@ export const useDeleteTask = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (taskId: number) => {
-      await deleteTaskApiTasksTaskIdDelete({ path: { task_id: taskId } })
+      await deleteTaskApiTasksTaskIdDelete({
+        path: { task_id: taskId },
+        throwOnError: true,
+      })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
@@ -126,7 +129,7 @@ export const useDeleteAllTasks = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async () => {
-      await deleteAllTasksApiTasksDelete()
+      await deleteAllTasksApiTasksDelete({ throwOnError: true })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })

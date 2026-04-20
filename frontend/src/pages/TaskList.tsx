@@ -16,7 +16,6 @@ import {
   useProfiles,
   useRetryTask,
 } from '@/hooks'
-import { handleApiError } from '@/utils/error'
 
 import { getTaskActionAvailability, taskKindMeta, taskStatusMeta } from './task/taskPresentation'
 
@@ -196,6 +195,23 @@ const formatDateTime = (value?: string | null): string => {
   return new Date(value).toLocaleString('zh-CN')
 }
 
+const getErrorDetail = (error: unknown): string | undefined => {
+  if (
+    error !== null
+    && typeof error === 'object'
+    && 'detail' in error
+    && typeof (error as { detail?: unknown }).detail === 'string'
+  ) {
+    return (error as { detail: string }).detail
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+
+  return undefined
+}
+
 const buildTaskListSearchParams = (
   query: QueryShape,
   pagination: { current?: number; pageSize?: number },
@@ -339,15 +355,27 @@ export default function TaskList() {
     syncSearchSnapshot(initialRouteState.searchSnapshot)
   }, [initialRouteState.searchSnapshot, syncSearchSnapshot])
 
+  const showTaskActionError = useCallback((error: unknown, fallback: string) => {
+    const detail = getErrorDetail(error)
+    const isDeleteConflict = typeof detail === 'string' && detail.includes('发布规划引用')
+
+    if (isDeleteConflict) {
+      message.warning(detail)
+      return
+    }
+
+    message.error(detail ?? fallback)
+  }, [message])
+
   const handleDelete = useCallback(async (id: number) => {
     try {
       await deleteTask.mutateAsync(id)
       message.success('已删除任务')
       actionRef.current?.reload()
     } catch (error: unknown) {
-      handleApiError(error, '删除任务失败')
+      showTaskActionError(error, '删除任务失败')
     }
-  }, [deleteTask, message])
+  }, [deleteTask, message, showTaskActionError])
 
   const handleRetry = useCallback(async (id: number) => {
     try {
@@ -355,9 +383,9 @@ export default function TaskList() {
       message.success('已发起快速重试')
       actionRef.current?.reload()
     } catch (error: unknown) {
-      handleApiError(error, '快速重试失败')
+      showTaskActionError(error, '快速重试失败')
     }
-  }, [message, retryTask])
+  }, [message, retryTask, showTaskActionError])
 
   const handleCancel = useCallback(async (id: number) => {
     try {
@@ -365,22 +393,33 @@ export default function TaskList() {
       message.success('已取消任务')
       actionRef.current?.reload()
     } catch (error: unknown) {
-      handleApiError(error, '取消任务失败')
+      showTaskActionError(error, '取消任务失败')
     }
-  }, [cancelTask, message])
+  }, [cancelTask, message, showTaskActionError])
 
   const handleBatchDelete = useCallback(async () => {
+    let deletedCount = 0
+
     try {
       for (const id of selectedIds) {
         await deleteTask.mutateAsync(id)
+        deletedCount += 1
       }
       setSelectedIds([])
       message.success(`已删除 ${selectedIds.length} 个任务`)
       actionRef.current?.reload()
     } catch (error: unknown) {
-      handleApiError(error, '批量删除任务失败')
+      if (deletedCount > 0) {
+        actionRef.current?.reload()
+        const detail = getErrorDetail(error)
+        const suffix = detail ? `；${detail}` : ''
+        message.warning(`已删除 ${deletedCount} 个任务，剩余任务未删除${suffix}`)
+        return
+      }
+
+      showTaskActionError(error, '批量删除任务失败')
     }
-  }, [deleteTask, message, selectedIds])
+  }, [deleteTask, message, selectedIds, showTaskActionError])
 
   const handleClearAll = useCallback(async () => {
     try {
@@ -388,9 +427,9 @@ export default function TaskList() {
       message.success('已清空全部任务')
       actionRef.current?.reload()
     } catch (error: unknown) {
-      handleApiError(error, '清空任务失败')
+      showTaskActionError(error, '清空任务失败')
     }
-  }, [deleteAllTasks, message])
+  }, [deleteAllTasks, message, showTaskActionError])
 
   const handleQuickFilter = useCallback((key: QuickFilterKey) => {
     const currentValues = (formRef.current?.getFieldsValue?.(true) ?? {}) as TaskListFormValues
