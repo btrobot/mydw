@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test'
 
 const BASE_URL = process.env.E2E_BASE_URL || ''
 const ROOT_URL = BASE_URL || '/'
-const BOOTSTRAP_WARNING = 'Local auth bootstrap failed, but app startup can continue.'
+const BOOTSTRAP_WARNING_TITLE = '暂时无法完成登录准备'
+const BOOTSTRAP_WARNING_DESCRIPTION = '你仍可进入登录页继续尝试；如果问题持续，请稍后重新检查登录环境。'
 
 const createSession = (overrides: Record<string, unknown> = {}) => ({
   auth_state: 'unauthenticated',
@@ -70,7 +71,7 @@ async function mockLockedShell(
 }
 
 test.describe('Auth error UX', () => {
-  test('shows a friendly login error for invalid credentials', async ({ page }) => {
+  test('shows a friendly inline login error for invalid credentials', async ({ page }) => {
     await page.route('**/api/auth/session', async (route) => {
       await route.fulfill({
         status: 200,
@@ -107,8 +108,11 @@ test.describe('Auth error UX', () => {
 
     await expect(page.getByTestId('auth-login-error-message')).toBeVisible()
     await expect(page.getByTestId('auth-login-error-message')).toContainText('账号或密码错误')
-    await expect(page.getByTestId('auth-login-error-message')).toContainText('请检查用户名和密码后重新提交。')
+    await expect(page.getByTestId('auth-login-error-message')).toContainText('请检查账号和密码后重新提交。')
     await expect(page.locator('.ant-message-notice')).toHaveCount(0)
+    await expect(page).toHaveURL(/#\/login$/)
+    await expect(page.getByTestId('auth-login-page')).toBeVisible()
+    await expect(page.getByRole('link', { name: /忘记密码|需要帮助|联系支持/ })).toHaveCount(0)
   })
 
   test('keeps a minimal state hint on the login page for generic auth errors', async ({ page }) => {
@@ -159,8 +163,10 @@ test.describe('Auth error UX', () => {
 
     await page.goto(ROOT_URL, { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('auth-bootstrap-error')).toBeVisible()
-    await expect(page.locator('body')).toContainText(BOOTSTRAP_WARNING)
+    await expect(page.locator('body')).toContainText(BOOTSTRAP_WARNING_TITLE)
+    await expect(page.locator('body')).toContainText(BOOTSTRAP_WARNING_DESCRIPTION)
     await expect(page.getByTestId('auth-bootstrap-error').locator('button')).toBeVisible()
+    await expect(page.getByRole('link', { name: /忘记密码|需要帮助|联系支持/ })).toHaveCount(0)
   })
 
   test('shows a re-login prompt on the revoked auth shell', async ({ page }) => {

@@ -4,7 +4,7 @@ const BASE_URL = process.env.E2E_BASE_URL || ''
 const ROOT_URL = BASE_URL || '/'
 
 test.describe('Auth bootstrap', () => {
-  test('shows bootstrap loading state before auth session resolves', async ({ page }) => {
+  test('shows user-facing bootstrap loading state before auth session resolves', async ({ page }) => {
     await page.route('**/api/auth/session', async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 1200))
       await route.fulfill({
@@ -22,6 +22,9 @@ test.describe('Auth bootstrap', () => {
     await page.goto(ROOT_URL)
 
     await expect(page.getByTestId('auth-bootstrap-loading')).toBeVisible()
+    await expect(page.getByTestId('auth-bootstrap-loading-copy')).toContainText('正在准备登录环境')
+    await expect(page.getByTestId('auth-bootstrap-loading-copy')).toContainText('正在检查当前登录状态，请稍候。')
+    await expect(page.locator('body')).not.toContainText('Restoring local auth session')
     await page.waitForFunction(() => document.documentElement.dataset.authBootstrapStatus === 'ready')
     await expect(page.getByTestId('auth-login-page')).toBeVisible()
   })
@@ -74,7 +77,7 @@ test.describe('Auth bootstrap', () => {
     expect(authState).toBe('authenticated_grace')
   })
 
-  test('falls back to app shell when auth bootstrap fails', async ({ page }) => {
+  test('shows a user-facing bootstrap warning when session restore fails', async ({ page }) => {
     await page.route('**/api/auth/session', async (route) => {
       await route.fulfill({
         status: 503,
@@ -91,7 +94,10 @@ test.describe('Auth bootstrap', () => {
     await page.goto(ROOT_URL)
     await page.waitForFunction(() => document.documentElement.dataset.authBootstrapStatus === 'error')
 
-    await expect(page.locator('body')).toContainText('Local auth bootstrap failed, but app startup can continue.')
+    await expect(page.locator('body')).toContainText('暂时无法完成登录准备')
+    await expect(page.locator('body')).toContainText('你仍可进入登录页继续尝试；如果问题持续，请稍后重新检查登录环境。')
+    await expect(page.locator('body')).not.toContainText('Local auth bootstrap failed')
+    await expect(page.getByRole('link', { name: /忘记密码|需要帮助|联系支持/ })).toHaveCount(0)
     await expect(page.getByTestId('auth-login-page')).toBeVisible()
   })
 })

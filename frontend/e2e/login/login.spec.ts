@@ -64,12 +64,13 @@ function loginForm(page: Page) {
   return {
     username: page.locator('input#username'),
     password: page.locator('input#password'),
+    rememberMe: page.getByTestId('auth-login-remember-me'),
     submit: page.locator('button[type="submit"]'),
   }
 }
 
 test.describe('Remote auth login page', () => {
-  test('renders a user-facing login shell with folded diagnostics by default', async ({ page }) => {
+  test('renders a user-facing login shell with display-only remember me and folded diagnostics by default', async ({ page }) => {
     await mockAuthSession(page)
     await mockAuthStatus(page)
     await page.addInitScript((storageKey) => {
@@ -78,15 +79,19 @@ test.describe('Remote auth login page', () => {
 
     await gotoLoginPage(page)
 
-    const { username, password, submit } = loginForm(page)
+    const { username, password, rememberMe, submit } = loginForm(page)
 
-    await expect(page.getByRole('heading', { name: '登录应用' })).toBeVisible()
-    await expect(page.getByText('登录后即可继续使用作品工作台、任务管理和素材管理。')).toBeVisible()
+    await expect(page.getByRole('heading', { name: '登录创作控制台' })).toBeVisible()
+    await expect(page.getByText('继续使用作品工作台、任务管理和素材管理。')).toBeVisible()
+    await expect(page.getByText('请输入账号和密码，继续进入当前工作区。')).toBeVisible()
     await expect(username).toBeVisible()
     await expect(password).toBeVisible()
+    await expect(rememberMe).toBeVisible()
+    await expect(page.getByTestId('auth-login-remember-me-hint')).toContainText('不会改变设备绑定、会话有效期或后端登录策略')
     await expect(submit).toBeVisible()
     await expect(page.getByTestId('auth-login-diagnostics-trigger')).toBeVisible()
     await expect(page.getByTestId('auth-login-device-meta')).toBeHidden()
+    await expect(page.getByRole('link', { name: /忘记密码|需要帮助|联系支持/ })).toHaveCount(0)
   })
 
   test('shows required-field validation on empty submit', async ({ page }) => {
@@ -99,7 +104,7 @@ test.describe('Remote auth login page', () => {
     await expect(page.locator('.ant-form-item-explain-error')).toHaveCount(2)
   })
 
-  test('submits username/password/device metadata and redirects on success', async ({ page }) => {
+  test('submits username/password/device metadata only and redirects on success', async ({ page }) => {
     await mockWorkbenchLandingApis(page, { authState: 'unauthenticated' })
     await mockAuthStatus(page)
 
@@ -125,9 +130,10 @@ test.describe('Remote auth login page', () => {
     })
 
     await gotoLoginPage(page)
-    const { username, password, submit } = loginForm(page)
+    const { username, password, rememberMe, submit } = loginForm(page)
     await username.fill('alice')
     await password.fill('secret')
+    await rememberMe.click()
     await submit.click()
 
     await page.waitForURL('**/#/creative/workbench')
@@ -137,9 +143,11 @@ test.describe('Remote auth login page', () => {
     expect(receivedPayload?.password).toBe('secret')
     expect(receivedPayload?.device_id).toBeTruthy()
     expect(receivedPayload?.client_version).toBeTruthy()
+    expect(receivedPayload).not.toHaveProperty('rememberMe')
+    expect(receivedPayload).not.toHaveProperty('remember_me')
   })
 
-  test('shows auth error messaging for invalid credentials', async ({ page }) => {
+  test('shows auth error messaging for invalid credentials without redirecting away from login', async ({ page }) => {
     await mockAuthSession(page)
     await mockAuthStatus(page)
 
@@ -164,7 +172,10 @@ test.describe('Remote auth login page', () => {
 
     await expect(page.getByTestId('auth-login-error-message')).toBeVisible()
     await expect(page.getByTestId('auth-login-error-message')).toContainText('账号或密码错误')
+    await expect(page.getByTestId('auth-login-error-message')).toContainText('请检查账号和密码后重新提交。')
     await expect(page.locator('.ant-message-notice')).toHaveCount(0)
+    await expect(page).toHaveURL(/#\/login$/)
+    await expect(page.getByTestId('auth-login-page')).toBeVisible()
   })
 
   test('prioritizes submit errors over existing login state hints', async ({ page }) => {
@@ -303,13 +314,16 @@ test.describe('Remote auth login page', () => {
 
     await gotoLoginPage(page)
 
-    const { username, password, submit } = loginForm(page)
+    const { username, password, rememberMe, submit } = loginForm(page)
 
     await username.focus()
     await expect(username).toBeFocused()
 
     await page.keyboard.press('Tab')
     await expect(password).toBeFocused()
+
+    await page.keyboard.press('Tab')
+    await expect(rememberMe).toBeFocused()
 
     await page.keyboard.press('Tab')
     await expect(submit).toBeFocused()

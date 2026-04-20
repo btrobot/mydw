@@ -1,11 +1,16 @@
-import { App as AntApp, Button, Card, Collapse, Form, Input, Space, Typography } from 'antd'
+import { Button, Card, Checkbox, Collapse, Form, Input, Space, Typography } from 'antd'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import AuthErrorMessage from './AuthErrorMessage'
 import { useAuth } from './AuthProvider'
-import { getAuthErrorDescriptor, getAuthStateDescriptor, type AuthErrorDescriptor } from './authErrorHandler'
+import {
+  AUTH_LOGIN_COPY,
+  getAuthErrorDescriptor,
+  getAuthStateDescriptor,
+  type AuthErrorDescriptor,
+} from './authErrorHandler'
 import { loginAuth } from './api'
 import { getClientVersion, getOrCreateDeviceId, setStoredDeviceId } from './device'
 import { useAuthStatus } from './useAuthStatus'
@@ -18,10 +23,10 @@ interface LoginFormValues {
 export default function LoginPage() {
   const [form] = Form.useForm<LoginFormValues>()
   const navigate = useNavigate()
-  const { message } = AntApp.useApp()
   const { session, setSession } = useAuth()
   const [deviceId, setDeviceId] = useState(() => getOrCreateDeviceId())
   const [clientVersion, setClientVersion] = useState('web-dev')
+  const [rememberChoice, setRememberChoice] = useState(false)
   const [submitError, setSubmitError] = useState<AuthErrorDescriptor | null>(null)
   const authStatusQuery = useAuthStatus(Boolean(session))
 
@@ -57,7 +62,6 @@ export default function LoginPage() {
     onSuccess: (nextSession) => {
       setSubmitError(null)
       setSession(nextSession)
-      message.success('登录成功')
       navigate('/creative/workbench', { replace: true })
     },
     onError: (error: unknown) => {
@@ -97,10 +101,10 @@ export default function LoginPage() {
         title={(
           <Space direction="vertical" size={2}>
             <Typography.Title level={4} style={{ margin: 0 }}>
-              登录应用
+              {AUTH_LOGIN_COPY.title}
             </Typography.Title>
             <Typography.Text type="secondary">
-              登录后即可继续使用作品工作台、任务管理和素材管理。
+              {AUTH_LOGIN_COPY.subtitle}
             </Typography.Text>
           </Space>
         )}
@@ -109,7 +113,7 @@ export default function LoginPage() {
       >
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
           <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            当前登录会绑定到本设备，用于保护你的应用访问权限。
+            {AUTH_LOGIN_COPY.helper}
           </Typography.Paragraph>
 
           <Form
@@ -125,18 +129,35 @@ export default function LoginPage() {
           >
             <Form.Item
               name="username"
-              label="用户名"
-              rules={[{ required: true, message: '请输入用户名' }]}
+              label={AUTH_LOGIN_COPY.usernameLabel}
+              rules={[{ required: true, message: AUTH_LOGIN_COPY.usernameRequiredMessage }]}
             >
-              <Input placeholder="请输入用户名" />
+              <Input placeholder={AUTH_LOGIN_COPY.usernamePlaceholder} autoFocus />
             </Form.Item>
             <Form.Item
               name="password"
-              label="密码"
-              rules={[{ required: true, message: '请输入密码' }]}
+              label={AUTH_LOGIN_COPY.passwordLabel}
+              rules={[{ required: true, message: AUTH_LOGIN_COPY.passwordRequiredMessage }]}
             >
-              <Input.Password placeholder="请输入密码" />
+              <Input.Password placeholder={AUTH_LOGIN_COPY.passwordPlaceholder} />
             </Form.Item>
+
+            <Space direction="vertical" size={4} style={{ width: '100%', marginBottom: 24 }}>
+              <Checkbox
+                checked={rememberChoice}
+                onChange={(event) => setRememberChoice(event.target.checked)}
+                data-testid="auth-login-remember-me"
+              >
+                {AUTH_LOGIN_COPY.rememberMeLabel}
+              </Checkbox>
+              <Typography.Text
+                type="secondary"
+                data-testid="auth-login-remember-me-hint"
+              >
+                {AUTH_LOGIN_COPY.rememberMeHint}
+              </Typography.Text>
+            </Space>
+
             <Form.Item style={{ marginBottom: 0 }}>
               <Button
                 type="primary"
@@ -144,7 +165,7 @@ export default function LoginPage() {
                 loading={loginMutation.isPending}
                 style={{ width: '100%' }}
               >
-                登录
+                {AUTH_LOGIN_COPY.submitLabel}
               </Button>
             </Form.Item>
           </Form>
@@ -153,7 +174,7 @@ export default function LoginPage() {
             <AuthErrorMessage
               descriptor={submitError}
               onRetry={() => form.submit()}
-              retryLabel="重新提交"
+              retryLabel={AUTH_LOGIN_COPY.retryLabel}
               testId="auth-login-error-message"
             />
           ) : loginStateDescriptor ? (
@@ -165,12 +186,12 @@ export default function LoginPage() {
               <Space size={8} wrap>
                 <Typography.Text type="secondary">
                   {statusSyncMode === 'loading'
-                    ? '正在同步当前登录状态，请稍候。'
-                    : '状态同步暂时不可用，你仍可继续提交登录。'}
+                    ? AUTH_LOGIN_COPY.statusSyncLoading
+                    : AUTH_LOGIN_COPY.statusSyncError}
                 </Typography.Text>
                 {statusSyncMode === 'error' ? (
                   <Button type="link" size="small" onClick={() => void authStatusQuery.refetch()}>
-                    重试同步
+                    {AUTH_LOGIN_COPY.statusSyncRetryLabel}
                   </Button>
                 ) : null}
               </Space>
@@ -183,15 +204,19 @@ export default function LoginPage() {
             items={[
               {
                 key: 'diagnostics',
-                label: <span data-testid="auth-login-diagnostics-trigger">设备与版本信息</span>,
+                label: <span data-testid="auth-login-diagnostics-trigger">{AUTH_LOGIN_COPY.diagnosticsLabel}</span>,
                 children: (
                   <div data-testid="auth-login-device-meta">
                     <Typography.Paragraph type="secondary" style={{ marginBottom: 4 }}>
-                      以下信息仅用于支持排查当前设备的登录环境，不影响页面主流程。
+                      {AUTH_LOGIN_COPY.diagnosticsDescription}
                     </Typography.Paragraph>
-                    <Typography.Text type="secondary">设备标识：{deviceId}</Typography.Text>
+                    <Typography.Text type="secondary">
+                      {AUTH_LOGIN_COPY.diagnosticsDeviceIdLabel}：{deviceId}
+                    </Typography.Text>
                     <br />
-                    <Typography.Text type="secondary">客户端版本：{clientVersion}</Typography.Text>
+                    <Typography.Text type="secondary">
+                      {AUTH_LOGIN_COPY.diagnosticsClientVersionLabel}：{clientVersion}
+                    </Typography.Text>
                   </div>
                 ),
               },

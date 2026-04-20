@@ -1,4 +1,4 @@
-import { Spin } from 'antd'
+import { Card, Spin, Typography } from 'antd'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createContext,
@@ -11,7 +11,7 @@ import {
 
 import { AUTH_SESSION_QUERY_KEY, fetchAuthSession } from './api'
 import AuthErrorMessage from './AuthErrorMessage'
-import { getAuthErrorDescriptor } from './authErrorHandler'
+import { AUTH_BOOTSTRAP_COPY, getBootstrapErrorDescriptor } from './authErrorHandler'
 import { installAuthTransportSync } from './transport'
 import type { AuthBootstrapStatus, AuthState, LocalAuthSessionSummary } from './types'
 
@@ -24,8 +24,6 @@ interface AuthContextValue {
   setSession: (session: LocalAuthSessionSummary | null) => void
 }
 
-const BOOTSTRAP_LOADING_TEXT = 'Restoring local auth session...'
-const BOOTSTRAP_ERROR_MESSAGE = 'Local auth bootstrap failed, but app startup can continue.'
 const BOOTSTRAP_ERROR_FALLBACK = 'Session restore failed.'
 const USE_AUTH_ERROR = 'useAuth must be used within AuthBootstrapProvider.'
 
@@ -44,9 +42,21 @@ const AuthBootstrapScreen = () => (
       alignItems: 'center',
       justifyContent: 'center',
       background: '#f0f2f5',
+      padding: 24,
     }}
   >
-    <Spin size="large" tip={BOOTSTRAP_LOADING_TEXT} />
+    <Card style={{ width: 480, maxWidth: '100%' }}>
+      <Spin size="large" tip={AUTH_BOOTSTRAP_COPY.loadingTip}>
+        <div data-testid="auth-bootstrap-loading-copy" style={{ minHeight: 72 }}>
+          <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 8 }}>
+            {AUTH_BOOTSTRAP_COPY.loadingTitle}
+          </Typography.Title>
+          <Typography.Text type="secondary">
+            {AUTH_BOOTSTRAP_COPY.loadingDescription}
+          </Typography.Text>
+        </div>
+      </Spin>
+    </Card>
   </div>
 )
 
@@ -126,14 +136,11 @@ export const AuthBootstrapProvider = ({ children }: AuthProviderProps) => {
           {bootstrapStatus === 'error' && (
             <div style={{ padding: 16 }}>
               <AuthErrorMessage
-                descriptor={{
-                  ...getAuthErrorDescriptor(
-                    authSessionQuery.error ?? new Error(bootstrapError ?? BOOTSTRAP_ERROR_FALLBACK)
-                  ),
-                  title: BOOTSTRAP_ERROR_MESSAGE,
-                }}
+                descriptor={getBootstrapErrorDescriptor(
+                  authSessionQuery.error ?? new Error(bootstrapError ?? BOOTSTRAP_ERROR_FALLBACK)
+                )}
                 onRetry={() => void refreshSession()}
-                retryLabel={authSessionQuery.isFetching ? 'Retrying...' : 'Retry'}
+                retryLabel={authSessionQuery.isFetching ? AUTH_BOOTSTRAP_COPY.retryingLabel : AUTH_BOOTSTRAP_COPY.retryLabel}
                 testId="auth-bootstrap-error"
               />
             </div>
