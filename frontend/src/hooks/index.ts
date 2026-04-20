@@ -46,10 +46,11 @@ export {
   useEditRetryTask,
   useCancelTask,
   useSubmitComposition,
+  useBatchSubmitComposition,
   useCompositionStatus,
   useCancelComposition,
 } from './useTask'
-export type { CompositionJobResponse } from './useTask'
+export type { BatchSubmitCompositionResult, CompositionJobResponse } from './useTask'
 
 // Schedule Config Hooks
 export {

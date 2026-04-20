@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Alert, Card, Form, Select, Button, Space, message, Typography, Tabs, Table, Popconfirm, Tag, Empty,
+  Alert, App, Card, Form, Select, Button, Space, Typography, Tabs, Table, Popconfirm, Tag, Empty,
 } from 'antd'
 import { ArrowLeftOutlined, DeleteOutlined, PlusOutlined, VideoCameraOutlined, FileTextOutlined, PictureOutlined, AudioOutlined, ClearOutlined } from '@ant-design/icons'
 import { useAccounts } from '@/hooks/useAccount'
@@ -44,6 +44,7 @@ type MaterialType = 'video' | 'copywriting' | 'cover' | 'audio'
 
 export default function TaskCreate() {
   const navigate = useNavigate()
+  const { message } = App.useApp()
   const [form] = Form.useForm<TaskCreateFormValues>()
   const [basket, setBasket] = useState<MaterialBasketState>({
     videos: [],
@@ -206,9 +207,24 @@ export default function TaskCreate() {
         profile_id: values.profile_id,
       })
 
-      const count = Array.isArray(result) ? result.length : 0
+      const createdTasks = Array.isArray(result) ? result : []
+      const count = createdTasks.length
+      const draftTaskIds = createdTasks
+        .filter((task) => task.status === 'draft')
+        .map((task) => task.id)
+      const readyTaskIds = createdTasks
+        .filter((task) => task.status === 'ready')
+        .map((task) => task.id)
       message.success(`创建成功，共生成 ${count} 个任务`)
-      navigate('/task/list')
+      navigate('/task/list', {
+        state: {
+          creationSummary: {
+            count,
+            draftTaskIds,
+            readyTaskIds,
+          },
+        },
+      })
     } catch (error: unknown) {
       if (error !== null && typeof error === 'object' && 'errorFields' in error) return
       if (error instanceof Error) {

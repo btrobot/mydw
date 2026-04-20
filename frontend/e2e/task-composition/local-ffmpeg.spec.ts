@@ -25,6 +25,36 @@ async function mockAuthenticatedShell(page: Page) {
 
 async function mockLocalFfmpegApis(page: Page) {
   await mockAuthenticatedShell(page)
+  let taskListItems: Array<Record<string, unknown>> = []
+  let submitCompositionCalls = 0
+
+  const buildDraftTask = () => ({
+    id: 9901,
+    name: 'New local ffmpeg task',
+    status: 'draft',
+    task_kind: 'publish',
+    account_id: null,
+    account_name: null,
+    profile_id: 2,
+    priority: 5,
+    scheduled_time: null,
+    publish_time: null,
+    final_video_path: null,
+    upload_url: null,
+    creative_item_id: null,
+    creative_version_id: null,
+    batch_id: 'batch-new-local-ffmpeg',
+    failed_at_status: null,
+    retry_count: 0,
+    created_at: '2026-04-19T12:10:00Z',
+    updated_at: '2026-04-19T12:10:00Z',
+    video_ids: [11],
+    copywriting_ids: [],
+    cover_ids: [],
+    audio_ids: [21],
+    topic_ids: [],
+    error_msg: null,
+  })
 
   await page.route('**/api/accounts**', async (route) => {
     await route.fulfill({
@@ -135,12 +165,13 @@ async function mockLocalFfmpegApis(page: Page) {
     })
   })
 
-  await page.route(/\/api\/tasks(?:\?.*)?$/, async (route) => {
+  await page.route(/\/api\/tasks\/?(?:\?.*)?$/, async (route) => {
     if (route.request().method() === 'POST') {
+      taskListItems = [buildDraftTask()]
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{ id: 9901 }]),
+        body: JSON.stringify(taskListItems),
       })
       return
     }
@@ -148,9 +179,58 @@ async function mockLocalFfmpegApis(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ total: 0, items: [] }),
+      body: JSON.stringify({ total: taskListItems.length, items: taskListItems }),
     })
   })
+
+  await page.route('**/api/tasks/batch-submit-composition', async (route) => {
+    submitCompositionCalls += 1
+    taskListItems = taskListItems.map((item) => ({
+      ...item,
+      status: 'composing',
+      updated_at: '2026-04-19T12:11:00Z',
+    }))
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success_count: 1,
+        failed_count: 0,
+        results: [{ task_id: 9901, status: 'submitted', job_id: 501 }],
+      }),
+    })
+  })
+
+  await page.route('**/api/tasks/9901/submit-composition', async (route) => {
+    submitCompositionCalls += 1
+    taskListItems = taskListItems.map((item) => ({
+      ...item,
+      status: 'composing',
+      updated_at: '2026-04-19T12:11:00Z',
+    }))
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 501,
+        task_id: 9901,
+        workflow_type: 'local_ffmpeg',
+        workflow_id: null,
+        external_job_id: null,
+        status: 'processing',
+        progress: 0,
+        output_video_path: null,
+        output_video_url: null,
+        error_msg: null,
+        started_at: '2026-04-19T12:11:00Z',
+        completed_at: null,
+        created_at: '2026-04-19T12:11:00Z',
+        updated_at: '2026-04-19T12:11:00Z',
+      }),
+    })
+  })
+
+  await page.exposeFunction('getSubmitCompositionCalls', () => submitCompositionCalls)
 
   await page.route('**/api/tasks/*/composition-status', async (route) => {
     const body = {
@@ -230,7 +310,7 @@ test.describe('local_ffmpeg frontend alignment', () => {
 
     await page.getByRole('button', { name: '新建合成配置' }).click()
     await page.locator('.ant-select').first().click()
-    await page.getByText('本地 FFmpeg', { exact: true }).click()
+    await page.locator('.ant-select-item-option-content', { hasText: '本地 FFmpeg' }).click()
 
     const guidance = page.getByTestId('profile-composition-mode-guidance')
     await expect(guidance).toContainText('当前只支持 1 个视频 + 可选 1 个音频')
@@ -275,5 +355,36 @@ test.describe('local_ffmpeg frontend alignment', () => {
     await expect(summary).toContainText('已完成')
     await expect(summary).toContainText('tmp/compositions/task-931/final.mp4')
     await expect(summary).toContainText('file:///tmp/compositions/task-931/final.mp4')
+  })
+
+  test('guides the next step after task creation and can submit created drafts from task list', async ({ page }) => {
+    await page.goto(`${BASE_URL}/#/task/create`)
+
+    await addMaterial(page, '视频', [0])
+    await addMaterial(page, '音频', [0])
+    await page.getByTestId('task-create-submit').click()
+
+    await page.waitForURL('**/#/task/list')
+    const summary = page.getByTestId('task-list-created-summary')
+    await expect(summary).toContainText('本次创建 1 个任务')
+    await expect(summary).toContainText('待合成 1 个')
+
+    await page.getByTestId('task-list-submit-created-composition').click()
+    await expect(page.getByText('已提交 1 个待合成任务')).toBeVisible()
+    await expect(page.getByRole('cell', { name: '合成中' })).toBeVisible()
+    await expect.poll(async () => page.evaluate(() => (window as typeof window & { getSubmitCompositionCalls: () => number }).getSubmitCompositionCalls())).toBe(1)
+  })
+
+  test('supports one-click composition submission directly from task list row', async ({ page }) => {
+    await page.goto(`${BASE_URL}/#/task/create`)
+    await addMaterial(page, '视频', [0])
+    await page.getByTestId('task-create-submit').click()
+    await page.waitForURL('**/#/task/list')
+
+    await page.getByTestId('task-list-submit-composition-9901').click()
+
+    await expect(page.getByText('已提交合成任务')).toBeVisible()
+    await expect(page.getByRole('cell', { name: '合成中' })).toBeVisible()
+    await expect.poll(async () => page.evaluate(() => (window as typeof window & { getSubmitCompositionCalls: () => number }).getSubmitCompositionCalls())).toBe(1)
   })
 })

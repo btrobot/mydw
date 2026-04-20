@@ -22,6 +22,7 @@ export const terminalTaskStates: ReadonlySet<TaskStatus> = new Set<TaskStatus>([
 
 export function getTaskActionAvailability(status: TaskStatus) {
   return {
+    canSubmitComposition: status === 'draft',
     canRetry: status === 'failed',
     canCancel: !terminalTaskStates.has(status) && status !== 'failed',
   }

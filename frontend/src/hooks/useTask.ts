@@ -18,6 +18,7 @@ import {
   editRetryTaskApiTasksTaskIdEditRetryPost,
   cancelTaskApiTasksTaskIdCancelPost,
   submitCompositionApiTasksTaskIdSubmitCompositionPost,
+  batchSubmitCompositionApiTasksBatchSubmitCompositionPost,
   getCompositionStatusApiTasksTaskIdCompositionStatusGet,
   cancelCompositionApiTasksTaskIdCancelCompositionPost,
 } from '@/api'
@@ -198,6 +199,17 @@ export interface CompositionJobResponse {
   updated_at: string
 }
 
+export interface BatchSubmitCompositionResult {
+  success_count: number
+  failed_count: number
+  results: Array<{
+    task_id: number
+    status: 'submitted' | 'failed'
+    job_id?: number
+    error?: string
+  }>
+}
+
 export const useSubmitComposition = () => {
   const queryClient = useQueryClient()
   return useMutation({
@@ -210,6 +222,22 @@ export const useSubmitComposition = () => {
     onSuccess: (_data, taskId) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
       queryClient.invalidateQueries({ queryKey: ['compositionStatus', taskId] })
+    },
+  })
+}
+
+export const useBatchSubmitComposition = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (taskIds: number[]) => {
+      const response = await batchSubmitCompositionApiTasksBatchSubmitCompositionPost({
+        body: { task_ids: taskIds },
+      })
+      return response.data as unknown as BatchSubmitCompositionResult
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      queryClient.invalidateQueries({ queryKey: ['compositionStatus'] })
     },
   })
 }

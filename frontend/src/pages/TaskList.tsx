@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import dayjs, { type Dayjs } from 'dayjs'
-import { App, Button, Input, Popconfirm, Space, Tag, Tooltip, Typography } from 'antd'
-import { DeleteOutlined, PlusOutlined, ReloadOutlined, StopOutlined } from '@ant-design/icons'
+import { Alert, App, Button, Input, Popconfirm, Space, Tag, Tooltip, Typography } from 'antd'
+import { DeleteOutlined, PlayCircleOutlined, PlusOutlined, ReloadOutlined, StopOutlined } from '@ant-design/icons'
 import { ProTable } from '@ant-design/pro-components'
 import type { ActionType, ProColumns, ProFormInstance } from '@ant-design/pro-components'
 
@@ -10,11 +10,13 @@ import { listTasksApiTasksGet } from '@/api'
 import type { ListTasksApiTasksGetData, TaskKind, TaskResponse, TaskStatus } from '@/api'
 import {
   useAccounts,
+  useBatchSubmitComposition,
   useCancelTask,
   useDeleteAllTasks,
   useDeleteTask,
   useProfiles,
   useRetryTask,
+  useSubmitComposition,
 } from '@/hooks'
 
 import { getTaskActionAvailability, taskKindMeta, taskStatusMeta } from './task/taskPresentation'
@@ -22,6 +24,15 @@ import { getTaskActionAvailability, taskKindMeta, taskStatusMeta } from './task/
 type TaskRow = TaskResponse
 type QueryShape = NonNullable<ListTasksApiTasksGetData['query']>
 type DateRangeValue = [Dayjs, Dayjs]
+type TaskListRouteState = {
+  creationSummary?: {
+    count: number
+    draftTaskIds: number[]
+    readyTaskIds: number[]
+  }
+}
+
+type CreationSummary = NonNullable<TaskListRouteState['creationSummary']>
 
 type QuickFilterKey =
   | 'all'
@@ -316,6 +327,11 @@ export default function TaskList() {
   const deleteAllTasks = useDeleteAllTasks()
   const retryTask = useRetryTask()
   const cancelTask = useCancelTask()
+  const submitComposition = useSubmitComposition()
+  const batchSubmitComposition = useBatchSubmitComposition()
+  const [creationSummary, setCreationSummary] = useState<CreationSummary | null>(
+    (location.state as TaskListRouteState | null)?.creationSummary ?? null,
+  )
 
   const accountValueEnum = useMemo(
     () => Object.fromEntries(accounts.map((account) => [account.id, { text: account.account_name }])),
@@ -354,6 +370,13 @@ export default function TaskList() {
   useEffect(() => {
     syncSearchSnapshot(initialRouteState.searchSnapshot)
   }, [initialRouteState.searchSnapshot, syncSearchSnapshot])
+
+  useEffect(() => {
+    const routeState = location.state as TaskListRouteState | null
+    if (routeState?.creationSummary) {
+      setCreationSummary(routeState.creationSummary)
+    }
+  }, [location.state])
 
   const showTaskActionError = useCallback((error: unknown, fallback: string) => {
     const detail = getErrorDetail(error)
@@ -396,6 +419,36 @@ export default function TaskList() {
       showTaskActionError(error, '取消任务失败')
     }
   }, [cancelTask, message, showTaskActionError])
+
+  const handleSubmitComposition = useCallback(async (taskId: number) => {
+    try {
+      await submitComposition.mutateAsync(taskId)
+      message.success('已提交合成任务')
+      actionRef.current?.reload()
+    } catch (error: unknown) {
+      showTaskActionError(error, '提交合成失败')
+    }
+  }, [message, showTaskActionError, submitComposition])
+
+  const handleSubmitCreatedDrafts = useCallback(async () => {
+    const draftTaskIds = creationSummary?.draftTaskIds ?? []
+    if (draftTaskIds.length === 0) return
+
+    try {
+      const result = await batchSubmitComposition.mutateAsync(draftTaskIds)
+      const failedCount = result.failed_count ?? 0
+      const successCount = result.success_count ?? 0
+      if (failedCount > 0) {
+        message.warning(`已提交 ${successCount} 个待合成任务，${failedCount} 个失败`)
+      } else {
+        message.success(`已提交 ${successCount} 个待合成任务`)
+      }
+      setCreationSummary((prev) => (prev ? { ...prev, draftTaskIds: [] } : prev))
+      actionRef.current?.reload()
+    } catch (error: unknown) {
+      showTaskActionError(error, '批量提交合成失败')
+    }
+  }, [batchSubmitComposition, creationSummary, message, showTaskActionError])
 
   const handleBatchDelete = useCallback(async () => {
     let deletedCount = 0
@@ -598,7 +651,7 @@ export default function TaskList() {
       width: 220,
       hideInSearch: true,
       render: (_, record) => {
-        const { canRetry, canCancel } = getTaskActionAvailability(record.status)
+        const { canSubmitComposition, canRetry, canCancel } = getTaskActionAvailability(record.status)
 
         return (
           <Space size={4}>
@@ -612,6 +665,21 @@ export default function TaskList() {
             >
               查看详情
             </Button>
+            {canSubmitComposition ? (
+              <Button
+                type="link"
+                size="small"
+                icon={<PlayCircleOutlined />}
+                loading={submitComposition.isPending}
+                data-testid={`task-list-submit-composition-${record.id}`}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  void handleSubmitComposition(record.id)
+                }}
+              >
+                提交合成
+              </Button>
+            ) : null}
             {canRetry ? (
               <Button
                 type="link"
@@ -689,18 +757,56 @@ export default function TaskList() {
         return { data: data.items as TaskRow[], success: true, total: data.total }
       }}
       tableExtraRender={() => (
-        <Space wrap>
-          <Typography.Text type="secondary">快捷筛选：</Typography.Text>
-          {quickFilters.map((filter) => (
-            <Button
-              key={filter.key}
-              size="small"
-              type={isPresetActive(searchSnapshot, filter.key) ? 'primary' : 'default'}
-              onClick={() => handleQuickFilter(filter.key)}
-            >
-              {filter.label}
-            </Button>
-          ))}
+        <Space direction="vertical" style={{ width: '100%' }} size={12}>
+          {creationSummary ? (
+            <Alert
+              type="success"
+              showIcon
+              closable
+              data-testid="task-list-created-summary"
+              onClose={() => setCreationSummary(null)}
+              message={`本次创建 ${creationSummary.count} 个任务`}
+              description={(
+                <Space wrap>
+                  <Typography.Text type="secondary">
+                    待合成 {creationSummary.draftTaskIds.length} 个，待上传 {creationSummary.readyTaskIds.length} 个。
+                  </Typography.Text>
+                  {creationSummary.draftTaskIds.length > 0 ? (
+                    <Button
+                      size="small"
+                      type="primary"
+                      icon={<PlayCircleOutlined />}
+                      loading={batchSubmitComposition.isPending}
+                      data-testid="task-list-submit-created-composition"
+                      onClick={() => void handleSubmitCreatedDrafts()}
+                    >
+                      提交本次待合成
+                    </Button>
+                  ) : null}
+                  <Button
+                    size="small"
+                    onClick={() => handleQuickFilter('waitingCompose')}
+                    data-testid="task-list-filter-waiting-compose"
+                  >
+                    查看待合成
+                  </Button>
+                </Space>
+              )}
+            />
+          ) : null}
+          <Space wrap>
+            <Typography.Text type="secondary">快捷筛选：</Typography.Text>
+            {quickFilters.map((filter) => (
+              <Button
+                key={filter.key}
+                size="small"
+                type={isPresetActive(searchSnapshot, filter.key) ? 'primary' : 'default'}
+                onClick={() => handleQuickFilter(filter.key)}
+              >
+                {filter.label}
+              </Button>
+            ))}
+          </Space>
         </Space>
       )}
       rowSelection={{
