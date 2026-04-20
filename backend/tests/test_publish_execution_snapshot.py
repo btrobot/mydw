@@ -2,6 +2,7 @@ import importlib
 import json
 
 import pytest
+from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import selectinload
@@ -180,6 +181,7 @@ async def test_plan_publish_task_creates_snapshot_and_binds_publish_task(
     snapshot = await db_session.get(PublishExecutionSnapshot, result.snapshot_id)
     planned_task = await TaskService(db_session).get_task(result.task_id)
     refreshed_pool_item = await db_session.get(PublishPoolItem, pool_item.id)
+    await db_session.refresh(refreshed_pool_item)
 
     assert snapshot is not None
     assert snapshot.pool_item_id == pool_item.id
@@ -245,3 +247,60 @@ async def test_planning_failure_rolls_back_pool_lock_and_snapshot(
     assert refreshed_pool_item.locked_by_task_id is None
     assert snapshots == []
     assert publish_tasks == []
+
+
+@pytest.mark.asyncio
+async def test_delete_publish_task_releases_pool_lock_and_snapshot(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    active_remote_auth_session,
+) -> None:
+    pool_item, _, _, _, _ = await _seed_publishable_pool_candidate(
+        db_session,
+        suffix="delete-publish-task",
+    )
+    result = await PublishPlannerService(db_session).plan_publish_task(pool_item.id)
+
+    response = await client.delete(f"/api/tasks/{result.task_id}")
+
+    assert response.status_code == 204
+    assert await db_session.get(Task, result.task_id) is None
+
+    snapshot = (
+        await db_session.execute(
+            select(PublishExecutionSnapshot).where(PublishExecutionSnapshot.task_id == result.task_id)
+        )
+    ).scalar_one_or_none()
+    refreshed_pool_item = await db_session.get(PublishPoolItem, pool_item.id)
+    await db_session.refresh(refreshed_pool_item)
+
+    assert snapshot is None
+    assert refreshed_pool_item is not None
+    assert refreshed_pool_item.locked_by_task_id is None
+    assert refreshed_pool_item.locked_at is None
+
+
+@pytest.mark.asyncio
+async def test_delete_source_task_returns_conflict_when_publish_plan_depends_on_it(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    active_remote_auth_session,
+) -> None:
+    pool_item, source_task, _, _, _ = await _seed_publishable_pool_candidate(
+        db_session,
+        suffix="delete-source-task",
+    )
+    result = await PublishPlannerService(db_session).plan_publish_task(pool_item.id)
+
+    response = await client.delete(f"/api/tasks/{source_task.id}")
+
+    assert response.status_code == 409
+    assert "发布规划引用" in response.json()["detail"]
+    assert await db_session.get(Task, source_task.id) is not None
+
+    snapshot = await db_session.get(PublishExecutionSnapshot, result.snapshot_id)
+    refreshed_pool_item = await db_session.get(PublishPoolItem, pool_item.id)
+
+    assert snapshot is not None
+    assert refreshed_pool_item is not None
+    assert refreshed_pool_item.locked_by_task_id == result.task_id

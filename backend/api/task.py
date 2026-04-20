@@ -18,7 +18,7 @@ from schemas import (
     TaskPublishRequest, TaskBatchCreateRequest, AssembleTasksRequest,
     BatchAssembleRequest, CompositionJobResponse, TaskCreateRequest,
 )
-from services.task_service import TaskService
+from services.task_service import TaskDeleteConflictError, TaskService
 from services.task_distributor import TaskDistributor
 from services.scheduler import scheduler
 from services.composition_service import CompositionService
@@ -325,7 +325,10 @@ async def update_task(
 async def delete_task(task_id: int, db: AsyncSession = Depends(get_db)):
     """删除任务"""
     service = TaskService(db)
-    success = await service.delete_task(task_id)
+    try:
+        success = await service.delete_task(task_id)
+    except TaskDeleteConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     if not success:
         raise HTTPException(status_code=404, detail="任务不存在")
     return None
@@ -338,7 +341,10 @@ async def delete_all_tasks(
 ):
     """清空所有任务"""
     service = TaskService(db)
-    await service.delete_all_tasks(status)
+    try:
+        await service.delete_all_tasks(status)
+    except TaskDeleteConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return None
 
 
