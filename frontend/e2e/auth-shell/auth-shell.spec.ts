@@ -40,22 +40,22 @@ const STATUS_EXPECTATIONS = {
   revoked: {
     path: '/#/auth/revoked',
     title: '访问权限已失效',
-    description: '当前账号的应用访问权限已失效，请联系管理员恢复权限后再登录。',
+    description: '当前账号的应用访问权限已失效，请联系管理员恢复后再登录。',
   },
   device_mismatch: {
     path: '/#/auth/device-mismatch',
     title: '当前设备未通过校验',
-    description: '请退出后重新登录；若问题持续，请联系管理员重新绑定设备。',
+    description: '请退出后重新登录；如果问题持续，请联系管理员重新绑定设备。',
   },
   expired: {
     path: '/#/auth/expired',
     title: '登录已过期',
-    description: '当前登录已过期，请重新登录继续使用。',
+    description: '当前登录已过期，请重新登录后继续使用。',
   },
   grace: {
     path: '/#/auth/grace',
     title: '宽限模式',
-    description: '当前网络或授权服务暂不可用，你仍可查看已有内容，但受保护操作会受限。',
+    description: '当前授权服务暂不可用，你仍可查看已有内容，但受保护操作会受到限制。',
   },
 } as const
 
@@ -165,7 +165,7 @@ test.describe('Auth shell pages', () => {
       await expect(page.getByTestId(`auth-status-${variant}`)).toBeVisible()
       await expect(page.getByTestId('auth-status-primary-alert')).toContainText(STATUS_EXPECTATIONS[variant].title)
       await expect(page.getByTestId('auth-status-primary-alert')).toContainText(STATUS_EXPECTATIONS[variant].description)
-      await expect(page.getByTestId(`auth-status-live-${variant}`)).toContainText('实时状态补充')
+      await expect(page.getByTestId(`auth-status-live-${variant}`)).toHaveCount(0)
 
       const actions = page.getByTestId('auth-status-actions').getByRole('button')
       await expect(actions).toHaveCount(1)
@@ -186,7 +186,7 @@ test.describe('Auth shell pages', () => {
     await expect(page.getByTestId('auth-status-grace')).toBeVisible()
     await expect(page.getByTestId('auth-status-primary-alert')).toContainText(STATUS_EXPECTATIONS.grace.title)
     await expect(page.getByTestId('auth-status-primary-alert')).toContainText(STATUS_EXPECTATIONS.grace.description)
-    await expect(page.getByTestId('auth-status-live-grace')).toContainText('实时状态补充')
+    await expect(page.getByTestId('auth-status-live-grace')).toHaveCount(0)
 
     const actions = page.getByTestId('auth-status-actions').getByRole('button')
     await expect(actions).toHaveCount(2)

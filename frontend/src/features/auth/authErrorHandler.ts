@@ -40,6 +40,26 @@ export interface AuthBootstrapCopy {
   retryingLabel: string
 }
 
+export type AuthStatusVariant = 'revoked' | 'device_mismatch' | 'expired' | 'grace'
+
+export interface AuthStatusPageCopy {
+  descriptor: AuthErrorDescriptor
+  loadingTitle: string
+  loadingDescription: string
+  refreshErrorTitle: string
+  refreshErrorDescription: string
+  diagnosticsLabel: string
+  diagnosticsDescription: string
+  emptyDiagnosticsText: string
+  continueLabel?: string
+  signoutLabel: string
+}
+
+export interface AuthRouteCopy {
+  graceBannerTitle: string
+  graceBannerDescription: string
+}
+
 type BackendErrorLike = {
   response?: {
     data?: {
@@ -83,6 +103,11 @@ export const AUTH_BOOTSTRAP_COPY: AuthBootstrapCopy = {
   errorDescription: '你仍可进入登录页继续尝试；如果问题持续，请稍后重新检查登录环境。',
   retryLabel: '重新检查',
   retryingLabel: '重新检查中…',
+}
+
+export const AUTH_ROUTE_COPY: AuthRouteCopy = {
+  graceBannerTitle: '当前处于宽限模式',
+  graceBannerDescription: '当前网络或授权服务暂不可用，你仍可查看已有内容，但受保护操作会受限。',
 }
 
 const STATE_MESSAGES: Record<AuthState, Omit<AuthErrorDescriptor, 'retryLabel'>> = {
@@ -168,6 +193,36 @@ const DENIAL_REASON_HINTS: Record<string, string> = {
   transport_error: '当前授权服务连接异常，请稍后重试。',
 }
 
+const AUTH_STATUS_PAGE_SHARED_COPY = {
+  loadingTitle: '正在刷新授权状态',
+  loadingDescription: '正在同步最新的设备授权结果，请稍候。',
+  refreshErrorTitle: '授权状态暂时无法刷新',
+  refreshErrorDescription: '当前页面保留最近一次会话信息，请稍后重试。',
+  diagnosticsLabel: '查看会话与诊断信息',
+  diagnosticsDescription: '以下信息仅用于说明当前设备会话状态，不影响下方主操作路径。',
+  emptyDiagnosticsText: '当前授权会话需要重新确认。',
+  signoutLabel: '退出登录并返回登录页',
+} satisfies Omit<AuthStatusPageCopy, 'descriptor' | 'continueLabel'>
+
+const createHardStopStatusPageCopy = (descriptor: AuthErrorDescriptor): AuthStatusPageCopy => ({
+  descriptor,
+  ...AUTH_STATUS_PAGE_SHARED_COPY,
+})
+
+const AUTH_STATUS_PAGE_COPY: Record<AuthStatusVariant, AuthStatusPageCopy> = {
+  revoked: createHardStopStatusPageCopy(STATE_MESSAGES.revoked),
+  device_mismatch: createHardStopStatusPageCopy(STATE_MESSAGES.device_mismatch),
+  expired: createHardStopStatusPageCopy(STATE_MESSAGES.expired),
+  grace: {
+    ...AUTH_STATUS_PAGE_SHARED_COPY,
+    descriptor: {
+      ...STATE_MESSAGES.authenticated_grace,
+      severity: 'info',
+    },
+    continueLabel: '继续进入工作台',
+  },
+}
+
 export const getAuthStateDescriptor = (
   input?: Pick<LocalAuthSessionSummary, 'auth_state' | 'denial_reason'> | Pick<AuthStatusResponse, 'auth_state' | 'denial_reason'> | null
 ): AuthErrorDescriptor | null => {
@@ -209,3 +264,6 @@ export const getBootstrapErrorDescriptor = (_error: unknown): AuthErrorDescripto
   severity: 'warning',
   retryLabel: AUTH_BOOTSTRAP_COPY.retryLabel,
 })
+
+export const getAuthStatusPageCopy = (variant: AuthStatusVariant): AuthStatusPageCopy =>
+  AUTH_STATUS_PAGE_COPY[variant]

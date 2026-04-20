@@ -3,46 +3,13 @@ import { useMutation } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 
-import AuthErrorMessage from './AuthErrorMessage'
 import { useAuth } from './AuthProvider'
-import { getAuthStateDescriptor } from './authErrorHandler'
+import { getAuthStatusPageCopy, type AuthStatusVariant } from './authErrorHandler'
 import { logoutAuth } from './api'
 import { useAuthStatus } from './useAuthStatus'
 
-type AuthStatusVariant = 'revoked' | 'device_mismatch' | 'expired' | 'grace'
-
 interface AuthStatusPageProps {
   variant: AuthStatusVariant
-}
-
-const STATUS_CONTENT: Record<
-  AuthStatusVariant,
-  {
-    title: string
-    description: string
-    type: 'warning' | 'error' | 'info'
-  }
-> = {
-  revoked: {
-    title: '访问权限已失效',
-    description: '当前账号的应用访问权限已失效，请联系管理员恢复权限后再登录。',
-    type: 'error',
-  },
-  device_mismatch: {
-    title: '当前设备未通过校验',
-    description: '请退出后重新登录；若问题持续，请联系管理员重新绑定设备。',
-    type: 'error',
-  },
-  expired: {
-    title: '登录已过期',
-    description: '当前登录已过期，请重新登录继续使用。',
-    type: 'warning',
-  },
-  grace: {
-    title: '宽限模式',
-    description: '当前网络或授权服务暂不可用，你仍可查看已有内容，但受保护操作会受限。',
-    type: 'info',
-  },
 }
 
 export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
@@ -52,13 +19,9 @@ export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
   const [redirectToLogin, setRedirectToLogin] = useState(false)
   const authStatusQuery = useAuthStatus(true)
 
-  const content = useMemo(() => STATUS_CONTENT[variant], [variant])
+  const copy = useMemo(() => getAuthStatusPageCopy(variant), [variant])
   const isGraceVariant = variant === 'grace'
   const liveSession = authStatusQuery.data ?? session
-  const liveDescriptor = useMemo(
-    () => getAuthStateDescriptor(liveSession),
-    [liveSession],
-  )
   const diagnosticRows = useMemo(() => {
     if (!liveSession) {
       return []
@@ -105,44 +68,36 @@ export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
       }}
     >
       <Card
-        title={content.title}
+        title={copy.descriptor.title}
         style={{ width: 560, maxWidth: '100%' }}
         data-testid={`auth-status-${variant}`}
       >
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           <Alert
-            type={content.type}
+            type={copy.descriptor.severity}
             showIcon
             data-testid="auth-status-primary-alert"
-            message={content.title}
-            description={content.description}
+            message={copy.descriptor.title}
+            description={copy.descriptor.description}
           />
 
           {authStatusQuery.isLoading ? (
             <Alert
               type="info"
               showIcon
-              message="正在刷新授权状态"
-              description="正在同步最新设备授权结果，请稍候。"
+              message={copy.loadingTitle}
+              description={copy.loadingDescription}
             />
           ) : null}
 
-          {authStatusQuery.isError && !liveDescriptor ? (
+          {authStatusQuery.isError ? (
             <Alert
               type="warning"
               showIcon
-              message="授权状态暂时无法刷新"
-              description="当前页面保留最近一次会话信息，请稍后重试。"
+              message={copy.refreshErrorTitle}
+              description={copy.refreshErrorDescription}
             />
           ) : null}
-
-          {liveDescriptor && (
-            <AuthErrorMessage
-              descriptor={liveDescriptor}
-              label="实时状态补充"
-              testId={`auth-status-live-${variant}`}
-            />
-          )}
 
           <Collapse
             bordered={false}
@@ -150,11 +105,11 @@ export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
             items={[
               {
                 key: 'diagnostics',
-                label: <span data-testid="auth-status-diagnostics-trigger">查看会话与诊断信息</span>,
+                label: <span data-testid="auth-status-diagnostics-trigger">{copy.diagnosticsLabel}</span>,
                 children: (
                   <div data-testid="auth-status-session-meta">
                     <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
-                      以下信息仅用于说明当前设备会话状态，不影响下方主操作路径。
+                      {copy.diagnosticsDescription}
                     </Typography.Paragraph>
                     {diagnosticRows.length > 0 ? (
                       <Space direction="vertical" size={4}>
@@ -165,7 +120,7 @@ export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
                         ))}
                       </Space>
                     ) : (
-                      <Typography.Text type="secondary">当前授权会话需要重新确认。</Typography.Text>
+                      <Typography.Text type="secondary">{copy.emptyDiagnosticsText}</Typography.Text>
                     )}
                   </div>
                 ),
@@ -177,14 +132,14 @@ export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
             {isGraceVariant ? (
               <>
                 <Button type="primary" onClick={() => navigate('/creative/workbench')}>
-                  继续进入工作台
+                  {copy.continueLabel}
                 </Button>
                 <Button
                   onClick={() => logoutMutation.mutate()}
                   loading={logoutMutation.isPending}
                   data-testid="auth-status-signout-button"
                 >
-                  退出登录并返回登录页
+                  {copy.signoutLabel}
                 </Button>
               </>
             ) : (
@@ -194,7 +149,7 @@ export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
                 loading={logoutMutation.isPending}
                 data-testid="auth-status-signout-button"
               >
-                退出登录并返回登录页
+                {copy.signoutLabel}
               </Button>
             )}
           </Space>

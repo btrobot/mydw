@@ -174,8 +174,7 @@ test.describe('Auth error UX', () => {
     await page.goto(`${BASE_URL}/#/auth/revoked`, { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('auth-status-revoked')).toBeVisible()
     await expect(page.getByTestId('auth-status-primary-alert')).toContainText('访问权限已失效')
-    await expect(page.getByTestId('auth-status-live-revoked')).toBeVisible()
-    await expect(page.getByTestId('auth-status-live-revoked')).toContainText('实时状态补充')
+    await expect(page.getByTestId('auth-status-live-revoked')).toHaveCount(0)
     await expect(page.getByTestId('auth-status-actions').getByRole('button')).toHaveCount(1)
     await expect(page.getByTestId('auth-status-signout-button')).toHaveText('退出登录并返回登录页')
     await expect(page.getByTestId('auth-status-session-meta')).not.toBeVisible()
@@ -230,7 +229,7 @@ test.describe('Auth error UX', () => {
 
     await page.goto(`${BASE_URL}/#/auth/grace`, { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('auth-status-primary-alert')).toContainText('宽限模式')
-    await expect(page.getByTestId('auth-status-live-grace')).toContainText('实时状态补充')
+    await expect(page.getByTestId('auth-status-live-grace')).toHaveCount(0)
     await expect(page.getByTestId('auth-status-actions').getByRole('button')).toHaveCount(2)
     await expect(page.getByRole('button', { name: '继续进入工作台' })).toBeVisible()
     await expect(page.getByTestId('auth-status-signout-button')).toHaveText('退出登录并返回登录页')

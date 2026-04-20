@@ -4,14 +4,15 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import LayoutComponent from '@/components/Layout'
 
 import { useAuth } from './AuthProvider'
+import { AUTH_ROUTE_COPY } from './authErrorHandler'
 
 const GraceBanner = () => (
   <div style={{ padding: '16px 16px 0' }} data-testid="auth-grace-banner">
     <Alert
       type="warning"
       showIcon
-      message="当前处于宽限模式"
-      description="当前网络或授权服务暂不可用，你仍可查看已有内容，但受保护操作会受限。"
+      message={AUTH_ROUTE_COPY.graceBannerTitle}
+      description={AUTH_ROUTE_COPY.graceBannerDescription}
     />
   </div>
 )
