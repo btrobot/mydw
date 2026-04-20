@@ -18,6 +18,7 @@ from models import (
     Copywriting,
     Cover,
     CreativeItem,
+    CreativeInputSnapshot,
     CreativeVersion,
     PublishProfile,
     Task,
@@ -90,6 +91,7 @@ class CreativeService:
             .limit(limit)
             .options(
                 selectinload(CreativeItem.input_profile),
+                selectinload(CreativeItem.input_snapshot_record),
                 selectinload(CreativeItem.tasks).selectinload(Task.profile),
                 selectinload(CreativeItem.publish_pool_items),
             )
@@ -121,17 +123,18 @@ class CreativeService:
         )
         await self._sync_pre_compose_status(creative)
         await self.db.commit()
+        input_snapshot = self._build_input_snapshot_response(creative)
         logger.info(
             "event_name=creative_flow_entry_new creative_item_id={} snapshot_hash={} profile_id={} material_counts={} account_mode=creative_only",
             creative.id,
-            creative.input_snapshot_hash,
-            creative.input_profile_id,
+            input_snapshot.snapshot_hash,
+            input_snapshot.profile_id,
             {
-                "videos": len(self._decode_id_list(creative.input_video_ids)),
-                "copywritings": len(self._decode_id_list(creative.input_copywriting_ids)),
-                "covers": len(self._decode_id_list(creative.input_cover_ids)),
-                "audios": len(self._decode_id_list(creative.input_audio_ids)),
-                "topics": len(self._decode_id_list(creative.input_topic_ids)),
+                "videos": len(input_snapshot.video_ids),
+                "copywritings": len(input_snapshot.copywriting_ids),
+                "covers": len(input_snapshot.cover_ids),
+                "audios": len(input_snapshot.audio_ids),
+                "topics": len(input_snapshot.topic_ids),
             },
         )
         return await self.get_creative_detail(creative.id)  # type: ignore[return-value]
@@ -368,6 +371,7 @@ class CreativeService:
             .execution_options(populate_existing=True)
             .options(
                 selectinload(CreativeItem.input_profile),
+                selectinload(CreativeItem.input_snapshot_record),
                 selectinload(CreativeItem.current_version).selectinload(CreativeVersion.package_records),
                 selectinload(CreativeItem.current_version).selectinload(CreativeVersion.check_records),
                 selectinload(CreativeItem.versions).selectinload(CreativeVersion.package_records),
@@ -584,14 +588,15 @@ class CreativeService:
         return CreativeStatus.PENDING_INPUT
 
     def _build_input_snapshot_response(self, creative: CreativeItem) -> CreativeInputSnapshotResponse:
+        snapshot = self._extract_input_snapshot(creative)
         return CreativeInputSnapshotResponse(
-            profile_id=creative.input_profile_id,
-            video_ids=self._decode_id_list(creative.input_video_ids),
-            copywriting_ids=self._decode_id_list(creative.input_copywriting_ids),
-            cover_ids=self._decode_id_list(creative.input_cover_ids),
-            audio_ids=self._decode_id_list(creative.input_audio_ids),
-            topic_ids=self._decode_id_list(creative.input_topic_ids),
-            snapshot_hash=creative.input_snapshot_hash,
+            profile_id=snapshot["profile_id"],
+            video_ids=snapshot["video_ids"],
+            copywriting_ids=snapshot["copywriting_ids"],
+            cover_ids=snapshot["cover_ids"],
+            audio_ids=snapshot["audio_ids"],
+            topic_ids=snapshot["topic_ids"],
+            snapshot_hash=snapshot["snapshot_hash"],
         )
 
     def _build_latest_task_summary(self, task: Optional[Task]) -> Optional[CreativeLatestTaskSummaryResponse]:
@@ -754,13 +759,7 @@ class CreativeService:
         audio_ids: list[int],
         topic_ids: list[int],
     ) -> None:
-        creative.input_profile_id = profile_id
-        creative.input_video_ids = self._encode_id_list(video_ids)
-        creative.input_copywriting_ids = self._encode_id_list(copywriting_ids)
-        creative.input_cover_ids = self._encode_id_list(cover_ids)
-        creative.input_audio_ids = self._encode_id_list(audio_ids)
-        creative.input_topic_ids = self._encode_id_list(topic_ids)
-        creative.input_snapshot_hash = self._build_snapshot_hash(
+        snapshot_hash = self._build_snapshot_hash(
             profile_id=profile_id,
             video_ids=video_ids,
             copywriting_ids=copywriting_ids,
@@ -768,9 +767,42 @@ class CreativeService:
             audio_ids=audio_ids,
             topic_ids=topic_ids,
         )
+        creative.input_profile_id = profile_id
+        creative.input_video_ids = self._encode_id_list(video_ids)
+        creative.input_copywriting_ids = self._encode_id_list(copywriting_ids)
+        creative.input_cover_ids = self._encode_id_list(cover_ids)
+        creative.input_audio_ids = self._encode_id_list(audio_ids)
+        creative.input_topic_ids = self._encode_id_list(topic_ids)
+        creative.input_snapshot_hash = snapshot_hash
+        snapshot_record = creative.__dict__.get("input_snapshot_record")
+        if snapshot_record is None:
+            snapshot_record = CreativeInputSnapshot(creative_item=creative)
+            self.db.add(snapshot_record)
+            creative.input_snapshot_record = snapshot_record
+        snapshot_record.profile_id = profile_id
+        snapshot_record.video_ids = self._encode_id_list(video_ids)
+        snapshot_record.copywriting_ids = self._encode_id_list(copywriting_ids)
+        snapshot_record.cover_ids = self._encode_id_list(cover_ids)
+        snapshot_record.audio_ids = self._encode_id_list(audio_ids)
+        snapshot_record.topic_ids = self._encode_id_list(topic_ids)
+        snapshot_record.snapshot_hash = snapshot_hash
+        snapshot_record.updated_at = utc_now_naive()
+        snapshot_record.__dict__.pop("profile", None)
+        creative.__dict__.pop("input_profile", None)
         creative.updated_at = utc_now_naive()
 
     def _extract_input_snapshot(self, creative: CreativeItem) -> dict[str, Any]:
+        snapshot_record = creative.__dict__.get("input_snapshot_record")
+        if snapshot_record is not None:
+            return {
+                "profile_id": snapshot_record.profile_id,
+                "video_ids": self._decode_id_list(snapshot_record.video_ids),
+                "copywriting_ids": self._decode_id_list(snapshot_record.copywriting_ids),
+                "cover_ids": self._decode_id_list(snapshot_record.cover_ids),
+                "audio_ids": self._decode_id_list(snapshot_record.audio_ids),
+                "topic_ids": self._decode_id_list(snapshot_record.topic_ids),
+                "snapshot_hash": snapshot_record.snapshot_hash,
+            }
         return {
             "profile_id": creative.input_profile_id,
             "video_ids": self._decode_id_list(creative.input_video_ids),
@@ -778,6 +810,7 @@ class CreativeService:
             "cover_ids": self._decode_id_list(creative.input_cover_ids),
             "audio_ids": self._decode_id_list(creative.input_audio_ids),
             "topic_ids": self._decode_id_list(creative.input_topic_ids),
+            "snapshot_hash": creative.input_snapshot_hash,
         }
 
     def _build_snapshot_hash(

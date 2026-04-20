@@ -102,6 +102,50 @@ async def test_migration_031_creative_snapshot_columns_are_additive() -> None:
         await engine.dispose()
 
 
+@pytest.mark.asyncio
+async def test_migration_032_creative_input_snapshot_layer_is_additive() -> None:
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+    try:
+        async with engine.begin() as conn:
+            await conn.exec_driver_sql(
+                """
+                CREATE TABLE tasks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    account_id INTEGER NOT NULL,
+                    status VARCHAR(32) DEFAULT 'draft'
+                )
+                """
+            )
+            await conn.exec_driver_sql(
+                """
+                CREATE TABLE publish_profiles (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name VARCHAR(128) NOT NULL
+                )
+                """
+            )
+
+        migration_024 = importlib.import_module("migrations.024_creative_phase_a_skeleton")
+        migration_031 = importlib.import_module("migrations.031_creative_workdriven_phase1")
+        migration_032 = importlib.import_module("migrations.032_creative_input_snapshot_layer")
+        await migration_024.run_migration(engine)
+        await migration_031.run_migration(engine)
+        await migration_032.run_migration(engine)
+        await migration_032.run_migration(engine)
+
+        async with engine.begin() as conn:
+            tables = {
+                row[0]
+                for row in (await conn.exec_driver_sql(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                )).fetchall()
+            }
+
+        assert "creative_input_snapshots" in tables
+    finally:
+        await engine.dispose()
+
+
 def test_phase_a_task_write_contracts_do_not_expose_task_kind() -> None:
     assert "task_kind" not in TaskCreateRequest.model_fields
     assert "task_kind" not in TaskUpdate.model_fields
