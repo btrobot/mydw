@@ -1,8 +1,26 @@
 # 下一阶段执行分解（Next-Phase Execution Breakdown）
 
-> Version: 1.0.0 | Updated: 2026-04-21  
+> Version: 1.1.0 | Updated: 2026-04-21  
 > Owner: Tech Lead / Codex  
 > Status: Active planning artifact
+
+> 本文件是下一阶段启动包中的**执行顺序**文档。  
+> 它回答：**下一步先做什么、按什么 PR sequence 推进、每个 PR 出口在哪里。**
+
+## 0. 在启动包中的角色
+
+执行前先确认以下前提已经成立：
+
+- `docs/governance/phase-transition-checklist.md` 已完成 Part A / Part B
+- `docs/current/next-phase-kickoff.md` 已确认当前唯一主线
+- `docs/governance/next-phase-prd.md` 已锁定范围与成功标准
+- `docs/governance/next-phase-test-spec.md` 已锁定对应验证口径
+
+使用规则：
+
+1. 本文件只负责 **顺序与切片**，不单独决定范围或验证
+2. 如果要调整 PR 顺序，先改本文件，再检查 PRD / test spec 是否仍成立
+3. 每个 PR 完成后，都要同步更新相关 docs 与测试，而不是把收口留到最后一次性处理
 
 ## 1. 执行模型
 
@@ -13,6 +31,15 @@
 本阶段按一条主线拆成多个可验证 PR，而不是同时并行推进多个大方向。
 
 ## 2. PR Sequence
+
+先给出一张总表，避免执行时只看到“PR 名称”看不到出口：
+
+| PR | 目标 | 主要验证出口 | 需要同步更新 |
+| --- | --- | --- | --- |
+| PR-1 | Workbench 可管理性收口 | workbench 相关 E2E / 手工主链路 | kickoff（若边界变化）、PRD（若范围变化）、test spec（若验证面变化） |
+| PR-2 | 业务层 / 诊断层分层 | creative-review / publish-pool / workbench 相关验证 | page spec / domain doc / test spec |
+| PR-3 | 文案与四态统一 | targeted E2E + 手工四态核对 | 文案相关 spec / baseline / test spec |
+| PR-4 | 回归补强与阶段收口 | baseline + full closeout gate | closeout / backlog / phase-transition checklist 对应收口产物 |
 
 ## PR-1 — Workbench 可管理性收口
 
@@ -32,6 +59,7 @@
 
 - 常见待处理内容可快速定位
 - 不依赖手工滚列表找内容
+- 若引入了新的过滤/排序行为，需要同步更新 `docs/governance/next-phase-test-spec.md`
 
 ## PR-2 — 业务层 / 诊断层分层
 
@@ -50,6 +78,7 @@
 
 - 默认工作台与详情页不再带明显“验收台/诊断台”气质
 - 研发仍可通过高级诊断入口拿到必要信息
+- 若改变默认业务层边界，需要同步更新相关 domain/page docs
 
 ## PR-3 — 文案与四态统一
 
@@ -70,6 +99,7 @@
 
 - 主路径不再依赖说明性 Alert 解释页面角色
 - 文案策略一致
+- 若四态或 CTA 标准变化，需要同步更新 `docs/governance/next-phase-test-spec.md`
 
 ## PR-4 — 回归补强与阶段收口
 
@@ -88,6 +118,7 @@
 
 - 本阶段 test spec 覆盖的最小集合为绿
 - 可以平滑进入下一条 P1 主线（AIClip 产品化）
+- 产出至少一种 closeout / summary / audit / report，并能回填 `docs/governance/phase-transition-checklist.md` 的 Part A 收口语义
 
 ## 3. 不在本 sequence 首批处理的内容
 

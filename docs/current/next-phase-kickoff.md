@@ -1,10 +1,31 @@
 # 下一阶段启动包（Next-Phase Kickoff）
 
-> Version: 1.0.0 | Updated: 2026-04-21  
+> Version: 1.1.0 | Updated: 2026-04-21  
 > Owner: Tech Lead / Codex  
 > Status: Active
 
 > 目的：把本轮收口结果变成一个新的开发起点，让后续开发者或 agent 不必重新做一遍盘点，就能知道现在从哪里开始。
+>
+> **本文件是“下一阶段启动包”的总入口。**  
+> 阶段切换先看 `docs/governance/phase-transition-checklist.md`，确认能不能切；  
+> 真正开始执行时，再从本文件进入 `next-phase PRD`、`next-phase test spec`、`next-phase execution breakdown`。
+
+## 0. 这份启动包怎么用
+
+建议按下面顺序使用，而不是四份文档分散阅读：
+
+1. 先用 `docs/governance/phase-transition-checklist.md` 确认 **Part A 当前阶段已收口**、**Part B 下一阶段可启动**
+2. 再读本文件，确认当前基线、边界、主线和 backlog 入口
+3. 进入 `docs/governance/next-phase-prd.md`，锁定“为什么做 / 做什么 / 什么不做 / 何为完成”
+4. 进入 `docs/governance/next-phase-test-spec.md`，锁定“如何证明本阶段完成”
+5. 最后进入 `docs/governance/next-phase-execution-breakdown.md`，按 PR sequence 执行
+
+执行中的维护规则：
+
+- **主线变化**：先改 kickoff + PRD，再决定是否调整 test spec / breakdown
+- **验证变化**：先改 test spec，再同步 kickoff / breakdown
+- **执行顺序变化**：先改 breakdown，再确认 PRD / test spec 是否仍成立
+- **阶段完成**：回到 `phase-transition-checklist` 做下一轮 Part A 收口
 
 ## 1. 先说结论
 
@@ -123,19 +144,33 @@
 - Test Spec：`docs/governance/next-phase-test-spec.md`
 - Execution Breakdown：`docs/governance/next-phase-execution-breakdown.md`
 
+四份文档的职责分工：
+
+| 文档 | 作用 | 什么时候更新 |
+| --- | --- | --- |
+| `docs/current/next-phase-kickoff.md` | 启动总入口；回答“现在从哪里开始” | 主线、边界、启动方式变化时 |
+| `docs/governance/next-phase-prd.md` | 范围与成功标准；回答“为什么做、做到哪里算完成” | 范围、目标、非目标变化时 |
+| `docs/governance/next-phase-test-spec.md` | 验证规格；回答“怎么证明这阶段完成” | 验证面、测试命令、验收口径变化时 |
+| `docs/governance/next-phase-execution-breakdown.md` | PR sequence；回答“下一步先做什么、按什么顺序做” | PR 切片、顺序、退出条件变化时 |
+
+规则：
+
+> **kickoff 是总入口，但不是单独真相；启动包必须四份一起使用。**
+
 ## 9. 推荐阅读顺序
 
 如果你是下一位继续开发的人，建议直接按下面顺序进入：
 
 1. `docs/current/architecture.md`
 2. `docs/current/runtime-truth.md`
-3. `docs/guides/dev-guide.md`
-4. `docs/governance/verification-baseline.md`
-5. `docs/governance/next-phase-backlog.md`
-6. `docs/current/next-phase-kickoff.md`
-7. `docs/governance/next-phase-prd.md`
-8. `docs/governance/next-phase-test-spec.md`
-9. `docs/governance/next-phase-execution-breakdown.md`
+3. `docs/governance/phase-transition-checklist.md`
+4. `docs/guides/dev-guide.md`
+5. `docs/governance/verification-baseline.md`
+6. `docs/governance/next-phase-backlog.md`
+7. `docs/current/next-phase-kickoff.md`
+8. `docs/governance/next-phase-prd.md`
+9. `docs/governance/next-phase-test-spec.md`
+10. `docs/governance/next-phase-execution-breakdown.md`
 
 ## 10. 一句话启动指令
 

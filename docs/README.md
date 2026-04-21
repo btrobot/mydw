@@ -13,7 +13,7 @@
 5. `docs/governance/authority-matrix.md` — 文档职责边界
 6. `docs/guides/dev-guide.md` — 开发环境与启动流程
 7. `docs/governance/verification-baseline.md` — 最小可信回归基线
-8. `docs/current/next-phase-kickoff.md` — 下一阶段启动入口
+8. `docs/current/next-phase-kickoff.md` — 下一阶段启动入口 / 启动包总入口
 9. `docs/governance/inventory-ledger.md` — 当前文档/资料簇分类台账
 10. `docs/governance/runtime-local-artifact-policy.md` — 运行时 / 本地 agent 资产边界说明
 11. `docs/governance/omx-plan-retention.md` — `.omx/plans` 活跃/归档分类规则
@@ -46,7 +46,7 @@
 - `docs/governance/post-mvp-development-model.md`（MVP 后开发治理模型）
 - `docs/governance/phase-transition-checklist.md`（阶段切换执行清单）
 - `docs/governance/next-phase-backlog.md`（压缩后的 open issues / next-phase backlog）
-- `docs/governance/next-phase-prd.md` / `docs/governance/next-phase-test-spec.md` / `docs/governance/next-phase-execution-breakdown.md`（下一阶段启动包的规划/验证/执行分解）
+- `docs/governance/next-phase-prd.md` / `docs/governance/next-phase-test-spec.md` / `docs/governance/next-phase-execution-breakdown.md`（下一阶段启动包的范围/验证/执行分解，需与 kickoff 一起使用）
 - `docs/governance/omx-plan-retention.md`（`.omx/plans` 活跃计划与 archive 的分流规则）
 - 专题设计说明（如 settings、topic、task semantics、generation governance）
 - `docs/adr/` 中的决策记录

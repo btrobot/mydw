@@ -1,8 +1,26 @@
 # 下一阶段 Test Spec（Next-Phase Test Spec）
 
-> Version: 1.0.0 | Updated: 2026-04-21  
+> Version: 1.1.0 | Updated: 2026-04-21  
 > Owner: Tech Lead / Codex  
 > Status: Active planning artifact
+
+> 本文件是下一阶段启动包中的**完成证明**文档。  
+> 它回答：**这条主线做完以后，要靠什么验证才能算真的完成。**
+
+## 0. 在启动包中的角色
+
+本文件与以下文档一起构成启动包：
+
+- 入口：`docs/current/next-phase-kickoff.md`
+- 范围定义：`docs/governance/next-phase-prd.md`
+- 执行顺序：`docs/governance/next-phase-execution-breakdown.md`
+- 当前验证总基线：`docs/governance/verification-baseline.md`
+
+使用规则：
+
+1. kickoff 确认主线后，先读 PRD，再用本文件锁验证口径
+2. 若新增/删减验证面，必须先改本文件，再允许执行顺序继续推进
+3. 若某项工作无法映射到本文件中的通过标准，应先判断它是不是误入主线
 
 ## 1. 适用范围
 
@@ -71,6 +89,15 @@ npm run test:e2e -- `
 - `frontend/e2e/creative-review/`
 - 如有必要补充 `frontend/e2e/dashboard/` 或 `auth-*` 现有 suite
 
+## 3.4 与 PR Sequence 的映射
+
+| PR | 必须证明什么 | 最小验证 |
+| --- | --- | --- |
+| PR-1 — Workbench 可管理性收口 | 列表可定位、可筛选、可排序、可控规模 | workbench E2E + 必要手工链路 |
+| PR-2 — 业务层 / 诊断层分层 | 默认业务视图不再承担过量诊断信息 | creative-review / publish-pool / workbench 相关 E2E |
+| PR-3 — 文案与四态统一 | CTA、文案、loading/empty/error/success 四态一致 | 相关页面 targeted E2E + 手工核对 |
+| PR-4 — 回归补强与阶段收口 | 新主线被 regression baseline 接住 | backend/contract baseline + frontend baseline + 手工链路 |
+
 ## 4. 手工验证链路
 
 每个阶段收口前至少人工确认：
@@ -97,3 +124,14 @@ npm run test:e2e -- `
 - 默认页面继续暴露过量诊断信息
 - 文案统一后引入明显信息回退
 - Creative-first 主入口 / detail / publish-pool 回归
+
+## 7. 与启动包的关系
+
+本文件不负责定义“做什么”，那是 `docs/governance/next-phase-prd.md` 的职责。  
+本文件也不负责定义“先做哪个 PR”，那是 `docs/governance/next-phase-execution-breakdown.md` 的职责。
+
+如果出现以下任一情况，应先停下来修文档，而不是直接继续开发：
+
+- kickoff 已调整主线，但本文件还沿用旧验证口径
+- PRD 已扩大/缩小范围，但本文件没有同步
+- execution breakdown 新增了 PR，但本文件没有对应的验证落点

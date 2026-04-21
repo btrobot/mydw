@@ -267,6 +267,9 @@ def test_next_phase_kickoff_links_completion_boundary_baseline_and_launch_artifa
     kickoff = _read("docs/current/next-phase-kickoff.md")
 
     assert "下一阶段启动包" in kickoff
+    assert "本文件是“下一阶段启动包”的总入口" in kickoff
+    assert "docs/governance/phase-transition-checklist.md" in kickoff
+    assert "这份启动包怎么用" in kickoff
     assert "当前完成度" in kickoff
     assert "当前边界" in kickoff
     assert "当前验证基线" in kickoff
@@ -286,9 +289,20 @@ def test_next_phase_launch_bundle_docs_define_scope_tests_and_execution() -> Non
     breakdown = _read("docs/governance/next-phase-execution-breakdown.md")
 
     assert "Creative-first 稳定化 / UI-UX 收口主线" in prd
+    assert "在启动包中的角色" in prd
+    assert "docs/current/next-phase-kickoff.md" in prd
+    assert "docs/governance/phase-transition-checklist.md" in prd
     assert "成功标准" in prd
+    assert "PRD 负责锁范围，test spec 负责锁验证，execution breakdown 负责锁顺序" in prd
+    assert "在启动包中的角色" in test_spec
+    assert "docs/governance/verification-baseline.md" in test_spec
     assert "必跑 frontend E2E baseline" in test_spec
+    assert "与 PR Sequence 的映射" in test_spec
+    assert "PR-4 — 回归补强与阶段收口" in test_spec
     assert "CreativeWorkbench" in test_spec
+    assert "在启动包中的角色" in breakdown
+    assert "docs/governance/phase-transition-checklist.md" in breakdown
     assert "PR Sequence" in breakdown
     assert "PR-1 — Workbench 可管理性收口" in breakdown
     assert "PR-4 — 回归补强与阶段收口" in breakdown
+    assert "需要同步更新" in breakdown

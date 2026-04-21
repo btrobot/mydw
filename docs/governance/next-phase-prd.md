@@ -1,8 +1,27 @@
 # 下一阶段 PRD（Next-Phase PRD）
 
-> Version: 1.0.0 | Updated: 2026-04-21  
+> Version: 1.1.0 | Updated: 2026-04-21  
 > Owner: Tech Lead / Codex  
 > Status: Active planning artifact
+
+> 本文件是下一阶段启动包中的**范围与完成定义**文档。  
+> 它回答：**为什么现在做、做到哪里算完成、什么明确不做。**
+
+## 0. 在启动包中的角色
+
+本文件要和以下文档一起使用：
+
+- 入口：`docs/current/next-phase-kickoff.md`
+- 阶段切换门禁：`docs/governance/phase-transition-checklist.md`
+- 验证规格：`docs/governance/next-phase-test-spec.md`
+- 执行分解：`docs/governance/next-phase-execution-breakdown.md`
+- backlog 压缩入口：`docs/governance/next-phase-backlog.md`
+
+使用规则：
+
+1. 只有在 `phase-transition-checklist` 的 Part A / Part B 通过后，本 PRD 才视为当前有效主线
+2. 如果目标、范围、非目标变了，先更新本 PRD，再决定 test spec / breakdown 是否需要改
+3. 不允许跳过本 PRD，直接把 backlog 项混入执行主线
 
 ## 1. Phase 名称
 
@@ -91,3 +110,18 @@
 - 有明确的 test spec
 - 有明确的 PR 执行分解
 - 本阶段结束后，Workbench / Detail 进入“稳定产品面”而不是“验收台”
+
+## 10. 与执行/验证文档的对应关系
+
+为了避免 PRD 只停留在“方向说明”，这里明确对应关系：
+
+| PRD 目标 | 对应验证文档 | 对应执行文档 |
+| --- | --- | --- |
+| `CreativeWorkbench` 可管理性提升 | `docs/governance/next-phase-test-spec.md` 中的搜索 / 筛选 / 排序 / 分页验证 | `docs/governance/next-phase-execution-breakdown.md` 的 PR-1 |
+| 业务层 / 诊断层分层 | `docs/governance/next-phase-test-spec.md` 中的默认业务层与高级诊断层验证 | `docs/governance/next-phase-execution-breakdown.md` 的 PR-2 |
+| 文案与四态统一 | `docs/governance/next-phase-test-spec.md` 中的 CTA / 四态一致性验证 | `docs/governance/next-phase-execution-breakdown.md` 的 PR-3 |
+| 阶段收口与回归补强 | `docs/governance/next-phase-test-spec.md` 的 baseline + 手工链路 | `docs/governance/next-phase-execution-breakdown.md` 的 PR-4 |
+
+一句话：
+
+> **PRD 负责锁范围，test spec 负责锁验证，execution breakdown 负责锁顺序。**
