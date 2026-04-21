@@ -1,7 +1,7 @@
 # Release Hardening 尾项清理记录（PR-1）
 
 > 日期：2026-04-20  
-> 对应规划：`.omx/plans/prd-release-hardening-runtime-acceptance-closeout.md`  
+> 对应规划：`.omx/plans/archive/prd-release-hardening-runtime-acceptance-closeout.md`  
 > 范围：仅处理当前工作区中的非规划尾项与提交边界，不包含功能实现。
 
 ---

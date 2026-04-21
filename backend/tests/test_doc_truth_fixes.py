@@ -142,6 +142,11 @@ def test_omx_plan_retention_distinguishes_active_archive_and_pending_plan_sets()
     assert "prd-remote-auth.md" in retention
     assert "prd-creative-progressive-rebuild-roadmap.md" in retention
     assert "prd-frontend-ui-ux-closeout-phase-e-pr-plan.md" in retention
+    assert "prd-local-ffmpeg-composition-pr-plan.md" in retention
+    assert "prd-login-ux-closeout-pr-plan.md" in retention
+    assert "prd-release-hardening-runtime-acceptance-closeout.md" in retention
+    assert "prd-remote-system-mvp.md" in retention
+    assert "remote-admin-platform-ui-pr-sequence-2026-04-16.md" in retention
 
 
 def test_closeout_docs_point_to_archived_omx_plan_sources() -> None:
@@ -156,6 +161,23 @@ def test_closeout_docs_point_to_archived_omx_plan_sources() -> None:
     assert ".omx/plans/prd-creative-progressive-rebuild-roadmap.md" not in creative_summary
     assert ".omx/plans/prd-creative-progressive-rebuild-phase-a-pr-plan.md" not in creative_audit
     assert ".omx/plans/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md" not in frontend_summary
+
+
+def test_closeout_reports_point_to_archived_second_batch_omx_plan_sources() -> None:
+    local_ffmpeg = _read("reports/local-ffmpeg-plan-closeout-2026-04-20.md")
+    login_ux = _read("reports/login-ux-closeout-stage-summary-2026-04-19.md")
+    release_tail = _read("reports/release-hardening-tail-triage-2026-04-20.md")
+    runtime_acceptance = _read("reports/runtime-acceptance-local-ffmpeg-and-random-account-2026-04-20.md")
+    flaky = _read("reports/flaky-e2e-convergence-2026-04-20.md")
+
+    assert ".omx/plans/archive/prd-local-ffmpeg-composition-pr-plan.md" in local_ffmpeg
+    assert ".omx/plans/archive/prd-login-ux-closeout-pr-plan.md" in login_ux
+    assert ".omx/plans/archive/test-spec-login-ux-closeout-pr-plan.md" in login_ux
+    assert ".omx/plans/archive/prd-release-hardening-runtime-acceptance-closeout.md" in release_tail
+    assert ".omx/plans/archive/prd-release-hardening-runtime-acceptance-closeout.md" in runtime_acceptance
+    assert ".omx/plans/archive/test-spec-release-hardening-runtime-acceptance-closeout.md" in runtime_acceptance
+    assert ".omx/plans/archive/prd-release-hardening-runtime-acceptance-closeout.md" in flaky
+    assert ".omx/plans/archive/test-spec-release-hardening-runtime-acceptance-closeout.md" in flaky
 
 
 def test_next_phase_backlog_compresses_open_issues_into_prioritized_lanes() -> None:

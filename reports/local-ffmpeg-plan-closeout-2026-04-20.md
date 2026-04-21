@@ -1,7 +1,7 @@
 # local_ffmpeg 补齐规划收口说明
 
 > 日期：2026-04-20  
-> 对应规划：`.omx/plans/prd-local-ffmpeg-composition-pr-plan.md`  
+> 对应规划：`.omx/plans/archive/prd-local-ffmpeg-composition-pr-plan.md`  
 > 结论：**规划主线已完成并收口**
 
 ---

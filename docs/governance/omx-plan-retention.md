@@ -59,24 +59,20 @@
 | `docs-information-architecture-plan-2026-04-21.md` / `open-questions.md` / `prd-closeout-next-phase-foundation-2026-04-21.md` | Closeout 盘点与入口收口已经转入正式治理/启动文档 | `docs/governance/verification-baseline.md`、`docs/governance/root-doc-triage.md`、`docs/governance/next-phase-backlog.md`、`docs/current/next-phase-kickoff.md`、`docs/governance/next-phase-prd.md`、`docs/governance/next-phase-test-spec.md`、`docs/governance/next-phase-execution-breakdown.md` |
 | `prd-creative-progressive-rebuild-roadmap.md` / `prd-creative-progressive-rebuild-phase-a-pr-plan.md` / `prd-creative-progressive-rebuild-phase-b-pr-plan.md` / `prd-creative-progressive-rebuild-phase-c-pr-plan.md` / `prd-creative-progressive-rebuild-phase-d-pr-plan.md` / `test-spec-creative-progressive-rebuild-roadmap.md` / `test-spec-creative-progressive-rebuild-phase-b-pr-plan.md` / `test-spec-creative-progressive-rebuild-phase-c-pr-plan.md` / `test-spec-creative-progressive-rebuild-phase-d-pr-plan.md` / `ralplan-phase-b-pr-plan-creative-progressive-rebuild.md` | Creative A~D 主线已经完成，保留价值以历史回溯为主 | `docs/domains/creative/progressive-rebuild-final-summary.md`、`docs/domains/creative/progressive-rebuild-completion-audit.md`、`docs/domains/creative/phase-a-acceptance-checklist.md` |
 | `prd-frontend-ui-ux-closeout-phase-e-pr-plan.md` / `test-spec-frontend-ui-ux-closeout-phase-e-pr-plan.md` | Frontend Phase E 已完成，当前只需要 closeout summary，不再需要它们占据 active plans 区 | `docs/frontend-ui-ux-closeout-final-summary.md` |
+| `prd-local-ffmpeg-composition-pr-plan.md` / `test-spec-local-ffmpeg-composition-pr-plan.md` | `local_ffmpeg V1` 已经完成 contract / 执行链 / 文档 / 回归收口 | `docs/domains/publishing/local-ffmpeg-composition.md`、`docs/domains/tasks/task-management-domain-model.md`、`docs/domains/tasks/task-semantics.md`、`reports/local-ffmpeg-plan-closeout-2026-04-20.md` |
+| `prd-login-ux-closeout-pr-plan.md` / `test-spec-login-ux-closeout-pr-plan.md` | 登录 UX 收口阶段已完成，当前保留价值以阶段总结与回归证据为主 | `reports/login-ux-closeout-stage-summary-2026-04-19.md` |
+| `prd-release-hardening-runtime-acceptance-closeout.md` / `test-spec-release-hardening-runtime-acceptance-closeout.md` | release hardening / runtime acceptance 已转为基线治理与验收留痕 | `docs/governance/verification-baseline.md`、`reports/release-hardening-tail-triage-2026-04-20.md`、`reports/runtime-acceptance-local-ffmpeg-and-random-account-2026-04-20.md`、`reports/flaky-e2e-convergence-2026-04-20.md` |
+| `prd-remote-system-mvp.md` / `test-spec-remote-system-mvp.md` / `prd-remote-system-phase0-pr-plan.md` ~ `prd-remote-system-phase3-pr-plan.md` | 已被新一轮 `remote-full-system` 规划基线取代 | `remote/README.md`、`remote/remote-shared/docs/remote-full-system-operating-model-v1.md`、`remote/remote-shared/docs/phase1-release-gate.md` ~ `phase4-release-gate.md` |
+| `remote-admin-platform-ui-pr-sequence-2026-04-16.md` / `remote-admin-platform-ui-ralplan-2026-04-16.md` | `remote-admin` UI 规划已被正式 spec 接管 | `remote/remote-shared/docs/remote-admin-platform-ui-spec-v1.md` |
 
 ## 3.3 Keep in `.omx/plans/` pending manual review
 
 以下文件暂不移动，等相关主线是否继续推进更明确后再做下一批：
 
-- `prd-local-ffmpeg-composition-pr-plan.md`
-- `test-spec-local-ffmpeg-composition-pr-plan.md`
 - `prd-login-bs-alignment-pr-plan.md`
 - `test-spec-login-bs-alignment-pr-plan.md`
-- `prd-login-ux-closeout-pr-plan.md`
-- `test-spec-login-ux-closeout-pr-plan.md`
 - `prd-product-create-name-share-text.md`
 - `test-spec-product-create-name-share-text.md`
-- `prd-release-hardening-runtime-acceptance-closeout.md`
-- `test-spec-release-hardening-runtime-acceptance-closeout.md`
-- `prd-remote-system-mvp.md`
-- `test-spec-remote-system-mvp.md`
-- `prd-remote-system-phase0-pr-plan.md` ~ `prd-remote-system-phase3-pr-plan.md`
 - `prd-task-management-page-closeout.md`
 - `test-spec-task-management-page-closeout.md`
 - `prd-work-driven-creative-flow-refactor.md`
@@ -86,8 +82,6 @@
 - `ralplan-task-management-filters-2026-04-19.md`
 - `ralplan-task-management-page-closeout-2026-04-19.md`
 - `ralplan-work-driven-creative-flow-2026-04-20.md`
-- `remote-admin-platform-ui-pr-sequence-2026-04-16.md`
-- `remote-admin-platform-ui-ralplan-2026-04-16.md`
 
 这批文件的共同特点是：**可能仍有工程参考价值，但还没有足够证据证明它们已经完全被 `docs/` 正式文档吸收。**
 

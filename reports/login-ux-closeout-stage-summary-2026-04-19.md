@@ -6,8 +6,8 @@
 
 ## 对应规划
 
-- PRD：`.omx/plans/prd-login-ux-closeout-pr-plan.md`
-- Test Spec：`.omx/plans/test-spec-login-ux-closeout-pr-plan.md`
+- PRD：`.omx/plans/archive/prd-login-ux-closeout-pr-plan.md`
+- Test Spec：`.omx/plans/archive/test-spec-login-ux-closeout-pr-plan.md`
 - 上下文快照：`.omx/context/login-ui-ux-closeout-20260419T094000Z.md`
 
 ## 已完成项

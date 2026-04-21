@@ -2,8 +2,8 @@
 
 - 日期：2026-04-20
 - 关联规划：
-  - `.omx/plans/prd-release-hardening-runtime-acceptance-closeout.md`
-  - `.omx/plans/test-spec-release-hardening-runtime-acceptance-closeout.md`
+  - `.omx/plans/archive/prd-release-hardening-runtime-acceptance-closeout.md`
+  - `.omx/plans/archive/test-spec-release-hardening-runtime-acceptance-closeout.md`
 - 结论：**通过**
 
 ---
