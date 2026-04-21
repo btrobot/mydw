@@ -70,6 +70,7 @@
 路径：
 
 - `docs/governance/inventory/inventory-ledger.md`
+- `docs/governance/inventory/post-mvp-doc-governance-closeout.md`
 - `docs/governance/inventory/root-doc-triage.md`
 - `docs/governance/inventory/epic-7-docs-parity-checklist.md`
 - `docs/governance/inventory/epic-7-stale-doc-inventory.md`
@@ -78,6 +79,7 @@
 适合放：
 
 - 文档盘点台账
+- 正式收口件 / closeout record
 - 根层文档分诊与去向表
 - 特定阶段/批次的清单、inventory、parity check
 

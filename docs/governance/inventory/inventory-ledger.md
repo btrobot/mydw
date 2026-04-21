@@ -198,3 +198,7 @@ Current location:
 - `docs/governance/next-phase-prd.md` — 下一阶段范围定义
 - `docs/governance/next-phase-test-spec.md` — 下一阶段验证规格
 - `docs/governance/next-phase-execution-breakdown.md` — 下一阶段 PR sequence 分解
+
+## Formal closeout artifact
+
+- `docs/governance/inventory/post-mvp-doc-governance-closeout.md` — 本轮文档治理收口正式件，汇总入口收口、archive 分类、post-MVP 治理链与后续维护规则

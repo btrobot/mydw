@@ -115,6 +115,7 @@ def test_governance_readme_classifies_core_policies_inventory_standards_and_temp
     assert "docs/governance/policies/generated-artifact-policy.md" in governance_index
     assert "docs/governance/policies/manual-http-exceptions.md" in governance_index
     assert "docs/governance/inventory/inventory-ledger.md" in governance_index
+    assert "docs/governance/inventory/post-mvp-doc-governance-closeout.md" in governance_index
     assert "docs/governance/standards/documentation-strategy.md" in governance_index
     assert "docs/governance/standards/docs-directory-placement-rules.md" in governance_index
     assert "docs/governance/standards/domains-architecture-governance-boundary.md" in governance_index
@@ -140,6 +141,25 @@ def test_governance_readme_classifies_core_policies_inventory_standards_and_temp
     assert "盘点 / triage / ledger / stale/version/parity checklist" in governance_index
     assert "长期规范 / strategy / guide / checklist / system spec" in governance_index
     assert "可复制复用的模板 / skeleton / starter" in governance_index
+
+
+def test_formal_doc_governance_closeout_artifact_is_indexed_and_summarizes_current_state() -> None:
+    docs_index = _read("docs/README.md")
+    governance_index = _read("docs/governance/README.md")
+    ledger = _read("docs/governance/inventory/inventory-ledger.md")
+    closeout = _read("docs/governance/inventory/post-mvp-doc-governance-closeout.md")
+
+    assert "docs/governance/inventory/post-mvp-doc-governance-closeout.md" in docs_index
+    assert "docs/governance/inventory/post-mvp-doc-governance-closeout.md" in governance_index
+    assert "docs/governance/inventory/post-mvp-doc-governance-closeout.md" in ledger
+    assert "formal closeout artifact" in closeout
+    assert "docs/` 根层现在只保留默认入口文档：`docs/README.md` 与 `docs/runtime-truth.md`" in closeout
+    assert "docs/governance/post-mvp-development-model.md" in closeout
+    assert "docs/governance/post-mvp-closeout-sequence.md" in closeout
+    assert "docs/governance/phase-transition-checklist.md" in closeout
+    assert "docs/current/next-phase-kickoff.md" in closeout
+    assert "model 讲为什么，sequence 讲顺序，checklist 讲门槛，kickoff 讲起点" in closeout
+    assert "不是新的长期规范，而是本轮治理工作的" in closeout
 
 
 def test_domains_architecture_governance_boundary_doc_is_indexed_and_explains_split() -> None:
