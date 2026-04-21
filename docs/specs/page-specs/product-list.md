@@ -1,133 +1,117 @@
 # 商品管理
 
-> Layout Template: T1 Standard List
-> Route: `/product`
-> API: `GET /api/products`, `POST /api/products`, `PUT /api/products/{id}`, `DELETE /api/products/{id}`
+> Layout Template: T1 Standard List  
+> Route: `/material/product`  
+> API: `GET /api/products`, `POST /api/products`, `PUT /api/products/{id}`, `DELETE /api/products/{id}`, `POST /api/products/{id}/parse-materials`  
 > Permissions: 无（当前未实现权限控制）
 
 ## 1. Toolbar
 
-### 1.1 FilterBar（左侧）
+### 1.1 Search
 
 | Element | Type | Behavior |
-|---------|------|----------|
-| 搜索商品名称 | `Input`（allowClear, width: 200） | 输入文本后按 `name` 前端过滤商品列表；清空则显示全部 |
+| --- | --- | --- |
+| 搜索商品名称 | `Input` | 通过 `GET /api/products?name=` 过滤列表 |
 
-### 1.2 ActionBar（右侧）
-
-> 排列原则：添加为主操作的页面，添加按钮排首位。
+### 1.2 Primary Action
 
 | # | Element | Type | Icon | Behavior |
-|---|---------|------|------|----------|
-| 1 | 添加商品 | `Button`（type=primary） | `PlusOutlined` | 重置 `editingProduct` 为 null，重置表单，打开"添加商品"Modal |
+| --- | --- | --- | --- | --- |
+| 1 | 添加商品 | `Button`（type=primary） | `PlusOutlined` | 重置表单并打开“添加商品”弹窗 |
 
-## 2. Search Bar（1 条件）
+## 2. Table Columns（7 列）
 
-| # | Label | Field | Control | Search Mode |
-|---|-------|-------|---------|-------------|
-| 1 | 搜索商品名称 | `name`（前端过滤） | `Input`（文本输入） | 即时筛选（onChange 更新 `searchText`，前端 `filter()` 过滤） |
-
-> **Issue [S1]**: 搜索为纯前端 `Array.filter()`，当商品数量增长后应改为后端 `GET /api/products?name=` 查询（后端已支持 `name` query 参数）。
-
-## 3. Table Columns（6 列）
-
-| # | Label | Field | Render | Sortable | Width |
-|---|-------|-------|--------|----------|-------|
-| 1 | 商品名称 | `name` | `Typography.Link`（ellipsis），点击跳转 `/product/{id}` | 否 | auto |
-| 2 | 商品链接 | `link` | 有值 → `Text`（type=secondary, fontSize=12），无值 → `Text`（"—"） | 否 | auto |
-| 3 | 视频数 | — | `ProductCountCell`（type=videos），调用 `useVideos(productId)` 获取计数 | 否 | 80 |
-| 4 | 文案数 | — | `ProductCountCell`（type=copywritings），调用 `useCopywritings(productId)` 获取计数 | 否 | 80 |
-| 5 | 创建时间 | `created_at` | `toLocaleString('zh-CN')` | 否 | 160 |
-| 6 | 操作 | — | 操作按钮列 | 否 | 120 |
+| # | Label | Field | Render | Width |
+| --- | --- | --- | --- | --- |
+| 1 | ID | `id` | 文本 | 70 |
+| 2 | 商品名称 | `name` | `Typography.Link`，点击跳转 `/material/product/{id}` | auto |
+| 3 | 解析状态 | `parse_status` | `valueEnum` 状态标签 | 100 |
+| 4 | 视频数 | `video_count` | 数字 | 80 |
+| 5 | 文案数 | `copywriting_count` | 数字 | 80 |
+| 6 | 创建时间 | `created_at` | `toLocaleString('zh-CN')` | 160 |
+| 7 | 操作 | — | 行内操作按钮 | 180 |
 
 表格配置：
+
 - `rowKey`: `id`
 - `size`: `small`
-- `pagination`: `pageSize=10`, 显示总数（`共 N 条`）
-- `rowSelection`: 无
+- `pagination.pageSize = 10`
+- 支持 `rowSelection`
+- 选中行后显示批量删除操作
 
-> **Issue [P1]**: `ProductCountCell` 为每行发起独立的 `useVideos` / `useCopywritings` 请求（N+1 问题）。商品列表 100 条时将产生 200 个额外请求。应由后端在 `GET /api/products` 响应中返回 `video_count` / `copywriting_count` 聚合字段。
+## 3. 行内操作
 
-## 4. Action Column
+| # | Button | 显示条件 | Behavior |
+| --- | --- | --- | --- |
+| 1 | 重新解析 | `parse_status === 'error'` | 调用 `POST /api/products/{id}/parse-materials` |
+| 2 | 编辑 | 始终显示 | 打开编辑弹窗，仅修改 `name` |
+| 3 | 删除 | 始终显示 | `Popconfirm` 后调用 `DELETE /api/products/{id}` |
 
-| # | Button | Type | Icon | Behavior |
-|---|--------|------|------|----------|
-| 1 | 编辑 | `Button`（type=link, size=small） | `EditOutlined` | 设置 `editingProduct`，回填表单字段，打开 Modal |
-| 2 | 删除 | `Button`（type=link, danger, size=small） | `DeleteOutlined` | `Popconfirm`（"确定删除此商品？"）确认后调用 `DELETE /api/products/{id}`；后端 409 阻止有关联素材的删除 |
+## 4. 弹窗：添加 / 编辑商品
 
-## 5. Modal：添加 / 编辑商品
-
-| 触发 | 添加商品按钮 / 行内编辑按钮 |
-|------|---------------------------|
+| 项 | 当前行为 |
+| --- | --- |
 | 标题 | `editingProduct ? '编辑商品' : '添加商品'` |
-| 确认 | 编辑模式 → `PUT /api/products/{id}`；添加模式 → `POST /api/products`；成功后关闭并重置表单 |
-| 取消 | 关闭并重置表单，清空 `editingProduct` |
-| confirmLoading | `createProduct.isPending \|\| updateProduct.isPending` |
-| destroyOnClose | 是 |
+| 提交 | 创建模式调用 `POST /api/products`；编辑模式调用 `PUT /api/products/{id}` |
+| 成功后 | 关闭弹窗、重置表单、刷新列表 |
+| confirmLoading | `createProduct.isPending || updateProduct.isPending` |
+| destroyOnHidden | 是 |
 
-### 表单字段（2 字段）
+### 4.1 创建模式字段
 
-| # | Label | Field | Control | Required | Rules |
-|---|-------|-------|---------|----------|-------|
-| 1 | 商品名称 | `name` | `Input` | 是 | "请输入商品名称" |
-| 2 | 商品链接 | `link` | `Input`（prefix: `LinkOutlined`） | 否 | — |
+| # | Label | Field | Control | Required |
+| --- | --- | --- | --- | --- |
+| 1 | 商品名称 | `name` | `Input` | 是 |
+| 2 | 分享文本 | `share_text` | `Input.TextArea` | 是 |
 
-## 6. 交互流程
+### 4.2 编辑模式字段
 
-### 6.1 搜索筛选
-1. 用户在 FilterBar 输入文本 → `searchText` 更新 → 前端 `filter()` 过滤 `products` → 表格刷新
+| # | Label | Field | Control | Required |
+| --- | --- | --- | --- | --- |
+| 1 | 商品名称 | `name` | `Input` | 是 |
 
-### 6.2 添加商品
-1. 点击"添加商品" → 重置表单 → 打开 Modal → 填写表单 → 确认 → `POST /api/products` → 关闭 Modal → react-query 自动刷新列表
+## 5. 交互流程
 
-### 6.3 编辑商品
-1. 点击行内"编辑" → 回填表单（name, link） → 打开 Modal → 修改表单 → 确认 → `PUT /api/products/{id}` → 关闭 Modal → react-query 自动刷新列表
+### 5.1 搜索
 
-### 6.4 单条删除
-1. 点击行内"删除" → Popconfirm 确认 → `DELETE /api/products/{id}` → 成功提示
-2. 若商品有关联视频/文案 → 后端返回 409 → 前端显示错误提示
+1. 用户输入商品名称
+2. 列表请求携带 `name` 查询参数
+3. 表格刷新为过滤后的结果
 
-### 6.5 导航到详情
-1. 点击商品名称链接 → `navigate('/product/{id}')` → 跳转到 `ProductDetail` 页面
+### 5.2 添加商品
 
----
+1. 点击“添加商品”
+2. 填写 `name` 与 `share_text`
+3. 调用 `POST /api/products`
+4. 后端完成创建并立即触发解析
+5. 前端提示成功并刷新列表
 
-## Issues
+### 5.3 编辑商品
 
-### [S1] 前端过滤 vs 后端搜索
+1. 点击行内“编辑”
+2. 回填当前 `name`
+3. 调用 `PUT /api/products/{id}`
+4. 刷新列表
 
-- 位置: `ProductList.tsx` L40-42
-- 当前: `products.filter(p => p.name.toLowerCase().includes(searchText.toLowerCase()))`
-- 问题: 纯前端过滤，数据量大时性能差且无法利用后端分页
-- 建议: 改用后端 `GET /api/products?name=` 查询参数（后端已支持）
+### 5.4 删除商品
 
-### [P1] ProductCountCell N+1 查询
+1. 点击行内“删除”或使用批量删除
+2. 调用 `DELETE /api/products/{id}`
+3. 当前后端行为为“删除商品 + 解绑关联素材”
 
-- 位置: `ProductList.tsx` L21-26
-- 当前: 每行渲染 `ProductCountCell` 组件，分别调用 `useVideos(productId)` 和 `useCopywritings(productId)`
-- 问题: N 条商品产生 2N 个额外 API 请求
-- 建议: 后端 `GET /api/products` 响应增加 `video_count` / `copywriting_count` 聚合字段，前端直接渲染
+### 5.5 重新解析
 
-### [A1] ActionBar 无批量操作
+1. 当商品处于 `error` 状态时显示“重新解析”
+2. 点击后调用 `POST /api/products/{id}/parse-materials`
+3. 成功后刷新列表
 
-- 位置: `ProductList.tsx` L161-168
-- 当前: 表格无 `rowSelection`，ActionBar 无批量删除按钮
-- 说明: 与其他列表页（VideoList、CopywritingList 使用 `BatchDeleteButton`）不一致。若需要批量操作，应添加 `rowSelection` + `BatchDeleteButton` 共享组件
-
-### [C1] confirmLoading 在编辑模式下的竞态
-
-- 位置: `ProductList.tsx` L175
-- 当前: `confirmLoading={createProduct.isPending || updateProduct.isPending}`
-- 说明: 逻辑正确（OR 运算覆盖两种模式），无实际 bug。但可简化为根据 `editingProduct` 状态选择对应的 `isPending`
-
----
-
-## Hard Check
+## 6. Hard Check
 
 | 指标 | 数量 |
-|------|------|
-| Search conditions | 1（前端文本过滤） |
-| Table columns | 6（含操作列） |
-| Action buttons (toolbar) | 1（添加商品） |
-| Action buttons (row) | 2（编辑 + 删除） |
-| Modal forms | 1（添加/编辑商品，2 字段） |
+| --- | --- |
+| Search conditions | 1 |
+| Table columns | 7 |
+| Toolbar primary actions | 1 |
+| Row actions | 3（错误状态下为 3，否则为 2） |
+| Create-form fields | 2 |
+| Edit-form fields | 1 |

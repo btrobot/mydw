@@ -1,228 +1,189 @@
-# Product Redesign: Material Pack Model
+# Product Domain: Current Material Pack Model
 
-> Date: 2026-04-07 | Author: Tech Lead | Status: Proposed
+> Updated: 2026-04-21  
+> Owner: Tech Lead / Codex  
+> Status: Active
 
-## 1. Core Concept
+> 本文记录 **当前已上线事实**，不是未来方案提案。商品域的正式 truth 以这里、页面规格和回归测试为准。
 
-**Product = Virtual Material Pack**
+## 1. 域定位
 
-A Product is not a "product" in the e-commerce sense. It is a container that groups materials (videos, covers, copywritings, topics) sourced from a single Dewu page URL.
+在当前系统里，**商品（Product）不是传统电商商品档案**，而是：
 
-```
-Product (Material Pack)
-├── dewu_url          ← source identifier (unique)
-├── name              ← auto-filled from page title on parse
-├── videos[]          ← downloaded from Dewu page
-│   └── covers[]      ← extracted from video / page
-├── copywritings[]    ← page title as copywriting
-└── topics[]          ← hashtags from page content
-```
+- 一个由得物分享文本驱动的素材包入口
+- 一个用户可命名、可检索、可复解析的素材容器
+- 一个承载视频 / 封面 / 文案 / 话题的聚合节点
 
-The lifecycle is: **create pack from URL -> parse to fill materials -> use materials in tasks**.
+核心字段含义如下：
 
-## 2. Current State Analysis
+| 字段 | 当前语义 |
+| --- | --- |
+| `name` | 用户输入、用户拥有的商品显示名，也是列表 / 详情页的主标题 |
+| `share_text` | 仅用于创建时提取得物链接；当前不支持编辑，也不做持久化展示 |
+| `dewu_url` | 从 `share_text` 中提取出的得物商品页链接，创建后只读 |
+| `parse_status` | `pending` / `parsing` / `parsed` / `error` |
+| `video_count` / `cover_count` / `copywriting_count` / `topic_count` | 商品聚合后的素材计数 |
 
-### What works
+## 2. 当前用户可见流程
 
-- Create: accepts share_text, extracts dewu_url, creates empty Product
-- Parse: `POST /{id}/parse-materials` fetches page, downloads media, replaces all materials
-- Detail: returns Product + all nested materials
-- Delete: detaches materials (sets product_id=NULL), deletes Product
+### 2.1 创建商品
 
-### Problems
+入口：`/material/product` 列表页的“添加商品”弹窗。
 
-| # | Problem | Impact |
-|---|---------|--------|
-| P1 | Create + Parse are two separate steps. User must create first, then click "parse" | Extra click, empty product exists with no materials |
-| P2 | Product.name defaults to dewu_url on create, only gets real title after parse | Confusing list display before parse |
-| P3 | Product has `link`, `description`, `image_url` fields that are never populated by parse | Dead columns, confusing schema |
-| P4 | Delete sets `product_id=NULL` on videos/copywritings instead of deleting them | Orphaned materials accumulate |
-| P5 | ProductList fetches video/copywriting counts via N+1 queries (separate hooks per row) | Performance issue on list page |
-| P6 | No re-parse feedback -- parse replaces everything silently, user can't see what changed | UX gap |
+当前创建表单 **必须** 同时填写：
 
-## 3. Proposed Design
+1. `name`
+2. `share_text`
 
-### 3.1 Operation Flow
+后端创建流程：
 
-#### Create (merge create + parse into one step)
+1. 从 `share_text` 提取 `dewu_url`
+2. 校验 `name` 与 `dewu_url` 唯一性
+3. 创建 `Product(name=data.name, dewu_url=..., parse_status="parsing")`
+4. 立即触发素材解析
+5. 返回 `ProductDetailResponse`
 
-```
-User pastes share_text
-  → Backend extracts dewu_url
-  → Backend checks dewu_url uniqueness
-  → Backend creates Product row (name = dewu_url, placeholder)
-  → Backend immediately triggers parse_and_create_materials()
-  → Returns ProductDetailResponse with all materials populated
-```
+这意味着当前 `POST /api/products` 已经是 **create + parse** 的一体化流程，而不是“先建空商品、再手动补链路”的旧模式。
 
-Single endpoint: `POST /products` -- accepts `share_text`, returns full detail.
+### 2.2 解析 / 重新解析
 
-The old two-step flow (create empty, then parse) becomes one atomic operation.
+当前保留 `POST /api/products/{id}/parse-materials`，用于：
 
-#### Re-parse (refresh materials)
+- 创建后解析失败时重试
+- 商品页素材更新后的手动刷新
 
-Keep `POST /products/{id}/parse-materials` for manual refresh.
+解析 / 重解析会刷新商品关联素材，但**不会覆盖用户输入的 `product.name`**。
 
-Use case: Dewu page updated, user wants to re-fetch. This is an explicit "refresh" action, not a creation step.
+### 2.3 编辑商品
 
-#### Edit
+当前 `PUT /api/products/{id}` 只允许编辑：
 
-Only allow editing `name`. Remove `link`, `description`, `image_url` from update schema -- these fields serve no purpose in the material-pack model.
+- `name`
 
-`dewu_url` should be read-only after creation (changing it would mean a different product).
+不支持编辑：
 
-#### Delete
+- `share_text`
+- `dewu_url`
 
-Two options to decide:
+### 2.4 删除商品
 
-| Option | Behavior | Pros | Cons |
-|--------|----------|------|------|
-| A: Cascade delete | Delete product + all associated materials (videos, covers, copywritings, topic links) | Clean, no orphans | Irreversible, loses downloaded files |
-| B: Detach (current) | Set product_id=NULL, keep materials | Materials reusable | Orphan accumulation |
+当前 `DELETE /api/products/{id}` 的真实行为是：
 
-**Recommendation**: Option A (cascade delete). Materials parsed from Dewu are cheap to re-fetch. Orphaned materials with no product association create confusion. If a user wants to keep specific materials, they should be able to detach them individually before deleting the product -- but that's a future feature.
+- 解除 `Video` / `Cover` / `Copywriting` 对该商品的关联
+- 删除 `product_topics` 关联
+- 删除商品本身
 
-### 3.2 Data Model Changes
+也就是说，**当前不是 cascade delete 素材文件**，而是“商品删除 + 解绑关联素材”。
 
-#### Product table -- drop unused columns
+## 3. API / 合同事实
 
-```sql
--- Remove these columns (never populated):
-ALTER TABLE products DROP COLUMN link;
-ALTER TABLE products DROP COLUMN description;
-ALTER TABLE products DROP COLUMN image_url;
-```
+### 3.1 `POST /api/products`
 
-#### Add material counts to Product (denormalized)
+请求：
 
-```sql
-ALTER TABLE products ADD COLUMN video_count INTEGER DEFAULT 0;
-ALTER TABLE products ADD COLUMN cover_count INTEGER DEFAULT 0;
-ALTER TABLE products ADD COLUMN copywriting_count INTEGER DEFAULT 0;
-ALTER TABLE products ADD COLUMN topic_count INTEGER DEFAULT 0;
-ALTER TABLE products ADD COLUMN parse_status VARCHAR(32) DEFAULT 'pending';
--- parse_status: pending | parsing | parsed | error
-```
-
-This eliminates the N+1 query problem on the list page. Counts are updated atomically during parse.
-
-#### Cover: add direct product_id FK
-
-Currently covers link to products only through videos (cover -> video -> product). This is fragile -- if a page has covers but no video, they can't be associated.
-
-```sql
-ALTER TABLE covers ADD COLUMN product_id INTEGER REFERENCES products(id);
-```
-
-### 3.3 API Changes
-
-#### `POST /products` -- create + parse (atomic)
-
-Request (unchanged):
 ```json
-{ "share_text": "..." }
+{ "name": "商品名", "share_text": "得物分享文本" }
 ```
 
-Response changes to `ProductDetailResponse` (status 201). Backend now:
-1. Extracts dewu_url
-2. Checks uniqueness
-3. Creates Product
-4. Calls `parse_and_create_materials()`
-5. Returns full detail
+当前合同：
 
-If parse fails, the product is still created (with `parse_status = "error"`), so the user can retry via re-parse.
+- `201`：创建成功，返回 `ProductDetailResponse`
+- `422`：缺字段、空字段或无法从分享文本中提取有效得物链接
+- `409`：商品名重复，或提取出的 `dewu_url` 重复
 
-#### `PUT /products/{id}` -- simplified
+### 3.2 `PUT /api/products/{id}`
 
-Request:
+请求：
+
 ```json
-{ "name": "..." }
+{ "name": "新的商品名" }
 ```
 
-Remove `link`, `description`, `dewu_url`, `image_url` from `ProductUpdate`.
+当前合同：
 
-#### `DELETE /products/{id}` -- cascade
+- 仅编辑商品名称
+- `422`：空名称
+- `404`：商品不存在
+- `409`：名称冲突
 
-Deletes product + all associated videos, covers, copywritings, and product_topic links. Returns 204.
+### 3.3 `POST /api/products/{id}/parse-materials`
 
-#### `GET /products` -- include counts
+当前合同：
 
-Response item adds:
-```json
-{
-  "id": 1,
-  "name": "...",
-  "dewu_url": "...",
-  "video_count": 2,
-  "cover_count": 5,
-  "copywriting_count": 1,
-  "topic_count": 3,
-  "parse_status": "parsed",
-  "created_at": "...",
-  "updated_at": "..."
-}
-```
+- 重新解析商品页素材
+- 成功返回最新 `ProductDetailResponse`
+- 失败时把商品状态置为 `error`
 
-No more N+1 queries from frontend.
+## 4. 领域规则
 
-#### `POST /products/{id}/parse-materials` -- keep as-is
+1. `Product.name` 是商品域的权威显示名，归用户输入所有。
+2. `Product.name` 与 `Product.dewu_url` 当前都保持唯一。
+3. 解析器得到的 `pack.title` **不能写回** `product.name`。
+4. 解析得到的标题仍然会写入 `dewu_parse` 来源的文案记录。
+5. 物料命名规则保持：
+   - `Video.name` 优先使用解析标题，否则回退到 `product.name`
+   - `Cover.name` 优先使用解析标题，否则回退到 `product.name`
+6. `share_text` 仅是创建入口，不是后续编辑字段。
 
-For manual re-parse. After completion, update denormalized counts.
+## 5. 前端落地事实
 
-### 3.4 Frontend Changes
+### 5.1 商品列表页
 
-#### ProductList.tsx
+路径：`/material/product`
 
-- Remove `ProductCountCell` component (no more per-row queries)
-- Read `video_count`, `copywriting_count` directly from list response
-- Show `parse_status` as a tag (parsed / parsing / error)
-- "Add Product" modal: after submit, show loading state while parse runs, then navigate to detail on success
-- Remove "parse" button from list row actions (parse happens on create; re-parse is on detail page)
+当前列表展示：
 
-#### ProductDetail.tsx
+- 商品名称
+- 解析状态
+- 视频数
+- 文案数
+- 创建时间
 
-- Remove edit fields for `link`, `description`, `image_url`
-- Keep "Re-parse" button for refresh
-- Show `parse_status` indicator
-- Edit modal: only `name` field
+创建弹窗：
 
-#### Schemas (frontend types)
+- 新建模式：`name` + `share_text`
+- 编辑模式：仅 `name`
 
-```typescript
-interface ProductResponse {
-  id: number
-  name: string
-  dewu_url: string | null
-  video_count: number
-  cover_count: number
-  copywriting_count: number
-  topic_count: number
-  parse_status: 'pending' | 'parsing' | 'parsed' | 'error'
-  created_at: string
-  updated_at: string
-}
-```
+行内操作：
 
-Remove `link`, `description`, `image_url` from `ProductResponse`.
+- 解析失败时显示“重新解析”
+- 编辑
+- 删除
 
-## 4. Migration Plan
+### 5.2 商品详情页
 
-| Step | Scope | Description |
-|------|-------|-------------|
-| M1 | Backend | Migration: drop `link`, `description`, `image_url` from products; add count columns + `parse_status` |
-| M2 | Backend | Migration: add `product_id` to covers table |
-| M3 | Backend | Backfill: compute counts for existing products |
-| M4 | Backend | Update `ProductCreate` flow: create + parse atomic |
-| M5 | Backend | Update `ProductUpdate` schema: name only |
-| M6 | Backend | Update delete: cascade delete materials |
-| M7 | Backend | Update `ProductResponse` / `ProductListResponse` schemas |
-| M8 | Backend | Update parse service: maintain denormalized counts |
-| M9 | Frontend | Update types, hooks, ProductList, ProductDetail |
+路径：`/material/product/:id`
 
-## 5. Decision Required
+当前详情展示：
 
-Before implementation, need your call on:
+- `name`
+- `dewu_url`
+- `parse_status`
+- `created_at`
+- 关联视频
+- 关联封面
+- 关联文案
+- 关联话题
 
-1. **Delete behavior**: Cascade delete (recommended) vs. detach (current)?
-2. **Create atomicity**: If parse fails mid-way, should we keep the product with `parse_status=error` (recommended) or rollback the entire creation?
-3. **Scope of column removal**: OK to drop `link`, `description`, `image_url` from products table? Any downstream usage I'm not seeing?
+页头操作：
+
+- 解析素材
+- 编辑商品（仅改 `name`）
+
+## 6. 验证锚点
+
+当前事实由以下实现 / 测试共同兜底：
+
+- `backend/tests/test_product_api.py`
+- `backend/tests/test_openapi_contract_parity.py`
+- `frontend/src/pages/product/ProductList.tsx`
+- `frontend/src/pages/product/ProductDetail.tsx`
+- `frontend/src/api/types.gen.ts`
+
+如果后续行为发生变化，应先同步：
+
+1. 本文
+2. `docs/domains/products/requirements.md`
+3. `docs/specs/page-specs/product-list.md`
+4. `docs/specs/page-specs/product-detail.md`
+5. 文档真相测试

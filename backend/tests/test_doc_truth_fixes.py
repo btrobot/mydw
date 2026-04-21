@@ -147,11 +147,59 @@ def test_omx_plan_retention_distinguishes_active_archive_and_pending_plan_sets()
     assert "prd-release-hardening-runtime-acceptance-closeout.md" in retention
     assert "prd-remote-system-mvp.md" in retention
     assert "remote-admin-platform-ui-pr-sequence-2026-04-16.md" in retention
+    assert "prd-product-create-name-share-text.md" in retention
+    assert "test-spec-product-create-name-share-text.md" in retention
     assert "product-create-dual-field-ralplan-2026-04-16.md" in retention
     assert "ralplan-login-bs-alignment-2026-04-20.md" in retention
     assert "ralplan-task-management-filters-2026-04-19.md" in retention
     assert "ralplan-task-management-page-closeout-2026-04-19.md" in retention
     assert "ralplan-work-driven-creative-flow-2026-04-20.md" in retention
+
+
+def test_product_docs_match_current_name_share_text_parse_and_delete_truth() -> None:
+    redesign = _read("docs/domains/products/redesign.md")
+    requirements = _read("docs/domains/products/requirements.md")
+    list_doc = _read("docs/specs/page-specs/product-list.md")
+    detail_doc = _read("docs/specs/page-specs/product-detail.md")
+    spec = _read("docs/specs/requirements-spec.md")
+    guide = _read("docs/guides/user-guide.md")
+
+    for doc in [redesign, requirements]:
+        assert "share_text" in doc
+        assert "product.name" in doc
+        assert "不会覆盖" in doc
+        assert "PUT /api/products/{id}" in doc
+        assert "DELETE /api/products/{id}" in doc
+
+    assert "解绑关联素材" in redesign
+    assert "/material/product" in list_doc
+    assert "分享文本" in list_doc
+    assert "解析状态" in list_doc
+    assert "批量删除" in list_doc
+    assert "商品链接" not in list_doc
+
+    assert "/material/product/:id" in detail_doc
+    assert "得物链接" in detail_doc
+    assert "解析素材" in detail_doc
+    assert "封面" in detail_doc
+    assert "话题" in detail_doc
+    assert "商品链接" not in detail_doc
+
+    assert "商品名称、分享文本" in spec
+    assert "填写商品名称和分享文本" in guide
+    assert "关联商品" in guide
+
+
+def test_product_plan_retention_moves_product_create_prd_and_test_spec_out_of_pending_review() -> None:
+    retention = _read("docs/governance/omx-plan-retention.md")
+
+    assert "product-create 双字段规划已经被正式商品域文档" in retention
+    assert "prd-product-create-name-share-text.md" in retention
+    assert "test-spec-product-create-name-share-text.md" in retention
+
+    pending_section = retention.split("## 3.3 Keep in `.omx/plans/` pending manual review", maxsplit=1)[1]
+    assert "prd-product-create-name-share-text.md" not in pending_section
+    assert "test-spec-product-create-name-share-text.md" not in pending_section
 
 
 def test_closeout_docs_point_to_archived_omx_plan_sources() -> None:
