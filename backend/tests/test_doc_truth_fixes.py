@@ -114,3 +114,30 @@ def test_dev_guide_links_to_verification_baseline() -> None:
 
     assert "docs/governance/verification-baseline.md" in guide
     assert "当前最小验证基线" in guide
+
+
+def test_root_doc_triage_classifies_uncategorized_docs() -> None:
+    triage = _read("docs/governance/root-doc-triage.md")
+
+    assert "根层文档分诊表" in triage
+    assert "docs/backup-scope.md" in triage
+    assert "docs/chat-req.md" in triage
+    assert "docs/init-req.md" in triage
+    assert "docs/manual-axios-exceptions.md" in triage
+    assert "docs/schema-parity-checklist.md" in triage
+    assert "删除候选" in triage
+    assert "docs/frontend-ui-ux-closeout-ralplan-command.md" in triage
+
+
+def test_next_phase_backlog_compresses_open_issues_into_prioritized_lanes() -> None:
+    backlog = _read("docs/governance/next-phase-backlog.md")
+
+    assert "下一阶段 Backlog" in backlog
+    assert "Open Questions" in backlog
+    assert "P0" in backlog
+    assert "P1" in backlog
+    assert "P2" in backlog
+    assert "Creative Workbench 可用性收口" in backlog
+    assert "业务层 vs 诊断层彻底分层" in backlog
+    assert "AIClip workflow 产品化" in backlog
+    assert "docs/governance/root-doc-triage.md" in backlog

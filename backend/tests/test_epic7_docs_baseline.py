@@ -74,6 +74,8 @@ def test_docs_readme_exists_and_separates_current_docs_from_runtime_artifacts() 
     assert "docs/governance/verification-baseline.md" in docs_index
     assert "docs/governance/inventory-ledger.md" in docs_index
     assert "docs/governance/runtime-local-artifact-policy.md" in docs_index
+    assert "docs/governance/root-doc-triage.md" in docs_index
+    assert "docs/governance/next-phase-backlog.md" in docs_index
     assert "docs/archive/exports/" in docs_index
     assert ".codex/" in docs_index
     assert ".omx/" in docs_index
@@ -101,6 +103,8 @@ def test_doc_inventory_ledger_classifies_major_document_and_runtime_clusters() -
     assert "runtime" in ledger
     assert "keep" in ledger
     assert "archive" in ledger or "move" in ledger
+    assert "docs/governance/root-doc-triage.md" in ledger
+    assert "docs/governance/next-phase-backlog.md" in ledger
 
 
 def test_first_archive_batch_moves_old_planning_docs_out_of_docs_root() -> None:

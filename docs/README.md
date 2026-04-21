@@ -35,6 +35,8 @@
 - sprint / phase / migration / refactor 相关文档
 - `docs/domains/creative/progressive-rebuild-final-summary.md`（Creative 渐进式重建 A~D 阶段收口总结）
 - `docs/frontend-ui-issues-and-improvements.md`（当前前端界面问题分析与改进方向）
+- `docs/governance/root-doc-triage.md`（根层未分类文档去向收口）
+- `docs/governance/next-phase-backlog.md`（压缩后的 open issues / next-phase backlog）
 - 专题设计说明（如 settings、topic、task semantics、generation governance）
 - `docs/adr/` 中的决策记录
 - `docs/domains/auth/README.md`（远程认证 / 本地授权门禁冻结文档入口；Step 0 artifacts）

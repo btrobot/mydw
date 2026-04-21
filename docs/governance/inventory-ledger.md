@@ -34,6 +34,8 @@
 Runtime/local boundary policy:
 
 - `docs/governance/runtime-local-artifact-policy.md`
+- `docs/governance/root-doc-triage.md`
+- `docs/governance/next-phase-backlog.md`
 
 ## Immediate decisions from this ledger
 
@@ -168,3 +170,8 @@ Current location:
    - classified,
    - confirmed unreferenced or fully superseded,
    - and safe to remove.
+
+## Phase E compression artifacts
+
+- `docs/governance/root-doc-triage.md` — 根层未分类 docs 的去向表
+- `docs/governance/next-phase-backlog.md` — 从 closeout / audit / issue docs 压缩出的下一阶段 backlog
