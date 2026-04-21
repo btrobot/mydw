@@ -111,6 +111,14 @@ def test_governance_readme_classifies_core_policies_inventory_standards_and_temp
     assert "docs/governance/inventory/inventory-ledger.md" in governance_index
     assert "docs/governance/standards/documentation-strategy.md" in governance_index
     assert "docs/governance/templates/phase-closeout-template.md" in governance_index
+    assert "按场景的阅读顺序" in governance_index
+    assert "场景 B：我想知道 MVP 后怎么继续推进" in governance_index
+    assert "新文档落点规则" in governance_index
+    assert "应该留在 root 的文档" in governance_index
+    assert "应该放进 `policies/` 的文档" in governance_index
+    assert "应该放进 `inventory/` 的文档" in governance_index
+    assert "应该放进 `standards/` 的文档" in governance_index
+    assert "应该放进 `templates/` 的文档" in governance_index
 
 
 def test_task_domain_doc_matches_local_ffmpeg_v1_truth() -> None:

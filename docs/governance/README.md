@@ -180,3 +180,189 @@
 - `docs/governance/inventory/`
 - `docs/governance/standards/`
 - `docs/governance/templates/`
+
+---
+
+## 10. 按场景的阅读顺序
+
+不同问题，不应该从同一个文档开始读。
+
+### 场景 A：我想知道治理入口和当前规则边界
+
+按下面顺序：
+
+1. `docs/governance/README.md`
+2. `docs/governance/authority-matrix.md`
+3. `docs/governance/verification-baseline.md`
+
+适合：
+
+- 新接手项目的人
+- 想知道 governance 文档“谁说了算”的人
+
+### 场景 B：我想知道 MVP 后怎么继续推进
+
+按下面顺序：
+
+1. `docs/governance/post-mvp-development-model.md`
+2. `docs/governance/phase-transition-checklist.md`
+3. `docs/governance/post-mvp-closeout-sequence.md`
+4. `docs/current/next-phase-kickoff.md`
+
+适合：
+
+- 想讨论“下一阶段怎么开始”的人
+- 想做阶段收尾 / 选线 / 启动包的人
+
+### 场景 C：我想找具体规则
+
+直接进入：
+
+- `docs/governance/policies/`
+
+优先看：
+
+- `generated-artifact-policy.md`
+- `runtime-local-artifact-policy.md`
+- `omx-plan-retention.md`
+
+### 场景 D：我想做盘点 / 分诊 / 清查
+
+直接进入：
+
+- `docs/governance/inventory/`
+
+优先看：
+
+- `inventory-ledger.md`
+- `root-doc-triage.md`
+- 各类 `epic-*inventory/checklist.md`
+
+### 场景 E：我想知道长期规范 / 方法
+
+直接进入：
+
+- `docs/governance/standards/`
+
+优先看：
+
+- `documentation-strategy.md`
+- `doc-checklist.md`
+- `multi-agent-guide.md`
+
+### 场景 F：我想直接复用模板
+
+直接进入：
+
+- `docs/governance/templates/`
+
+优先看：
+
+- `phase-closeout-template.md`
+- `next-phase-mainline-selection-template.md`
+
+---
+
+## 11. 新文档落点规则
+
+以后新增治理文档时，优先按下面规则放置，而不是先随手丢到 root：
+
+### 11.1 应该留在 root 的文档
+
+满足任一条件，才考虑留在 `docs/governance/` 根层：
+
+- 它是高频入口文档
+- 它是阶段切换的直接入口
+- 它会在 `docs/README.md` 的推荐路径中高频出现
+- 它需要被人“一眼看到”，不适合再点进子目录
+
+典型例子：
+
+- `authority-matrix.md`
+- `verification-baseline.md`
+- `phase-transition-checklist.md`
+- `post-mvp-development-model.md`
+- `next-phase-*`
+
+### 11.2 应该放进 `policies/` 的文档
+
+满足下面特征时，放 `policies/`：
+
+- 描述规则、保留策略、边界条件
+- 更像“制度说明”而不是“阅读入口”
+- 需要长期存在，但不是最高频打开
+
+关键词提示：
+
+- policy
+- retention
+- boundary
+- artifact
+- rule
+
+### 11.3 应该放进 `inventory/` 的文档
+
+满足下面特征时，放 `inventory/`：
+
+- 以盘点、表格、清单、分诊为主
+- 主要作用是“列出现状”而不是“解释长期规则”
+- 常和 triage / stale / version / parity / ledger 相关
+
+关键词提示：
+
+- inventory
+- ledger
+- triage
+- checklist
+- stale
+- version
+- parity
+
+### 11.4 应该放进 `standards/` 的文档
+
+满足下面特征时，放 `standards/`：
+
+- 描述“应该怎么做”
+- 是长期方法、规范、协作方式
+- 对新老阶段都适用，不只服务某一轮收口
+
+关键词提示：
+
+- standard
+- strategy
+- guide
+- checklist
+- spec
+
+### 11.5 应该放进 `templates/` 的文档
+
+满足下面特征时，放 `templates/`：
+
+- 主要价值是复用
+- 读者通常会复制后填写
+- 文档本身是一个“骨架”而不是事实说明
+
+关键词提示：
+
+- template
+- starter
+- skeleton
+
+---
+
+## 12. 命名与维护约定
+
+为了避免 governance 目录再次变乱，新增文档时建议遵守：
+
+1. **先决定分类，再命名**
+2. 不要把 inventory / policy / standard 混在一个文件名和一个文档里
+3. 如果一个文档已经从“入口”退化为“规则手册”或“历史盘点”，应考虑下沉
+4. 如果一个文档开始变成团队高频入口，才考虑提升到 root
+5. 每次新增 governance 文档后，都检查是否需要更新：
+   - `docs/governance/README.md`
+   - `docs/README.md`
+   - 相关 doc-truth tests
+
+一句话：
+
+> **先分类，再落点；先入口，后细则；不要让 root 再次变成杂物堆。**
