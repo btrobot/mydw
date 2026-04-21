@@ -425,4 +425,4 @@ E 解决的是：
 - `.omx/plans/archive/prd-creative-progressive-rebuild-phase-d-pr-plan.md`
 - `.omx/plans/archive/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md`
 - `docs/creative-progressive-rebuild-final-summary.md`
-- `docs/frontend-ui-issues-and-improvements.md`
+- `docs/domains/creative/workbench-ui-issues.md`

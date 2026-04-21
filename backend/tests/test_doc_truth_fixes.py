@@ -233,12 +233,13 @@ def test_root_doc_triage_classifies_uncategorized_docs() -> None:
     assert "根层文档分诊表" in triage
     assert "优先按 current / domains / governance / guides 四分法收口" in triage
     assert "Batch 1 已完成" in triage
-    assert "docs/chat-req.md" in triage
-    assert "docs/init-req.md" in triage
+    assert "Batch 2 已完成" in triage
     assert "docs/domains/system/backup-scope.md" in triage
     assert "docs/governance/policies/manual-http-exceptions.md" in triage
     assert "docs/governance/standards/schema-parity-checklist.md" in triage
     assert "docs/specs/requirements-sources/chat-req.md" in triage
+    assert "docs/specs/requirements-sources/init-req.md" in triage
+    assert "docs/domains/creative/workbench-ui-issues.md" in triage
     assert "删除候选" in triage
     assert "docs/frontend-ui-ux-closeout-ralplan-command.md" in triage
 
@@ -249,6 +250,18 @@ def test_batch1_low_risk_docs_have_moved_out_of_docs_root() -> None:
         ("docs/dewu-page-structure.md", "docs/domains/products/dewu-page-structure.md"),
         ("docs/manual-axios-exceptions.md", "docs/governance/policies/manual-http-exceptions.md"),
         ("docs/schema-parity-checklist.md", "docs/governance/standards/schema-parity-checklist.md"),
+    ]
+
+    for old_path, new_path in moved_pairs:
+        assert not (REPO_ROOT / old_path).exists(), f"file should no longer stay in docs root: {old_path}"
+        assert (REPO_ROOT / new_path).exists(), f"missing moved file: {new_path}"
+
+
+def test_batch2_docs_have_moved_out_of_docs_root() -> None:
+    moved_pairs = [
+        ("docs/init-req.md", "docs/specs/requirements-sources/init-req.md"),
+        ("docs/chat-req.md", "docs/specs/requirements-sources/chat-req.md"),
+        ("docs/frontend-ui-issues-and-improvements.md", "docs/domains/creative/workbench-ui-issues.md"),
     ]
 
     for old_path, new_path in moved_pairs:

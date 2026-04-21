@@ -25,7 +25,7 @@
 
 来源：
 
-- `docs/frontend-ui-issues-and-improvements.md`
+- `docs/domains/creative/workbench-ui-issues.md`
 - `docs/frontend-ui-ux-closeout-final-summary.md`
 
 压缩结果：

@@ -2,8 +2,8 @@
 
 > 本文档整合自三份需求来源，标注来源、优先级和冲突点，供开发团队参考。
 >
-> - **init-req**: `docs/init-req.md` — 初始需求文档（功能树）
-> - **chat-req**: `docs/chat-req.md` — PM 沟通记录提取的需求
+> - **init-req**: `docs/specs/requirements-sources/init-req.md` — 初始需求文档（功能树）
+> - **chat-req**: `docs/specs/requirements-sources/chat-req.md` — PM 沟通记录提取的需求
 > - **user-guide**: `docs/user-guide.md` — 用户手册描述的功能
 >
 > 生成日期: 2026-04-07
