@@ -61,6 +61,9 @@ def test_post_mvp_model_and_phase_transition_checklist_are_indexed_and_connected
 
     assert "Part A：当前阶段收口检查" in checklist
     assert "Part B：下一阶段启动检查" in checklist
+    assert "已经收尾到能做决定" in checklist
+    assert "不翻聊天记录，也能讲清“现在做到哪了”" in checklist
+    assert "backlog 已压缩到可以支持“只选一条主线”" in checklist
     assert "docs/governance/post-mvp-development-model.md" in checklist
     assert "next-phase PRD" in checklist
     assert "下一阶段有且只有一条主线" in checklist
