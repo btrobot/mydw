@@ -19,6 +19,8 @@ def test_openapi_workflow_describes_tracked_generated_snapshot_correctly() -> No
     assert "frontend/openapi.local.json" in workflow
     assert "tracked generated artifact" in workflow
     assert "docs/governance/policies/generated-artifact-policy.md" in workflow
+    assert "docs/governance/standards/schema-parity-checklist.md" in workflow
+    assert "docs/governance/policies/manual-http-exceptions.md" in workflow
     assert "npm run generated:check" in workflow
 
 
@@ -108,10 +110,12 @@ def test_governance_readme_classifies_core_policies_inventory_standards_and_temp
     assert "Standards" in governance_index
     assert "Templates" in governance_index
     assert "docs/governance/policies/generated-artifact-policy.md" in governance_index
+    assert "docs/governance/policies/manual-http-exceptions.md" in governance_index
     assert "docs/governance/inventory/inventory-ledger.md" in governance_index
     assert "docs/governance/standards/documentation-strategy.md" in governance_index
     assert "docs/governance/standards/docs-directory-placement-rules.md" in governance_index
     assert "docs/governance/standards/domains-architecture-governance-boundary.md" in governance_index
+    assert "docs/governance/standards/schema-parity-checklist.md" in governance_index
     assert "docs/governance/templates/phase-closeout-template.md" in governance_index
     assert "按场景的阅读顺序" in governance_index
     assert "场景 B：我想知道 MVP 后怎么继续推进" in governance_index
@@ -228,16 +232,28 @@ def test_root_doc_triage_classifies_uncategorized_docs() -> None:
 
     assert "根层文档分诊表" in triage
     assert "优先按 current / domains / governance / guides 四分法收口" in triage
-    assert "docs/backup-scope.md" in triage
+    assert "Batch 1 已完成" in triage
     assert "docs/chat-req.md" in triage
     assert "docs/init-req.md" in triage
-    assert "docs/manual-axios-exceptions.md" in triage
-    assert "docs/schema-parity-checklist.md" in triage
     assert "docs/domains/system/backup-scope.md" in triage
-    assert "docs/governance/manual-http-exceptions.md" in triage
+    assert "docs/governance/policies/manual-http-exceptions.md" in triage
+    assert "docs/governance/standards/schema-parity-checklist.md" in triage
     assert "docs/specs/requirements-sources/chat-req.md" in triage
     assert "删除候选" in triage
     assert "docs/frontend-ui-ux-closeout-ralplan-command.md" in triage
+
+
+def test_batch1_low_risk_docs_have_moved_out_of_docs_root() -> None:
+    moved_pairs = [
+        ("docs/backup-scope.md", "docs/domains/system/backup-scope.md"),
+        ("docs/dewu-page-structure.md", "docs/domains/products/dewu-page-structure.md"),
+        ("docs/manual-axios-exceptions.md", "docs/governance/policies/manual-http-exceptions.md"),
+        ("docs/schema-parity-checklist.md", "docs/governance/standards/schema-parity-checklist.md"),
+    ]
+
+    for old_path, new_path in moved_pairs:
+        assert not (REPO_ROOT / old_path).exists(), f"file should no longer stay in docs root: {old_path}"
+        assert (REPO_ROOT / new_path).exists(), f"missing moved file: {new_path}"
 
 
 def test_omx_plan_retention_distinguishes_active_archive_and_pending_plan_sets() -> None:

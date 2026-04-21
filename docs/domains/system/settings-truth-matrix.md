@@ -18,7 +18,7 @@
 | `material_base_path` | `GET/PUT /api/system/config`, `Settings` 页显示 | 已接入 file-backed runtime-config，真实持久化到 `data/system_config.json` | `runtime-config` | 当前唯一支持运行时修改的设置项 |
 | `auto_backup` | `GET /api/system/config` 返回兼容字段；旧调用方仍可向 `PUT` 传参 | 兼容占位字段；返回值固定为 `false`，传入写请求会显式 400 | `remove` | 不在 UI 暴露为可编辑项，不允许伪装保存成功 |
 | `log_level` | `GET /api/system/config`, Settings 只读信息 | 权威来源是 `backend/core/config.py` / `.env`，运行期仅只读展示 | `startup-env` | 如需修改，必须改启动期配置并重启 |
-| 数据备份 | `POST /api/system/backup`, `Settings` 按钮 | 已生成最小真实备份：manifest + 可用 artifact 快照 | `runtime-capability` | 范围见 `docs/backup-scope.md`；不是完整 restore 平台 |
+| 数据备份 | `POST /api/system/backup`, `Settings` 按钮 | 已生成最小真实备份：manifest + 可用 artifact 快照 | `runtime-capability` | 范围见 `docs/domains/system/backup-scope.md`；不是完整 restore 平台 |
 | 素材统计 | `GET /api/system/material-stats`, MaterialOverview | 实时统计 DB 数据 | `read-only` | 已是只读能力，不应伪装成设置 |
 | 系统日志 | `/api/system/logs` | DB / runtime log source | `read-only` | 可查看，不属于设置 |
 

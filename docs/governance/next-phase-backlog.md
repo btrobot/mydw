@@ -157,7 +157,7 @@
 
 目标：
 
-- 逐项复核 `docs/manual-axios-exceptions.md` 中的例外
+- 逐项复核 `docs/governance/policies/manual-http-exceptions.md` 中的例外
 - 明确哪些场景永久保留、哪些需要迁回 generated client wrapper
 
 ### P1.3 requirements / root docs 下沉执行

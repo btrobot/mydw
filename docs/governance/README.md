@@ -49,6 +49,7 @@
 路径：
 
 - `docs/governance/policies/generated-artifact-policy.md`
+- `docs/governance/policies/manual-http-exceptions.md`
 - `docs/governance/policies/runtime-local-artifact-policy.md`
 - `docs/governance/policies/omx-plan-retention.md`
 
@@ -97,6 +98,7 @@
 - `docs/governance/standards/documentation-strategy.md`
 - `docs/governance/standards/domains-architecture-governance-boundary.md`
 - `docs/governance/standards/multi-agent-guide.md`
+- `docs/governance/standards/schema-parity-checklist.md`
 
 适合放：
 
@@ -253,6 +255,7 @@
 - `docs-directory-placement-rules.md`
 - `domains-architecture-governance-boundary.md`
 - `multi-agent-guide.md`
+- `schema-parity-checklist.md`
 
 ### 场景 F：我想直接复用模板
 

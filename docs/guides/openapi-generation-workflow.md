@@ -9,7 +9,7 @@ Make frontend client generation reproducible **without requiring a live backend 
 ## Authoritative flow
 
 1. Update backend schemas / API contracts
-2. Freeze high-value parity via `docs/schema-parity-checklist.md`
+2. Freeze high-value parity via `docs/governance/standards/schema-parity-checklist.md`
 3. Export local OpenAPI snapshot
 4. Regenerate frontend client
 5. Fix compile breakages caused directly by regeneration
@@ -58,4 +58,4 @@ This avoids dependence on:
 - broader generated/source governance, commit policy, and Electron TS/JS boundary rules live in `docs/governance/policies/generated-artifact-policy.md`
 - generation should happen only after schema parity is stable enough to avoid churn
 - broader API adoption and manual axios exception governance belong to later Phase 3 PRs
-- remaining allowed manual exceptions are tracked in `docs/manual-axios-exceptions.md`
+- remaining allowed manual exceptions are tracked in `docs/governance/policies/manual-http-exceptions.md`
