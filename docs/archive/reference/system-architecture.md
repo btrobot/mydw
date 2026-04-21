@@ -2,9 +2,9 @@
 
 > 状态: Stale / archival reference  
 > 当前 authoritative 入口请先看：
-> - `docs/current-architecture-baseline.md`
-> - `docs/current-runtime-truth.md`
-> - `docs/epic-7-doc-authority-matrix.md`
+> - `docs/current/architecture.md`
+> - `docs/current/runtime-truth.md`
+> - `docs/governance/authority-matrix.md`
 >
 > 说明：本文档保留为历史性长文参考，但**不再是默认 authoritative source**。
 

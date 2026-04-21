@@ -69,11 +69,11 @@ npm run generated:check
 | Document | Path | What it answers |
 |----------|------|-----------------|
 | Docs Index | `docs/README.md` | 当前文档阅读入口 |
-| Current Architecture | `docs/current-architecture-baseline.md` | 当前前后端架构基线 |
-| Current Runtime Truth | `docs/current-runtime-truth.md` | 当前运行/API 真相 |
-| Dev Guide | `docs/dev-guide.md` | 环境搭建与启动流程 |
-| Generated Artifact Policy | `docs/generated-artifact-policy.md` | 生成物边界与治理规则 |
-| OpenAPI Workflow | `docs/openapi-generation-workflow.md` | OpenAPI 导出与 SDK 生成流程 |
-| Runtime/Local Artifact Policy | `docs/runtime-local-artifact-policy.md` | runtime / local artifact 边界 |
+| Current Architecture | `docs/current/architecture.md` | 当前前后端架构基线 |
+| Current Runtime Truth | `docs/current/runtime-truth.md` | 当前运行/API 真相 |
+| Dev Guide | `docs/guides/dev-guide.md` | 环境搭建与启动流程 |
+| Generated Artifact Policy | `docs/governance/generated-artifact-policy.md` | 生成物边界与治理规则 |
+| OpenAPI Workflow | `docs/guides/openapi-generation-workflow.md` | OpenAPI 导出与 SDK 生成流程 |
+| Runtime/Local Artifact Policy | `docs/governance/runtime-local-artifact-policy.md` | runtime / local artifact 边界 |
 | API Reference (stale) | `docs/archive/reference/api-reference.md` | 历史 API 参考，需晚于 current docs 阅读 |
 | Data Model (stale) | `docs/archive/reference/data-model.md` | 历史数据模型参考，需晚于 current docs 阅读 |

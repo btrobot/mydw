@@ -30,10 +30,10 @@ Every `CLAUDE.md` (root or subdirectory) MUST contain a `## References` section 
 
 | Document | Path | What it answers |
 |----------|------|-----------------|
-| System Architecture | docs/archive/reference/system-architecture.md | How the system is structured |
+| System Architecture | docs/current/architecture.md | How the system is structured |
 | API Reference | docs/archive/reference/api-reference.md | Endpoint params, responses, errors |
 | Data Model | docs/archive/reference/data-model.md | Table schemas, field types, constraints |
-| Dev Guide | docs/dev-guide.md | How to set up and run the project |
+| Dev Guide | docs/guides/dev-guide.md | How to set up and run the project |
 | ADRs | docs/adr/ | Why we chose X over Y |
 ```
 
@@ -74,10 +74,10 @@ Answers: "what does this system do and how do I work with it"
 | Document | Path Convention | Answers |
 |----------|----------------|---------|
 | Project Entry | `CLAUDE.md` | Tech stack, structure, agent config, references |
-| System Architecture | `docs/archive/reference/system-architecture.md` | Components, data flow, deployment topology |
+| System Architecture | `docs/current/architecture.md` | Components, data flow, deployment topology |
 | API Reference | `docs/archive/reference/api-reference.md` | Endpoint signatures, params, responses, errors |
 | Data Model | `docs/archive/reference/data-model.md` | Table/collection schemas, relationships |
-| Dev Guide | `docs/dev-guide.md` | Environment setup, run commands |
+| Dev Guide | `docs/guides/dev-guide.md` | Environment setup, run commands |
 
 ### 3.2 Tier 2 -- Growing Projects
 

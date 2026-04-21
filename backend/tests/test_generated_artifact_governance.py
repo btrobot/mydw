@@ -22,7 +22,7 @@ def _read_json(relative_path: str) -> dict:
 
 
 def test_generated_artifact_policy_lists_boundary_matrix_and_rules() -> None:
-    policy = _read("docs/generated-artifact-policy.md")
+    policy = _read("docs/governance/generated-artifact-policy.md")
 
     assert "source of truth" in policy
     assert "generated artifact" in policy
@@ -40,9 +40,9 @@ def test_generated_artifact_policy_lists_boundary_matrix_and_rules() -> None:
 
 
 def test_openapi_workflow_points_to_standard_regenerate_and_check_entrypoints() -> None:
-    workflow = _read("docs/openapi-generation-workflow.md")
+    workflow = _read("docs/guides/openapi-generation-workflow.md")
 
-    assert "docs/generated-artifact-policy.md" in workflow
+    assert "docs/governance/generated-artifact-policy.md" in workflow
     assert "frontend/openapi.local.json" in workflow
     assert "frontend/src/api/" in workflow
     assert "npm run generated:regenerate" in workflow
@@ -130,7 +130,7 @@ def test_generated_check_fails_when_regenerate_changes_already_dirty_tracked_fil
 
 
 def test_version_inventory_calls_out_generated_noncanonical_boundaries() -> None:
-    inventory = _read("docs/epic-7-version-inventory.md")
+    inventory = _read("docs/governance/epic-7-version-inventory.md")
 
     assert "frontend/electron/main.js" in inventory
     assert "generated JS mirror" in inventory or "generated mirror" in inventory

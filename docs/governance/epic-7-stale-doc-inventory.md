@@ -5,8 +5,8 @@
 
 | Document | Visibility | Action in PR2 | Current authoritative pointer |
 |---|---|---|---|
-| `README.md` | Highest | updated in place as project entrypoint; removed stale deep detail sections and fixed current reading path | `docs/current-architecture-baseline.md`, `docs/current-runtime-truth.md` |
-| `docs/archive/reference/system-architecture.md` | High | moved to archive/reference as stale / archival | `docs/current-architecture-baseline.md`, `docs/current-runtime-truth.md` |
+| `README.md` | Highest | updated in place as project entrypoint; removed stale deep detail sections and fixed current reading path | `docs/current/architecture.md`, `docs/current/runtime-truth.md` |
+| `docs/archive/reference/system-architecture.md` | High | moved to archive/reference as stale / archival | `docs/current/architecture.md`, `docs/current/runtime-truth.md` |
 | `docs/archive/reference/api-reference.md` | High | moved to archive/reference as stale / archival | `/docs`, `/openapi.json`, current baseline docs |
 | `docs/archive/reference/data-model.md` | High | moved to archive/reference as stale / archival | `backend/models/__init__.py`, current baseline docs |
 
@@ -25,6 +25,6 @@ Other older docs remain candidates for later cleanup, but these are the primary 
 ## 推荐阅读路径
 
 1. `README.md`
-2. `docs/current-architecture-baseline.md`
-3. `docs/current-runtime-truth.md`
-4. `docs/epic-7-doc-authority-matrix.md`
+2. `docs/current/architecture.md`
+3. `docs/current/runtime-truth.md`
+4. `docs/governance/authority-matrix.md`

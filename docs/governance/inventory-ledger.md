@@ -16,7 +16,7 @@
 
 | Cluster | What it contains today | Category | Default disposition | Notes |
 |---|---|---|---|---|
-| `README.md` + `docs/current-architecture-baseline.md` + `docs/current-runtime-truth.md` + `docs/epic-7-doc-authority-matrix.md` + `docs/dev-guide.md` | 当前项目入口、当前架构、当前运行事实、文档权威边界、开发指南 | `current` | `keep` | 当前主阅读路径 |
+| `README.md` + `docs/current/architecture.md` + `docs/current/runtime-truth.md` + `docs/governance/authority-matrix.md` + `docs/guides/dev-guide.md` | 当前项目入口、当前架构、当前运行事实、文档权威边界、开发指南 | `current` | `keep` | 当前主阅读路径 |
 | `docs/` 其余专题文档（如 generation/settings/topic/task/phase docs） | 迁移说明、治理文档、专题设计、阶段性工程说明 | `working` | `keep` then reclassify/move selectively | 需要后续拆到 `guides/` / `operations/` / `archive/` |
 | `docs/archive/history/refactor-roadmap.md`, `docs/archive/history/refactor-issue-breakdown.md`, `docs/archive/history/refactor-gap-list.md` | 历史重构计划与 gap-tracking 文档，仍被部分 `.omx` 历史 planning context 引用 | `historical` | `archive` | 已迁入 `docs/archive/history/`，按历史规划参考理解 |
 | `docs/archive/reference/system-architecture.md`, `docs/archive/reference/api-reference.md`, `docs/archive/reference/data-model.md`, `docs/archive/planning/` 下的旧 sprint / breakdown 文档，以及 `docs/archive/analysis/` 下的旧分析/设计文档 | 高可见度旧文档与历史计划/分析资料 | `historical` | `archive` | 已迁入 archive 子目录，避免与 current docs 竞争 |
@@ -33,17 +33,17 @@
 
 Runtime/local boundary policy:
 
-- `docs/runtime-local-artifact-policy.md`
+- `docs/governance/runtime-local-artifact-policy.md`
 
 ## Immediate decisions from this ledger
 
 ### Keep as current entrypoints
 - `README.md`
 - `docs/README.md`
-- `docs/current-architecture-baseline.md`
-- `docs/current-runtime-truth.md`
-- `docs/epic-7-doc-authority-matrix.md`
-- `docs/dev-guide.md`
+- `docs/current/architecture.md`
+- `docs/current/runtime-truth.md`
+- `docs/governance/authority-matrix.md`
+- `docs/guides/dev-guide.md`
 
 ### Keep, but do not treat as default truth
 - active governance and engineering docs under `docs/`

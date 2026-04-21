@@ -18,9 +18,9 @@
 
 本文件**不**负责：
 
-- 穷举全部运行时细节（见 `docs/current-runtime-truth.md`）
+- 穷举全部运行时细节（见 `docs/current/runtime-truth.md`）
 - 逐接口列出 API 契约（以 `/docs`、`/openapi.json`、remote shared 契约文档为准）
-- 保存历史演进叙事（见 `docs/archive/`、`docs/auth/`、`docs/creative-progressive-rebuild-*.md`）
+- 保存历史演进叙事（见 `docs/archive/`、`docs/domains/auth/`、`docs/domains/creative/*.md`）
 
 ## 2. 当前系统轮廓
 
@@ -94,8 +94,8 @@
 当前文档治理原则是：
 
 - `README.md` + `docs/README.md` 负责入口导航
-- `docs/current-architecture-baseline.md` 负责架构入口
-- `docs/current-runtime-truth.md` 负责事实清单
+- `docs/current/architecture.md` 负责架构入口
+- `docs/current/runtime-truth.md` 负责事实清单
 - `docs/archive/` 保留历史参考，不再默认视为当前真相
 
 ## 4. 本地桌面端架构
@@ -248,8 +248,8 @@ src/
 
 相关 supporting docs：
 
-- `docs/creative-progressive-rebuild-final-summary.md`
-- `docs/creative-progressive-rebuild-completion-audit.md`
+- `docs/domains/creative/progressive-rebuild-final-summary.md`
+- `docs/domains/creative/progressive-rebuild-completion-audit.md`
 
 ### 6.2 调度配置真相
 
@@ -257,8 +257,8 @@ src/
 
 详见：
 
-- `docs/current-runtime-truth.md`
-- `docs/settings-truth-matrix.md`
+- `docs/current/runtime-truth.md`
+- `docs/domains/system/settings-truth-matrix.md`
 
 ### 6.3 Topic / relation-first
 
@@ -266,8 +266,8 @@ Topic 语义已收口到 relation-first canonical source，旧 JSON/FK 字段只
 
 详见：
 
-- `docs/phase-6-topic-compat-matrix.md`
-- `docs/phase-6-topic-relation-cutover.md`
+- `docs/domains/publishing/phase-6-topic-compat-matrix.md`
+- `docs/domains/publishing/phase-6-topic-relation-cutover.md`
 - `docs/adr/ADR-016-topic-canonical-semantics-phase-6.md`
 
 ## 7. 当前 auth 架构位置
@@ -369,11 +369,11 @@ remote/
 |---|---|
 | `README.md` | 项目入口与启动方式 |
 | `docs/README.md` | 文档导航首页 |
-| `docs/current-architecture-baseline.md` | 当前架构入口 |
-| `docs/current-runtime-truth.md` | 当前 runtime facts / canonical truth |
-| `docs/epic-7-doc-authority-matrix.md` | current / working / archival / runtime 边界 |
-| `docs/dev-guide.md` | 开发与启动协议 |
-| `docs/auth/README.md` | auth 相关冻结规范与实现总结入口 |
+| `docs/current/architecture.md` | 当前架构入口 |
+| `docs/current/runtime-truth.md` | 当前 runtime facts / canonical truth |
+| `docs/governance/authority-matrix.md` | current / working / archival / runtime 边界 |
+| `docs/guides/dev-guide.md` | 开发与启动协议 |
+| `docs/domains/auth/README.md` | auth 相关冻结规范与实现总结入口 |
 | `remote/README.md` | remote workspace 总入口 |
 
 ## 11. 推荐阅读路径
@@ -382,24 +382,24 @@ remote/
 
 1. `README.md`
 2. `docs/README.md`
-3. `docs/current-architecture-baseline.md`
+3. `docs/current/architecture.md`
 
 ### 11.2 想知道“当前真实行为”
 
-1. `docs/current-runtime-truth.md`
+1. `docs/current/runtime-truth.md`
 2. 对应专题真相文档（settings / topic / auth / creative）
 3. 必要时再回到代码
 
 ### 11.3 想知道“远程授权线怎么组织”
 
 1. `remote/README.md`
-2. `docs/auth/README.md`
+2. `docs/domains/auth/README.md`
 3. `remote/remote-shared/docs/remote-full-system-operating-model-v1.md`
 
 ### 11.4 想知道“为什么当前是 Creative-first”
 
-1. `docs/creative-progressive-rebuild-final-summary.md`
-2. `docs/creative-progressive-rebuild-completion-audit.md`
+1. `docs/domains/creative/progressive-rebuild-final-summary.md`
+2. `docs/domains/creative/progressive-rebuild-completion-audit.md`
 
 ## 12. 与历史文档的关系
 
@@ -408,7 +408,7 @@ remote/
 当它与当前代码或本文档不一致时，优先级应为：
 
 1. 代码
-2. `docs/current-runtime-truth.md`
+2. `docs/current/runtime-truth.md`
 3. 本文档
 4. archival / historical 文档
 

@@ -5,8 +5,8 @@
 
 当前请优先阅读：
 
-1. `docs/current-runtime-truth.md` — 当前运行事实清单
-2. `docs/current-architecture-baseline.md` — 当前架构总入口
-3. `docs/epic-7-doc-authority-matrix.md` — 文档职责边界
+1. `docs/current/runtime-truth.md` — 当前运行事实清单
+2. `docs/current/architecture.md` — 当前架构总入口
+3. `docs/governance/authority-matrix.md` — 文档职责边界
 
-如果你要确认“当前系统真实行为”，请直接以 `docs/current-runtime-truth.md` 为准。
+如果你要确认“当前系统真实行为”，请直接以 `docs/current/runtime-truth.md` 为准。

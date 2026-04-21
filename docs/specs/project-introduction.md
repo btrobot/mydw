@@ -154,8 +154,8 @@
 - historical / archival 文档
 
 阅读时应优先相信：
-- `docs/current-architecture-baseline.md`
-- `docs/current-runtime-truth.md`
+- `docs/current/architecture.md`
+- `docs/current/runtime-truth.md`
 
 ### `remote/`
 远程授权中心相关工程。
@@ -172,9 +172,9 @@ remote 子系统的架构与设计文档。
 
 1. `README.md`
 2. `docs/README.md`
-3. `docs/current-architecture-baseline.md`
-4. `docs/current-runtime-truth.md`
-5. `docs/dev-guide.md`
+3. `docs/current/architecture.md`
+4. `docs/current/runtime-truth.md`
+5. `docs/guides/dev-guide.md`
 
 这几份文档能回答：
 - 项目是什么
@@ -317,7 +317,7 @@ npm run dev:electron
 ### 5. 认证与授权门禁
 建议阅读：
 - `frontend/src/features/auth/`
-- `docs/auth/README.md`
+- `docs/domains/auth/README.md`
 - `backend/services/scheduler.py` 中的 auth-aware runtime enforcement
 
 关键理解：
@@ -408,8 +408,8 @@ npm run dev:electron
 这个仓库对文档做了 current / archive 分层。
 
 因此：
-- 优先相信 `docs/current-architecture-baseline.md`
-- 优先相信 `docs/current-runtime-truth.md`
+- 优先相信 `docs/current/architecture.md`
+- 优先相信 `docs/current/runtime-truth.md`
 - archive 文档更多用于历史背景参考
 
 如果旧文档和当前代码不一致，应优先以 current 文档和代码为准。
@@ -421,9 +421,9 @@ npm run dev:electron
 ### 文档
 - `README.md`
 - `docs/README.md`
-- `docs/current-architecture-baseline.md`
-- `docs/current-runtime-truth.md`
-- `docs/dev-guide.md`
+- `docs/current/architecture.md`
+- `docs/current/runtime-truth.md`
+- `docs/guides/dev-guide.md`
 
 ### 前端
 - `frontend/src/App.tsx`
@@ -452,9 +452,9 @@ npm run dev:electron
 当前文档中的环境要求有轻微不一致：
 
 - `README.md` 写的是：Node 18+、Python 3.10+
-- `docs/dev-guide.md` 写的是：Node 22+、Python 3.11+
+- `docs/guides/dev-guide.md` 写的是：Node 22+、Python 3.11+
 
-如果希望更稳妥，建议优先按 `docs/dev-guide.md` 执行，也就是：
+如果希望更稳妥，建议优先按 `docs/guides/dev-guide.md` 执行，也就是：
 
 - Node 22+
 - Python 3.11+

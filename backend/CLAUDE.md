@@ -28,7 +28,7 @@
 
 ## 运行方式
 
-优先参考 `docs/dev-guide.md` 的当前开发流程。
+优先参考 `docs/guides/dev-guide.md` 的当前开发流程。
 
 常见命令示例：
 
@@ -59,9 +59,9 @@ pytest backend/tests
 | Document | Path | What it answers |
 |----------|------|-----------------|
 | Docs Index | `docs/README.md` | 当前文档阅读入口 |
-| Current Architecture | `docs/current-architecture-baseline.md` | 当前系统结构总览 |
-| Current Runtime Truth | `docs/current-runtime-truth.md` | 当前运行事实 / live surfaces |
-| Dev Guide | `docs/dev-guide.md` | 开发环境与启动方式 |
-| Runtime/Local Artifact Policy | `docs/runtime-local-artifact-policy.md` | `.codex/` / `.omx/` / `.omc/` / session artifacts 的边界 |
+| Current Architecture | `docs/current/architecture.md` | 当前系统结构总览 |
+| Current Runtime Truth | `docs/current/runtime-truth.md` | 当前运行事实 / live surfaces |
+| Dev Guide | `docs/guides/dev-guide.md` | 开发环境与启动方式 |
+| Runtime/Local Artifact Policy | `docs/governance/runtime-local-artifact-policy.md` | `.codex/` / `.omx/` / `.omc/` / session artifacts 的边界 |
 | API Reference (stale) | `docs/archive/reference/api-reference.md` | 历史 API 参考，需晚于 current docs 阅读 |
 | Data Model (stale) | `docs/archive/reference/data-model.md` | 历史数据模型参考，需晚于 current docs 阅读 |

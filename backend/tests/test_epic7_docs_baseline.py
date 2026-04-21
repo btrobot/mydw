@@ -14,21 +14,20 @@ def _read_repo_file(relative_path: str) -> str:
 
 
 def test_current_architecture_baseline_exists_and_links_runtime_truth() -> None:
-    baseline = _read_repo_file("docs/current-architecture-baseline.md")
+    baseline = _read_repo_file("docs/current/architecture.md")
 
     assert "当前架构基线" in baseline
-    assert "docs/current-runtime-truth.md" in baseline
-    assert "docs/runtime-truth.md" in baseline
-    assert "docs/epic-7-doc-authority-matrix.md" in baseline
-    assert "Phase 1-6" in baseline
+    assert "docs/current/runtime-truth.md" in baseline
+    assert "docs/governance/authority-matrix.md" in baseline
+    assert "Creative-first" in baseline
 
 
 def test_doc_authority_matrix_defines_baseline_runtime_and_legacy_roles() -> None:
-    authority_matrix = _read_repo_file("docs/epic-7-doc-authority-matrix.md")
+    authority_matrix = _read_repo_file("docs/governance/authority-matrix.md")
 
     assert "docs/README.md" in authority_matrix
-    assert "current-architecture-baseline.md" in authority_matrix
-    assert "current-runtime-truth.md" in authority_matrix
+    assert "docs/current/architecture.md" in authority_matrix
+    assert "docs/current/runtime-truth.md" in authority_matrix
     assert "runtime-truth.md" in authority_matrix
     assert "system-architecture.md" in authority_matrix
     assert "authoritative" in authority_matrix
@@ -40,22 +39,22 @@ def test_runtime_truth_alias_is_lightweight_entrypoint_not_competing_source() ->
     runtime_truth_alias = _read_repo_file("docs/runtime-truth.md")
 
     assert "入口" in runtime_truth_alias
-    assert "docs/current-runtime-truth.md" in runtime_truth_alias
-    assert "docs/current-architecture-baseline.md" in runtime_truth_alias
+    assert "docs/current/runtime-truth.md" in runtime_truth_alias
+    assert "docs/current/architecture.md" in runtime_truth_alias
     assert "不应与 canonical 内容竞争" in runtime_truth_alias
 
 
 def test_current_architecture_baseline_contains_recommended_reading_path() -> None:
-    baseline = _read_repo_file("docs/current-architecture-baseline.md")
+    baseline = _read_repo_file("docs/current/architecture.md")
 
     assert "推荐阅读路径" in baseline
     assert "README.md" in baseline
     assert "docs/README.md" in baseline
-    assert "docs/current-runtime-truth.md" in baseline
+    assert "docs/current/runtime-truth.md" in baseline
 
 
 def test_docs_parity_checklist_covers_phase_1_to_6_truths() -> None:
-    checklist = _read_repo_file("docs/epic-7-docs-parity-checklist.md")
+    checklist = _read_repo_file("docs/governance/epic-7-docs-parity-checklist.md")
 
     assert "schedule-config" in checklist
     assert "publish status" in checklist
@@ -68,11 +67,11 @@ def test_docs_readme_exists_and_separates_current_docs_from_runtime_artifacts() 
     docs_index = _read_repo_file("docs/README.md")
 
     assert "文档导航" in docs_index or "Documentation" in docs_index
-    assert "docs/current-architecture-baseline.md" in docs_index
-    assert "docs/current-runtime-truth.md" in docs_index
-    assert "docs/epic-7-doc-authority-matrix.md" in docs_index
-    assert "docs/doc-inventory-ledger.md" in docs_index
-    assert "docs/runtime-local-artifact-policy.md" in docs_index
+    assert "docs/current/architecture.md" in docs_index
+    assert "docs/current/runtime-truth.md" in docs_index
+    assert "docs/governance/authority-matrix.md" in docs_index
+    assert "docs/governance/inventory-ledger.md" in docs_index
+    assert "docs/governance/runtime-local-artifact-policy.md" in docs_index
     assert "docs/archive/exports/" in docs_index
     assert ".codex/" in docs_index
     assert ".omx/" in docs_index
@@ -81,7 +80,7 @@ def test_docs_readme_exists_and_separates_current_docs_from_runtime_artifacts() 
 
 
 def test_doc_inventory_ledger_classifies_major_document_and_runtime_clusters() -> None:
-    ledger = _read_repo_file("docs/doc-inventory-ledger.md")
+    ledger = _read_repo_file("docs/governance/inventory-ledger.md")
 
     assert "Inventory Ledger" in ledger or "台账" in ledger
     assert "docs/" in ledger
@@ -219,7 +218,7 @@ def test_design_core_archive_batch_moves_stale_stack_and_login_docs_out_of_prima
 
 
 def test_runtime_local_artifact_policy_documents_boundary_and_current_git_state() -> None:
-    policy = _read_repo_file("docs/runtime-local-artifact-policy.md")
+    policy = _read_repo_file("docs/governance/runtime-local-artifact-policy.md")
 
     assert ".codex/" in policy
     assert ".omx/" in policy
@@ -266,7 +265,7 @@ def test_private_docs_move_into_archive_and_d_mirror_dirs_are_reclassified_as_lo
     ]:
         assert not (REPO_ROOT / old_path).exists(), f"file should no longer remain in old path: {old_path}"
 
-    runtime_policy = _read_repo_file("docs/runtime-local-artifact-policy.md")
+    runtime_policy = _read_repo_file("docs/governance/runtime-local-artifact-policy.md")
     assert "D:" in runtime_policy or "mirror" in runtime_policy
 
 

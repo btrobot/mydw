@@ -4,8 +4,8 @@
 > 当前 authoritative API truth 请优先看：
 > - backend live docs: `/docs`
 > - OpenAPI export: `/openapi.json`
-> - `docs/current-architecture-baseline.md`
-> - `docs/current-runtime-truth.md`
+> - `docs/current/architecture.md`
+> - `docs/current/runtime-truth.md`
 >
 > 本文档保留为历史性参考，不再保证逐端点细节始终与当前代码同步。
 

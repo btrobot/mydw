@@ -61,5 +61,5 @@
 更多实现级说明见：`docs/phase-6-topic-migration-notes.md`
 
 补充说明：
-- `docs/phase-6-topic-relation-cutover.md`
+- `docs/domains/publishing/phase-6-topic-relation-cutover.md`
 - `docs/phase-6-migration-ledger.md`

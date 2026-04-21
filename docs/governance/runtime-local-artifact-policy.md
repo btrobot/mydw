@@ -20,7 +20,7 @@
 - 会话产物 / session state
 - 本地数据库、日志、shell snapshots、历史记录
 
-这些内容对 agent/runtime 运维或历史回溯可能有价值，但不应和 `README.md`、`docs/README.md`、`docs/current-architecture-baseline.md`、`docs/current-runtime-truth.md` 竞争“先读什么”的位置。
+这些内容对 agent/runtime 运维或历史回溯可能有价值，但不应和 `README.md`、`docs/README.md`、`docs/current/architecture.md`、`docs/current/runtime-truth.md` 竞争“先读什么”的位置。
 
 ## Current repo reality
 

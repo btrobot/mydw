@@ -102,4 +102,4 @@
 - `docs/phase-6-dependency-matrix.md`
 - `docs/phase-6-deletion-preconditions.md`
 - `docs/phase-6-legacy-deletion-preconditions.md`
-- `docs/phase-6-topic-relation-cutover.md`
+- `docs/domains/publishing/phase-6-topic-relation-cutover.md`

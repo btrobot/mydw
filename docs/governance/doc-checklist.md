@@ -14,10 +14,10 @@
 ```
 [ ] CLAUDE.md 存在且有 ## References 表
 [ ] backend/CLAUDE.md 存在
-[ ] docs/current-architecture-baseline.md 存在
-[ ] docs/current-runtime-truth.md 存在
+[ ] docs/current/architecture.md 存在
+[ ] docs/current/runtime-truth.md 存在
 [ ] docs/archive/reference/system-architecture.md 若保留，则已明确标记 stale / archival
-[ ] docs/dev-guide.md 存在
+[ ] docs/guides/dev-guide.md 存在
 [ ] docs/archive/reference/data-model.md 存在
 [ ] docs/archive/reference/api-reference.md 存在
 ```
@@ -79,7 +79,7 @@ grep "^### " docs/archive/reference/api-reference.md | wc -l
 ### 2.3 架构文档 vs 代码
 
 ```
-[ ] docs/epic-7-doc-authority-matrix.md 中的职责边界已更新
+[ ] docs/governance/authority-matrix.md 中的职责边界已更新
 [ ] 当前架构入口与运行事实入口清晰（baseline / runtime truth）
 [ ] 技术栈版本与 package.json / requirements.txt 一致
 [ ] 项目结构树与实际目录一致
@@ -217,7 +217,7 @@ if abs(code_count - doc_count) > 2:
 
 ```markdown
 ## 文档质量检查
-- Sprint 结束时执行 docs/doc-checklist.md 全量检查
+- Sprint 结束时执行 docs/governance/doc-checklist.md 全量检查
 - 发现漂移时创建修复任务
 ```
 

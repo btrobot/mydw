@@ -3,7 +3,7 @@
 > Version: 1.0.0  
 > Updated: 2026-04-16  
 > Scope: repo-wide engineering conventions  
-> Related: `AGENTS.md`, `docs/dev-guide.md`, `refactor-docs/架构与工程约束.md`
+> Related: `AGENTS.md`, `docs/guides/dev-guide.md`, `refactor-docs/架构与工程约束.md`
 
 ---
 
@@ -222,7 +222,7 @@
 
 - `refactor-docs/架构与工程约束.md`
 - 对应 PRD / 详细设计文档
-- `docs/current-runtime-truth.md`（若 runtime truth 变化）
+- `docs/current/runtime-truth.md`（若 runtime truth 变化）
 - ADR（若属于架构决策）
 
 ---

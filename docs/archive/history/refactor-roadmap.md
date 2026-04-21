@@ -3,8 +3,8 @@
 > 状态：历史规划参考（historical planning reference），**不是当前 authoritative truth 文档**。  
 > 当前阅读入口请先看：
 > - `docs/README.md`
-> - `docs/current-architecture-baseline.md`
-> - `docs/current-runtime-truth.md`
+> - `docs/current/architecture.md`
+> - `docs/current/runtime-truth.md`
 >
 > 说明：
 > - 本文档记录的是当时的重构规划视角，保留供历史回溯和 `.omx` 历史 planning context 参考
@@ -39,8 +39,8 @@
 以你 `~/docs` 里的分析为基础，整理一份 repo 内正式基线文档：
 
 建议新增：
-- `docs/current-architecture-baseline.md`
-- `docs/current-runtime-truth.md`
+- `docs/current/architecture.md`
+- `docs/current/runtime-truth.md`
 
 内容只写当前真实行为，不写理想设计。
 
@@ -67,7 +67,7 @@
 - 配置保存并生效
 
 ## 交付物
-- `docs/current-architecture-baseline.md`
+- `docs/current/architecture.md`
 - `docs/archive/history/refactor-gap-list.md`
 - `docs/regression-checklist.md`
 

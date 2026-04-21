@@ -40,7 +40,7 @@
 ## 5. Frozen current topic semantics
 
 Canonical write-up:
-- `docs/phase-6-topic-compat-matrix.md`
+- `docs/domains/publishing/phase-6-topic-compat-matrix.md`
 - `docs/adr/ADR-016-topic-canonical-semantics-phase-6.md`
 
 ### 5.1 Global singleton topics

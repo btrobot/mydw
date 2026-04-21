@@ -10,10 +10,10 @@
 请优先按下面顺序阅读当前文档真相：
 
 1. `docs/README.md` — 文档导航首页
-2. `docs/current-architecture-baseline.md` — 当前架构总入口
-3. `docs/current-runtime-truth.md` — 当前运行事实清单
-4. `docs/epic-7-doc-authority-matrix.md` — 文档职责边界
-5. `docs/dev-guide.md` — 开发与启动指南
+2. `docs/current/architecture.md` — 当前架构总入口
+3. `docs/current/runtime-truth.md` — 当前运行事实清单
+4. `docs/governance/authority-matrix.md` — 文档职责边界
+5. `docs/guides/dev-guide.md` — 开发与启动指南
 
 ## 功能特性
 
@@ -100,7 +100,7 @@ cd E:\ais\mydw
   - 按端口停止 `backend / frontend / remote-backend / remote-admin`
 
 > Electron 运行时不再应直接依赖 Python venv / exe 路径布局。  
-> 详见 `docs/startup-protocol.md`。
+> 详见 `docs/guides/startup-protocol.md`。
 
 ### 访问地址
 
@@ -111,9 +111,9 @@ cd E:\ais\mydw
 ## 当前文档边界
 
 - 文档导航首页：`docs/README.md`
-- 当前架构总览：`docs/current-architecture-baseline.md`
-- 当前运行事实：`docs/current-runtime-truth.md`
-- runtime/local 资产边界：`docs/runtime-local-artifact-policy.md`（`.codex/`、`.omx/`、`.omc/`、本地 runtime 输出目录不属于主文档入口）
+- 当前架构总览：`docs/current/architecture.md`
+- 当前运行事实：`docs/current/runtime-truth.md`
+- runtime/local 资产边界：`docs/governance/runtime-local-artifact-policy.md`（`.codex/`、`.omx/`、`.omc/`、本地 runtime 输出目录不属于主文档入口）
 - 旧的详细架构说明、API 参考、数据模型字典在 Epic 7 / PR2 后会被视为 **stale / archival reference**，位于 `docs/archive/reference/` 下；阅读时请先以当前入口文档为准。
 
 ## 数据安全
@@ -133,4 +133,4 @@ npm run build
 
 ## 开发指南
 
-详见 `docs/dev-guide.md`
+详见 `docs/guides/dev-guide.md`

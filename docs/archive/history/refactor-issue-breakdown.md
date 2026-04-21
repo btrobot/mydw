@@ -3,8 +3,8 @@
 > 状态：历史规划参考（historical planning reference），**不是当前 authoritative truth 文档**。  
 > 当前阅读入口请先看：
 > - `docs/README.md`
-> - `docs/current-architecture-baseline.md`
-> - `docs/current-runtime-truth.md`
+> - `docs/current/architecture.md`
+> - `docs/current/runtime-truth.md`
 >
 > 说明：
 > - 本文档记录的是重构任务拆分与阶段性 issue breakdown
@@ -485,7 +485,7 @@ Settings 只保留真实能力，例如：
 把你 `~/docs` 中更接近真实系统的内容整理进 repo：
 
 建议文件：
-- `docs/current-architecture-baseline.md`
+- `docs/current/architecture.md`
 - `docs/runtime-truth.md`
 
 **验收标准**

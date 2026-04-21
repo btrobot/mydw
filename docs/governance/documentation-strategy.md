@@ -25,10 +25,10 @@
 
 1. `README.md`
 2. `docs/README.md`
-3. `docs/current-architecture-baseline.md`
-4. `docs/current-runtime-truth.md`
-5. `docs/epic-7-doc-authority-matrix.md`
-6. `docs/dev-guide.md`
+3. `docs/current/architecture.md`
+4. `docs/current/runtime-truth.md`
+5. `docs/governance/authority-matrix.md`
+6. `docs/guides/dev-guide.md`
 
 这条路径回答“项目现在是什么样”。
 
@@ -99,7 +99,7 @@
 ## 与其他文档的关系
 
 - `docs/README.md`：文档导航首页
-- `docs/doc-inventory-ledger.md`：当前分类台账
-- `docs/runtime-local-artifact-policy.md`：runtime / local artifact 边界
-- `docs/multi-agent-guide.md`：如何在当前仓库里使用多 agent 协作
+- `docs/governance/inventory-ledger.md`：当前分类台账
+- `docs/governance/runtime-local-artifact-policy.md`：runtime / local artifact 边界
+- `docs/governance/multi-agent-guide.md`：如何在当前仓库里使用多 agent 协作
 - `docs/archive/reference/system-architecture.md`：历史架构长文，保留作 archive/reference 参考，不再作为当前默认入口

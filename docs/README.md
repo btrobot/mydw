@@ -8,34 +8,34 @@
 
 1. `README.md` — 项目入口、快速开始、当前推荐阅读路径
 2. `docs/README.md` — 文档导航首页（本文件）
-3. `docs/current-architecture-baseline.md` — 当前架构总入口
-4. `docs/current-runtime-truth.md` — 当前运行事实 / canonical fact inventory
-5. `docs/epic-7-doc-authority-matrix.md` — 文档职责边界
-6. `docs/dev-guide.md` — 开发环境与启动流程
-7. `docs/doc-inventory-ledger.md` — 当前文档/资料簇分类台账
-8. `docs/runtime-local-artifact-policy.md` — 运行时 / 本地 agent 资产边界说明
+3. `docs/current/architecture.md` — 当前架构总入口
+4. `docs/current/runtime-truth.md` — 当前运行事实 / canonical fact inventory
+5. `docs/governance/authority-matrix.md` — 文档职责边界
+6. `docs/guides/dev-guide.md` — 开发环境与启动流程
+7. `docs/governance/inventory-ledger.md` — 当前文档/资料簇分类台账
+8. `docs/governance/runtime-local-artifact-policy.md` — 运行时 / 本地 agent 资产边界说明
 
 ## Current / canonical docs
 
 这些文档回答“现在这个项目到底是什么样”：
 
-- `docs/current-architecture-baseline.md`
-- `docs/current-runtime-truth.md`
-- `docs/epic-7-doc-authority-matrix.md`
-- `docs/dev-guide.md`
-- `docs/generated-artifact-policy.md`
-- `docs/openapi-generation-workflow.md`
+- `docs/current/architecture.md`
+- `docs/current/runtime-truth.md`
+- `docs/governance/authority-matrix.md`
+- `docs/guides/dev-guide.md`
+- `docs/governance/generated-artifact-policy.md`
+- `docs/guides/openapi-generation-workflow.md`
 
 ## Working engineering docs
 
 这些文档仍然有工程参考价值，但不应自动被当作唯一真相：
 
 - sprint / phase / migration / refactor 相关文档
-- `docs/creative-progressive-rebuild-final-summary.md`（Creative 渐进式重建 A~D 阶段收口总结）
+- `docs/domains/creative/progressive-rebuild-final-summary.md`（Creative 渐进式重建 A~D 阶段收口总结）
 - `docs/frontend-ui-issues-and-improvements.md`（当前前端界面问题分析与改进方向）
 - 专题设计说明（如 settings、topic、task semantics、generation governance）
 - `docs/adr/` 中的决策记录
-- `docs/auth/README.md`（远程认证 / 本地授权门禁冻结文档入口；Step 0 artifacts）
+- `docs/domains/auth/README.md`（远程认证 / 本地授权门禁冻结文档入口；Step 0 artifacts）
 
 ## Historical / archival references
 
@@ -50,10 +50,10 @@
 
 更完整的 authority 说明见：
 
-- `docs/epic-7-doc-authority-matrix.md`
+- `docs/governance/authority-matrix.md`
 - `docs/epic-7-stale-doc-inventory.md`
-- `docs/doc-inventory-ledger.md`
-- `docs/runtime-local-artifact-policy.md`
+- `docs/governance/inventory-ledger.md`
+- `docs/governance/runtime-local-artifact-policy.md`
 
 当前第一批已归档的旧计划文档位于：
 
@@ -102,7 +102,7 @@
 
 更完整的边界规则见：
 
-- `docs/runtime-local-artifact-policy.md`
+- `docs/governance/runtime-local-artifact-policy.md`
 
 ## 当前整理策略
 

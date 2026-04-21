@@ -5,8 +5,8 @@
 > 状态：历史规划参考（historical planning reference），**不是当前 authoritative truth 文档**。  
 > 当前阅读入口请先看：
 > - `docs/README.md`
-> - `docs/current-architecture-baseline.md`
-> - `docs/current-runtime-truth.md`
+> - `docs/current/architecture.md`
+> - `docs/current/runtime-truth.md`
 >
 > 说明：
 > - 本文档保留 gap-tracking 视角，便于回溯当时的重构目标

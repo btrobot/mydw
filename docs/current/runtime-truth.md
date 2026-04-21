@@ -1,7 +1,7 @@
 # 当前运行真相（当前 canonical fact inventory）
 
 > 目的：记录当前代码已经证明的 **runtime truth / canonical source**。  
-> 本文档是事实清单，不承担完整架构导览职责；架构总入口见 `docs/current-architecture-baseline.md`。
+> 本文档是事实清单，不承担完整架构导览职责；架构总入口见 `docs/current/architecture.md`。
 
 ## 1. 调度配置当前状态（PR3 后）
 
@@ -44,7 +44,7 @@
 - `TopicGroup` 仍然不是 task assembly 的自动输入源
 - 三个 legacy JSON 列仍保留 dual-write / fallback 角色，用于兼容与 rollback
 - 更完整的 Phase 6 语义冻结见：
-  - `docs/phase-6-topic-compat-matrix.md`
+  - `docs/domains/publishing/phase-6-topic-compat-matrix.md`
   - `docs/adr/ADR-016-topic-canonical-semantics-phase-6.md`
 
 ## 3.1 当前剩余 JSON 字段结论（Phase 6 / PR5）
@@ -68,7 +68,7 @@
 ### 结论
 - 新 runtime 路径已不再把 `tasks.video_id` / `tasks.copywriting_id` 当作主真相
 - 旧列仍保留兼容回退角色，但读取已被集中到 compat helper，而不再散落在业务逻辑里
-- 物理删列前置条件已转移到 `docs/phase-6-deletion-preconditions.md`
+- 物理删列前置条件已转移到 `docs/domains/publishing/phase-6-deletion-preconditions.md`
 
 ## 5. 当前迁移边界
 
