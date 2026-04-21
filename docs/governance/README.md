@@ -218,6 +218,26 @@
 - 想讨论“下一阶段怎么开始”的人
 - 想做阶段收尾 / 选线 / 启动包的人
 
+这 4 份核心文档的关系，可以压缩理解成下面这张阅读地图：
+
+```text
+post-mvp-development-model
+  = 为什么 MVP 后必须先进入治理节奏
+              ↓
+post-mvp-closeout-sequence
+  = 正确顺序：收尾 → 选线 → 定向收口 → 启动
+              ↓
+phase-transition-checklist
+  = 真正切阶段前，怎么逐项检查能不能切
+              ↓
+current/next-phase-kickoff
+  = 已经能切之后，下一阶段从哪里正式开始
+```
+
+如果只记一句话：
+
+> **model 讲为什么，sequence 讲顺序，checklist 讲门槛，kickoff 讲起点。**
+
 ### 场景 C：我想找具体规则
 
 直接进入：

@@ -122,6 +122,12 @@ def test_governance_readme_classifies_core_policies_inventory_standards_and_temp
     assert "docs/governance/templates/phase-closeout-template.md" in governance_index
     assert "按场景的阅读顺序" in governance_index
     assert "场景 B：我想知道 MVP 后怎么继续推进" in governance_index
+    assert "这 4 份核心文档的关系" in governance_index
+    assert "model 讲为什么，sequence 讲顺序，checklist 讲门槛，kickoff 讲起点" in governance_index
+    assert "post-mvp-development-model" in governance_index
+    assert "post-mvp-closeout-sequence" in governance_index
+    assert "phase-transition-checklist" in governance_index
+    assert "current/next-phase-kickoff" in governance_index
     assert "新文档落点规则" in governance_index
     assert "应该留在 root 的文档" in governance_index
     assert "应该放进 `policies/` 的文档" in governance_index
