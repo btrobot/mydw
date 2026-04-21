@@ -227,11 +227,15 @@ def test_root_doc_triage_classifies_uncategorized_docs() -> None:
     triage = _read("docs/governance/inventory/root-doc-triage.md")
 
     assert "根层文档分诊表" in triage
+    assert "优先按 current / domains / governance / guides 四分法收口" in triage
     assert "docs/backup-scope.md" in triage
     assert "docs/chat-req.md" in triage
     assert "docs/init-req.md" in triage
     assert "docs/manual-axios-exceptions.md" in triage
     assert "docs/schema-parity-checklist.md" in triage
+    assert "docs/domains/system/backup-scope.md" in triage
+    assert "docs/governance/manual-http-exceptions.md" in triage
+    assert "docs/specs/requirements-sources/chat-req.md" in triage
     assert "删除候选" in triage
     assert "docs/frontend-ui-ux-closeout-ralplan-command.md" in triage
 

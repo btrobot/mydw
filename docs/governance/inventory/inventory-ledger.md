@@ -176,7 +176,7 @@ Current location:
 
 ## Phase E compression artifacts
 
-- `docs/governance/inventory/root-doc-triage.md` — 根层未分类 docs 的去向表
+- `docs/governance/inventory/root-doc-triage.md` — 根层未分类 docs 的四分法去向表
 - `docs/governance/next-phase-backlog.md` — 从 closeout / audit / issue docs 压缩出的下一阶段 backlog
 
 ## Phase F launch artifacts

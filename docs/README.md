@@ -48,7 +48,7 @@
 - sprint / phase / migration / refactor 相关文档
 - `docs/domains/creative/progressive-rebuild-final-summary.md`（Creative 渐进式重建 A~D 阶段收口总结）
 - `docs/frontend-ui-issues-and-improvements.md`（当前前端界面问题分析与改进方向）
-- `docs/governance/inventory/root-doc-triage.md`（根层未分类文档去向收口）
+- `docs/governance/inventory/root-doc-triage.md`（根层未分类文档四分法去向收口）
 - `docs/governance/inventory/`（台账 / 分诊 / parity / stale / version inventories）
 - `docs/governance/policies/`（generated artifact、runtime boundary、plan retention 等规则）
 - `docs/governance/standards/`（documentation strategy、doc checklist、目录四分法、`domains / architecture / governance` 三分法、multi-agent guide 等长期规范）
