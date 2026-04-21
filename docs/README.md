@@ -13,8 +13,9 @@
 5. `docs/governance/authority-matrix.md` — 文档职责边界
 6. `docs/guides/dev-guide.md` — 开发环境与启动流程
 7. `docs/governance/verification-baseline.md` — 最小可信回归基线
-8. `docs/governance/inventory-ledger.md` — 当前文档/资料簇分类台账
-9. `docs/governance/runtime-local-artifact-policy.md` — 运行时 / 本地 agent 资产边界说明
+8. `docs/current/next-phase-kickoff.md` — 下一阶段启动入口
+9. `docs/governance/inventory-ledger.md` — 当前文档/资料簇分类台账
+10. `docs/governance/runtime-local-artifact-policy.md` — 运行时 / 本地 agent 资产边界说明
 
 ## Current / canonical docs
 
@@ -24,6 +25,7 @@
 - `docs/current/runtime-truth.md`
 - `docs/governance/authority-matrix.md`
 - `docs/governance/verification-baseline.md`
+- `docs/current/next-phase-kickoff.md`
 - `docs/guides/dev-guide.md`
 - `docs/governance/generated-artifact-policy.md`
 - `docs/guides/openapi-generation-workflow.md`
@@ -37,6 +39,7 @@
 - `docs/frontend-ui-issues-and-improvements.md`（当前前端界面问题分析与改进方向）
 - `docs/governance/root-doc-triage.md`（根层未分类文档去向收口）
 - `docs/governance/next-phase-backlog.md`（压缩后的 open issues / next-phase backlog）
+- `docs/governance/next-phase-prd.md` / `docs/governance/next-phase-test-spec.md` / `docs/governance/next-phase-execution-breakdown.md`（下一阶段启动包的规划/验证/执行分解）
 - 专题设计说明（如 settings、topic、task semantics、generation governance）
 - `docs/adr/` 中的决策记录
 - `docs/domains/auth/README.md`（远程认证 / 本地授权门禁冻结文档入口；Step 0 artifacts）

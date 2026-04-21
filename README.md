@@ -15,6 +15,7 @@
 4. `docs/governance/authority-matrix.md` — 文档职责边界
 5. `docs/guides/dev-guide.md` — 开发与启动指南
 6. `docs/governance/verification-baseline.md` — 最小可信回归基线 / 日常开发必跑 / 阶段发布必跑
+7. `docs/current/next-phase-kickoff.md` — 下一阶段启动入口 / 当前完成度 / 当前边界 / 下一条主线
 
 ## 功能特性
 
@@ -125,6 +126,7 @@ cd E:\ais\mydw
 - 当前运行事实：`docs/current/runtime-truth.md`
 - runtime/local 资产边界：`docs/governance/runtime-local-artifact-policy.md`（`.codex/`、`.omx/`、`.omc/`、本地 runtime 输出目录不属于主文档入口）
 - 当前验证基线：`docs/governance/verification-baseline.md`
+- 下一阶段启动包：`docs/current/next-phase-kickoff.md`
 - 旧的详细架构说明、API 参考、数据模型字典在 Epic 7 / PR2 后会被视为 **stale / archival reference**，位于 `docs/archive/reference/` 下；阅读时请先以当前入口文档为准。
 
 ## 数据安全

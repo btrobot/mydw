@@ -20,6 +20,7 @@ def test_current_architecture_baseline_exists_and_links_runtime_truth() -> None:
     assert "docs/current/runtime-truth.md" in baseline
     assert "docs/governance/authority-matrix.md" in baseline
     assert "docs/governance/verification-baseline.md" in baseline
+    assert "docs/current/next-phase-kickoff.md" in baseline
     assert "Creative-first" in baseline
 
 
@@ -72,10 +73,14 @@ def test_docs_readme_exists_and_separates_current_docs_from_runtime_artifacts() 
     assert "docs/current/runtime-truth.md" in docs_index
     assert "docs/governance/authority-matrix.md" in docs_index
     assert "docs/governance/verification-baseline.md" in docs_index
+    assert "docs/current/next-phase-kickoff.md" in docs_index
     assert "docs/governance/inventory-ledger.md" in docs_index
     assert "docs/governance/runtime-local-artifact-policy.md" in docs_index
     assert "docs/governance/root-doc-triage.md" in docs_index
     assert "docs/governance/next-phase-backlog.md" in docs_index
+    assert "docs/governance/next-phase-prd.md" in docs_index
+    assert "docs/governance/next-phase-test-spec.md" in docs_index
+    assert "docs/governance/next-phase-execution-breakdown.md" in docs_index
     assert "docs/archive/exports/" in docs_index
     assert ".codex/" in docs_index
     assert ".omx/" in docs_index
@@ -105,6 +110,10 @@ def test_doc_inventory_ledger_classifies_major_document_and_runtime_clusters() -
     assert "archive" in ledger or "move" in ledger
     assert "docs/governance/root-doc-triage.md" in ledger
     assert "docs/governance/next-phase-backlog.md" in ledger
+    assert "docs/current/next-phase-kickoff.md" in ledger
+    assert "docs/governance/next-phase-prd.md" in ledger
+    assert "docs/governance/next-phase-test-spec.md" in ledger
+    assert "docs/governance/next-phase-execution-breakdown.md" in ledger
 
 
 def test_first_archive_batch_moves_old_planning_docs_out_of_docs_root() -> None:

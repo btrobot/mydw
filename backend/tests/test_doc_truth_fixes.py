@@ -27,6 +27,7 @@ def test_readme_uses_actual_packaged_output_directory() -> None:
 
     assert "dist-electron" in readme
     assert "docs/governance/verification-baseline.md" in readme
+    assert "docs/current/next-phase-kickoff.md" in readme
     assert "frontend/release/" not in readme
 
 
@@ -141,3 +142,34 @@ def test_next_phase_backlog_compresses_open_issues_into_prioritized_lanes() -> N
     assert "业务层 vs 诊断层彻底分层" in backlog
     assert "AIClip workflow 产品化" in backlog
     assert "docs/governance/root-doc-triage.md" in backlog
+
+
+def test_next_phase_kickoff_links_completion_boundary_baseline_and_launch_artifacts() -> None:
+    kickoff = _read("docs/current/next-phase-kickoff.md")
+
+    assert "下一阶段启动包" in kickoff
+    assert "当前完成度" in kickoff
+    assert "当前边界" in kickoff
+    assert "当前验证基线" in kickoff
+    assert "当前 backlog 入口" in kickoff
+    assert "下一阶段第一条主线" in kickoff
+    assert "单主线推进 + 多 PR sequence" in kickoff
+    assert "docs/governance/verification-baseline.md" in kickoff
+    assert "docs/governance/next-phase-backlog.md" in kickoff
+    assert "docs/governance/next-phase-prd.md" in kickoff
+    assert "docs/governance/next-phase-test-spec.md" in kickoff
+    assert "docs/governance/next-phase-execution-breakdown.md" in kickoff
+
+
+def test_next_phase_launch_bundle_docs_define_scope_tests_and_execution() -> None:
+    prd = _read("docs/governance/next-phase-prd.md")
+    test_spec = _read("docs/governance/next-phase-test-spec.md")
+    breakdown = _read("docs/governance/next-phase-execution-breakdown.md")
+
+    assert "Creative-first 稳定化 / UI-UX 收口主线" in prd
+    assert "成功标准" in prd
+    assert "必跑 frontend E2E baseline" in test_spec
+    assert "CreativeWorkbench" in test_spec
+    assert "PR Sequence" in breakdown
+    assert "PR-1 — Workbench 可管理性收口" in breakdown
+    assert "PR-4 — 回归补强与阶段收口" in breakdown

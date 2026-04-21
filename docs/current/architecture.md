@@ -388,6 +388,7 @@ remote/
 | `docs/governance/authority-matrix.md` | current / working / archival / runtime 边界 |
 | `docs/guides/dev-guide.md` | 开发与启动协议 |
 | `docs/governance/verification-baseline.md` | 最小可信回归基线与分层验证清单 |
+| `docs/current/next-phase-kickoff.md` | 下一阶段启动入口与推荐主线 |
 | `docs/guides/startup-protocol.md` | 启动模式、服务矩阵与 launcher 协议 |
 | `docs/domains/auth/README.md` | auth 相关冻结规范与实现总结入口 |
 | `remote/README.md` | remote workspace 总入口 |
@@ -416,6 +417,14 @@ remote/
 
 1. `docs/domains/creative/progressive-rebuild-final-summary.md`
 2. `docs/domains/creative/progressive-rebuild-completion-audit.md`
+
+### 11.5 想直接开始下一阶段开发
+
+1. `docs/current/next-phase-kickoff.md`
+2. `docs/governance/next-phase-backlog.md`
+3. `docs/governance/next-phase-prd.md`
+4. `docs/governance/next-phase-test-spec.md`
+5. `docs/governance/next-phase-execution-breakdown.md`
 
 ## 12. 与历史文档的关系
 

@@ -17,6 +17,7 @@
 | Cluster | What it contains today | Category | Default disposition | Notes |
 |---|---|---|---|---|
 | `README.md` + `docs/current/architecture.md` + `docs/current/runtime-truth.md` + `docs/governance/authority-matrix.md` + `docs/guides/dev-guide.md` | 当前项目入口、当前架构、当前运行事实、文档权威边界、开发指南 | `current` | `keep` | 当前主阅读路径 |
+| `docs/current/next-phase-kickoff.md` + `docs/governance/next-phase-prd.md` + `docs/governance/next-phase-test-spec.md` + `docs/governance/next-phase-execution-breakdown.md` | 下一阶段启动入口、范围定义、验证计划、执行分解 | `working` with high entry value | `keep` | 下一阶段开发起跑线，不属于历史归档 |
 | `docs/` 其余专题文档（如 generation/settings/topic/task/phase docs） | 迁移说明、治理文档、专题设计、阶段性工程说明 | `working` | `keep` then reclassify/move selectively | 需要后续拆到 `guides/` / `operations/` / `archive/` |
 | `docs/archive/history/refactor-roadmap.md`, `docs/archive/history/refactor-issue-breakdown.md`, `docs/archive/history/refactor-gap-list.md` | 历史重构计划与 gap-tracking 文档，仍被部分 `.omx` 历史 planning context 引用 | `historical` | `archive` | 已迁入 `docs/archive/history/`，按历史规划参考理解 |
 | `docs/archive/reference/system-architecture.md`, `docs/archive/reference/api-reference.md`, `docs/archive/reference/data-model.md`, `docs/archive/planning/` 下的旧 sprint / breakdown 文档，以及 `docs/archive/analysis/` 下的旧分析/设计文档 | 高可见度旧文档与历史计划/分析资料 | `historical` | `archive` | 已迁入 archive 子目录，避免与 current docs 竞争 |
@@ -46,6 +47,7 @@ Runtime/local boundary policy:
 - `docs/current/runtime-truth.md`
 - `docs/governance/authority-matrix.md`
 - `docs/guides/dev-guide.md`
+- `docs/current/next-phase-kickoff.md`
 
 ### Keep, but do not treat as default truth
 - active governance and engineering docs under `docs/`
@@ -175,3 +177,10 @@ Current location:
 
 - `docs/governance/root-doc-triage.md` — 根层未分类 docs 的去向表
 - `docs/governance/next-phase-backlog.md` — 从 closeout / audit / issue docs 压缩出的下一阶段 backlog
+
+## Phase F launch artifacts
+
+- `docs/current/next-phase-kickoff.md` — 下一阶段单入口启动包
+- `docs/governance/next-phase-prd.md` — 下一阶段范围定义
+- `docs/governance/next-phase-test-spec.md` — 下一阶段验证规格
+- `docs/governance/next-phase-execution-breakdown.md` — 下一阶段 PR sequence 分解
