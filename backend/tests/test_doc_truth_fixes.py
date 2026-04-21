@@ -26,6 +26,7 @@ def test_readme_uses_actual_packaged_output_directory() -> None:
     readme = _read("README.md")
 
     assert "dist-electron" in readme
+    assert "docs/governance/verification-baseline.md" in readme
     assert "frontend/release/" not in readme
 
 
@@ -89,3 +90,27 @@ def test_project_introduction_uses_canonical_dev_baseline_and_electron_ts_entry(
     assert "Python 3.11+" in intro
     assert "FFmpeg 6+" in intro
     assert "docs/guides/startup-protocol.md" in intro
+
+
+def test_verification_baseline_doc_defines_daily_and_release_layers() -> None:
+    baseline = _read("docs/governance/verification-baseline.md")
+
+    assert "最小可信回归基线" in baseline
+    assert "日常开发必跑" in baseline
+    assert "阶段发布必跑" in baseline
+    assert "auth-routing.spec.ts" in baseline
+    assert "creative-main-entry.spec.ts" in baseline
+    assert "publish-pool.spec.ts" in baseline
+    assert "test_auth_router_gates_pr3.py" in baseline
+    assert "test_creative_workflow_contract.py" in baseline
+    assert "test_local_ffmpeg_contract.py" in baseline
+    assert "test_openapi_contract_parity.py" in baseline
+    assert "test_remote_phase4_pr4_gate.py" in baseline
+    assert "phase4-release-gate.md" in baseline
+
+
+def test_dev_guide_links_to_verification_baseline() -> None:
+    guide = _read("docs/guides/dev-guide.md")
+
+    assert "docs/governance/verification-baseline.md" in guide
+    assert "当前最小验证基线" in guide

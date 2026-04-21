@@ -12,8 +12,9 @@
 4. `docs/current/runtime-truth.md` — 当前运行事实 / canonical fact inventory
 5. `docs/governance/authority-matrix.md` — 文档职责边界
 6. `docs/guides/dev-guide.md` — 开发环境与启动流程
-7. `docs/governance/inventory-ledger.md` — 当前文档/资料簇分类台账
-8. `docs/governance/runtime-local-artifact-policy.md` — 运行时 / 本地 agent 资产边界说明
+7. `docs/governance/verification-baseline.md` — 最小可信回归基线
+8. `docs/governance/inventory-ledger.md` — 当前文档/资料簇分类台账
+9. `docs/governance/runtime-local-artifact-policy.md` — 运行时 / 本地 agent 资产边界说明
 
 ## Current / canonical docs
 
@@ -22,6 +23,7 @@
 - `docs/current/architecture.md`
 - `docs/current/runtime-truth.md`
 - `docs/governance/authority-matrix.md`
+- `docs/governance/verification-baseline.md`
 - `docs/guides/dev-guide.md`
 - `docs/governance/generated-artifact-policy.md`
 - `docs/guides/openapi-generation-workflow.md`

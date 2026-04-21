@@ -19,6 +19,7 @@ def test_current_architecture_baseline_exists_and_links_runtime_truth() -> None:
     assert "当前架构基线" in baseline
     assert "docs/current/runtime-truth.md" in baseline
     assert "docs/governance/authority-matrix.md" in baseline
+    assert "docs/governance/verification-baseline.md" in baseline
     assert "Creative-first" in baseline
 
 
@@ -70,6 +71,7 @@ def test_docs_readme_exists_and_separates_current_docs_from_runtime_artifacts() 
     assert "docs/current/architecture.md" in docs_index
     assert "docs/current/runtime-truth.md" in docs_index
     assert "docs/governance/authority-matrix.md" in docs_index
+    assert "docs/governance/verification-baseline.md" in docs_index
     assert "docs/governance/inventory-ledger.md" in docs_index
     assert "docs/governance/runtime-local-artifact-policy.md" in docs_index
     assert "docs/archive/exports/" in docs_index

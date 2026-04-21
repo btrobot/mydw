@@ -362,6 +362,19 @@ remote/
 - compatibility harness
 - remote-admin typecheck / build / test
 
+### 9.4 最小可信回归基线入口
+
+“至少跑什么”不再分散在 README、remote runbook、个人记忆里，而是统一收口到：
+
+- `docs/governance/verification-baseline.md`
+
+它把当前验证面拆成：
+
+- 日常开发必跑
+- 文档 / 启动协议补充基线
+- remote 最小 gate
+- 阶段发布必跑
+
 ## 10. 当前 authoritative 文档入口
 
 建议把下面几份文档当作当前阅读主路径：
@@ -374,6 +387,7 @@ remote/
 | `docs/current/runtime-truth.md` | 当前 runtime facts / canonical truth |
 | `docs/governance/authority-matrix.md` | current / working / archival / runtime 边界 |
 | `docs/guides/dev-guide.md` | 开发与启动协议 |
+| `docs/governance/verification-baseline.md` | 最小可信回归基线与分层验证清单 |
 | `docs/guides/startup-protocol.md` | 启动模式、服务矩阵与 launcher 协议 |
 | `docs/domains/auth/README.md` | auth 相关冻结规范与实现总结入口 |
 | `remote/README.md` | remote workspace 总入口 |

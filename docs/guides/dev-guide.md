@@ -116,6 +116,24 @@ cd E:\ais\mydw\frontend
 .\node_modules\.bin\playwright.cmd test --config=e2e/playwright.config.ts e2e\login\login.spec.ts
 ```
 
+### 当前最小验证基线
+
+Phase D 收口后的统一入口见：
+
+- `docs/governance/verification-baseline.md`
+
+日常开发默认先跑该文档中的：
+
+1. frontend 最小 E2E 基线
+2. backend 最小 pytest 基线
+3. 若本次改动涉及文档 / 启动协议，再补跑文档与 launcher contract 基线
+4. 若本次改动涉及 remote / 本地 auth 对接，再补跑 remote 最小 gate
+
+准备阶段交付 / 发版时，再升级到：
+
+- full frontend E2E
+- full remote Phase 4 release gate
+
 ### Preview 模式说明
 
 如果运行：
@@ -382,6 +400,7 @@ See `AGENTS.md`, `backend/CLAUDE.md`, and the current OMX/Codex workflow surface
 |----------|------|----------------|
 | Startup Protocol | `docs/guides/startup-protocol.md` | 启动协议、服务矩阵、dev/prod 边界 |
 | Runtime Truth | `docs/current/runtime-truth.md` | 当前端口、运行事实、canonical runtime 结论 |
+| Verification Baseline | `docs/governance/verification-baseline.md` | 最小可信回归基线、日常开发必跑、阶段发布必跑 |
 | API Reference | `docs/archive/reference/api-reference.md` | Historical endpoint reference |
 | Data Model | `docs/archive/reference/data-model.md` | Historical schema reference |
 | System Architecture | `docs/archive/reference/system-architecture.md` | Historical architecture deep-dive |
