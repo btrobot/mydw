@@ -82,6 +82,11 @@ def test_docs_readme_exists_and_separates_current_docs_from_runtime_artifacts() 
     assert "docs/governance/next-phase-prd.md" in docs_index
     assert "docs/governance/next-phase-test-spec.md" in docs_index
     assert "docs/governance/next-phase-execution-breakdown.md" in docs_index
+    assert "后 MVP 开发入口" in docs_index
+    assert "docs/governance/post-mvp-development-model.md" in docs_index
+    assert "docs/governance/post-mvp-closeout-sequence.md" in docs_index
+    assert "docs/governance/phase-transition-checklist.md" in docs_index
+    assert "model 讲为什么，sequence 讲顺序，checklist 讲门槛，kickoff 讲起点" in docs_index
     assert "docs/archive/README.md" in docs_index
     assert "docs/archive/exports/" in docs_index
     assert ".codex/" in docs_index

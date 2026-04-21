@@ -24,6 +24,30 @@
 16. `docs/governance/phase-transition-checklist.md` — 每次阶段切换前后要检查什么，避免未收口就启动下一阶段
 17. `docs/governance/post-mvp-closeout-sequence.md` — MVP 后标准顺序：收尾 → 选线 → 定向收口 → 启动
 
+## 后 MVP 开发入口
+
+如果你当前关心的问题是：
+
+- MVP 做完后，下一步怎么继续
+- 什么时候算“当前阶段已经收干净”
+- 为什么不是先全量补文档
+- 下一阶段应该从哪里正式启动
+
+建议直接按下面顺序进入：
+
+1. `docs/governance/post-mvp-development-model.md`  
+   - 回答：**为什么 MVP 后不能继续按“想到什么做什么”推进**
+2. `docs/governance/post-mvp-closeout-sequence.md`  
+   - 回答：**正确顺序是什么：收尾 → 选线 → 定向收口 → 启动**
+3. `docs/governance/phase-transition-checklist.md`  
+   - 回答：**当前阶段是否已经收尾到能做决定、下一阶段是否真的能启动**
+4. `docs/current/next-phase-kickoff.md`  
+   - 回答：**已经能启动后，下一阶段从哪里正式开始**
+
+可以把这 4 份文档压缩记成一句话：
+
+> **model 讲为什么，sequence 讲顺序，checklist 讲门槛，kickoff 讲起点。**
+
 ## Current / canonical docs
 
 这些文档回答“现在这个项目到底是什么样”：
