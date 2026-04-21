@@ -205,6 +205,18 @@ remote 子系统的架构与设计文档。
 .\dev.bat
 ```
 
+这条路径只负责：
+- 本地 frontend
+- 本地 backend
+
+如果需要本地端 + remote 全量联调，推荐改用：
+
+```powershell
+.\scripts\start-backend.bat
+.\scripts\start-frontend.bat
+.\scripts\start-remote.bat
+```
+
 ### 手动分开启动
 为了便于排查问题，也可以分终端启动。
 
@@ -226,6 +238,12 @@ npm run dev
 - 前端：`http://localhost:5173`
 - 后端 API：`http://localhost:8000`
 - Swagger：`http://localhost:8000/docs`
+- remote-backend：`http://127.0.0.1:8100`
+- remote-admin：`http://127.0.0.1:4173/index.html?apiBase=http://127.0.0.1:8100`
+
+更完整的启动层级与服务矩阵见：
+- `docs/guides/dev-guide.md`
+- `docs/guides/startup-protocol.md`
 
 ### Electron 开发模式
 如果需要完整桌面应用行为：
@@ -242,7 +260,7 @@ npm run dev:electron
 
 1. `frontend/src/App.tsx`
 2. `backend/main.py`
-3. `frontend/electron/main.js`
+3. `frontend/electron/main.ts`
 
 ### 为什么先看它们
 
@@ -259,7 +277,7 @@ npm run dev:electron
 - 注册了哪些路由
 - 系统有哪些后端模块
 
-#### `frontend/electron/main.js`
+#### `frontend/electron/main.ts`
 适合快速理解：
 - Electron 窗口怎么创建
 - 后端怎么被拉起
@@ -375,7 +393,7 @@ npm run dev:electron
 按顺序看：
 1. `frontend/src/App.tsx`
 2. `backend/main.py`
-3. `frontend/electron/main.js`
+3. `frontend/electron/main.ts`
 
 目标是建立总体认知，而不是马上读细节。
 
@@ -439,7 +457,7 @@ npm run dev:electron
 - `backend/models/__init__.py`
 
 ### Electron
-- `frontend/electron/main.js`
+- `frontend/electron/main.ts`
 
 ### Remote
 - `remote/README.md`
@@ -448,16 +466,17 @@ npm run dev:electron
 
 ---
 
-## 一个需要注意的小点
-当前文档中的环境要求有轻微不一致：
-
-- `README.md` 写的是：Node 18+、Python 3.10+
-- `docs/guides/dev-guide.md` 写的是：Node 22+、Python 3.11+
-
-如果希望更稳妥，建议优先按 `docs/guides/dev-guide.md` 执行，也就是：
+## 当前推荐开发基线
+当前入口文档已经统一按下面口径执行：
 
 - Node 22+
 - Python 3.11+
+- FFmpeg 6+（需在 PATH 中）
+
+补充说明：
+- 启动脚本当前主要检查可执行程序是否存在，不直接做版本硬门禁
+- 但文档承诺、团队 onboarding、联调基线统一按上面的版本执行
+- 更完整的启动协议与服务矩阵见 `docs/guides/startup-protocol.md`
 
 ---
 

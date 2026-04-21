@@ -20,7 +20,7 @@
 | 项目 | 选择 |
 |------|------|
 | 语言 | TypeScript |
-| 运行时 | Node.js 18+ |
+| 运行时 | Node.js 22+（沿用仓库当前开发基线） |
 | 位置 | `frontend/scripts/cli/` |
 | HTTP | 原生 fetch |
 | 构建 | tsx 或 tsup |

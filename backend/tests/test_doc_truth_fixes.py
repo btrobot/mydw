@@ -78,3 +78,14 @@ def test_local_ffmpeg_closeout_doc_lists_support_limits_and_regression_commands(
     assert "multi-video montage" in doc
     assert "pytest tests/test_local_ffmpeg_composition.py" in doc
     assert "npm run typecheck" in doc
+
+
+def test_project_introduction_uses_canonical_dev_baseline_and_electron_ts_entry() -> None:
+    intro = _read("docs/specs/project-introduction.md")
+
+    assert "frontend/electron/main.ts" in intro
+    assert "frontend/electron/main.js" not in intro
+    assert "Node 22+" in intro
+    assert "Python 3.11+" in intro
+    assert "FFmpeg 6+" in intro
+    assert "docs/guides/startup-protocol.md" in intro

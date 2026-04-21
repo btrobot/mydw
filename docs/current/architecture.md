@@ -96,6 +96,7 @@
 - `README.md` + `docs/README.md` 负责入口导航
 - `docs/current/architecture.md` 负责架构入口
 - `docs/current/runtime-truth.md` 负责事实清单
+- `docs/guides/dev-guide.md` + `docs/guides/startup-protocol.md` 负责开发 / 启动协议
 - `docs/archive/` 保留历史参考，不再默认视为当前真相
 
 ## 4. 本地桌面端架构
@@ -373,6 +374,7 @@ remote/
 | `docs/current/runtime-truth.md` | 当前 runtime facts / canonical truth |
 | `docs/governance/authority-matrix.md` | current / working / archival / runtime 边界 |
 | `docs/guides/dev-guide.md` | 开发与启动协议 |
+| `docs/guides/startup-protocol.md` | 启动模式、服务矩阵与 launcher 协议 |
 | `docs/domains/auth/README.md` | auth 相关冻结规范与实现总结入口 |
 | `remote/README.md` | remote workspace 总入口 |
 

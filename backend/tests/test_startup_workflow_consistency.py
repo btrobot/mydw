@@ -9,14 +9,28 @@ from pathlib import Path
 
 def test_readme_and_startup_protocol_point_to_current_windows_flow() -> None:
     readme = Path("README.md").read_text(encoding="utf-8")
-    protocol = Path("docs/startup-protocol.md").read_text(encoding="utf-8")
+    protocol = Path("docs/guides/startup-protocol.md").read_text(encoding="utf-8")
 
     assert r".\dev.bat" in readme
-    assert r".\run.bat" in readme
-    assert "docs/startup-protocol.md" in readme
+    assert r".\scripts\start-backend.bat" in readme
+    assert r".\scripts\start-frontend.bat" in readme
+    assert r".\scripts\start-remote.bat" in readme
+    assert "docs/guides/startup-protocol.md" in readme
+    assert "Node.js 22+" in readme
+    assert "Python 3.11+" in readme
+    assert "http://127.0.0.1:8100" in readme
+    assert "http://127.0.0.1:4173/index.html?apiBase=http://127.0.0.1:8100" in readme
 
     assert r".\dev.bat" in protocol
-    assert r".\run.bat" in protocol
+    assert r".\scripts\start-backend.bat" in protocol
+    assert r".\scripts\start-frontend.bat" in protocol
+    assert r".\scripts\start-remote.bat" in protocol
+    assert "docs/specs/backend-launcher-contract.json" in protocol
+    assert "Node.js 22+" in protocol
+    assert "Python 3.11+" in protocol
+    assert "127.0.0.1:8000" in protocol
+    assert "127.0.0.1:8100" in protocol
+    assert "127.0.0.1:4173" in protocol
     assert "/health" in protocol
 
 

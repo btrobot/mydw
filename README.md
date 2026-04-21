@@ -27,15 +27,18 @@
 
 ### 环境要求
 
-- Node.js 18+
-- Python 3.10+
-- FFmpeg (用于 AI 剪辑功能)
-- Git
+- Node.js 22+
+- Python 3.11+
+- FFmpeg 6+（需在 PATH 中）
+- Git 2.40+
+
+> 当前仓库的启动脚本主要检查可执行程序是否存在，**不直接做版本硬门禁**；  
+> 文档推荐基线以 `docs/guides/dev-guide.md` 为准。
 
 ### 安装依赖
 
 ```bash
-# 使用启动脚本（推荐）
+# 使用启动脚本（推荐起步方式：本地 frontend + backend）
 .\dev.bat
 
 # 或手动安装
@@ -47,7 +50,7 @@ npm install
 # 后端依赖
 cd ../backend
 pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
-python -m patchright install chromium
+python -m playwright install chromium
 ```
 
 ### 启动服务
@@ -75,6 +78,10 @@ cd E:\ais\mydw
 .\scripts\start-frontend.bat
 .\scripts\start-remote.bat
 ```
+
+说明：
+- `.\dev.bat`：最快启动**本地 frontend + backend**
+- `.\scripts\start-backend.bat` + `.\scripts\start-frontend.bat` + `.\scripts\start-remote.bat`：用于**本地 + remote 全量联调**
 
 脚本说明：
 
@@ -107,6 +114,8 @@ cd E:\ais\mydw
 - 前端: http://localhost:5173
 - 后端 API: http://localhost:8000
 - API 文档: http://localhost:8000/docs
+- remote-backend: http://127.0.0.1:8100
+- remote-admin: http://127.0.0.1:4173/index.html?apiBase=http://127.0.0.1:8100
 
 ## 当前文档边界
 

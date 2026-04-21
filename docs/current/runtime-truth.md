@@ -3,6 +3,24 @@
 > 目的：记录当前代码已经证明的 **runtime truth / canonical source**。  
 > 本文档是事实清单，不承担完整架构导览职责；架构总入口见 `docs/current/architecture.md`。
 
+## 0. 当前开发 / 运行协议真相（Phase C 基线）
+
+| Surface | 当前行为 | 真相来源 |
+|---|---|---|
+| 环境推荐基线 | 推荐按 `Node.js 22+ / Python 3.11+ / FFmpeg 6+` 执行 | `docs/guides/dev-guide.md`、`docs/guides/electron-build-guide.md` |
+| `dev.bat` | 只负责启动本地 `frontend + backend`，不启动 remote | `dev.bat` |
+| `scripts/start-frontend.bat` | 启动 `frontend`；若 `8000` 未监听会尝试先拉起本地 backend | `scripts/start-frontend.bat` |
+| `scripts/start-remote.bat` | 构建 `remote-admin`、bootstrap 默认 admin，并启动 `remote-backend:8100` + `remote-admin:4173` | `scripts/start-remote.bat` |
+| `backend/run.bat` | 默认绑定 `127.0.0.1:8000`；支持 `BACKEND_HOST` / `BACKEND_PORT` 覆盖 | `backend/run.bat` |
+| remote-admin 本地运行形态 | 当前是 build 后静态页面，通过 `python -m http.server 4173` 提供，而不是单独 dev server | `scripts/start-remote.bat`、`remote/README.md` |
+
+### 结论
+
+- 当前推荐开发基线已经统一到：**Node.js 22+、Python 3.11+、FFmpeg 6+**
+- 当前推荐本地起步协议是：`.\dev.bat`
+- 当前推荐全量联调协议是：`.\scripts\start-backend.bat` + `.\scripts\start-frontend.bat` + `.\scripts\start-remote.bat`
+- 当前脚本主要检查可执行程序是否存在，**不会直接把版本号当作运行时门禁**
+
 ## 1. 调度配置当前状态（PR3 后）
 
 | 位置 | 当前行为 | 真相来源 |

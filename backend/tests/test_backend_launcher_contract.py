@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 def test_backend_launcher_contract_has_required_shape() -> None:
-    contract_path = Path("docs/backend-launcher-contract.json")
+    contract_path = Path("docs/specs/backend-launcher-contract.json")
     contract = json.loads(contract_path.read_text(encoding="utf-8"))
 
     assert contract["version"] == 1
@@ -35,7 +35,7 @@ def test_backend_launcher_contract_has_required_shape() -> None:
 
 
 def test_startup_assumptions_checklist_tracks_current_main_process_coupling() -> None:
-    checklist = Path("docs/startup-assumptions-checklist.md").read_text(encoding="utf-8")
+    checklist = Path("docs/guides/startup-assumptions-checklist.md").read_text(encoding="utf-8")
     main_ts = Path("frontend/electron/main.ts").read_text(encoding="utf-8")
 
     assert "backend/venv/Scripts/python.exe" in checklist

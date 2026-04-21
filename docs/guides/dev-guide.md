@@ -19,13 +19,35 @@ cd E:\ais\mydw
 .\dev.bat
 ```
 
-该脚本会自动检查 Node / Python 环境、按需安装依赖，并启动：
+该脚本会自动检查 Node / Python 环境、按需安装依赖，并启动**本地开发双服务**：
 
 - 前端：`http://localhost:5173`
 - 后端：`http://localhost:8000`
 - API 文档：`http://localhost:8000/docs`
 
-### 手动分别启动前后端
+> `dev.bat` **不负责启动 remote 系统**。  
+> 如果你需要本地端 + remote 联调，请使用下面的“拆分启动”方式。
+
+### 推荐拆分启动（本地 + remote 联调）
+
+```powershell
+cd E:\ais\mydw
+
+.\scripts\start-backend.bat
+.\scripts\start-frontend.bat
+.\scripts\start-remote.bat
+```
+
+这组脚本会收口成 4 个服务：
+
+- 本地 backend：`http://127.0.0.1:8000`
+- 本地 frontend：`http://localhost:5173`
+- remote-backend：`http://127.0.0.1:8100`
+- remote-admin：`http://127.0.0.1:4173/index.html?apiBase=http://127.0.0.1:8100`
+
+### 兼容 / 手动启动方式
+
+当你只想单独调试某一层时，可按下面方式手动启动。
 
 #### 后端
 
@@ -41,6 +63,28 @@ cd E:\ais\mydw\backend
 cd E:\ais\mydw\frontend
 npm install   # 首次运行时执行
 npm run dev
+```
+
+#### remote-backend
+
+```powershell
+cd E:\ais\mydw\remote\remote-backend
+python -c "from app.migrations.runner import upgrade; upgrade()"
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8100
+```
+
+#### remote-admin
+
+```powershell
+cd E:\ais\mydw
+npm --prefix remote\remote-admin run build
+python -m http.server 4173 --bind 127.0.0.1 --directory remote/remote-admin
+```
+
+打开：
+
+```text
+http://127.0.0.1:4173/index.html?apiBase=http://127.0.0.1:8100
 ```
 
 ### 常用测试命令
@@ -113,21 +157,36 @@ npm run dev:electron
 其中：
 
 - `start-backend.bat`：启动本地后端
-- `start-frontend.bat`：启动本地前端；若后端未启动会尝试先拉起后端
-- `start-remote.bat`：启动 remote 相关服务
+- `start-frontend.bat`：启动本地前端；若 `8000` 未监听会尝试先拉起本地后端
+- `start-remote.bat`：构建 `remote-admin`、bootstrap 默认 admin，并启动 `remote-backend + remote-admin`
 - `status-all.bat`：查看当前服务状态
 - `stop-all.bat`：停止已启动服务
 
 ---
 
-## Prerequisites
+## Recommended Baseline
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Node.js | 22+ | Frontend build |
-| Python | 3.11+ | Backend runtime |
+| Node.js | 22+ | Frontend / Electron / remote-admin build |
+| Python | 3.11+ | Local backend / remote-backend runtime |
 | Git | 2.40+ | Version control |
 | FFmpeg | 6+ | Video processing (must be in PATH) |
+
+补充说明：
+
+- 这是**当前推荐开发基线**，同时也是 README / 当前文档入口采用的统一口径。
+- `dev.bat`、`scripts/start-*.bat` 当前主要检查可执行程序是否存在，**不会直接阻止较低版本运行**。
+- 但当前仓库的稳定维护与文档承诺，统一按 **Node 22+ / Python 3.11+ / FFmpeg 6+** 进行。
+
+## Service / Port / Responsibility Matrix
+
+| Service | Startup path | Default bind / URL | Responsibility | Notes |
+|---|---|---|---|---|
+| Local backend | `.\dev.bat` / `.\scripts\start-backend.bat` / `cd backend && .\run.bat` | `127.0.0.1:8000` | 本地业务 API、调度、素材、Creative、auth enforcement | `backend/run.bat` 支持 `BACKEND_HOST` / `BACKEND_PORT` 覆盖，默认 `127.0.0.1:8000` |
+| Local frontend | `.\dev.bat` / `.\scripts\start-frontend.bat` / `cd frontend && npm run dev` | `http://localhost:5173` | React + Vite 本地工作台 | `start-frontend.bat` 若发现 `8000` 未监听，会尝试先拉起本地 backend |
+| remote-backend | `.\scripts\start-remote.bat` / `cd remote\\remote-backend && python -m uvicorn ... --port 8100` | `http://127.0.0.1:8100` | 远程授权、设备/会话、admin control plane API | `start-remote.bat` 启动前会先跑 migration 和 bootstrap admin |
+| remote-admin | `.\scripts\start-remote.bat` / build + `python -m http.server 4173 ...` | `http://127.0.0.1:4173/index.html?apiBase=http://127.0.0.1:8100` | 远程管理控制台静态壳 | 当前本地模式下是 build 后的静态页面，由 Python `http.server` 提供 |
 
 ---
 
@@ -148,8 +207,8 @@ python -m venv venv
 # Install dependencies (with mirror for CN)
 pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-# Install Patchright browser runtime (backend automation uses patchright.async_api)
-python -m patchright install chromium
+# Install browser runtime used by the current bootstrap scripts
+python -m playwright install chromium
 
 # Create .env file
 cp .env.example .env
@@ -224,8 +283,11 @@ Frontend dev server at `http://localhost:5173`
 ```
 frontend/
 ├── electron/            # Electron main process
-│   ├── main.js          # Main window, backend lifecycle
-│   └── preload.js       # Context bridge
+│   ├── main.ts          # Electron main source of truth
+│   ├── preload.ts       # Context bridge source of truth
+│   ├── backendLauncher.ts
+│   ├── main.js          # generated runtime mirror
+│   └── preload.js       # generated runtime mirror
 ├── src/
 │   ├── pages/           # Page components
 │   │   ├── Dashboard.tsx
@@ -285,10 +347,22 @@ Backend `.env` file (in `backend/` directory):
 
 ## Development Workflow
 
-1. Start backend: `cd backend && .\venv\Scripts\python.exe -m uvicorn main:app --reload --port 8000`
-2. Start frontend: `cd frontend && npm run dev`
-3. Open `http://localhost:5173` in browser
-4. API docs at `http://localhost:8000/docs`
+日常建议按下面三档理解：
+
+1. **最快本地起步**：`.\dev.bat`
+2. **全量联调**：`.\scripts\start-backend.bat` + `.\scripts\start-frontend.bat` + `.\scripts\start-remote.bat`
+3. **单层排障 / 兼容模式**：分别执行 `backend/run.bat`、`npm run dev`、`python -m uvicorn ... --port 8100`
+
+如果你只是做本地业务功能开发，通常先跑：
+
+1. `.\dev.bat`
+2. 打开 `http://localhost:5173`
+3. 访问 `http://localhost:8000/docs` 确认 backend 正常
+
+如果你在做授权 / remote 联调，再补跑：
+
+4. `.\scripts\start-remote.bat`
+5. 打开 `http://127.0.0.1:4173/index.html?apiBase=http://127.0.0.1:8100`
 
 ### Code Standards
 
@@ -306,6 +380,8 @@ See `AGENTS.md`, `backend/CLAUDE.md`, and the current OMX/Codex workflow surface
 
 | Document | Path | What it covers |
 |----------|------|----------------|
+| Startup Protocol | `docs/guides/startup-protocol.md` | 启动协议、服务矩阵、dev/prod 边界 |
+| Runtime Truth | `docs/current/runtime-truth.md` | 当前端口、运行事实、canonical runtime 结论 |
 | API Reference | `docs/archive/reference/api-reference.md` | Historical endpoint reference |
 | Data Model | `docs/archive/reference/data-model.md` | Historical schema reference |
 | System Architecture | `docs/archive/reference/system-architecture.md` | Historical architecture deep-dive |
