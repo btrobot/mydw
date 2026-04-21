@@ -99,7 +99,7 @@
 ## 与其他文档的关系
 
 - `docs/README.md`：文档导航首页
-- `docs/governance/inventory-ledger.md`：当前分类台账
-- `docs/governance/runtime-local-artifact-policy.md`：runtime / local artifact 边界
-- `docs/governance/multi-agent-guide.md`：如何在当前仓库里使用多 agent 协作
+- `docs/governance/inventory/inventory-ledger.md`：当前分类台账
+- `docs/governance/policies/runtime-local-artifact-policy.md`：runtime / local artifact 边界
+- `docs/governance/standards/multi-agent-guide.md`：如何在当前仓库里使用多 agent 协作
 - `docs/archive/reference/system-architecture.md`：历史架构长文，保留作 archive/reference 参考，不再作为当前默认入口

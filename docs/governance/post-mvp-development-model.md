@@ -400,7 +400,7 @@ MVP 后，建议固定用下面的阶段循环，而不是继续松散推进。
 5. `docs/governance/verification-baseline.md`
 6. `docs/current/next-phase-kickoff.md`
 7. `docs/governance/next-phase-backlog.md`
-8. `docs/governance/omx-plan-retention.md`
+8. `docs/governance/policies/omx-plan-retention.md`
 
 ---
 

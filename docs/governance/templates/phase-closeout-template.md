@@ -132,7 +132,7 @@
 
 - [ ] 已被正式文档吸收的 planning 已移出 active 区
 - [ ] `.omx/plans/archive/` 已收纳本阶段完成后的 planning
-- [ ] `docs/governance/omx-plan-retention.md` 已更新（如适用）
+- [ ] `docs/governance/policies/omx-plan-retention.md` 已更新（如适用）
 
 相关 planning / archive：
 

@@ -50,7 +50,7 @@ def test_data_model_doc_is_marked_stale_and_points_to_current_truth() -> None:
 
 
 def test_stale_doc_inventory_lists_high_visibility_docs() -> None:
-    inventory = _read_repo_file("docs/governance/epic-7-stale-doc-inventory.md")
+    inventory = _read_repo_file("docs/governance/inventory/epic-7-stale-doc-inventory.md")
 
     assert "README.md" in inventory
     assert "docs/archive/reference/system-architecture.md" in inventory

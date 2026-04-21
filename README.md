@@ -124,7 +124,7 @@ cd E:\ais\mydw
 - 文档导航首页：`docs/README.md`
 - 当前架构总览：`docs/current/architecture.md`
 - 当前运行事实：`docs/current/runtime-truth.md`
-- runtime/local 资产边界：`docs/governance/runtime-local-artifact-policy.md`（`.codex/`、`.omx/`、`.omc/`、本地 runtime 输出目录不属于主文档入口）
+- runtime/local 资产边界：`docs/governance/policies/runtime-local-artifact-policy.md`（`.codex/`、`.omx/`、`.omc/`、本地 runtime 输出目录不属于主文档入口）
 - 当前验证基线：`docs/governance/verification-baseline.md`
 - 下一阶段启动包：`docs/current/next-phase-kickoff.md`
 - 旧的详细架构说明、API 参考、数据模型字典在 Epic 7 / PR2 后会被视为 **stale / archival reference**，位于 `docs/archive/reference/` 下；阅读时请先以当前入口文档为准。

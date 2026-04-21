@@ -18,7 +18,7 @@ def test_openapi_workflow_describes_tracked_generated_snapshot_correctly() -> No
 
     assert "frontend/openapi.local.json" in workflow
     assert "tracked generated artifact" in workflow
-    assert "docs/governance/generated-artifact-policy.md" in workflow
+    assert "docs/governance/policies/generated-artifact-policy.md" in workflow
     assert "npm run generated:check" in workflow
 
 
@@ -32,7 +32,7 @@ def test_readme_uses_actual_packaged_output_directory() -> None:
 
 
 def test_documentation_strategy_matches_epic7_authority_model() -> None:
-    strategy = _read("docs/governance/documentation-strategy.md")
+    strategy = _read("docs/governance/standards/documentation-strategy.md")
 
     assert "docs/current/architecture.md" in strategy
     assert "docs/current/runtime-truth.md" in strategy
@@ -41,7 +41,7 @@ def test_documentation_strategy_matches_epic7_authority_model() -> None:
 
 
 def test_doc_checklist_recognizes_current_vs_archival_docs() -> None:
-    checklist = _read("docs/governance/doc-checklist.md")
+    checklist = _read("docs/governance/standards/doc-checklist.md")
 
     assert "docs/current/architecture.md" in checklist
     assert "docs/current/runtime-truth.md" in checklist
@@ -95,6 +95,22 @@ def test_post_mvp_templates_are_indexed_and_connected_to_sequence_doc() -> None:
     assert "下一阶段唯一主线" in selection_template
     assert "为这条主线必须先补准的 current truth" in selection_template
     assert "kickoff / PRD / test spec / execution breakdown" in selection_template
+
+
+def test_governance_readme_classifies_core_policies_inventory_standards_and_templates() -> None:
+    governance_index = _read("docs/governance/README.md")
+    docs_index = _read("docs/README.md")
+
+    assert "docs/governance/README.md" in docs_index
+    assert "Core" in governance_index
+    assert "Policies" in governance_index
+    assert "Inventory" in governance_index
+    assert "Standards" in governance_index
+    assert "Templates" in governance_index
+    assert "docs/governance/policies/generated-artifact-policy.md" in governance_index
+    assert "docs/governance/inventory/inventory-ledger.md" in governance_index
+    assert "docs/governance/standards/documentation-strategy.md" in governance_index
+    assert "docs/governance/templates/phase-closeout-template.md" in governance_index
 
 
 def test_task_domain_doc_matches_local_ffmpeg_v1_truth() -> None:
@@ -166,7 +182,7 @@ def test_dev_guide_links_to_verification_baseline() -> None:
 
 
 def test_root_doc_triage_classifies_uncategorized_docs() -> None:
-    triage = _read("docs/governance/root-doc-triage.md")
+    triage = _read("docs/governance/inventory/root-doc-triage.md")
 
     assert "根层文档分诊表" in triage
     assert "docs/backup-scope.md" in triage
@@ -179,7 +195,7 @@ def test_root_doc_triage_classifies_uncategorized_docs() -> None:
 
 
 def test_omx_plan_retention_distinguishes_active_archive_and_pending_plan_sets() -> None:
-    retention = _read("docs/governance/omx-plan-retention.md")
+    retention = _read("docs/governance/policies/omx-plan-retention.md")
 
     assert ".omx/plans" in retention
     assert ".omx/plans/archive/" in retention
@@ -239,7 +255,7 @@ def test_product_docs_match_current_name_share_text_parse_and_delete_truth() -> 
 
 
 def test_product_plan_retention_moves_product_create_prd_and_test_spec_out_of_pending_review() -> None:
-    retention = _read("docs/governance/omx-plan-retention.md")
+    retention = _read("docs/governance/policies/omx-plan-retention.md")
 
     assert "product-create 双字段规划已经被正式商品域文档" in retention
     assert "prd-product-create-name-share-text.md" in retention
@@ -292,7 +308,7 @@ def test_next_phase_backlog_compresses_open_issues_into_prioritized_lanes() -> N
     assert "Creative Workbench 可用性收口" in backlog
     assert "业务层 vs 诊断层彻底分层" in backlog
     assert "AIClip workflow 产品化" in backlog
-    assert "docs/governance/root-doc-triage.md" in backlog
+    assert "docs/governance/inventory/root-doc-triage.md" in backlog
 
 
 def test_next_phase_kickoff_links_completion_boundary_baseline_and_launch_artifacts() -> None:

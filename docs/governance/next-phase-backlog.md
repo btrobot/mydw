@@ -63,8 +63,8 @@
 
 来源：
 
-- `docs/governance/root-doc-triage.md`
-- `docs/governance/inventory-ledger.md`
+- `docs/governance/inventory/root-doc-triage.md`
+- `docs/governance/inventory/inventory-ledger.md`
 
 压缩结果：
 
@@ -164,7 +164,7 @@
 
 目标：
 
-- 按 `docs/governance/root-doc-triage.md` 执行实际 move/archive/delete
+- 按 `docs/governance/inventory/root-doc-triage.md` 执行实际 move/archive/delete
 - 减少根层噪音
 
 ## P2 — 技术债 / 治理债

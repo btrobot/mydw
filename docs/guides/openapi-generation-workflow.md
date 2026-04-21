@@ -55,7 +55,7 @@ This avoids dependence on:
 
 - `frontend/openapi.local.json` is a tracked generated artifact: local snapshot input for client generation, but not a handwritten source of truth
 - `frontend/src/api/*` is a tracked generated client tree and should not be hand-edited
-- broader generated/source governance, commit policy, and Electron TS/JS boundary rules live in `docs/governance/generated-artifact-policy.md`
+- broader generated/source governance, commit policy, and Electron TS/JS boundary rules live in `docs/governance/policies/generated-artifact-policy.md`
 - generation should happen only after schema parity is stable enough to avoid churn
 - broader API adoption and manual axios exception governance belong to later Phase 3 PRs
 - remaining allowed manual exceptions are tracked in `docs/manual-axios-exceptions.md`

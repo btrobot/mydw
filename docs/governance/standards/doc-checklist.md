@@ -217,7 +217,7 @@ if abs(code_count - doc_count) > 2:
 
 ```markdown
 ## 文档质量检查
-- Sprint 结束时执行 docs/governance/doc-checklist.md 全量检查
+- Sprint 结束时执行 docs/governance/standards/doc-checklist.md 全量检查
 - 发现漂移时创建修复任务
 ```
 

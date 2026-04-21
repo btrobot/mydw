@@ -28,15 +28,15 @@
 | `plans/` | 根层零散计划文档 | `historical` | `archive` | 首个根层计划文档已移入 `docs/archive/planning/`，其余同类文件应继续离开根目录 |
 | `docs/archive/exports/` | 导出型项目说明/快照/分析报告 | `historical` or `reference-export` | `archive` | 原 `.codex-export/` 已迁入 docs archive，更符合其参考快照属性 |
 | `.codex/` | Codex prompts, skills, sessions, logs, local state | `runtime` | `keep` or revisit policy later | agent/runtime 资产，不是产品文档 |
-| `.omx/` | OMX state, active plans, archived plans, logs, context snapshots, notepad | `runtime` | keep active planning assets; archive absorbed plans under `.omx/plans/archive/` | orchestration/runtime 资产；分流规则见 `docs/governance/omx-plan-retention.md` |
+| `.omx/` | OMX state, active plans, archived plans, logs, context snapshots, notepad | `runtime` | keep active planning assets; archive absorbed plans under `.omx/plans/archive/` | orchestration/runtime 资产；分流规则见 `docs/governance/policies/omx-plan-retention.md` |
 | `.omc/` | OMC / Claude runtime state, sessions, mission memory | `runtime` | `ignore local state, clear tracked exceptions` | 会话/调度状态，不属于项目主文档入口 |
 | local runtime output directories | 本地会话/日志/状态输出目录（仓库不保留 `production/`） | `runtime` | `ignore` | 本地运行输出，不属于 repo surface |
 
 Runtime/local boundary policy:
 
-- `docs/governance/runtime-local-artifact-policy.md`
-- `docs/governance/omx-plan-retention.md`
-- `docs/governance/root-doc-triage.md`
+- `docs/governance/policies/runtime-local-artifact-policy.md`
+- `docs/governance/policies/omx-plan-retention.md`
+- `docs/governance/inventory/root-doc-triage.md`
 - `docs/governance/next-phase-backlog.md`
 
 ## Immediate decisions from this ledger
@@ -176,7 +176,7 @@ Current location:
 
 ## Phase E compression artifacts
 
-- `docs/governance/root-doc-triage.md` — 根层未分类 docs 的去向表
+- `docs/governance/inventory/root-doc-triage.md` — 根层未分类 docs 的去向表
 - `docs/governance/next-phase-backlog.md` — 从 closeout / audit / issue docs 压缩出的下一阶段 backlog
 
 ## Phase F launch artifacts

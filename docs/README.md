@@ -11,15 +11,16 @@
 3. `docs/current/architecture.md` — 当前架构总入口
 4. `docs/current/runtime-truth.md` — 当前运行事实 / canonical fact inventory
 5. `docs/governance/authority-matrix.md` — 文档职责边界
-6. `docs/guides/dev-guide.md` — 开发环境与启动流程
-7. `docs/governance/verification-baseline.md` — 最小可信回归基线
-8. `docs/current/next-phase-kickoff.md` — 下一阶段启动入口 / 启动包总入口
-9. `docs/governance/inventory-ledger.md` — 当前文档/资料簇分类台账
-10. `docs/governance/runtime-local-artifact-policy.md` — 运行时 / 本地 agent 资产边界说明
-11. `docs/governance/omx-plan-retention.md` — `.omx/plans` 活跃/归档分类规则
-12. `docs/governance/post-mvp-development-model.md` — MVP 完成后如何做收口、选主线、再启动下一阶段
-13. `docs/governance/phase-transition-checklist.md` — 每次阶段切换前后要检查什么，避免未收口就启动下一阶段
-14. `docs/governance/post-mvp-closeout-sequence.md` — MVP 后标准顺序：收尾 → 选线 → 定向收口 → 启动
+6. `docs/governance/README.md` — governance 目录分类导航
+7. `docs/guides/dev-guide.md` — 开发环境与启动流程
+8. `docs/governance/verification-baseline.md` — 最小可信回归基线
+9. `docs/current/next-phase-kickoff.md` — 下一阶段启动入口 / 启动包总入口
+10. `docs/governance/inventory/inventory-ledger.md` — 当前文档/资料簇分类台账
+11. `docs/governance/policies/runtime-local-artifact-policy.md` — 运行时 / 本地 agent 资产边界说明
+12. `docs/governance/policies/omx-plan-retention.md` — `.omx/plans` 活跃/归档分类规则
+13. `docs/governance/post-mvp-development-model.md` — MVP 完成后如何做收口、选主线、再启动下一阶段
+14. `docs/governance/phase-transition-checklist.md` — 每次阶段切换前后要检查什么，避免未收口就启动下一阶段
+15. `docs/governance/post-mvp-closeout-sequence.md` — MVP 后标准顺序：收尾 → 选线 → 定向收口 → 启动
 
 ## Current / canonical docs
 
@@ -27,11 +28,12 @@
 
 - `docs/current/architecture.md`
 - `docs/current/runtime-truth.md`
+- `docs/governance/README.md`
 - `docs/governance/authority-matrix.md`
 - `docs/governance/verification-baseline.md`
 - `docs/current/next-phase-kickoff.md`
 - `docs/guides/dev-guide.md`
-- `docs/governance/generated-artifact-policy.md`
+- `docs/governance/policies/generated-artifact-policy.md`
 - `docs/guides/openapi-generation-workflow.md`
 - `docs/governance/post-mvp-development-model.md`
 - `docs/governance/phase-transition-checklist.md`
@@ -44,14 +46,17 @@
 - sprint / phase / migration / refactor 相关文档
 - `docs/domains/creative/progressive-rebuild-final-summary.md`（Creative 渐进式重建 A~D 阶段收口总结）
 - `docs/frontend-ui-issues-and-improvements.md`（当前前端界面问题分析与改进方向）
-- `docs/governance/root-doc-triage.md`（根层未分类文档去向收口）
+- `docs/governance/inventory/root-doc-triage.md`（根层未分类文档去向收口）
+- `docs/governance/inventory/`（台账 / 分诊 / parity / stale / version inventories）
+- `docs/governance/policies/`（generated artifact、runtime boundary、plan retention 等规则）
+- `docs/governance/standards/`（documentation strategy、doc checklist、multi-agent guide 等长期规范）
 - `docs/governance/post-mvp-development-model.md`（MVP 后开发治理模型）
 - `docs/governance/phase-transition-checklist.md`（阶段切换执行清单）
 - `docs/governance/post-mvp-closeout-sequence.md`（MVP 后收尾 → 选线 → 定向收口的标准流程）
 - `docs/governance/templates/phase-closeout-template.md` / `docs/governance/templates/next-phase-mainline-selection-template.md`（阶段收尾模板 / 下一阶段选线模板）
 - `docs/governance/next-phase-backlog.md`（压缩后的 open issues / next-phase backlog）
 - `docs/governance/next-phase-prd.md` / `docs/governance/next-phase-test-spec.md` / `docs/governance/next-phase-execution-breakdown.md`（下一阶段启动包的范围/验证/执行分解，需与 kickoff 一起使用）
-- `docs/governance/omx-plan-retention.md`（`.omx/plans` 活跃计划与 archive 的分流规则）
+- `docs/governance/policies/omx-plan-retention.md`（`.omx/plans` 活跃计划与 archive 的分流规则）
 - 专题设计说明（如 settings、topic、task semantics、generation governance）
 - `docs/adr/` 中的决策记录
 - `docs/domains/auth/README.md`（远程认证 / 本地授权门禁冻结文档入口；Step 0 artifacts）
@@ -70,9 +75,9 @@
 更完整的 authority 说明见：
 
 - `docs/governance/authority-matrix.md`
-- `docs/epic-7-stale-doc-inventory.md`
-- `docs/governance/inventory-ledger.md`
-- `docs/governance/runtime-local-artifact-policy.md`
+- `docs/governance/inventory/epic-7-stale-doc-inventory.md`
+- `docs/governance/inventory/inventory-ledger.md`
+- `docs/governance/policies/runtime-local-artifact-policy.md`
 
 当前第一批已归档的旧计划文档位于：
 
@@ -121,8 +126,8 @@
 
 更完整的边界规则见：
 
-- `docs/governance/runtime-local-artifact-policy.md`
-- `docs/governance/omx-plan-retention.md`
+- `docs/governance/policies/runtime-local-artifact-policy.md`
+- `docs/governance/policies/omx-plan-retention.md`
 
 ## 当前整理策略
 

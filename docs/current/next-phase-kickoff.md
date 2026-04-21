@@ -43,7 +43,7 @@
 - **运行真相收口**：`docs/current/runtime-truth.md`
 - **启动协议收口**：`docs/guides/dev-guide.md`、`docs/guides/startup-protocol.md`
 - **验证基线收口**：`docs/governance/verification-baseline.md`
-- **遗留问题压缩**：`docs/governance/root-doc-triage.md`、`docs/governance/next-phase-backlog.md`
+- **遗留问题压缩**：`docs/governance/inventory/root-doc-triage.md`、`docs/governance/next-phase-backlog.md`
 - **Creative A~D 主线已完成**
 - **auth Step 5 已完成**
 
@@ -94,7 +94,7 @@
 
 根层 docs 的分类与后续 move/archive/delete 去向看：
 
-- `docs/governance/root-doc-triage.md`
+- `docs/governance/inventory/root-doc-triage.md`
 
 ## 6. 下一阶段第一条主线
 

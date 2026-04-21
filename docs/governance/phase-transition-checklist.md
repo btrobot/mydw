@@ -54,7 +54,7 @@
 ```text
 [ ] 已被正式文档吸收的 planning 文件已移出 active 区
 [ ] `.omx/plans` 已明确区分 active / archive
-[ ] `docs/governance/omx-plan-retention.md` 已反映最新划分
+[ ] `docs/governance/policies/omx-plan-retention.md` 已反映最新划分
 [ ] 不再把旧 planning 当成当前 authoritative 输入
 ```
 
@@ -145,7 +145,7 @@
 4. `docs/governance/verification-baseline.md`
 5. `docs/current/next-phase-kickoff.md`
 6. `docs/governance/next-phase-backlog.md`
-7. `docs/governance/omx-plan-retention.md`
+7. `docs/governance/policies/omx-plan-retention.md`
 
 ---
 

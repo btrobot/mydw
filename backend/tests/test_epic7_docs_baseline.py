@@ -56,7 +56,7 @@ def test_current_architecture_baseline_contains_recommended_reading_path() -> No
 
 
 def test_docs_parity_checklist_covers_phase_1_to_6_truths() -> None:
-    checklist = _read_repo_file("docs/governance/epic-7-docs-parity-checklist.md")
+    checklist = _read_repo_file("docs/governance/inventory/epic-7-docs-parity-checklist.md")
 
     assert "schedule-config" in checklist
     assert "publish status" in checklist
@@ -74,10 +74,10 @@ def test_docs_readme_exists_and_separates_current_docs_from_runtime_artifacts() 
     assert "docs/governance/authority-matrix.md" in docs_index
     assert "docs/governance/verification-baseline.md" in docs_index
     assert "docs/current/next-phase-kickoff.md" in docs_index
-    assert "docs/governance/inventory-ledger.md" in docs_index
-    assert "docs/governance/runtime-local-artifact-policy.md" in docs_index
-    assert "docs/governance/omx-plan-retention.md" in docs_index
-    assert "docs/governance/root-doc-triage.md" in docs_index
+    assert "docs/governance/inventory/inventory-ledger.md" in docs_index
+    assert "docs/governance/policies/runtime-local-artifact-policy.md" in docs_index
+    assert "docs/governance/policies/omx-plan-retention.md" in docs_index
+    assert "docs/governance/inventory/root-doc-triage.md" in docs_index
     assert "docs/governance/next-phase-backlog.md" in docs_index
     assert "docs/governance/next-phase-prd.md" in docs_index
     assert "docs/governance/next-phase-test-spec.md" in docs_index
@@ -90,7 +90,7 @@ def test_docs_readme_exists_and_separates_current_docs_from_runtime_artifacts() 
 
 
 def test_doc_inventory_ledger_classifies_major_document_and_runtime_clusters() -> None:
-    ledger = _read_repo_file("docs/governance/inventory-ledger.md")
+    ledger = _read_repo_file("docs/governance/inventory/inventory-ledger.md")
 
     assert "Inventory Ledger" in ledger or "台账" in ledger
     assert "docs/" in ledger
@@ -109,7 +109,7 @@ def test_doc_inventory_ledger_classifies_major_document_and_runtime_clusters() -
     assert "runtime" in ledger
     assert "keep" in ledger
     assert "archive" in ledger or "move" in ledger
-    assert "docs/governance/root-doc-triage.md" in ledger
+    assert "docs/governance/inventory/root-doc-triage.md" in ledger
     assert "docs/governance/next-phase-backlog.md" in ledger
     assert "docs/current/next-phase-kickoff.md" in ledger
     assert "docs/governance/next-phase-prd.md" in ledger
@@ -234,7 +234,7 @@ def test_design_core_archive_batch_moves_stale_stack_and_login_docs_out_of_prima
 
 
 def test_runtime_local_artifact_policy_documents_boundary_and_current_git_state() -> None:
-    policy = _read_repo_file("docs/governance/runtime-local-artifact-policy.md")
+    policy = _read_repo_file("docs/governance/policies/runtime-local-artifact-policy.md")
 
     assert ".codex/" in policy
     assert ".omx/" in policy
@@ -250,12 +250,12 @@ def test_runtime_local_artifact_policy_documents_boundary_and_current_git_state(
 
 
 def test_inventory_ledger_and_retention_doc_explain_omx_plan_archive_split() -> None:
-    ledger = _read_repo_file("docs/governance/inventory-ledger.md")
-    retention = _read_repo_file("docs/governance/omx-plan-retention.md")
+    ledger = _read_repo_file("docs/governance/inventory/inventory-ledger.md")
+    retention = _read_repo_file("docs/governance/policies/omx-plan-retention.md")
 
     assert ".omx/" in ledger
     assert ".omx/plans/archive/" in ledger
-    assert "docs/governance/omx-plan-retention.md" in ledger
+    assert "docs/governance/policies/omx-plan-retention.md" in ledger
     assert "prd-remote-full-system.md" in retention
     assert "prd-remote-auth.md" in retention
     assert "open-questions.md" in retention
@@ -295,7 +295,7 @@ def test_private_docs_move_into_archive_and_d_mirror_dirs_are_reclassified_as_lo
     ]:
         assert not (REPO_ROOT / old_path).exists(), f"file should no longer remain in old path: {old_path}"
 
-    runtime_policy = _read_repo_file("docs/governance/runtime-local-artifact-policy.md")
+    runtime_policy = _read_repo_file("docs/governance/policies/runtime-local-artifact-policy.md")
     assert "D:" in runtime_policy or "mirror" in runtime_policy
 
 

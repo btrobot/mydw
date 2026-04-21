@@ -8,7 +8,7 @@
 更高优先级的约束见：
 
 - `AGENTS.md` — 当前工作流总入口与执行约束
-- `docs/governance/runtime-local-artifact-policy.md` — runtime / local artifact 边界
+- `docs/governance/policies/runtime-local-artifact-policy.md` — runtime / local artifact 边界
 - `docs/README.md` — 当前文档阅读入口
 
 ## 当前协作面
@@ -132,6 +132,6 @@
 
 - `AGENTS.md`
 - `docs/README.md`
-- `docs/governance/runtime-local-artifact-policy.md`
-- `docs/governance/generated-artifact-policy.md`
+- `docs/governance/policies/runtime-local-artifact-policy.md`
+- `docs/governance/policies/generated-artifact-policy.md`
 - `.codex/skills/team/SKILL.md`
