@@ -67,12 +67,14 @@
 
 以下高可见度文档已经被降级为 historical / stale / archival reference，应在 current 文档之后阅读：
 
+- `docs/archive/README.md`（archive 总入口 / 二级分类导航）
 - `docs/archive/reference/system-architecture.md`
 - `docs/archive/reference/api-reference.md`
 - `docs/archive/reference/data-model.md`
 - `docs/archive/planning/` 下的早期 task-breakdown / sprint-plan 类文档
 - `docs/archive/history/refactor-roadmap.md` / `docs/archive/history/refactor-issue-breakdown.md` / `docs/archive/history/refactor-gap-list.md`（历史规划参考）
-- 其他仍在 `docs/` 根目录中的旧 roadmap / planning / breakdown 文档
+- `docs/archive/analysis/` 下的历史分析稿
+- `docs/archive/dev-docs/`、`docs/archive/backend-docs/`、`docs/archive/exports/` 下的特殊来源历史材料
 
 更完整的 authority 说明见：
 
@@ -84,19 +86,23 @@
 当前第一批已归档的旧计划文档位于：
 
 - `docs/archive/planning/`
+- `docs/archive/planning/README.md`
 
 当前第二批已归档的旧分析/设计文档位于：
 
 - `docs/archive/analysis/`
+- `docs/archive/analysis/README.md`
 
 当前第三批已归档的 design / dev-docs 历史探索材料位于：
 
 - `design/archive/`
 - `docs/archive/dev-docs/`
+- `docs/archive/dev-docs/README.md`
 
 当前第四批已归档的 backend 局部历史设计文档位于：
 
 - `docs/archive/backend-docs/`
+- `docs/archive/backend-docs/README.md`
 
 当前第五批已归档的 design 栈说明 / 登录架构旧稿位于：
 
@@ -106,14 +112,21 @@
 
 - `docs/archive/planning/`
 - `docs/archive/examples/`
+- `docs/archive/examples/README.md`
 
 当前第七批已归档的 private-docs 材料位于：
 
 - `docs/archive/private/`
+- `docs/archive/private/README.md`
 
 当前第八批已归档的导出型参考快照位于：
 
 - `docs/archive/exports/`
+- `docs/archive/exports/README.md`
+
+当前 archive 目录的二级分类总入口位于：
+
+- `docs/archive/README.md`
 
 ## Runtime / local artifact boundary
 

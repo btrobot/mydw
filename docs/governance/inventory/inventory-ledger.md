@@ -21,6 +21,7 @@
 | `docs/` 其余专题文档（如 generation/settings/topic/task/phase docs） | 迁移说明、治理文档、专题设计、阶段性工程说明 | `working` | `keep` then reclassify/move selectively | 需要后续拆到 `guides/` / `operations/` / `archive/` |
 | `docs/archive/history/refactor-roadmap.md`, `docs/archive/history/refactor-issue-breakdown.md`, `docs/archive/history/refactor-gap-list.md` | 历史重构计划与 gap-tracking 文档，仍被部分 `.omx` 历史 planning context 引用 | `historical` | `archive` | 已迁入 `docs/archive/history/`，按历史规划参考理解 |
 | `docs/archive/reference/system-architecture.md`, `docs/archive/reference/api-reference.md`, `docs/archive/reference/data-model.md`, `docs/archive/planning/` 下的旧 sprint / breakdown 文档，以及 `docs/archive/analysis/` 下的旧分析/设计文档 | 高可见度旧文档与历史计划/分析资料 | `historical` | `archive` | 已迁入 archive 子目录，避免与 current docs 竞争 |
+| `docs/archive/README.md` + 各二级目录 `README.md` | archive 总入口与二级分类索引 | `historical` with navigation value | `keep` | 负责说明 archive 怎么读、不同历史材料怎么分层，不承担 current truth 角色 |
 | `design/` | 设计草图、栈说明、历史设计材料 | `historical` with a shrinking active subset | `move` / `archive` later | 已把明显的技能说明、旧栈说明、旧登录架构和历史探索材料移到 `design/archive/`，剩余文件再逐个判断 |
 | `docs/archive/dev-docs/` | 历史开发探索 / 登录自动化笔记 | `historical` | `archive` | 原 `dev-docs/` 已完全并入 `docs/archive/dev-docs/` |
 | `private-docs/` | 私有/内部分析与评审材料 | `historical` | `archive` | 已移入 `docs/archive/private/`，不再占据根层主路径 |
@@ -61,6 +62,18 @@ Runtime/local boundary policy:
 - old architecture/reference docs already marked stale
 - old sprint / refactor / breakdown / roadmap style documents once references are updated
 - clearly superseded design notes
+
+### Archive index baseline
+- `docs/archive/README.md`
+- `docs/archive/reference/README.md`
+- `docs/archive/planning/README.md`
+- `docs/archive/analysis/README.md`
+- `docs/archive/history/README.md`
+- `docs/archive/dev-docs/README.md`
+- `docs/archive/backend-docs/README.md`
+- `docs/archive/examples/README.md`
+- `docs/archive/exports/README.md`
+- `docs/archive/private/README.md`
 
 ### First archive batch completed in PR-3
 - `task-breakdown-phase1.md`
@@ -163,7 +176,7 @@ Current location:
 
 ## Follow-up actions supported by this ledger
 
-1. Create a future `docs/archive/` destination and migrate high-noise historical docs there.
+1. Maintain `docs/archive/README.md` plus second-level archive indexes whenever archive categories change.
 2. Decide whether `design/`, `docs/archive/dev-docs/`, `private-docs/`, and `docs/archive/backend-docs/` become:
    - `docs/` subtrees,
    - `internal/`,

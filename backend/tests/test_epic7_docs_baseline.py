@@ -82,6 +82,7 @@ def test_docs_readme_exists_and_separates_current_docs_from_runtime_artifacts() 
     assert "docs/governance/next-phase-prd.md" in docs_index
     assert "docs/governance/next-phase-test-spec.md" in docs_index
     assert "docs/governance/next-phase-execution-breakdown.md" in docs_index
+    assert "docs/archive/README.md" in docs_index
     assert "docs/archive/exports/" in docs_index
     assert ".codex/" in docs_index
     assert ".omx/" in docs_index
@@ -99,6 +100,7 @@ def test_doc_inventory_ledger_classifies_major_document_and_runtime_clusters() -
     assert "private-docs/" in ledger
     assert "docs/archive/backend-docs/" in ledger
     assert "docs/archive/exports/" in ledger
+    assert "docs/archive/README.md" in ledger
     assert "production/session-*" not in ledger
     assert ".codex/" in ledger
     assert ".omx/" in ledger
@@ -115,6 +117,63 @@ def test_doc_inventory_ledger_classifies_major_document_and_runtime_clusters() -
     assert "docs/governance/next-phase-prd.md" in ledger
     assert "docs/governance/next-phase-test-spec.md" in ledger
     assert "docs/governance/next-phase-execution-breakdown.md" in ledger
+
+
+def test_archive_index_and_second_level_indexes_exist_and_explain_archive_layers() -> None:
+    archive_index = _read_repo_file("docs/archive/README.md")
+    reference_index = _read_repo_file("docs/archive/reference/README.md")
+    planning_index = _read_repo_file("docs/archive/planning/README.md")
+    analysis_index = _read_repo_file("docs/archive/analysis/README.md")
+    history_index = _read_repo_file("docs/archive/history/README.md")
+    dev_docs_index = _read_repo_file("docs/archive/dev-docs/README.md")
+    backend_docs_index = _read_repo_file("docs/archive/backend-docs/README.md")
+    examples_index = _read_repo_file("docs/archive/examples/README.md")
+    exports_index = _read_repo_file("docs/archive/exports/README.md")
+    private_index = _read_repo_file("docs/archive/private/README.md")
+
+    assert "Archive Docs Index" in archive_index or "历史归档导航" in archive_index
+    assert "docs/archive/reference/" in archive_index
+    assert "docs/archive/planning/" in archive_index
+    assert "docs/archive/analysis/" in archive_index
+    assert "docs/archive/history/" in archive_index
+    assert "docs/archive/dev-docs/" in archive_index
+    assert "docs/archive/backend-docs/" in archive_index
+    assert "docs/archive/exports/" in archive_index
+    assert "docs/archive/examples/" in archive_index
+    assert "docs/archive/private/" in archive_index
+    assert "不是当前真相入口" in archive_index
+
+    assert "旧 API 参考" in reference_index
+    assert "system-architecture.md" in reference_index
+    assert "当前真相优先看" in reference_index
+
+    assert "历史计划文档" in planning_index
+    assert "task-breakdown-phase1.md" in planning_index
+    assert "docs/current/next-phase-kickoff.md" in planning_index
+
+    assert "早期分析稿" in analysis_index
+    assert "domain-model-analysis.md" in analysis_index
+    assert "docs/domains/" in analysis_index
+
+    assert "阶段收口" in history_index
+    assert "frontend-ui-ux-closeout-final-summary.md" in history_index
+    assert "docs/governance/next-phase-backlog.md" in history_index
+
+    assert "探索性开发笔记" in dev_docs_index
+    assert "login-ux-closeout/" in dev_docs_index
+    assert "docs/domains/auth/" in dev_docs_index
+
+    assert "局部 backend 设计说明" in backend_docs_index
+    assert "state-machine.md" in backend_docs_index
+
+    assert "示例型历史材料" in examples_index
+    assert "task-orchestration.md" in examples_index
+
+    assert "导出型项目说明" in exports_index
+    assert "docs/current/*" in exports_index
+
+    assert "私有/内部评审材料" in private_index
+    assert "multi-agents-review.md" in private_index
 
 
 def test_first_archive_batch_moves_old_planning_docs_out_of_docs_root() -> None:
