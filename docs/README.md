@@ -18,6 +18,7 @@
 10. `docs/governance/runtime-local-artifact-policy.md` — 运行时 / 本地 agent 资产边界说明
 11. `docs/governance/omx-plan-retention.md` — `.omx/plans` 活跃/归档分类规则
 12. `docs/governance/post-mvp-development-model.md` — MVP 完成后如何做收口、选主线、再启动下一阶段
+13. `docs/governance/phase-transition-checklist.md` — 每次阶段切换前后要检查什么，避免未收口就启动下一阶段
 
 ## Current / canonical docs
 
@@ -32,6 +33,7 @@
 - `docs/governance/generated-artifact-policy.md`
 - `docs/guides/openapi-generation-workflow.md`
 - `docs/governance/post-mvp-development-model.md`
+- `docs/governance/phase-transition-checklist.md`
 
 ## Working engineering docs
 
@@ -42,6 +44,7 @@
 - `docs/frontend-ui-issues-and-improvements.md`（当前前端界面问题分析与改进方向）
 - `docs/governance/root-doc-triage.md`（根层未分类文档去向收口）
 - `docs/governance/post-mvp-development-model.md`（MVP 后开发治理模型）
+- `docs/governance/phase-transition-checklist.md`（阶段切换执行清单）
 - `docs/governance/next-phase-backlog.md`（压缩后的 open issues / next-phase backlog）
 - `docs/governance/next-phase-prd.md` / `docs/governance/next-phase-test-spec.md` / `docs/governance/next-phase-execution-breakdown.md`（下一阶段启动包的规划/验证/执行分解）
 - `docs/governance/omx-plan-retention.md`（`.omx/plans` 活跃计划与 archive 的分流规则）

@@ -49,6 +49,22 @@ def test_doc_checklist_recognizes_current_vs_archival_docs() -> None:
     assert "system-architecture.md" in checklist
 
 
+def test_post_mvp_model_and_phase_transition_checklist_are_indexed_and_connected() -> None:
+    docs_index = _read("docs/README.md")
+    model = _read("docs/governance/post-mvp-development-model.md")
+    checklist = _read("docs/governance/phase-transition-checklist.md")
+
+    assert "docs/governance/post-mvp-development-model.md" in docs_index
+    assert "docs/governance/phase-transition-checklist.md" in docs_index
+
+    assert "Part A：当前阶段收口检查" in checklist
+    assert "Part B：下一阶段启动检查" in checklist
+    assert "docs/governance/post-mvp-development-model.md" in checklist
+    assert "next-phase PRD" in checklist
+    assert "下一阶段有且只有一条主线" in checklist
+    assert "MVP 后" in model
+
+
 def test_task_domain_doc_matches_local_ffmpeg_v1_truth() -> None:
     doc = _read("docs/domains/tasks/task-management-domain-model.md")
 
