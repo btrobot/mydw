@@ -50,6 +50,11 @@ def test_current_architecture_baseline_contains_recommended_reading_path() -> No
     baseline = _read_repo_file("docs/current/architecture.md")
 
     assert "推荐阅读路径" in baseline
+    assert "后 MVP / 下一阶段开发入口" in baseline
+    assert "docs/governance/post-mvp-development-model.md" in baseline
+    assert "docs/governance/post-mvp-closeout-sequence.md" in baseline
+    assert "docs/governance/phase-transition-checklist.md" in baseline
+    assert "model 讲为什么，sequence 讲顺序，checklist 讲门槛，kickoff 讲起点" in baseline
     assert "README.md" in baseline
     assert "docs/README.md" in baseline
     assert "docs/current/runtime-truth.md" in baseline

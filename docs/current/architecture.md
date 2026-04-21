@@ -1,6 +1,6 @@
 # 当前架构基线（Current Architecture Baseline）
 
-> Version: 0.3.0 | Updated: 2026-04-21
+> Version: 0.4.0 | Updated: 2026-04-22
 > Owner: Codex
 > Status: Active
 
@@ -393,32 +393,52 @@ remote/
 | `docs/domains/auth/README.md` | auth 相关冻结规范与实现总结入口 |
 | `remote/README.md` | remote workspace 总入口 |
 
-## 11. 推荐阅读路径
+## 11. 后 MVP / 下一阶段开发入口
 
-### 11.1 想快速了解系统
+如果你当前关心的是：
+
+- MVP 做完后下一步怎么继续
+- 为什么不是先把所有文档全补完
+- 什么时候算“当前阶段已经收尾到能做决定”
+- 下一阶段到底从哪里正式开始
+
+建议按下面顺序进入：
+
+1. `docs/governance/post-mvp-development-model.md`
+2. `docs/governance/post-mvp-closeout-sequence.md`
+3. `docs/governance/phase-transition-checklist.md`
+4. `docs/current/next-phase-kickoff.md`
+
+可以压缩记成一句话：
+
+> **model 讲为什么，sequence 讲顺序，checklist 讲门槛，kickoff 讲起点。**
+
+## 12. 推荐阅读路径
+
+### 12.1 想快速了解系统
 
 1. `README.md`
 2. `docs/README.md`
 3. `docs/current/architecture.md`
 
-### 11.2 想知道“当前真实行为”
+### 12.2 想知道“当前真实行为”
 
 1. `docs/current/runtime-truth.md`
 2. 对应专题真相文档（settings / topic / auth / creative）
 3. 必要时再回到代码
 
-### 11.3 想知道“远程授权线怎么组织”
+### 12.3 想知道“远程授权线怎么组织”
 
 1. `remote/README.md`
 2. `docs/domains/auth/README.md`
 3. `remote/remote-shared/docs/remote-full-system-operating-model-v1.md`
 
-### 11.4 想知道“为什么当前是 Creative-first”
+### 12.4 想知道“为什么当前是 Creative-first”
 
 1. `docs/domains/creative/progressive-rebuild-final-summary.md`
 2. `docs/domains/creative/progressive-rebuild-completion-audit.md`
 
-### 11.5 想直接开始下一阶段开发
+### 12.5 想直接开始下一阶段开发
 
 1. `docs/current/next-phase-kickoff.md`
 2. `docs/governance/next-phase-backlog.md`
@@ -426,7 +446,7 @@ remote/
 4. `docs/governance/next-phase-test-spec.md`
 5. `docs/governance/next-phase-execution-breakdown.md`
 
-## 12. 与历史文档的关系
+## 13. 与历史文档的关系
 
 `docs/archive/reference/system-architecture.md` 仍保留，但它是**历史长文参考**，不是默认 authoritative source。
 
