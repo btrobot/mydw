@@ -9,13 +9,21 @@
   <body>
     <div id="root"></div>
     <script>
-      // HashRouter fix: redirect /foo/bar to /#/foo/bar
-      (function() {
-        var p = location.pathname;
-        if (p && p !== '/' && !location.hash) {
-          location.replace('/' + '#' + p);
+      // HashRouter deep-link redirect for http(s) static hosting only.
+      // In Electron packaged mode the app is loaded from file://.../index.html;
+      // redirecting that pathname would incorrectly produce file:///.../#/.../index.html
+      ;(function () {
+        var protocol = location.protocol
+        var pathname = location.pathname || '/'
+        var isFileProtocol = protocol === 'file:'
+        var isIndexDocument = /\/index\.html?$/.test(pathname)
+
+        if (isFileProtocol || isIndexDocument || location.hash) {
+          return
         }
-      })();
+
+        location.replace('/' + '#' + pathname + location.search)
+      })()
     </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
