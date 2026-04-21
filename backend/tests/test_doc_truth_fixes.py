@@ -80,6 +80,23 @@ def test_post_mvp_closeout_sequence_doc_connects_closeout_route_and_targeted_tru
     assert "docs/current/next-phase-kickoff.md" in flow
 
 
+def test_post_mvp_templates_are_indexed_and_connected_to_sequence_doc() -> None:
+    docs_index = _read("docs/README.md")
+    flow = _read("docs/governance/post-mvp-closeout-sequence.md")
+    closeout_template = _read("docs/governance/templates/phase-closeout-template.md")
+    selection_template = _read("docs/governance/templates/next-phase-mainline-selection-template.md")
+
+    assert "docs/governance/templates/phase-closeout-template.md" in docs_index
+    assert "docs/governance/templates/next-phase-mainline-selection-template.md" in docs_index
+    assert "docs/governance/templates/phase-closeout-template.md" in flow
+    assert "docs/governance/templates/next-phase-mainline-selection-template.md" in flow
+    assert "Remaining risks / Residual risks" in closeout_template
+    assert "Exit decision / 阶段退出结论" in closeout_template
+    assert "下一阶段唯一主线" in selection_template
+    assert "为这条主线必须先补准的 current truth" in selection_template
+    assert "kickoff / PRD / test spec / execution breakdown" in selection_template
+
+
 def test_task_domain_doc_matches_local_ffmpeg_v1_truth() -> None:
     doc = _read("docs/domains/tasks/task-management-domain-model.md")
 

@@ -83,6 +83,10 @@ Step 6 阶段完成后再次收口，进入下一轮
 - backlog 压缩结果
 - closeout / summary / audit / report 至少一种
 
+推荐直接使用模板：
+
+- `docs/governance/templates/phase-closeout-template.md`
+
 ### 4.3 这一步的边界
 
 **这一步不是全局补文档。**
@@ -142,6 +146,10 @@ Step 6 阶段完成后再次收口，进入下一轮
 - `docs/governance/post-mvp-development-model.md`
 - `docs/governance/next-phase-backlog.md`
 - `docs/current/next-phase-kickoff.md`
+
+推荐直接使用模板：
+
+- `docs/governance/templates/next-phase-mainline-selection-template.md`
 
 ---
 
@@ -203,6 +211,11 @@ Step 6 阶段完成后再次收口，进入下一轮
 - `docs/governance/next-phase-prd.md`
 - `docs/governance/next-phase-test-spec.md`
 - `docs/governance/next-phase-execution-breakdown.md`
+
+常用模板入口：
+
+- `docs/governance/templates/phase-closeout-template.md`
+- `docs/governance/templates/next-phase-mainline-selection-template.md`
 
 ---
 
