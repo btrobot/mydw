@@ -366,3 +366,34 @@
 一句话：
 
 > **先分类，再落点；先入口，后细则；不要让 root 再次变成杂物堆。**
+
+---
+
+## 13. 文档放置决策表（5 秒判断版）
+
+如果你只是想快速判断“这份新文档到底该放哪”，直接用这张表：
+
+| 如果这份文档主要是…… | 放这里 |
+| --- | --- |
+| 高频入口 / 阶段切换入口 / 推荐阅读路径中的高频文档 | `docs/governance/` root |
+| 规则 / 边界 / retention / artifact policy | `docs/governance/policies/` |
+| 盘点 / triage / ledger / stale/version/parity checklist | `docs/governance/inventory/` |
+| 长期规范 / strategy / guide / checklist / system spec | `docs/governance/standards/` |
+| 可复制复用的模板 / skeleton / starter | `docs/governance/templates/` |
+
+如果还是拿不准，就按下面顺序问自己：
+
+1. 它是不是每周都会被高频打开的治理入口？  
+   - 是：优先考虑 root
+2. 它是不是在定义“规则”而不是“现状”？  
+   - 是：优先考虑 `policies/`
+3. 它是不是在列清单、台账、盘点结果？  
+   - 是：优先考虑 `inventory/`
+4. 它是不是在描述长期方法或标准做法？  
+   - 是：优先考虑 `standards/`
+5. 它是不是拿来复制后填写的？  
+   - 是：优先考虑 `templates/`
+
+一句话速记：
+
+> **入口放 root，规则进 policies，盘点进 inventory，规范进 standards，复用进 templates。**

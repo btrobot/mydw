@@ -119,6 +119,12 @@ def test_governance_readme_classifies_core_policies_inventory_standards_and_temp
     assert "应该放进 `inventory/` 的文档" in governance_index
     assert "应该放进 `standards/` 的文档" in governance_index
     assert "应该放进 `templates/` 的文档" in governance_index
+    assert "文档放置决策表（5 秒判断版）" in governance_index
+    assert "高频入口 / 阶段切换入口 / 推荐阅读路径中的高频文档" in governance_index
+    assert "规则 / 边界 / retention / artifact policy" in governance_index
+    assert "盘点 / triage / ledger / stale/version/parity checklist" in governance_index
+    assert "长期规范 / strategy / guide / checklist / system spec" in governance_index
+    assert "可复制复用的模板 / skeleton / starter" in governance_index
 
 
 def test_task_domain_doc_matches_local_ffmpeg_v1_truth() -> None:
