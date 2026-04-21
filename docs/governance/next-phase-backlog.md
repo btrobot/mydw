@@ -26,7 +26,7 @@
 来源：
 
 - `docs/domains/creative/workbench-ui-issues.md`
-- `docs/frontend-ui-ux-closeout-final-summary.md`
+- `docs/archive/history/frontend-ui-ux-closeout-final-summary.md`
 
 压缩结果：
 
@@ -68,9 +68,9 @@
 
 压缩结果：
 
-1. `docs/` 根目录仍有一批**位置错误但内容未完全失效**的文档
-2. requirements source、治理清单、domain note、historical closeout 还混在同一层
-3. 下一阶段开发虽然已有启动/验证基线，但**未决问题入口**此前仍然不够集中
+1. `docs/` 根目录清理已经完成，但后续新增文档仍需要持续遵守目录落点规则
+2. requirements source、治理清单、domain note、historical closeout 已分层归位，但索引与互链需要继续维护
+3. 下一阶段开发虽然已有启动/验证基线，但 backlog / triage / closeout 之间仍要保持单一入口与持续同步
 
 ## 3. Open Questions
 
@@ -79,7 +79,7 @@
 1. **下一阶段主线是 UI/UX 收口，还是 AIClip 产品化？**
    - 当前证据更支持先做 UI/UX 收口，再做更深的 workflow 产品化
 2. **Coze 方向是否仍然有 owner？**
-   - 若没有，应把 `docs/coze-integration.md` 视为 archive，而不是继续保留为隐性 roadmap
+   - 若没有，应继续把 `docs/archive/reference/coze-integration.md` 视为历史参考，而不是重新恢复为隐性 roadmap
 3. **Task 页面是否继续保留为诊断/执行层，还是再向下沉？**
    - 当前共识是“Task 不是业务真相”，但是否继续保留现有入口需要下一阶段明确
 4. **requirements source 是否需要做一次编码/清洗？**
@@ -160,12 +160,12 @@
 - 逐项复核 `docs/governance/policies/manual-http-exceptions.md` 中的例外
 - 明确哪些场景永久保留、哪些需要迁回 generated client wrapper
 
-### P1.3 requirements / root docs 下沉执行
+### P1.3 文档目录治理持续化
 
 目标：
 
-- 按 `docs/governance/inventory/root-doc-triage.md` 执行实际 move/archive/delete
-- 减少根层噪音
+- 持续按 `docs/governance/inventory/root-doc-triage.md` 与目录放置规则约束新增文档
+- 防止 historical closeout、requirements source、一次性 planning note 重新回流到 `docs/` 根目录
 
 ## P2 — 技术债 / 治理债
 

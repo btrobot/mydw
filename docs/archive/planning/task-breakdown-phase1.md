@@ -1,7 +1,7 @@
 # Phase 1 素材域重建 — 任务分解
 
 > 日期: 2026-04-07
-> 来源: `docs/domain-model-analysis.md` Phase 1
+> 来源: `docs/archive/analysis/domain-model-analysis.md` Phase 1
 > 范围: Material 表拆分为 Video/Copywriting/Cover/Audio/Topic + 数据迁移 + 新 API + 兼容层 + Product 迁移
 
 ---

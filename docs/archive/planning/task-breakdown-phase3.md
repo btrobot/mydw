@@ -1,7 +1,7 @@
 # Phase 3 任务编排层重构 — 任务分解
 
 > 日期: 2026-04-07
-> 来源: `docs/domain-model-analysis.md` Phase 3
+> 来源: `docs/archive/analysis/domain-model-analysis.md` Phase 3
 > 范围: Task 表增加素材 FK 引用 + TaskTopic 多对多 + TaskAssembler + TaskDistributor + 发布服务适配 + 前端任务页重构
 
 ---

@@ -61,48 +61,50 @@
 | `docs/chat-req.md` | `docs/specs/requirements-sources/chat-req.md` | 已下沉到 specs/requirements-sources |
 | `docs/frontend-ui-issues-and-improvements.md` | `docs/domains/creative/workbench-ui-issues.md` | 已下沉到 domains/creative |
 
----
+### Batch 3 已完成：historical / delete 收口
 
-## 4. 当前 docs 根目录待分流文档
-
-当前仍在根层、需要继续处理的文档：
-
-- `docs/coze-integration.md`
-- `docs/domain-model-analysis.md`
-- `docs/frontend-ui-ux-closeout-final-summary.md`
-- `docs/frontend-ui-ux-closeout-ralplan-command.md`
+| 原路径 | 新路径 | 结果 |
+| --- | --- | --- |
+| `docs/coze-integration.md` | `docs/archive/reference/coze-integration.md` | 已归档到 archive/reference |
+| `docs/domain-model-analysis.md` | `docs/archive/analysis/domain-model-analysis.md` | 已归档到 archive/analysis |
+| `docs/frontend-ui-ux-closeout-final-summary.md` | `docs/archive/history/frontend-ui-ux-closeout-final-summary.md` | 已归档到 archive/history |
+| `docs/frontend-ui-ux-closeout-ralplan-command.md` | 删除 | 已删除（一次性命令记录，不保留在 repo docs root） |
 
 ---
 
-## 5. 当前待处理去向盘点表
+## 4. 当前 docs 根目录状态
+
+截至 Batch 3 执行后，`docs/` 根目录已经没有待分流文档。
+
+当前根目录只保留：
+
+- `docs/README.md`
+- `docs/runtime-truth.md`
+
+---
+
+## 5. Batch 3 去向盘点（已执行）
 
 | 文件 | 当前角色判断 | 四分法第一判断 | 分诊结果 | 建议目标位置 | 说明 |
 | --- | --- | --- | --- | --- | --- |
 | `docs/coze-integration.md` | Coze 接入 draft 说明 | 四分法都不适合 | archive | `docs/archive/reference/coze-integration.md` | 当前主链路已不是 Coze integration 主线，不应继续与 current docs 竞争 |
 | `docs/domain-model-analysis.md` | 早期领域迁移分析稿 | 四分法都不适合 | archive | `docs/archive/analysis/domain-model-analysis.md` | 当前架构已由 `docs/current/architecture.md` 等文档接管 |
 | `docs/frontend-ui-ux-closeout-final-summary.md` | UI/UX closeout 交付总结 | 四分法都不适合 | archive | `docs/archive/history/frontend-ui-ux-closeout-final-summary.md` | 属于阶段收口证明，不应继续占据根层 |
-| `docs/frontend-ui-ux-closeout-ralplan-command.md` | 一次性 ralplan 命令记录 | 四分法都不适合 | 删除候选 | 删除；如需保留，转入 `.omx/` 或 planning artifact | 不属于 repo 长期知识资产 |
+| `docs/frontend-ui-ux-closeout-ralplan-command.md` | 一次性 ralplan 命令记录 | 四分法都不适合 | 删除候选 | 删除；如需保留，转入 `.omx/` 或 planning artifact | 不属于 repo 长期知识资产；本轮已执行删除 |
 
 ---
 
 ## 6. 当前结论
 
-经过 Batch 1 + Batch 2 后，根层剩余问题已经收敛为：
-
-1. 历史分析稿  
-   - `docs/domain-model-analysis.md`
-2. 历史 closeout 证明  
-   - `docs/frontend-ui-ux-closeout-final-summary.md`
-3. 历史/偏离主线的接入说明  
-   - `docs/coze-integration.md`
-4. 一次性命令记录  
-   - `docs/frontend-ui-ux-closeout-ralplan-command.md`
+经过 Batch 1 + Batch 2 + Batch 3 后，`docs/` 根目录清理已完成。
 
 也就是说，`docs/` 根目录现在已经不再承载：
 
 - requirements source
 - 领域专题说明
 - 工程治理清单
+- historical closeout
+- 一次性命令记录
 
 ---
 
@@ -118,18 +120,10 @@
 
 ### Batch 3：historical / delete 收口
 
-最后处理：
-
-- `domain-model-analysis.md`
-- `frontend-ui-ux-closeout-final-summary.md`
-- `coze-integration.md`
-- `frontend-ui-ux-closeout-ralplan-command.md`
-
-原因：这批文档需要结合引用关系与 owner 决定 archive 还是删除。
+已完成。
 
 ---
 
 ## 8. 一句话结论
 
-> Batch 1 和 Batch 2 已经把低风险 active 文档与 requirements source 移出 `docs/` 根目录；接下来根层主要剩历史分析、历史 closeout、偏离主线的接入说明，以及一次性命令记录。
-
+> Batch 1、Batch 2、Batch 3 已完成后，`docs/` 根目录已经只保留默认入口文档；历史分析、历史 closeout、偏离主线的接入说明与一次性命令记录都已完成归档或删除。

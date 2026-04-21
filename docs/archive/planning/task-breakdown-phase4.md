@@ -1,7 +1,7 @@
 # Phase 4 话题增强 — 任务分解
 
 > 日期: 2026-04-07
-> 来源: `docs/requirements-spec.md` 4.1, `docs/domain-model-analysis.md` Phase 4
+> 来源: `docs/requirements-spec.md` 4.1, `docs/archive/analysis/domain-model-analysis.md` Phase 4
 > 范围: 话题搜索(Playwright自动化) + 热度排序 + 全局话题 + 前端话题管理UI
 
 ---

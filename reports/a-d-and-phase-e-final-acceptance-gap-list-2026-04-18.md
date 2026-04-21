@@ -149,7 +149,7 @@ E2E_BASE_URL=http://127.0.0.1:4173 node node_modules/playwright/cli.js test -c e
 
 建议动作：
 - 补一份例如：
-  - `docs/frontend-ui-ux-closeout-final-summary.md`
+  - `docs/archive/history/frontend-ui-ux-closeout-final-summary.md`
   - 或 `docs/frontend-ui-ux-closeout-acceptance-checklist.md`
 
 建议内容：

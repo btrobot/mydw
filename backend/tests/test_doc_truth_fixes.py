@@ -234,6 +234,7 @@ def test_root_doc_triage_classifies_uncategorized_docs() -> None:
     assert "优先按 current / domains / governance / guides 四分法收口" in triage
     assert "Batch 1 已完成" in triage
     assert "Batch 2 已完成" in triage
+    assert "Batch 3 已完成" in triage
     assert "docs/domains/system/backup-scope.md" in triage
     assert "docs/governance/policies/manual-http-exceptions.md" in triage
     assert "docs/governance/standards/schema-parity-checklist.md" in triage
@@ -242,6 +243,9 @@ def test_root_doc_triage_classifies_uncategorized_docs() -> None:
     assert "docs/domains/creative/workbench-ui-issues.md" in triage
     assert "删除候选" in triage
     assert "docs/frontend-ui-ux-closeout-ralplan-command.md" in triage
+    assert "docs/archive/history/frontend-ui-ux-closeout-final-summary.md" in triage
+    assert "当前根目录只保留" in triage
+    assert "docs/runtime-truth.md" in triage
 
 
 def test_batch1_low_risk_docs_have_moved_out_of_docs_root() -> None:
@@ -288,6 +292,7 @@ def test_omx_plan_retention_distinguishes_active_archive_and_pending_plan_sets()
     assert "remote-admin-platform-ui-pr-sequence-2026-04-16.md" in retention
     assert "prd-product-create-name-share-text.md" in retention
     assert "test-spec-product-create-name-share-text.md" in retention
+    assert "docs/archive/history/frontend-ui-ux-closeout-final-summary.md" in retention
     assert "product-create-dual-field-ralplan-2026-04-16.md" in retention
     assert "ralplan-login-bs-alignment-2026-04-20.md" in retention
     assert "ralplan-task-management-filters-2026-04-19.md" in retention
@@ -345,7 +350,7 @@ def test_closeout_docs_point_to_archived_omx_plan_sources() -> None:
     creative_summary = _read("docs/domains/creative/progressive-rebuild-final-summary.md")
     creative_audit = _read("docs/domains/creative/progressive-rebuild-completion-audit.md")
     phase_a = _read("docs/domains/creative/phase-a-acceptance-checklist.md")
-    frontend_summary = _read("docs/frontend-ui-ux-closeout-final-summary.md")
+    frontend_summary = _read("docs/archive/history/frontend-ui-ux-closeout-final-summary.md")
 
     for doc in [creative_summary, creative_audit, phase_a, frontend_summary]:
         assert ".omx/plans/archive/" in doc
@@ -353,6 +358,23 @@ def test_closeout_docs_point_to_archived_omx_plan_sources() -> None:
     assert ".omx/plans/prd-creative-progressive-rebuild-roadmap.md" not in creative_summary
     assert ".omx/plans/prd-creative-progressive-rebuild-phase-a-pr-plan.md" not in creative_audit
     assert ".omx/plans/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md" not in frontend_summary
+
+
+def test_batch3_historical_docs_are_archived_or_deleted_from_docs_root() -> None:
+    moved_pairs = [
+        ("docs/coze-integration.md", "docs/archive/reference/coze-integration.md"),
+        ("docs/domain-model-analysis.md", "docs/archive/analysis/domain-model-analysis.md"),
+        (
+            "docs/frontend-ui-ux-closeout-final-summary.md",
+            "docs/archive/history/frontend-ui-ux-closeout-final-summary.md",
+        ),
+    ]
+
+    for old_path, new_path in moved_pairs:
+        assert not (REPO_ROOT / old_path).exists(), f"file should no longer stay in docs root: {old_path}"
+        assert (REPO_ROOT / new_path).exists(), f"missing archived file: {new_path}"
+
+    assert not (REPO_ROOT / "docs/frontend-ui-ux-closeout-ralplan-command.md").exists()
 
 
 def test_closeout_reports_point_to_archived_second_batch_omx_plan_sources() -> None:
