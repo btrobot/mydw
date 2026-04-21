@@ -65,6 +65,21 @@ def test_post_mvp_model_and_phase_transition_checklist_are_indexed_and_connected
     assert "MVP 后" in model
 
 
+def test_post_mvp_closeout_sequence_doc_connects_closeout_route_and_targeted_truth() -> None:
+    docs_index = _read("docs/README.md")
+    flow = _read("docs/governance/post-mvp-closeout-sequence.md")
+
+    assert "docs/governance/post-mvp-closeout-sequence.md" in docs_index
+    assert "先做当前阶段收尾总结" in flow
+    assert "再选下一阶段唯一主线" in flow
+    assert "围绕主线定向补齐 current truth" in flow
+    assert "全局最小基线" in flow
+    assert "路线绑定的 current truth" in flow
+    assert "docs/governance/post-mvp-development-model.md" in flow
+    assert "docs/governance/phase-transition-checklist.md" in flow
+    assert "docs/current/next-phase-kickoff.md" in flow
+
+
 def test_task_domain_doc_matches_local_ffmpeg_v1_truth() -> None:
     doc = _read("docs/domains/tasks/task-management-domain-model.md")
 

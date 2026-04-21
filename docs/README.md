@@ -19,6 +19,7 @@
 11. `docs/governance/omx-plan-retention.md` — `.omx/plans` 活跃/归档分类规则
 12. `docs/governance/post-mvp-development-model.md` — MVP 完成后如何做收口、选主线、再启动下一阶段
 13. `docs/governance/phase-transition-checklist.md` — 每次阶段切换前后要检查什么，避免未收口就启动下一阶段
+14. `docs/governance/post-mvp-closeout-sequence.md` — MVP 后标准顺序：收尾 → 选线 → 定向收口 → 启动
 
 ## Current / canonical docs
 
@@ -34,6 +35,7 @@
 - `docs/guides/openapi-generation-workflow.md`
 - `docs/governance/post-mvp-development-model.md`
 - `docs/governance/phase-transition-checklist.md`
+- `docs/governance/post-mvp-closeout-sequence.md`
 
 ## Working engineering docs
 
@@ -45,6 +47,7 @@
 - `docs/governance/root-doc-triage.md`（根层未分类文档去向收口）
 - `docs/governance/post-mvp-development-model.md`（MVP 后开发治理模型）
 - `docs/governance/phase-transition-checklist.md`（阶段切换执行清单）
+- `docs/governance/post-mvp-closeout-sequence.md`（MVP 后收尾 → 选线 → 定向收口的标准流程）
 - `docs/governance/next-phase-backlog.md`（压缩后的 open issues / next-phase backlog）
 - `docs/governance/next-phase-prd.md` / `docs/governance/next-phase-test-spec.md` / `docs/governance/next-phase-execution-breakdown.md`（下一阶段启动包的范围/验证/执行分解，需与 kickoff 一起使用）
 - `docs/governance/omx-plan-retention.md`（`.omx/plans` 活跃计划与 archive 的分流规则）
