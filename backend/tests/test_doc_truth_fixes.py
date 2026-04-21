@@ -110,6 +110,7 @@ def test_governance_readme_classifies_core_policies_inventory_standards_and_temp
     assert "docs/governance/policies/generated-artifact-policy.md" in governance_index
     assert "docs/governance/inventory/inventory-ledger.md" in governance_index
     assert "docs/governance/standards/documentation-strategy.md" in governance_index
+    assert "docs/governance/standards/docs-directory-placement-rules.md" in governance_index
     assert "docs/governance/standards/domains-architecture-governance-boundary.md" in governance_index
     assert "docs/governance/templates/phase-closeout-template.md" in governance_index
     assert "按场景的阅读顺序" in governance_index
@@ -139,6 +140,19 @@ def test_domains_architecture_governance_boundary_doc_is_indexed_and_explains_sp
     assert "`architecture/` = **系统现在如何被设计成这样**" in split_doc
     assert "`governance/` = **这些真相和设计，平时如何被维护、更新、约束、收口**" in split_doc
     assert "governance 不是“项目管理杂项”" in split_doc
+
+
+def test_docs_directory_placement_rules_doc_is_indexed_and_explains_four_way_split() -> None:
+    docs_index = _read("docs/README.md")
+    governance_index = _read("docs/governance/README.md")
+    split_doc = _read("docs/governance/standards/docs-directory-placement-rules.md")
+
+    assert "docs/governance/standards/docs-directory-placement-rules.md" in docs_index
+    assert "docs/governance/standards/docs-directory-placement-rules.md" in governance_index
+    assert "`docs/current/` = **当前真相 / 当前默认入口**" in split_doc
+    assert "`docs/domains/` = **业务领域真相**" in split_doc
+    assert "`docs/governance/` = **治理规则 / 收口规则 / 阶段推进规则**" in split_doc
+    assert "`docs/guides/` = **操作指南 / 实施手册 / how-to**" in split_doc
 
 
 def test_task_domain_doc_matches_local_ffmpeg_v1_truth() -> None:

@@ -93,6 +93,7 @@
 - `docs/governance/standards/ai-doc-system-spec.md`
 - `docs/governance/standards/coding-standards.md`
 - `docs/governance/standards/doc-checklist.md`
+- `docs/governance/standards/docs-directory-placement-rules.md`
 - `docs/governance/standards/documentation-strategy.md`
 - `docs/governance/standards/domains-architecture-governance-boundary.md`
 - `docs/governance/standards/multi-agent-guide.md`
@@ -249,6 +250,7 @@
 
 - `documentation-strategy.md`
 - `doc-checklist.md`
+- `docs-directory-placement-rules.md`
 - `domains-architecture-governance-boundary.md`
 - `multi-agent-guide.md`
 
