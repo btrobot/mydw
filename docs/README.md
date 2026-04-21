@@ -12,15 +12,16 @@
 4. `docs/current/runtime-truth.md` — 当前运行事实 / canonical fact inventory
 5. `docs/governance/authority-matrix.md` — 文档职责边界
 6. `docs/governance/README.md` — governance 目录分类导航
-7. `docs/guides/dev-guide.md` — 开发环境与启动流程
-8. `docs/governance/verification-baseline.md` — 最小可信回归基线
-9. `docs/current/next-phase-kickoff.md` — 下一阶段启动入口 / 启动包总入口
-10. `docs/governance/inventory/inventory-ledger.md` — 当前文档/资料簇分类台账
-11. `docs/governance/policies/runtime-local-artifact-policy.md` — 运行时 / 本地 agent 资产边界说明
-12. `docs/governance/policies/omx-plan-retention.md` — `.omx/plans` 活跃/归档分类规则
-13. `docs/governance/post-mvp-development-model.md` — MVP 完成后如何做收口、选主线、再启动下一阶段
-14. `docs/governance/phase-transition-checklist.md` — 每次阶段切换前后要检查什么，避免未收口就启动下一阶段
-15. `docs/governance/post-mvp-closeout-sequence.md` — MVP 后标准顺序：收尾 → 选线 → 定向收口 → 启动
+7. `docs/governance/standards/domains-architecture-governance-boundary.md` — `domains / architecture / governance` 三分法边界说明
+8. `docs/guides/dev-guide.md` — 开发环境与启动流程
+9. `docs/governance/verification-baseline.md` — 最小可信回归基线
+10. `docs/current/next-phase-kickoff.md` — 下一阶段启动入口 / 启动包总入口
+11. `docs/governance/inventory/inventory-ledger.md` — 当前文档/资料簇分类台账
+12. `docs/governance/policies/runtime-local-artifact-policy.md` — 运行时 / 本地 agent 资产边界说明
+13. `docs/governance/policies/omx-plan-retention.md` — `.omx/plans` 活跃/归档分类规则
+14. `docs/governance/post-mvp-development-model.md` — MVP 完成后如何做收口、选主线、再启动下一阶段
+15. `docs/governance/phase-transition-checklist.md` — 每次阶段切换前后要检查什么，避免未收口就启动下一阶段
+16. `docs/governance/post-mvp-closeout-sequence.md` — MVP 后标准顺序：收尾 → 选线 → 定向收口 → 启动
 
 ## Current / canonical docs
 
@@ -49,7 +50,7 @@
 - `docs/governance/inventory/root-doc-triage.md`（根层未分类文档去向收口）
 - `docs/governance/inventory/`（台账 / 分诊 / parity / stale / version inventories）
 - `docs/governance/policies/`（generated artifact、runtime boundary、plan retention 等规则）
-- `docs/governance/standards/`（documentation strategy、doc checklist、multi-agent guide 等长期规范）
+- `docs/governance/standards/`（documentation strategy、doc checklist、`domains / architecture / governance` 三分法、multi-agent guide 等长期规范）
 - `docs/governance/post-mvp-development-model.md`（MVP 后开发治理模型）
 - `docs/governance/phase-transition-checklist.md`（阶段切换执行清单）
 - `docs/governance/post-mvp-closeout-sequence.md`（MVP 后收尾 → 选线 → 定向收口的标准流程）

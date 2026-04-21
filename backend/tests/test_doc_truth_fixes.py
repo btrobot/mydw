@@ -110,6 +110,7 @@ def test_governance_readme_classifies_core_policies_inventory_standards_and_temp
     assert "docs/governance/policies/generated-artifact-policy.md" in governance_index
     assert "docs/governance/inventory/inventory-ledger.md" in governance_index
     assert "docs/governance/standards/documentation-strategy.md" in governance_index
+    assert "docs/governance/standards/domains-architecture-governance-boundary.md" in governance_index
     assert "docs/governance/templates/phase-closeout-template.md" in governance_index
     assert "按场景的阅读顺序" in governance_index
     assert "场景 B：我想知道 MVP 后怎么继续推进" in governance_index
@@ -125,6 +126,19 @@ def test_governance_readme_classifies_core_policies_inventory_standards_and_temp
     assert "盘点 / triage / ledger / stale/version/parity checklist" in governance_index
     assert "长期规范 / strategy / guide / checklist / system spec" in governance_index
     assert "可复制复用的模板 / skeleton / starter" in governance_index
+
+
+def test_domains_architecture_governance_boundary_doc_is_indexed_and_explains_split() -> None:
+    docs_index = _read("docs/README.md")
+    governance_index = _read("docs/governance/README.md")
+    split_doc = _read("docs/governance/standards/domains-architecture-governance-boundary.md")
+
+    assert "docs/governance/standards/domains-architecture-governance-boundary.md" in docs_index
+    assert "docs/governance/standards/domains-architecture-governance-boundary.md" in governance_index
+    assert "`domains/` = **业务是什么，业务真相是什么**" in split_doc
+    assert "`architecture/` = **系统现在如何被设计成这样**" in split_doc
+    assert "`governance/` = **这些真相和设计，平时如何被维护、更新、约束、收口**" in split_doc
+    assert "governance 不是“项目管理杂项”" in split_doc
 
 
 def test_task_domain_doc_matches_local_ffmpeg_v1_truth() -> None:
