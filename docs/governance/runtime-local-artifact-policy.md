@@ -64,6 +64,7 @@
 ### `.omx/`
 - 主要是 OMX orchestration/runtime 资产
 - `plans/`、`context/` 可能帮助理解历史执行路径
+- `plans/archive/` 用于存放已被 `docs/` 正式文档吸收的历史 planning artifacts
 - `state/`、`logs/`、`notepad.md`、`metrics.json` 不应被当作当前产品文档真相
 
 ### `.omc/`
@@ -113,4 +114,5 @@
 
 - 不把 `.codex/`、`.omx/`、`.omc/`、本地 runtime 输出目录当作项目主文档簇
 - 先在导航和 inventory 中标明它们的 runtime/local 属性
+- `.omx/plans/` 只保留仍直接驱动开发的计划文件；已被正式文档吸收的计划下沉到 `.omx/plans/archive/`
 - 是否进一步移动、瘦身、ignore 化，放到后续专门的 policy/cleanup PR 决定

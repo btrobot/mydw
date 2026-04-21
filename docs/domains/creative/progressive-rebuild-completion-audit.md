@@ -2,11 +2,11 @@
 
 > Scope: Phase A ~ Phase D  
 > Source plans:  
-> - `.omx/plans/prd-creative-progressive-rebuild-roadmap.md`  
-> - `.omx/plans/prd-creative-progressive-rebuild-phase-a-pr-plan.md`  
-> - `.omx/plans/prd-creative-progressive-rebuild-phase-b-pr-plan.md`  
-> - `.omx/plans/prd-creative-progressive-rebuild-phase-c-pr-plan.md`  
-> - `.omx/plans/prd-creative-progressive-rebuild-phase-d-pr-plan.md`  
+> - `.omx/plans/archive/prd-creative-progressive-rebuild-roadmap.md`  
+> - `.omx/plans/archive/prd-creative-progressive-rebuild-phase-a-pr-plan.md`  
+> - `.omx/plans/archive/prd-creative-progressive-rebuild-phase-b-pr-plan.md`  
+> - `.omx/plans/archive/prd-creative-progressive-rebuild-phase-c-pr-plan.md`  
+> - `.omx/plans/archive/prd-creative-progressive-rebuild-phase-d-pr-plan.md`  
 > Audit date: 2026-04-18
 
 ---

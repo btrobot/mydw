@@ -76,6 +76,7 @@ def test_docs_readme_exists_and_separates_current_docs_from_runtime_artifacts() 
     assert "docs/current/next-phase-kickoff.md" in docs_index
     assert "docs/governance/inventory-ledger.md" in docs_index
     assert "docs/governance/runtime-local-artifact-policy.md" in docs_index
+    assert "docs/governance/omx-plan-retention.md" in docs_index
     assert "docs/governance/root-doc-triage.md" in docs_index
     assert "docs/governance/next-phase-backlog.md" in docs_index
     assert "docs/governance/next-phase-prd.md" in docs_index
@@ -245,6 +246,20 @@ def test_runtime_local_artifact_policy_documents_boundary_and_current_git_state(
     assert "runtime" in policy or "本地" in policy or "运行时" in policy
     assert "committed" in policy or "已提交" in policy
     assert "future policy" in policy or "后续策略" in policy
+    assert ".omx/plans/archive/" in policy
+
+
+def test_inventory_ledger_and_retention_doc_explain_omx_plan_archive_split() -> None:
+    ledger = _read_repo_file("docs/governance/inventory-ledger.md")
+    retention = _read_repo_file("docs/governance/omx-plan-retention.md")
+
+    assert ".omx/" in ledger
+    assert ".omx/plans/archive/" in ledger
+    assert "docs/governance/omx-plan-retention.md" in ledger
+    assert "prd-remote-full-system.md" in retention
+    assert "prd-remote-auth.md" in retention
+    assert "open-questions.md" in retention
+    assert "prd-closeout-next-phase-foundation-2026-04-21.md" in retention
 
 
 def test_root_plans_and_task_breakdown_examples_move_out_of_root_runtime_paths() -> None:

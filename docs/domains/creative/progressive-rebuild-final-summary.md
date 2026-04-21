@@ -2,10 +2,10 @@
 
 > 范围：Creative Progressive Rebuild Phase A ~ Phase D  
 > 参考计划：
-> - `.omx/plans/prd-creative-progressive-rebuild-roadmap.md`
-> - `.omx/plans/prd-creative-progressive-rebuild-phase-b-pr-plan.md`
-> - `.omx/plans/prd-creative-progressive-rebuild-phase-c-pr-plan.md`
-> - `.omx/plans/prd-creative-progressive-rebuild-phase-d-pr-plan.md`
+> - `.omx/plans/archive/prd-creative-progressive-rebuild-roadmap.md`
+> - `.omx/plans/archive/prd-creative-progressive-rebuild-phase-b-pr-plan.md`
+> - `.omx/plans/archive/prd-creative-progressive-rebuild-phase-c-pr-plan.md`
+> - `.omx/plans/archive/prd-creative-progressive-rebuild-phase-d-pr-plan.md`
 > 更新日期：2026-04-18
 
 ## 1. 这次重构的核心目标

@@ -11,11 +11,11 @@
 本清单覆盖两套规划：
 
 ### 主线规划
-- `.omx/plans/prd-creative-progressive-rebuild-roadmap.md`
+- `.omx/plans/archive/prd-creative-progressive-rebuild-roadmap.md`
 - 对应阶段：**Phase A ~ Phase D**
 
 ### 前端收口规划
-- `.omx/plans/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md`
+- `.omx/plans/archive/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md`
 - 对应阶段：**Phase E**
 
 ---
@@ -140,7 +140,7 @@ E2E_BASE_URL=http://127.0.0.1:4173 node node_modules/playwright/cli.js test -c e
 **状态：未完全收口**
 
 当前已有：
-- `.omx/plans/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md`
+- `.omx/plans/archive/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md`
 - 相关回顾文档与 commit 记录
 
 问题：

@@ -1,8 +1,8 @@
 # Phase 1 / 阶段 A 验收清单
 
 - 范围：Creative Progressive Rebuild Phase 1（阶段 A）
-- 对照计划：`.omx/plans/prd-creative-progressive-rebuild-phase-a-pr-plan.md`
-- 对照 test-spec：`.omx/plans/test-spec-creative-progressive-rebuild-roadmap.md`
+- 对照计划：`.omx/plans/archive/prd-creative-progressive-rebuild-phase-a-pr-plan.md`
+- 对照 test-spec：`.omx/plans/archive/test-spec-creative-progressive-rebuild-roadmap.md`
 - 结论：已达到阶段 A 自动化验收门槛，可正式收口
 
 ## 验收结论

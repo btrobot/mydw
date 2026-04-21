@@ -2,8 +2,8 @@
 
 > Scope: Phase E ? UI/UX closeout + stack best-practice alignment for `frontend/`  
 > Source plans:  
-> - `.omx/plans/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md`  
-> - `.omx/plans/test-spec-frontend-ui-ux-closeout-phase-e-pr-plan.md`  
+> - `.omx/plans/archive/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md`  
+> - `.omx/plans/archive/test-spec-frontend-ui-ux-closeout-phase-e-pr-plan.md`  
 > Summary date: 2026-04-18
 
 ---

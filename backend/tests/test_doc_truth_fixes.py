@@ -130,6 +130,34 @@ def test_root_doc_triage_classifies_uncategorized_docs() -> None:
     assert "docs/frontend-ui-ux-closeout-ralplan-command.md" in triage
 
 
+def test_omx_plan_retention_distinguishes_active_archive_and_pending_plan_sets() -> None:
+    retention = _read("docs/governance/omx-plan-retention.md")
+
+    assert ".omx/plans" in retention
+    assert ".omx/plans/archive/" in retention
+    assert "Keep active in `.omx/plans/`" in retention
+    assert "Archive now to `.omx/plans/archive/`" in retention
+    assert "Keep in `.omx/plans/` pending manual review" in retention
+    assert "prd-remote-full-system.md" in retention
+    assert "prd-remote-auth.md" in retention
+    assert "prd-creative-progressive-rebuild-roadmap.md" in retention
+    assert "prd-frontend-ui-ux-closeout-phase-e-pr-plan.md" in retention
+
+
+def test_closeout_docs_point_to_archived_omx_plan_sources() -> None:
+    creative_summary = _read("docs/domains/creative/progressive-rebuild-final-summary.md")
+    creative_audit = _read("docs/domains/creative/progressive-rebuild-completion-audit.md")
+    phase_a = _read("docs/domains/creative/phase-a-acceptance-checklist.md")
+    frontend_summary = _read("docs/frontend-ui-ux-closeout-final-summary.md")
+
+    for doc in [creative_summary, creative_audit, phase_a, frontend_summary]:
+        assert ".omx/plans/archive/" in doc
+
+    assert ".omx/plans/prd-creative-progressive-rebuild-roadmap.md" not in creative_summary
+    assert ".omx/plans/prd-creative-progressive-rebuild-phase-a-pr-plan.md" not in creative_audit
+    assert ".omx/plans/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md" not in frontend_summary
+
+
 def test_next_phase_backlog_compresses_open_issues_into_prioritized_lanes() -> None:
     backlog = _read("docs/governance/next-phase-backlog.md")
 

@@ -24,12 +24,12 @@
 
 本轮工作的正式规划基础主要来自以下文档：
 
-- `.omx/plans/prd-creative-progressive-rebuild-roadmap.md`
-- `.omx/plans/prd-creative-progressive-rebuild-phase-a-pr-plan.md`
-- `.omx/plans/prd-creative-progressive-rebuild-phase-b-pr-plan.md`
-- `.omx/plans/prd-creative-progressive-rebuild-phase-c-pr-plan.md`
-- `.omx/plans/prd-creative-progressive-rebuild-phase-d-pr-plan.md`
-- 后续补充：`.omx/plans/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md`
+- `.omx/plans/archive/prd-creative-progressive-rebuild-roadmap.md`
+- `.omx/plans/archive/prd-creative-progressive-rebuild-phase-a-pr-plan.md`
+- `.omx/plans/archive/prd-creative-progressive-rebuild-phase-b-pr-plan.md`
+- `.omx/plans/archive/prd-creative-progressive-rebuild-phase-c-pr-plan.md`
+- `.omx/plans/archive/prd-creative-progressive-rebuild-phase-d-pr-plan.md`
+- 后续补充：`.omx/plans/archive/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md`
 
 ### 2.2 最初为什么不是 3 个阶段，而是 4 个阶段
 
@@ -97,7 +97,7 @@
 
 所以后面补了一份独立规划：
 
-- `.omx/plans/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md`
+- `.omx/plans/archive/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md`
 
 Phase E 的正式目标不是“重做视觉”，而是：
 
@@ -418,11 +418,11 @@ E 解决的是：
 
 ## 8. 参考文档
 
-- `.omx/plans/prd-creative-progressive-rebuild-roadmap.md`
-- `.omx/plans/prd-creative-progressive-rebuild-phase-a-pr-plan.md`
-- `.omx/plans/prd-creative-progressive-rebuild-phase-b-pr-plan.md`
-- `.omx/plans/prd-creative-progressive-rebuild-phase-c-pr-plan.md`
-- `.omx/plans/prd-creative-progressive-rebuild-phase-d-pr-plan.md`
-- `.omx/plans/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md`
+- `.omx/plans/archive/prd-creative-progressive-rebuild-roadmap.md`
+- `.omx/plans/archive/prd-creative-progressive-rebuild-phase-a-pr-plan.md`
+- `.omx/plans/archive/prd-creative-progressive-rebuild-phase-b-pr-plan.md`
+- `.omx/plans/archive/prd-creative-progressive-rebuild-phase-c-pr-plan.md`
+- `.omx/plans/archive/prd-creative-progressive-rebuild-phase-d-pr-plan.md`
+- `.omx/plans/archive/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md`
 - `docs/creative-progressive-rebuild-final-summary.md`
 - `docs/frontend-ui-issues-and-improvements.md`

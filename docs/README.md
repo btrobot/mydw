@@ -16,6 +16,7 @@
 8. `docs/current/next-phase-kickoff.md` — 下一阶段启动入口
 9. `docs/governance/inventory-ledger.md` — 当前文档/资料簇分类台账
 10. `docs/governance/runtime-local-artifact-policy.md` — 运行时 / 本地 agent 资产边界说明
+11. `docs/governance/omx-plan-retention.md` — `.omx/plans` 活跃/归档分类规则
 
 ## Current / canonical docs
 
@@ -40,6 +41,7 @@
 - `docs/governance/root-doc-triage.md`（根层未分类文档去向收口）
 - `docs/governance/next-phase-backlog.md`（压缩后的 open issues / next-phase backlog）
 - `docs/governance/next-phase-prd.md` / `docs/governance/next-phase-test-spec.md` / `docs/governance/next-phase-execution-breakdown.md`（下一阶段启动包的规划/验证/执行分解）
+- `docs/governance/omx-plan-retention.md`（`.omx/plans` 活跃计划与 archive 的分流规则）
 - 专题设计说明（如 settings、topic、task semantics、generation governance）
 - `docs/adr/` 中的决策记录
 - `docs/domains/auth/README.md`（远程认证 / 本地授权门禁冻结文档入口；Step 0 artifacts）
@@ -101,7 +103,7 @@
 下面这些路径**不是项目主文档入口**，不要把它们当作“先读什么”的答案：
 
 - `.codex/` — Codex 本地 prompts / skills / sessions / state
-- `.omx/` — OMX runtime state、plans、logs、notepad、session artifacts
+- `.omx/` — OMX runtime state、plans、archive、logs、notepad、session artifacts
 - `.omc/` — OMC/Claude runtime state、sessions、mission memory
 - 本地 session / runtime 输出目录（仓库中已不再保留 `production/`）
 
@@ -110,6 +112,7 @@
 更完整的边界规则见：
 
 - `docs/governance/runtime-local-artifact-policy.md`
+- `docs/governance/omx-plan-retention.md`
 
 ## 当前整理策略
 

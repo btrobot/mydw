@@ -11,12 +11,12 @@
 当前项目里，最需要区分的是两层规划：
 
 ### A. 主线规划
-- 文档：`.omx/plans/prd-creative-progressive-rebuild-roadmap.md`
+- 文档：`.omx/plans/archive/prd-creative-progressive-rebuild-roadmap.md`
 - 含义：把系统从 **Task-first** 渐进式迁移到 **Creative-first**
 - 阶段：**Phase A ~ Phase D**
 
 ### B. 后续前端收口规划
-- 文档：`.omx/plans/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md`
+- 文档：`.omx/plans/archive/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md`
 - 含义：在 A~D 主线跑通后，单独做一轮 **Frontend UI/UX 收口 + 技术栈最佳实践对齐**
 - 阶段：**Phase E**
 
@@ -28,9 +28,9 @@
 
 | 层级 | 规划文档 | 目标 | 当前理解 |
 |---|---|---|---|
-| 主线 | `.omx/plans/prd-creative-progressive-rebuild-roadmap.md` | 完成 Task-first -> Creative-first 的业务主线迁移 | 主线已完成到 D |
-| 阶段拆分 | `.omx/plans/prd-creative-progressive-rebuild-phase-a-pr-plan.md` ~ `phase-d-pr-plan.md` | 把 A/B/C/D 各阶段拆成可执行 PR | 已执行 |
-| 前端收口 | `.omx/plans/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md` | 用现有技术栈能力收口前端页面、职责、状态反馈、文案和布局 | 最近一直在执行 |
+| 主线 | `.omx/plans/archive/prd-creative-progressive-rebuild-roadmap.md` | 完成 Task-first -> Creative-first 的业务主线迁移 | 主线已完成到 D |
+| 阶段拆分 | `.omx/plans/archive/prd-creative-progressive-rebuild-phase-a-pr-plan.md` ~ `phase-d-pr-plan.md` | 把 A/B/C/D 各阶段拆成可执行 PR | 已执行 |
+| 前端收口 | `.omx/plans/archive/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md` | 用现有技术栈能力收口前端页面、职责、状态反馈、文案和布局 | 最近一直在执行 |
 
 ---
 
@@ -38,7 +38,7 @@
 
 ### Phase A：Creative 骨架与工作台雏形
 
-- 规划文档：`.omx/plans/prd-creative-progressive-rebuild-phase-a-pr-plan.md`
+- 规划文档：`.omx/plans/archive/prd-creative-progressive-rebuild-phase-a-pr-plan.md`
 - 目标：引入 Creative 域最小骨架、Workbench、Detail、Task 与 Creative 映射
 
 | 项目 | 内容 |
@@ -51,7 +51,7 @@
 
 ### Phase B：版本管理与人工检查闭环
 
-- 规划文档：`.omx/plans/prd-creative-progressive-rebuild-phase-b-pr-plan.md`
+- 规划文档：`.omx/plans/archive/prd-creative-progressive-rebuild-phase-b-pr-plan.md`
 - 目标：稳定版本真相、审核闭环、composition 写回、版本历史与审核交互
 
 | 项目 | 内容 |
@@ -64,7 +64,7 @@
 
 ### Phase C：发布池与调度器切换
 
-- 规划文档：`.omx/plans/prd-creative-progressive-rebuild-phase-c-pr-plan.md`
+- 规划文档：`.omx/plans/archive/prd-creative-progressive-rebuild-phase-c-pr-plan.md`
 - 目标：建立 publish pool / snapshot，并把 scheduler 主候选源切到 pool
 
 | 项目 | 内容 |
@@ -77,7 +77,7 @@
 
 ### Phase D：AIClip 工作流化与主入口迁移
 
-- 规划文档：`.omx/plans/prd-creative-progressive-rebuild-phase-d-pr-plan.md`
+- 规划文档：`.omx/plans/archive/prd-creative-progressive-rebuild-phase-d-pr-plan.md`
 - 目标：让 AIClip 进入作品工作流，并把默认主入口迁移到 Creative Workbench
 
 | 项目 | 内容 |
@@ -93,7 +93,7 @@
 ## 4. 最近一直在做的规划：Phase E
 
 ### Phase E 的正式规划文档
-- `.omx/plans/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md`
+- `.omx/plans/archive/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md`
 
 ### Phase E 的正式目标
 不是重做视觉，而是把前端页面按技术栈最佳实践收口：
@@ -199,10 +199,10 @@ E 是“前端界面收口”。
 
 ## 9. 相关文档
 
-- `.omx/plans/prd-creative-progressive-rebuild-roadmap.md`
-- `.omx/plans/prd-creative-progressive-rebuild-phase-a-pr-plan.md`
-- `.omx/plans/prd-creative-progressive-rebuild-phase-b-pr-plan.md`
-- `.omx/plans/prd-creative-progressive-rebuild-phase-c-pr-plan.md`
-- `.omx/plans/prd-creative-progressive-rebuild-phase-d-pr-plan.md`
-- `.omx/plans/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md`
+- `.omx/plans/archive/prd-creative-progressive-rebuild-roadmap.md`
+- `.omx/plans/archive/prd-creative-progressive-rebuild-phase-a-pr-plan.md`
+- `.omx/plans/archive/prd-creative-progressive-rebuild-phase-b-pr-plan.md`
+- `.omx/plans/archive/prd-creative-progressive-rebuild-phase-c-pr-plan.md`
+- `.omx/plans/archive/prd-creative-progressive-rebuild-phase-d-pr-plan.md`
+- `.omx/plans/archive/prd-frontend-ui-ux-closeout-phase-e-pr-plan.md`
 - `reports/creative-rebuild-plan-and-dev-history-2026-04-18.md`
