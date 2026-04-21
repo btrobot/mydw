@@ -147,6 +147,11 @@ def test_omx_plan_retention_distinguishes_active_archive_and_pending_plan_sets()
     assert "prd-release-hardening-runtime-acceptance-closeout.md" in retention
     assert "prd-remote-system-mvp.md" in retention
     assert "remote-admin-platform-ui-pr-sequence-2026-04-16.md" in retention
+    assert "product-create-dual-field-ralplan-2026-04-16.md" in retention
+    assert "ralplan-login-bs-alignment-2026-04-20.md" in retention
+    assert "ralplan-task-management-filters-2026-04-19.md" in retention
+    assert "ralplan-task-management-page-closeout-2026-04-19.md" in retention
+    assert "ralplan-work-driven-creative-flow-2026-04-20.md" in retention
 
 
 def test_closeout_docs_point_to_archived_omx_plan_sources() -> None:

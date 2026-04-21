@@ -64,6 +64,7 @@
 | `prd-release-hardening-runtime-acceptance-closeout.md` / `test-spec-release-hardening-runtime-acceptance-closeout.md` | release hardening / runtime acceptance 已转为基线治理与验收留痕 | `docs/governance/verification-baseline.md`、`reports/release-hardening-tail-triage-2026-04-20.md`、`reports/runtime-acceptance-local-ffmpeg-and-random-account-2026-04-20.md`、`reports/flaky-e2e-convergence-2026-04-20.md` |
 | `prd-remote-system-mvp.md` / `test-spec-remote-system-mvp.md` / `prd-remote-system-phase0-pr-plan.md` ~ `prd-remote-system-phase3-pr-plan.md` | 已被新一轮 `remote-full-system` 规划基线取代 | `remote/README.md`、`remote/remote-shared/docs/remote-full-system-operating-model-v1.md`、`remote/remote-shared/docs/phase1-release-gate.md` ~ `phase4-release-gate.md` |
 | `remote-admin-platform-ui-pr-sequence-2026-04-16.md` / `remote-admin-platform-ui-ralplan-2026-04-16.md` | `remote-admin` UI 规划已被正式 spec 接管 | `remote/remote-shared/docs/remote-admin-platform-ui-spec-v1.md` |
+| `product-create-dual-field-ralplan-2026-04-16.md` / `ralplan-login-bs-alignment-2026-04-20.md` / `ralplan-task-management-filters-2026-04-19.md` / `ralplan-task-management-page-closeout-2026-04-19.md` / `ralplan-work-driven-creative-flow-2026-04-20.md` | 这批属于中间共识/分歧收敛 artifacts，已被后续 PRD / test-spec / report 接管 | `prd-product-create-name-share-text.md`、`test-spec-product-create-name-share-text.md`、`prd-login-bs-alignment-pr-plan.md`、`test-spec-login-bs-alignment-pr-plan.md`、`prd-task-management-page-closeout.md`、`reports/task-management-filter-simplification-plan.md`、`prd-work-driven-creative-flow-refactor.md`、`test-spec-work-driven-creative-flow-refactor.md` |
 
 ## 3.3 Keep in `.omx/plans/` pending manual review
 
@@ -77,11 +78,6 @@
 - `test-spec-task-management-page-closeout.md`
 - `prd-work-driven-creative-flow-refactor.md`
 - `test-spec-work-driven-creative-flow-refactor.md`
-- `product-create-dual-field-ralplan-2026-04-16.md`
-- `ralplan-login-bs-alignment-2026-04-20.md`
-- `ralplan-task-management-filters-2026-04-19.md`
-- `ralplan-task-management-page-closeout-2026-04-19.md`
-- `ralplan-work-driven-creative-flow-2026-04-20.md`
 
 这批文件的共同特点是：**可能仍有工程参考价值，但还没有足够证据证明它们已经完全被 `docs/` 正式文档吸收。**
 
