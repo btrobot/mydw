@@ -1,6 +1,6 @@
 # 下一阶段启动包（Next-Phase Kickoff）
 
-> Version: 1.1.0 | Updated: 2026-04-21  
+> Version: 1.2.0 | Updated: 2026-04-22  
 > Owner: Tech Lead / Codex  
 > Status: Active
 
@@ -9,6 +9,11 @@
 > **本文件是“下一阶段启动包”的总入口。**  
 > 阶段切换先看 `docs/governance/phase-transition-checklist.md`，确认能不能切；  
 > 真正开始执行时，再从本文件进入 `next-phase PRD`、`next-phase test spec`、`next-phase execution breakdown`。
+
+> 三句话记住阶段切换顺序：  
+> 1. **先收尾到“能做决定”**，不是先把所有文档全补完。  
+> 2. **再选线到“只剩一条主线”**，不是让 backlog 继续无限并列。  
+> 3. **再补文档到“这条主线不再被误导”**，也就是只定向补齐这条主线依赖的 current truth。
 
 ## 0. 这份启动包怎么用
 

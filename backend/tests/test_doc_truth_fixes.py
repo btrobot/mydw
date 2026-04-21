@@ -413,6 +413,9 @@ def test_next_phase_kickoff_links_completion_boundary_baseline_and_launch_artifa
 
     assert "下一阶段启动包" in kickoff
     assert "本文件是“下一阶段启动包”的总入口" in kickoff
+    assert "先收尾到“能做决定”" in kickoff
+    assert "再选线到“只剩一条主线”" in kickoff
+    assert "再补文档到“这条主线不再被误导”" in kickoff
     assert "docs/governance/phase-transition-checklist.md" in kickoff
     assert "这份启动包怎么用" in kickoff
     assert "当前完成度" in kickoff
