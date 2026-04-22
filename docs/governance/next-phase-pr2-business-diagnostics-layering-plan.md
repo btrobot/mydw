@@ -24,11 +24,11 @@
 2. PR-2 范围或验证口径变化时，先改本文件，再同步 test spec / breakdown
 3. 本文件只规划 PR-2，不把 PR-3（文案与四态统一）或新的后端检索扩展混进来
 
-对应的 OMX 工作工件：
+对应的 OMX 工作工件（现已吸收到正式 docs，并归档）：
 
-- `.omx/plans/prd-pr2-business-diagnostics-layering.md`
-- `.omx/plans/test-spec-pr2-business-diagnostics-layering.md`
-- `.omx/plans/slice-plan-pr2-business-diagnostics-layering.md`
+- `.omx/plans/archive/prd-pr2-business-diagnostics-layering.md`
+- `.omx/plans/archive/test-spec-pr2-business-diagnostics-layering.md`
+- `.omx/plans/archive/slice-plan-pr2-business-diagnostics-layering.md`
 
 ---
 

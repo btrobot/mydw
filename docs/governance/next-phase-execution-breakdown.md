@@ -74,8 +74,8 @@
 
 ## PR-2 — 业务层 / 诊断层分层
 
-> Status: In progress on 2026-04-22
-> Slice status: Slice A / Slice B 已完成；Slice C 负责文档事实对齐、验证口径收口与正式 closeout
+> Status: Completed on 2026-04-22
+> Closeout: `docs/governance/inventory/pr2-business-diagnostics-layering-closeout.md`
 
 目标：
 
@@ -85,9 +85,9 @@
 详细规划入口：
 
 - `docs/governance/next-phase-pr2-business-diagnostics-layering-plan.md`
-- `.omx/plans/prd-pr2-business-diagnostics-layering.md`
-- `.omx/plans/test-spec-pr2-business-diagnostics-layering.md`
-- `.omx/plans/slice-plan-pr2-business-diagnostics-layering.md`
+- `.omx/plans/archive/prd-pr2-business-diagnostics-layering.md`
+- `.omx/plans/archive/test-spec-pr2-business-diagnostics-layering.md`
+- `.omx/plans/archive/slice-plan-pr2-business-diagnostics-layering.md`
 
 主要影响面：
 
@@ -105,14 +105,14 @@
 - 研发仍可通过显式高级诊断入口拿到必要信息，且失败态不能伪装成普通空态
 - 若改变默认业务层边界，需要同步更新相关 domain/page docs
 
-执行顺序（当前事实）：
+执行顺序（实际完成顺序）：
 
 1. **Slice A — Workbench 默认业务层收束**
    已完成。默认首页保留业务统计、筛选、列表与主操作；运行态摘要移入“查看运行诊断”抽屉。
 2. **Slice B — Detail 默认业务层 / 高级诊断层分层**
    已完成。默认详情页先服务业务概览、作品输入、版本与审核；任务诊断、发布链路、Cutover 对账移入“查看高级诊断”抽屉。
 3. **Slice C — 验证与文档事实对齐**
-   当前执行中。把“默认隐藏 + 显式可达 + URL 可恢复”的口径同步到 test spec、execution breakdown、README 与 closeout 证据中。
+   已完成。把“默认隐藏 + 显式可达 + URL 可恢复”的口径同步到 test spec、execution breakdown、README 与 closeout 证据中。
 
 ## PR-3 — 文案与四态统一
 
