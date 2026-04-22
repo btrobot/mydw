@@ -83,6 +83,7 @@ export default function CreativeDetail() {
   const creativeId = id ? Number.parseInt(id, 10) : undefined
   const requestedTaskId = Number.parseInt(searchParams.get('taskId') ?? '', 10)
   const prioritizedTaskId = Number.isFinite(requestedTaskId) ? requestedTaskId : undefined
+  const detailReturnTo = searchParams.get('returnTo') || '/creative/workbench'
   const taskReturnTo = searchParams.get('returnTo') || (creativeId ? `/creative/${creativeId}` : '/creative/workbench')
   const creativeQuery = useCreative(creativeId)
   const updateCreative = useUpdateCreative(creativeId)
@@ -400,7 +401,7 @@ export default function CreativeDetail() {
 
   if (creativeQuery.isError) {
     return (
-      <PageContainer title="作品详情" onBack={() => navigate('/creative/workbench')}>
+      <PageContainer title="作品详情" onBack={() => navigate(detailReturnTo)}>
         <div data-testid="creative-detail-error">
           <Result
             status="error"
@@ -410,7 +411,7 @@ export default function CreativeDetail() {
               <Button key="retry" type="primary" icon={<ReloadOutlined />} onClick={retryCreative}>
                 重试加载
               </Button>,
-              <Button key="back" onClick={() => navigate('/creative/workbench')}>
+              <Button key="back" onClick={() => navigate(detailReturnTo)}>
                 返回工作台
               </Button>,
             ]}
@@ -422,7 +423,7 @@ export default function CreativeDetail() {
 
   if (!creative || !statusMeta) {
     return (
-      <PageContainer title="作品详情" onBack={() => navigate('/creative/workbench')}>
+      <PageContainer title="作品详情" onBack={() => navigate(detailReturnTo)}>
         <Empty
           description="作品不存在，或你没有权限查看这条记录。"
           image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -571,7 +572,7 @@ export default function CreativeDetail() {
     <PageContainer
       title={creative.title ?? creative.creative_no}
       subTitle={creative.creative_no}
-      onBack={() => navigate('/creative/workbench')}
+      onBack={() => navigate(detailReturnTo)}
       extra={[
         primaryTaskId ? (
           <Button key="task-detail" onClick={() => openTaskDiagnostics(primaryTaskId)} data-testid="creative-open-task-diagnostics">

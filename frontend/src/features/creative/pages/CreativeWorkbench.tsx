@@ -2,7 +2,7 @@ import { ArrowRightOutlined, ReloadOutlined } from '@ant-design/icons'
 import { PageContainer, ProTable } from '@ant-design/pro-components'
 import type { ActionType, ProColumns } from '@ant-design/pro-components'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Alert,
   App,
@@ -49,12 +49,23 @@ import {
 const { Paragraph, Text } = Typography
 
 const WORKBENCH_WINDOW_SIZE = 200
+const DEFAULT_WORKBENCH_PAGE_SIZE = 10
 
 type WorkbenchTableRow = CreativeWorkbenchItem & {
   poolItem: PublishPoolItem | null
   poolState: CreativeWorkbenchPoolState
   poolAligned: boolean
 }
+
+type WorkbenchFormValues = {
+  keyword?: string
+  status?: keyof typeof creativeStatusMeta
+  poolState?: CreativeWorkbenchPoolState
+  current?: number
+  pageSize?: number
+}
+
+type WorkbenchSortOrder = 'ascend' | 'descend'
 
 const creativeStatusValueEnum = Object.fromEntries(
   Object.entries(creativeStatusMeta).map(([key, value]) => [key, { text: value.label }]),
@@ -64,10 +75,78 @@ const creativePoolValueEnum = Object.fromEntries(
   Object.entries(creativeWorkbenchPoolStateMeta).map(([key, value]) => [key, { text: value.label }]),
 ) as Record<CreativeWorkbenchPoolState, { text: string }>
 
+const parsePositiveInteger = (value: string | null, fallback: number): number => {
+  if (!value) {
+    return fallback
+  }
+
+  const parsed = Number.parseInt(value, 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+}
+
+const parseWorkbenchSortOrder = (value: string | null): WorkbenchSortOrder =>
+  value === 'updated_at:ascend' ? 'ascend' : 'descend'
+
+const parseWorkbenchStateFromSearchParams = (searchParams: URLSearchParams) => {
+  const keyword = searchParams.get('keyword')?.trim() || undefined
+  const statusValue = searchParams.get('status')
+  const poolStateValue = searchParams.get('poolState')
+
+  const status = statusValue && statusValue in creativeStatusMeta
+    ? statusValue as keyof typeof creativeStatusMeta
+    : undefined
+  const poolState = poolStateValue && poolStateValue in creativeWorkbenchPoolStateMeta
+    ? poolStateValue as CreativeWorkbenchPoolState
+    : undefined
+
+  return {
+    formValues: {
+      keyword,
+      status,
+      poolState,
+    } satisfies WorkbenchFormValues,
+    current: parsePositiveInteger(searchParams.get('page'), 1),
+    pageSize: parsePositiveInteger(searchParams.get('pageSize'), DEFAULT_WORKBENCH_PAGE_SIZE),
+    updatedAtSortOrder: parseWorkbenchSortOrder(searchParams.get('sort')),
+  }
+}
+
+const buildWorkbenchSearchParams = (
+  params: WorkbenchFormValues,
+  sortOrder: WorkbenchSortOrder,
+): URLSearchParams => {
+  const nextSearchParams = new URLSearchParams()
+  const keyword = params.keyword?.trim()
+
+  if (keyword) {
+    nextSearchParams.set('keyword', keyword)
+  }
+
+  if (params.status) {
+    nextSearchParams.set('status', params.status)
+  }
+
+  if (params.poolState) {
+    nextSearchParams.set('poolState', params.poolState)
+  }
+
+  nextSearchParams.set('sort', `updated_at:${sortOrder}`)
+  nextSearchParams.set('page', String(params.current ?? 1))
+  nextSearchParams.set('pageSize', String(params.pageSize ?? DEFAULT_WORKBENCH_PAGE_SIZE))
+
+  return nextSearchParams
+}
+
 export default function CreativeWorkbench() {
+  const location = useLocation()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { message } = App.useApp()
   const actionRef = useRef<ActionType>()
+  const initialRouteState = useMemo(
+    () => parseWorkbenchStateFromSearchParams(searchParams),
+    [searchParams],
+  )
   const creativesQuery = useCreatives({ limit: WORKBENCH_WINDOW_SIZE })
   const createCreative = useCreateCreative()
   const poolQuery = usePublishPoolItems({
@@ -153,6 +232,24 @@ export default function CreativeWorkbench() {
       }
     }
   }, [createCreative, message, navigate])
+
+  const workbenchReturnTo = useMemo(() => {
+    const currentPath = `${location.pathname}${location.search}`
+    return currentPath || '/creative/workbench'
+  }, [location.pathname, location.search])
+
+  const openCreativeDetail = useCallback((
+    creativeId: number,
+    options?: { tool?: 'ai-clip' },
+  ) => {
+    const nextSearchParams = new URLSearchParams({ returnTo: workbenchReturnTo })
+
+    if (options?.tool) {
+      nextSearchParams.set('tool', options.tool)
+    }
+
+    navigate(`/creative/${creativeId}?${nextSearchParams.toString()}`)
+  }, [navigate, workbenchReturnTo])
 
   const columns = useMemo<ProColumns<WorkbenchTableRow>[]>(
     () => [
@@ -245,7 +342,7 @@ export default function CreativeWorkbench() {
         width: 180,
         hideInSearch: true,
         sorter: true,
-        defaultSortOrder: 'descend',
+        defaultSortOrder: initialRouteState.updatedAtSortOrder,
         render: (_, record) => formatCreativeTimestamp(record.updated_at),
       },
       {
@@ -257,14 +354,14 @@ export default function CreativeWorkbench() {
           <Space size={0} wrap>
             <Button
               type="link"
-              onClick={() => navigate(`/creative/${record.id}`)}
+              onClick={() => openCreativeDetail(record.id)}
               data-testid={`creative-workbench-open-detail-${record.id}`}
             >
               详情
             </Button>
             <Button
               type="link"
-              onClick={() => navigate(`/creative/${record.id}`)}
+              onClick={() => openCreativeDetail(record.id)}
               disabled={!record.current_version_id}
               data-testid={`creative-workbench-open-review-${record.id}`}
             >
@@ -273,7 +370,7 @@ export default function CreativeWorkbench() {
             <Button
               type="link"
               icon={<ArrowRightOutlined />}
-              onClick={() => navigate(`/creative/${record.id}?tool=ai-clip`)}
+              onClick={() => openCreativeDetail(record.id, { tool: 'ai-clip' })}
               disabled={!record.current_version_id}
               data-testid={`creative-workbench-ai-clip-${record.id}`}
             >
@@ -283,7 +380,7 @@ export default function CreativeWorkbench() {
         ),
       },
     ],
-    [navigate],
+    [initialRouteState.updatedAtSortOrder, openCreativeDetail],
   )
 
   const schedulerModeLabel =
@@ -432,7 +529,7 @@ export default function CreativeWorkbench() {
               </Card>
             ) : null}
 
-            <ProTable<WorkbenchTableRow, { keyword?: string; status?: string; poolState?: string }>
+            <ProTable<WorkbenchTableRow, WorkbenchFormValues>
               actionRef={actionRef}
               rowKey="id"
               columns={columns}
@@ -443,6 +540,23 @@ export default function CreativeWorkbench() {
                 const keyword = params.keyword?.trim().toLowerCase()
                 const status = params.status
                 const poolState = params.poolState as CreativeWorkbenchPoolState | undefined
+                const updatedAtSort = sort.updated_at === 'ascend' || sort.updated_at === 'descend'
+                  ? sort.updated_at
+                  : initialRouteState.updatedAtSortOrder
+                const nextSearchParams = buildWorkbenchSearchParams(
+                  {
+                    keyword: params.keyword,
+                    status,
+                    poolState,
+                    current: params.current,
+                    pageSize: params.pageSize,
+                  },
+                  updatedAtSort,
+                )
+
+                if (nextSearchParams.toString() !== searchParams.toString()) {
+                  setSearchParams(nextSearchParams, { replace: true })
+                }
 
                 let filtered = rows
 
@@ -463,7 +577,6 @@ export default function CreativeWorkbench() {
                   filtered = filtered.filter((item) => item.poolState === poolState)
                 }
 
-                const updatedAtSort = sort.updated_at
                 const sorted = [...filtered].sort((left, right) => {
                   const delta = Date.parse(left.updated_at) - Date.parse(right.updated_at)
 
@@ -486,9 +599,13 @@ export default function CreativeWorkbench() {
               }}
               loading={creativesQuery.isLoading || poolQuery.isLoading}
               pagination={{
-                pageSize: 10,
+                current: initialRouteState.current,
+                pageSize: initialRouteState.pageSize,
                 showSizeChanger: true,
                 showTotal: (count) => `共 ${count} 条作品`,
+              }}
+              form={{
+                initialValues: initialRouteState.formValues,
               }}
               search={{
                 labelWidth: 'auto',

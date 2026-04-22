@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
-const BASE_URL = process.env.E2E_BASE_URL || ''
+const TEST_BASE_URL = process.env.E2E_BASE_URL || 'http://127.0.0.1:4174'
 
 const creativeListPayload = {
   total: 4,
@@ -277,7 +277,7 @@ test.describe('Creative workbench baseline', () => {
   })
 
   test('shows the table-first workbench with business-first actions', async ({ page }) => {
-    await page.goto(`${BASE_URL}/#/creative/workbench`)
+    await page.goto(`${TEST_BASE_URL}/#/creative/workbench`)
 
     await expect(page.locator('body')).toContainText('任务管理只承接执行记录、失败重试与排障')
     await expect(page.locator('body')).not.toContainText('兼容入口：新建任务')
@@ -291,17 +291,9 @@ test.describe('Creative workbench baseline', () => {
   })
 
   test('supports search and filtering before entering detail', async ({ page }) => {
-    await page.goto(`${BASE_URL}/#/creative/workbench`)
+    await page.goto(`${TEST_BASE_URL}/#/creative/workbench`)
 
-    await page.getByTestId('creative-workbench-search-input').fill('Summer sale')
-    await page.getByRole('button', { name: '应用筛选' }).click()
-
-    await expect(page.locator('body')).toContainText('Summer sale teaser')
-    await expect(page.locator('body')).not.toContainText('Spring campaign')
-
-    await page.getByRole('button', { name: '重置筛选' }).click()
-    await chooseAntSelectOption(page, 'creative-workbench-status-filter', '待审核')
-    await chooseAntSelectOption(page, 'creative-workbench-pool-filter', '已入发布池')
+    await page.getByTestId('creative-workbench-search-input').fill('Spring')
     await page.getByRole('button', { name: '应用筛选' }).click()
 
     await expect(page.locator('body')).toContainText('Spring campaign')
@@ -309,7 +301,7 @@ test.describe('Creative workbench baseline', () => {
 
     await page.getByTestId('creative-workbench-open-detail-101').click()
 
-    await page.waitForURL('**/#/creative/101')
+    await page.waitForURL(/#\/creative\/101\?returnTo=/)
     await expect(page.getByTestId('creative-open-task-diagnostics')).toBeVisible()
     await expect(page.locator('body')).toContainText('执行记录')
     await expect(page.locator('body')).not.toContainText('任务诊断入口')
@@ -322,6 +314,48 @@ test.describe('Creative workbench baseline', () => {
     await expect(page.getByTestId('task-detail-back-to-list')).toBeVisible()
   })
 
+  test('persists applied workbench state after refresh', async ({ page }) => {
+    await page.goto(`${TEST_BASE_URL}/#/creative/workbench`)
+
+    await page.getByTestId('creative-workbench-search-input').fill('Spring')
+    await chooseAntSelectOption(page, 'creative-workbench-status-filter', '待审核')
+    await chooseAntSelectOption(page, 'creative-workbench-pool-filter', '已入发布池')
+    await page.getByRole('button', { name: '应用筛选' }).click()
+
+    await expect(page).toHaveURL(/keyword=Spring/)
+    await expect(page).toHaveURL(/status=WAITING_REVIEW/)
+    await expect(page).toHaveURL(/poolState=in_pool/)
+    await expect(page).toHaveURL(/sort=updated_at%3Adescend/)
+    await expect(page.locator('body')).toContainText('Spring campaign')
+    await expect(page.locator('body')).not.toContainText('Summer sale teaser')
+
+    await page.reload()
+
+    await expect(page).toHaveURL(/keyword=Spring/)
+    await expect(page).toHaveURL(/status=WAITING_REVIEW/)
+    await expect(page).toHaveURL(/poolState=in_pool/)
+    await expect(page.locator('body')).toContainText('Spring campaign')
+    await expect(page.locator('body')).not.toContainText('Summer sale teaser')
+  })
+
+  test('returns to the filtered workbench state after entering detail', async ({ page }) => {
+    await page.goto(
+      `${TEST_BASE_URL}/#/creative/workbench?keyword=Spring&status=WAITING_REVIEW&poolState=in_pool&sort=updated_at%3Adescend&page=1&pageSize=10`,
+    )
+
+    await expect(page.locator('body')).toContainText('Spring campaign')
+    await expect(page.locator('body')).not.toContainText('Summer sale teaser')
+
+    await page.getByTestId('creative-workbench-open-detail-101').click()
+
+    await page.waitForURL(/#\/creative\/101\?returnTo=/)
+    await page.locator('.ant-page-header-back-button').click()
+
+    await page.waitForURL(/#\/creative\/workbench\?keyword=Spring&status=WAITING_REVIEW&poolState=in_pool&sort=updated_at%3Adescend&page=1&pageSize=10/)
+    await expect(page.locator('body')).toContainText('Spring campaign')
+    await expect(page.locator('body')).not.toContainText('Summer sale teaser')
+  })
+
   test('shows an explicit error state when the workbench list request fails', async ({ page }) => {
     await page.unroute('**/api/creatives?**')
     await page.route('**/api/creatives?**', async (route) => {
@@ -332,7 +366,7 @@ test.describe('Creative workbench baseline', () => {
       })
     })
 
-    await page.goto(`${BASE_URL}/#/creative/workbench`)
+    await page.goto(`${TEST_BASE_URL}/#/creative/workbench`)
 
     await expect(page.getByTestId('creative-workbench-error')).toBeVisible()
     await expect(page.locator('body')).toContainText('作品列表暂时不可用')
@@ -348,7 +382,7 @@ test.describe('Creative workbench baseline', () => {
       })
     })
 
-    await page.goto(`${BASE_URL}/#/creative/101`)
+    await page.goto(`${TEST_BASE_URL}/#/creative/101`)
 
     await expect(page.getByTestId('creative-detail-error')).toBeVisible()
     await expect(page.locator('body')).toContainText('作品详情暂时无法加载')
