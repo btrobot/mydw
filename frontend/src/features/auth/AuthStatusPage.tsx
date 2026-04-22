@@ -85,6 +85,7 @@ export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
             <Alert
               type="info"
               showIcon
+              data-testid="auth-status-live-loading"
               message={copy.loadingTitle}
               description={copy.loadingDescription}
             />
@@ -94,6 +95,7 @@ export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
             <Alert
               type="warning"
               showIcon
+              data-testid="auth-status-live-error"
               message={copy.refreshErrorTitle}
               description={copy.refreshErrorDescription}
             />

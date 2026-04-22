@@ -23,20 +23,30 @@ export const useSystemStats = () =>
   useQuery<SystemStats>({
     queryKey: ['systemStats'],
     queryFn: async () => {
-      const response = await getSystemStatsApiSystemStatsGet()
+      const response = await getSystemStatsApiSystemStatsGet({
+        throwOnError: true,
+      })
       return response.data!
     },
+    retry: false,
   })
 
 export const useSystemLogs = () =>
   useQuery<SystemLogListResponse>({
     queryKey: ['systemLogs'],
     queryFn: async () => {
-      const response = await getSystemLogsApiSystemLogsGet()
+      const response = await getSystemLogsApiSystemLogsGet({
+        throwOnError: true,
+      })
       const data = response.data
-      if (data && 'items' in data) return data as SystemLogListResponse
-      return { total: 0, items: [] }
+
+      if (!data || !('items' in data)) {
+        throw new Error('系统日志返回格式不合法')
+      }
+
+      return data as SystemLogListResponse
     },
+    retry: false,
   })
 
 export const useBackup = () =>
@@ -51,9 +61,12 @@ export const useSystemConfig = () =>
   useQuery<SystemConfigResponse>({
     queryKey: ['systemConfig'],
     queryFn: async () => {
-      const response = await getSystemConfigApiSystemConfigGet()
+      const response = await getSystemConfigApiSystemConfigGet({
+        throwOnError: true,
+      })
       return response.data as SystemConfigResponse
     },
+    retry: false,
   })
 
 export const useUpdateSystemConfig = () => {

@@ -627,7 +627,7 @@ export default function CreativeWorkbench() {
 
   if (creativesQuery.isLoading && !creativesQuery.data) {
     return (
-      <Flex justify="center" style={{ padding: 48 }}>
+      <Flex justify="center" style={{ padding: 48 }} data-testid="creative-workbench-loading">
         <Spin size="large" />
       </Flex>
     )

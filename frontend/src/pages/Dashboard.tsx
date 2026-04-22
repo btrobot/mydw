@@ -54,6 +54,24 @@ interface LogItem {
   message: string
 }
 
+const hasTaskStatsData = (stats?: TaskStats): boolean => {
+  if (!stats) {
+    return false
+  }
+
+  return [
+    stats.total,
+    stats.draft,
+    stats.composing,
+    stats.ready,
+    stats.uploading,
+    stats.uploaded,
+    stats.failed,
+    stats.cancelled,
+    stats.today_uploaded,
+  ].some((value) => value > 0)
+}
+
 export default function Dashboard() {
   const navigate = useNavigate()
   const systemStatsQuery = useSystemStats()
@@ -70,6 +88,8 @@ export default function Dashboard() {
   const taskStats = taskStatsQuery.data as TaskStats | undefined
   const publishStatus = publishStatusQuery.data
   const logs = (logsQuery.data as { items: LogItem[] } | undefined)?.items ?? []
+  const taskStatsEmpty = !taskStatsQuery.isLoading && !taskStatsQuery.isError && !hasTaskStatsData(taskStats)
+  const logsEmpty = !logsQuery.isLoading && !logsQuery.isError && logs.length === 0
 
   const handlePublish = useCallback(async (action: 'start' | 'pause' | 'stop') => {
     try {
@@ -143,8 +163,9 @@ export default function Dashboard() {
 
       <Card title="任务运行概览" size="small" extra={<Text type="secondary">用于观察队列与上传进度，不承担作品主入口职责</Text>}>
         {taskStatsQuery.isLoading && !taskStats ? (
-          <Flex justify="center" style={{ padding: 24 }}>
+          <Flex vertical align="center" gap={12} style={{ padding: 24 }} data-testid="dashboard-task-stats-loading">
             <Spin />
+            <Text type="secondary">正在加载任务统计…</Text>
           </Flex>
         ) : taskStatsQuery.isError ? (
           <Alert
@@ -159,17 +180,27 @@ export default function Dashboard() {
             )}
             data-testid="dashboard-task-stats-error"
           />
+        ) : taskStatsEmpty ? (
+          <Alert
+            type="info"
+            showIcon
+            message="当前暂无任务"
+            description="当前没有待处理、上传中或失败任务；这里会在运行态发生变化时更新。"
+            data-testid="dashboard-task-stats-empty"
+          />
         ) : (
-          <Row gutter={[12, 12]}>
-            <Col xs={12} sm={8} md={6} xl={3}><Statistic title="总任务" value={taskStats?.total ?? 0} /></Col>
-            <Col xs={12} sm={8} md={6} xl={3}><Statistic title="草稿" value={taskStats?.draft ?? 0} valueStyle={{ color: '#999' }} /></Col>
-            <Col xs={12} sm={8} md={6} xl={3}><Statistic title="合成中" value={taskStats?.composing ?? 0} valueStyle={{ color: '#1677ff' }} /></Col>
-            <Col xs={12} sm={8} md={6} xl={3}><Statistic title="待上传" value={taskStats?.ready ?? 0} valueStyle={{ color: '#d46b08' }} /></Col>
-            <Col xs={12} sm={8} md={6} xl={3}><Statistic title="上传中" value={taskStats?.uploading ?? 0} valueStyle={{ color: '#1677ff' }} /></Col>
-            <Col xs={12} sm={8} md={6} xl={3}><Statistic title="已上传" value={taskStats?.uploaded ?? 0} valueStyle={{ color: '#3f8600' }} /></Col>
-            <Col xs={12} sm={8} md={6} xl={3}><Statistic title="失败" value={taskStats?.failed ?? 0} valueStyle={{ color: '#cf1322' }} /></Col>
-            <Col xs={12} sm={8} md={6} xl={3}><Statistic title="今日上传" value={taskStats?.today_uploaded ?? 0} valueStyle={{ color: '#3f8600' }} /></Col>
-          </Row>
+          <div data-testid="dashboard-task-stats-success">
+            <Row gutter={[12, 12]}>
+              <Col xs={12} sm={8} md={6} xl={3}><Statistic title="总任务" value={taskStats?.total ?? 0} /></Col>
+              <Col xs={12} sm={8} md={6} xl={3}><Statistic title="草稿" value={taskStats?.draft ?? 0} valueStyle={{ color: '#999' }} /></Col>
+              <Col xs={12} sm={8} md={6} xl={3}><Statistic title="合成中" value={taskStats?.composing ?? 0} valueStyle={{ color: '#1677ff' }} /></Col>
+              <Col xs={12} sm={8} md={6} xl={3}><Statistic title="待上传" value={taskStats?.ready ?? 0} valueStyle={{ color: '#d46b08' }} /></Col>
+              <Col xs={12} sm={8} md={6} xl={3}><Statistic title="上传中" value={taskStats?.uploading ?? 0} valueStyle={{ color: '#1677ff' }} /></Col>
+              <Col xs={12} sm={8} md={6} xl={3}><Statistic title="已上传" value={taskStats?.uploaded ?? 0} valueStyle={{ color: '#3f8600' }} /></Col>
+              <Col xs={12} sm={8} md={6} xl={3}><Statistic title="失败" value={taskStats?.failed ?? 0} valueStyle={{ color: '#cf1322' }} /></Col>
+              <Col xs={12} sm={8} md={6} xl={3}><Statistic title="今日上传" value={taskStats?.today_uploaded ?? 0} valueStyle={{ color: '#3f8600' }} /></Col>
+            </Row>
+          </div>
         )}
       </Card>
 
@@ -177,8 +208,9 @@ export default function Dashboard() {
         <Col xs={24} lg={12} xl={8}>
           <Card title="发布器状态" size="small">
             {publishStatusQuery.isLoading && !publishStatus ? (
-              <Flex justify="center" style={{ padding: 24 }}>
+              <Flex vertical align="center" gap={12} style={{ padding: 24 }} data-testid="dashboard-publish-status-loading">
                 <Spin />
+                <Text type="secondary">正在加载发布器状态…</Text>
               </Flex>
             ) : publishStatusQuery.isError ? (
               <Alert
@@ -194,79 +226,91 @@ export default function Dashboard() {
                 data-testid="dashboard-publish-status-error"
               />
             ) : (
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                  用于控制发布器启停，并观察当前运行状态。
-                </Paragraph>
-                <Space wrap>
-                  <Tag color={publishStatus?.status === 'running' ? 'processing' : publishStatus?.status === 'paused' ? 'warning' : 'default'}>
-                    {publishStatus?.status === 'running' ? '运行中' : publishStatus?.status === 'paused' ? '已暂停' : '空闲'}
-                  </Tag>
-                  {publishStatus?.current_task_id ? <Tag>当前任务 #{publishStatus.current_task_id}</Tag> : null}
-                </Space>
-                <Space wrap>
-                  {publishStatus?.status === 'running' ? (
-                    <Button size="small" icon={<PauseCircleOutlined />} onClick={() => handlePublish('pause')}>
-                      暂停
+              <div data-testid="dashboard-publish-status-success">
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                    用于控制发布器启停，并观察当前运行状态。
+                  </Paragraph>
+                  <Space wrap>
+                    <Tag color={publishStatus?.status === 'running' ? 'processing' : publishStatus?.status === 'paused' ? 'warning' : 'default'}>
+                      {publishStatus?.status === 'running' ? '运行中' : publishStatus?.status === 'paused' ? '已暂停' : '空闲'}
+                    </Tag>
+                    {publishStatus?.current_task_id ? <Tag>当前任务 #{publishStatus.current_task_id}</Tag> : null}
+                  </Space>
+                  <Space wrap>
+                    {publishStatus?.status === 'running' ? (
+                      <Button size="small" icon={<PauseCircleOutlined />} onClick={() => handlePublish('pause')}>
+                        暂停
+                      </Button>
+                    ) : (
+                      <Button type="primary" size="small" icon={<PlayCircleOutlined />} onClick={() => handlePublish('start')}>
+                        启动
+                      </Button>
+                    )}
+                    <Button size="small" icon={<ReloadOutlined />} onClick={retryRuntime}>
+                      刷新状态
                     </Button>
-                  ) : (
-                    <Button type="primary" size="small" icon={<PlayCircleOutlined />} onClick={() => handlePublish('start')}>
-                      启动
-                    </Button>
-                  )}
-                  <Button size="small" icon={<ReloadOutlined />} onClick={retryRuntime}>
-                    刷新状态
-                  </Button>
+                  </Space>
+                  <Space wrap>
+                    <Tag>待处理 {publishStatus?.total_pending ?? 0}</Tag>
+                    <Tag color="success">成功 {publishStatus?.total_success ?? 0}</Tag>
+                    <Tag color="error">失败 {publishStatus?.total_failed ?? 0}</Tag>
+                  </Space>
                 </Space>
-                <Space wrap>
-                  <Tag>待处理 {publishStatus?.total_pending ?? 0}</Tag>
-                  <Tag color="success">成功 {publishStatus?.total_success ?? 0}</Tag>
-                  <Tag color="error">失败 {publishStatus?.total_failed ?? 0}</Tag>
-                </Space>
-              </Space>
+              </div>
             )}
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6} xl={8}>
-          <Card size="small">
-            <Statistic
-              title="账号"
-              value={systemStatsQuery.isError ? '--' : sysStats?.total_accounts ?? 0}
-              prefix={<UserOutlined />}
-              suffix={systemStatsQuery.isError ? '' : `/ ${sysStats?.active_accounts ?? 0} 活跃`}
-              loading={systemStatsQuery.isLoading && !systemStatsQuery.isError}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6} xl={8}>
-          <Card size="small">
-            <Statistic
-              title="商品"
-              value={systemStatsQuery.isError ? '--' : sysStats?.total_products ?? 0}
-              prefix={<ShoppingOutlined />}
-              loading={systemStatsQuery.isLoading && !systemStatsQuery.isError}
-            />
+        <Col xs={24} lg={12} xl={16}>
+          <Card title="系统资源概览" size="small">
+            {systemStatsQuery.isLoading && !sysStats ? (
+              <Flex vertical align="center" gap={12} style={{ padding: 24 }} data-testid="dashboard-system-stats-loading">
+                <Spin />
+                <Text type="secondary">正在加载系统统计…</Text>
+              </Flex>
+            ) : systemStatsQuery.isError ? (
+              <Alert
+                type="warning"
+                showIcon
+                message="系统统计暂时不可用"
+                description="账号 / 商品统计请求失败，因此当前不会再回落成 0 或占位符。"
+                action={(
+                  <Button size="small" icon={<ReloadOutlined />} onClick={retryRuntime}>
+                    重试
+                  </Button>
+                )}
+                data-testid="dashboard-system-stats-error"
+              />
+            ) : (
+              <Row gutter={[16, 16]} data-testid="dashboard-system-stats-success">
+                <Col xs={24} sm={12}>
+                  <Statistic
+                    title="账号"
+                    value={sysStats?.total_accounts ?? 0}
+                    prefix={<UserOutlined />}
+                    suffix={`/ ${sysStats?.active_accounts ?? 0} 活跃`}
+                  />
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Statistic
+                    title="商品"
+                    value={sysStats?.total_products ?? 0}
+                    prefix={<ShoppingOutlined />}
+                  />
+                </Col>
+              </Row>
+            )}
           </Card>
         </Col>
       </Row>
 
-      {systemStatsQuery.isError ? (
-        <Alert
-          type="warning"
-          showIcon
-          message="系统统计暂时不可用"
-          description="账号 / 商品统计请求失败，因此当前显示为不可用，而不是回落成 0。"
-          action={(
-            <Button size="small" icon={<ReloadOutlined />} onClick={retryRuntime}>
-              重试
-            </Button>
-          )}
-          data-testid="dashboard-system-stats-error"
-        />
-      ) : null}
-
       <Card title="系统日志" extra={<Button size="small" icon={<ReloadOutlined />} onClick={() => logsQuery.refetch()}>刷新</Button>}>
-        {logsQuery.isError ? (
+        {logsQuery.isLoading && logs.length === 0 ? (
+          <Flex vertical align="center" gap={12} style={{ padding: 24 }} data-testid="dashboard-logs-loading">
+            <Spin />
+            <Text type="secondary">正在加载系统日志…</Text>
+          </Flex>
+        ) : logsQuery.isError ? (
           <Alert
             type="warning"
             showIcon
@@ -279,17 +323,26 @@ export default function Dashboard() {
             )}
             data-testid="dashboard-logs-error"
           />
-        ) : (
-          <Table
-            columns={logColumns}
-            dataSource={logs}
-            rowKey="id"
-            pagination={false}
-            loading={logsQuery.isLoading}
-            size="small"
-            scroll={{ x: 760 }}
-            locale={{ emptyText: logs.length === 0 && !logsQuery.isLoading ? '暂无日志' : undefined }}
+        ) : logsEmpty ? (
+          <Alert
+            type="info"
+            showIcon
+            message="当前暂无日志"
+            description="最近没有新的系统日志；如需刷新运行态，可使用上方入口或重试。"
+            data-testid="dashboard-logs-empty"
           />
+        ) : (
+          <div data-testid="dashboard-logs-success">
+            <Table
+              columns={logColumns}
+              dataSource={logs}
+              rowKey="id"
+              pagination={false}
+              loading={logsQuery.isLoading}
+              size="small"
+              scroll={{ x: 760 }}
+            />
+          </div>
         )}
       </Card>
     </Space>

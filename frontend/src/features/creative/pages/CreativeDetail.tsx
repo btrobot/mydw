@@ -418,7 +418,7 @@ export default function CreativeDetail() {
 
   if (creativeQuery.isLoading && !creative) {
     return (
-      <Flex justify="center" style={{ padding: 48 }}>
+      <Flex justify="center" style={{ padding: 48 }} data-testid="creative-detail-loading">
         <Spin size="large" />
       </Flex>
     )
