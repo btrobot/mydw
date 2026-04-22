@@ -116,6 +116,9 @@
 
 ## PR-3 — 文案与四态统一
 
+> Status: Planned on 2026-04-22
+> Planning: `docs/governance/next-phase-pr3-copy-and-state-unification-plan.md`
+
 目标：
 
 - 统一关键页面文案
@@ -129,10 +132,18 @@
 - dashboard
 - 共享 empty/error/loading components（如有）
 
+详细规划入口：
+
+- `docs/governance/next-phase-pr3-copy-and-state-unification-plan.md`
+- `.omx/plans/prd-pr3-copy-and-state-unification.md`
+- `.omx/plans/test-spec-pr3-copy-and-state-unification.md`
+- `.omx/plans/slice-plan-pr3-copy-and-state-unification.md`
+
 验收：
 
 - 主路径不再依赖说明性 Alert 解释页面角色
 - 文案策略一致
+- loading / empty / error / success 四态显式且不误导
 - 若四态或 CTA 标准变化，需要同步更新 `docs/governance/next-phase-test-spec.md`
 
 ## PR-4 — 回归补强与阶段收口

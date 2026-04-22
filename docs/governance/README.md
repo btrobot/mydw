@@ -36,6 +36,7 @@
 - `docs/governance/next-phase-execution-breakdown.md`
 - `docs/governance/next-phase-pr1-workbench-manageability-plan.md`
 - `docs/governance/next-phase-pr2-business-diagnostics-layering-plan.md`
+- `docs/governance/next-phase-pr3-copy-and-state-unification-plan.md`
 
 推荐理解：
 
@@ -47,6 +48,7 @@
 - 想知道下一阶段怎么启动：看 `next-phase-*` 一组文档
 - 想知道 PR-1 怎么具体切片：看 `next-phase-pr1-workbench-manageability-plan.md`
 - 想知道 PR-2 如何做业务层 / 诊断层分层：看 `next-phase-pr2-business-diagnostics-layering-plan.md`
+- 想知道 PR-3 如何统一文案、CTA 与四态：看 `next-phase-pr3-copy-and-state-unification-plan.md`
 
 ### next-phase 文档的最小阅读顺序
 
