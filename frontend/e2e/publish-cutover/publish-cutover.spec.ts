@@ -78,19 +78,16 @@ test.describe('Phase C cutover diagnostics', () => {
 
     await expect(page.locator('body')).toContainText('publish pipeline timeout')
 
-    await page.locator('.ant-collapse-header').nth(0).click()
+    await page.getByTestId('creative-open-advanced-diagnostics').click()
+    await expect(page.getByTestId('creative-detail-diagnostics-drawer')).toBeVisible()
     await expect(page.getByTestId('creative-publish-diagnostics')).toContainText('Pool')
-
-    await page.locator('.ant-collapse-header').nth(1).click()
     await expect(page.getByTestId('creative-publish-pool-card')).toContainText('publish_failed')
-
-    await page.locator('.ant-collapse-header').nth(2).click()
     await expect(page.getByTestId('creative-shadow-diff')).toContainText('legacy_task_diff')
     await expect(page.getByTestId('creative-shadow-diff')).toContainText('pool_candidate_locked')
 
     await page.getByTestId('creative-open-task-903').click()
-    await page.waitForURL('**/#/task/903')
-    await expect(page.getByTestId('task-detail-diagnostics-banner')).toBeVisible()
+    await page.waitForURL('**/#/task/903?returnTo=*')
+    await expect(page.getByTestId('task-detail-page')).toBeVisible()
   })
 })
 

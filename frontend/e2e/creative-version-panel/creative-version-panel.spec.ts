@@ -33,8 +33,10 @@ test.describe('Creative version panel', () => {
 
   test('task link remains available as diagnostic entry', async ({ page }) => {
     await page.goto(`${BASE_URL}/#/creative/101`)
+    await page.getByTestId('creative-open-advanced-diagnostics').click()
+    await expect(page.getByTestId('creative-detail-diagnostics-drawer')).toBeVisible()
     await page.getByTestId('creative-open-task-diagnostics').click()
-    await page.waitForURL('**/#/task/901')
-    await expect(page.getByTestId('task-detail-diagnostics-banner')).toBeVisible()
+    await page.waitForURL('**/#/task/901?returnTo=*')
+    await expect(page.getByTestId('task-detail-page')).toBeVisible()
   })
 })

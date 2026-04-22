@@ -355,10 +355,14 @@ test.describe('Creative workbench baseline', () => {
     await page.getByTestId('creative-workbench-open-detail-101').click()
 
     await page.waitForURL(/#\/creative\/101\?returnTo=/)
-    await expect(page.getByTestId('creative-open-task-diagnostics')).toBeVisible()
-    await expect(page.locator('body')).toContainText('执行记录')
-    await expect(page.locator('body')).not.toContainText('任务诊断入口')
-    await page.getByText('发布运行态', { exact: true }).click()
+    await expect(page.getByTestId('creative-open-advanced-diagnostics')).toBeVisible()
+    await expect(page.getByTestId('creative-task-diagnostics-card')).toHaveCount(0)
+    await expect(page.getByTestId('creative-publish-diagnostics')).toHaveCount(0)
+
+    await page.getByTestId('creative-open-advanced-diagnostics').click()
+    await expect(page).toHaveURL(/diagnostics=advanced/)
+    await expect(page.getByTestId('creative-detail-diagnostics-drawer')).toBeVisible()
+    await expect(page.getByTestId('creative-task-diagnostics-card')).toBeVisible()
     await expect(page.getByTestId('creative-publish-diagnostics')).toBeVisible()
 
     await page.getByTestId('creative-open-task-diagnostics').click()

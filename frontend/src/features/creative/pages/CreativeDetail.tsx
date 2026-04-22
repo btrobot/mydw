@@ -1,13 +1,12 @@
 import { ReloadOutlined } from '@ant-design/icons'
 import { PageContainer } from '@ant-design/pro-components'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Alert,
   App,
   Button,
   Card,
-  Collapse,
   Descriptions,
   Drawer,
   Empty,
@@ -73,7 +72,10 @@ type CreativeInputFormValues = {
   topic_ids: number[]
 }
 
+type CreativeDetailDiagnosticsView = 'advanced'
+
 export default function CreativeDetail() {
+  const location = useLocation()
   const navigate = useNavigate()
   const { message } = App.useApp()
   const screens = useBreakpoint()
@@ -83,8 +85,12 @@ export default function CreativeDetail() {
   const creativeId = id ? Number.parseInt(id, 10) : undefined
   const requestedTaskId = Number.parseInt(searchParams.get('taskId') ?? '', 10)
   const prioritizedTaskId = Number.isFinite(requestedTaskId) ? requestedTaskId : undefined
+  const detailCurrentRoute = useMemo(() => {
+    const currentPath = `${location.pathname}${location.search}`
+    return currentPath || (creativeId ? `/creative/${creativeId}` : '/creative/workbench')
+  }, [creativeId, location.pathname, location.search])
   const detailReturnTo = searchParams.get('returnTo') || '/creative/workbench'
-  const taskReturnTo = searchParams.get('returnTo') || (creativeId ? `/creative/${creativeId}` : '/creative/workbench')
+  const taskReturnTo = searchParams.get('returnTo') || detailCurrentRoute
   const creativeQuery = useCreative(creativeId)
   const updateCreative = useUpdateCreative(creativeId)
   const submitCreativeComposition = useSubmitCreativeComposition(creativeId)
@@ -111,6 +117,7 @@ export default function CreativeDetail() {
   })
   const [drawerOpen, setDrawerOpen] = useState(false)
   const selectedProfileId = Form.useWatch('profile_id', form)
+  const detailDiagnosticsOpen = searchParams.get('diagnostics') === 'advanced'
 
   const creative = creativeQuery.data
   const publishStatus = publishStatusQuery.data
@@ -151,6 +158,24 @@ export default function CreativeDetail() {
     nextParams.delete('tool')
     setSearchParams(nextParams, { replace: true })
   }
+
+  const setDiagnosticsView = useCallback((diagnostics?: CreativeDetailDiagnosticsView) => {
+    const nextParams = new URLSearchParams(searchParams)
+    if (diagnostics) {
+      nextParams.set('diagnostics', diagnostics)
+    } else {
+      nextParams.delete('diagnostics')
+    }
+    setSearchParams(nextParams, { replace: true })
+  }, [searchParams, setSearchParams])
+
+  const handleOpenDiagnostics = useCallback(() => {
+    setDiagnosticsView('advanced')
+  }, [setDiagnosticsView])
+
+  const handleCloseDiagnostics = useCallback(() => {
+    setDiagnosticsView(undefined)
+  }, [setDiagnosticsView])
 
   const activePoolItems = activePoolQuery.data?.items ?? []
   const invalidatedPoolItems = useMemo(
@@ -433,152 +458,15 @@ export default function CreativeDetail() {
     )
   }
 
-  const diagnosticsPanels = [
-    {
-      key: 'publish-runtime',
-      label: <span data-testid="creative-diagnostics-publish-trigger">发布运行态</span>,
-      children: (
-        <Card title="发布与调度诊断" size="small" data-testid="creative-publish-diagnostics">
-          {diagnosticsUnavailable ? (
-            <Alert
-              type="warning"
-              showIcon
-              message="高级诊断暂不可用"
-              description="发布状态、调度配置或发布池数据加载失败，请稍后重试，或转到任务管理继续排查。"
-              action={(
-                <Button size="small" icon={<ReloadOutlined />} onClick={retryDiagnostics}>
-                  重试
-                </Button>
-              )}
-              style={{ marginBottom: 16 }}
-            />
-          ) : null}
-          <Descriptions bordered size="small" column={screens.md ? 2 : 1}>
-            <Descriptions.Item label="调度模式">
-              <Tag color={publishStatusQuery.isError && scheduleConfigQuery.isError ? 'warning' : schedulerMode ? publishSchedulerModeMeta[schedulerMode].color : 'default'}>
-                {schedulerModeLabel}
-              </Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="当前生效模式">
-              <Tag color={publishStatusQuery.isError ? 'warning' : effectiveSchedulerMode ? publishSchedulerModeMeta[effectiveSchedulerMode].color : 'default'}>
-                {effectiveSchedulerModeLabel}
-              </Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="运行状态">
-              <Tag color={publishStatusQuery.isError ? 'warning' : publishStatus?.status ? publishRuntimeStatusMeta[publishStatus.status].color : 'default'}>
-                {runtimeStatusLabel}
-              </Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="当前任务">
-              {currentPublishTaskId !== null ? (
-                <Button type="link" onClick={() => openTaskDiagnostics(currentPublishTaskId)}>
-                  任务 #{currentPublishTaskId}
-                </Button>
-              ) : publishStatusQuery.isError ? '获取失败' : '-'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Shadow Read">{shadowReadLabel}</Descriptions.Item>
-            <Descriptions.Item label="Kill Switch">{killSwitchLabel}</Descriptions.Item>
-            <Descriptions.Item label="当前发布池项">
-              {currentPoolItem ? (
-                <Space wrap>
-                  <Tag color={publishPoolStatusMeta[currentPoolItem.status].color}>{publishPoolStatusMeta[currentPoolItem.status].label}</Tag>
-                  <Tag color={isPoolVersionAligned(currentPoolItem) ? 'success' : 'warning'}>版本 #{currentPoolItem.creative_version_id}</Tag>
-                </Space>
-              ) : activePoolQuery.isError ? '获取失败' : '当前版本暂未进入发布池'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Pool Item ID">
-              {currentPoolItem ? `#${currentPoolItem.id}` : activePoolQuery.isError ? '获取失败' : '-'}
-            </Descriptions.Item>
-            <Descriptions.Item label="最近失效记录" span={2}>
-              {latestInvalidatedPoolItem ? (
-                <Space direction="vertical" size={4}>
-                  <Text>Pool #{latestInvalidatedPoolItem.id} / 版本 #{latestInvalidatedPoolItem.creative_version_id}</Text>
-                  <Text type="secondary">失效于 {formatCreativeTimestamp(latestInvalidatedPoolItem.invalidated_at ?? latestInvalidatedPoolItem.updated_at)}</Text>
-                  <Text type="secondary">原因：{latestInvalidatedPoolItem.invalidation_reason ?? '未记录'}</Text>
-                </Space>
-              ) : invalidatedPoolQuery.isError ? '获取失败' : '暂无失效记录'}
-            </Descriptions.Item>
-          </Descriptions>
-        </Card>
-      ),
-    },
-    {
-      key: 'publish-pool',
-      label: <span data-testid="creative-diagnostics-publish-trigger">发布池历史</span>,
-      children: (
-        <Card title="发布池记录" size="small" data-testid="creative-publish-pool-card">
-          {activePoolQuery.isError || invalidatedPoolQuery.isError ? (
-            <Alert
-              type="warning"
-              showIcon
-              message="发布池历史暂时不可用"
-              description="当前不能把发布池请求失败误判为没有历史记录，请稍后重试。"
-              action={(
-                <Button size="small" icon={<ReloadOutlined />} onClick={retryDiagnostics}>
-                  重试
-                </Button>
-              )}
-            />
-          ) : activePoolItems.length === 0 && invalidatedPoolItems.length === 0 ? (
-            <Empty description="当前没有发布池记录" />
-          ) : (
-            <List
-              dataSource={[...activePoolItems, ...invalidatedPoolItems]}
-              renderItem={(item) => {
-                const aligned = isPoolVersionAligned(item)
-                return (
-                  <List.Item key={`${item.status}-${item.id}`} data-testid={`creative-pool-item-${item.id}`}>
-                    <Space direction="vertical" size={6} style={{ width: '100%' }}>
-                      <Space wrap>
-                        <Tag color={publishPoolStatusMeta[item.status].color}>{publishPoolStatusMeta[item.status].label}</Tag>
-                        <Tag color={aligned ? 'success' : 'warning'}>版本 #{item.creative_version_id}</Tag>
-                        <Tag color={aligned ? 'success' : 'warning'}>{aligned ? '版本已对齐' : '版本存在偏差'}</Tag>
-                        <Tag>Pool #{item.id}</Tag>
-                      </Space>
-                      <Text type="secondary">入池于 {formatCreativeTimestamp(item.created_at)}，最近更新时间 {formatCreativeTimestamp(item.updated_at)}</Text>
-                      {item.invalidation_reason ? <Text type="secondary">失效原因：{item.invalidation_reason}</Text> : null}
-                    </Space>
-                  </List.Item>
-                )
-              }}
-            />
-          )}
-        </Card>
-      ),
-    },
-  ]
-
-  if (shadowDiff) {
-    diagnosticsPanels.push({
-      key: 'cutover-shadow-diff',
-      label: <span data-testid="creative-diagnostics-cutover-trigger">Cutover 差异</span>,
-      children: (
-        <Card title="Cutover 对账" size="small" data-testid="creative-shadow-diff">
-          <Space direction="vertical" size={12} style={{ width: '100%' }}>
-            <Space wrap>
-              <Tag color={shadowDiffDiffers ? 'warning' : 'success'}>{shadowDiffDiffers ? '存在差异' : '已对齐'}</Tag>
-              {shadowDiffReasons.length > 0
-                ? shadowDiffReasons.map((reason) => <Tag key={reason}>{reason}</Tag>)
-                : <Tag>无差异原因</Tag>}
-            </Space>
-            <pre style={{ margin: 0, padding: 12, background: '#fafafa', borderRadius: 8, overflow: 'auto' }}>{formatShadowDiffJson(shadowDiff)}</pre>
-          </Space>
-        </Card>
-      ),
-    })
-  }
-
   return (
     <PageContainer
       title={creative.title ?? creative.creative_no}
       subTitle={creative.creative_no}
       onBack={() => navigate(detailReturnTo)}
       extra={[
-        primaryTaskId ? (
-          <Button key="task-detail" onClick={() => openTaskDiagnostics(primaryTaskId)} data-testid="creative-open-task-diagnostics">
-            查看执行记录
-          </Button>
-        ) : null,
+        <Button key="advanced-diagnostics" onClick={handleOpenDiagnostics} data-testid="creative-open-advanced-diagnostics">
+          查看高级诊断
+        </Button>,
         currentVersion ? (
           <Button key="ai-clip" onClick={openAiClipWorkflow} data-testid="creative-open-ai-clip">
             AIClip 工作流
@@ -601,22 +489,25 @@ export default function CreativeDetail() {
           />
         ) : null}
 
+        {diagnosticsUnavailable ? (
+          <Alert
+            type="warning"
+            showIcon
+            message="部分高级诊断暂不可用，可通过“查看高级诊断”重试。"
+            data-testid="creative-detail-diagnostics-notice"
+          />
+        ) : null}
+
         <Card title="业务概览">
           <Descriptions bordered size="small" column={screens.md ? 2 : 1}>
             <Descriptions.Item label="作品编号">{creative.creative_no}</Descriptions.Item>
             <Descriptions.Item label="状态"><Tag color={statusMeta.color}>{statusMeta.label}</Tag></Descriptions.Item>
-            <Descriptions.Item label="入口模式">
-              <Space wrap>
-                <Tag>{creativeFlowMeta.label}</Tag>
-                <Tag>{creativeFlowShadowCompare ? 'Shadow Compare：开启' : 'Shadow Compare：关闭'}</Tag>
-              </Space>
-            </Descriptions.Item>
             <Descriptions.Item label="合成准备"><Tag color={eligibilityColor}>{eligibilityLabel}</Tag></Descriptions.Item>
             <Descriptions.Item label="当前版本 ID">{creative.current_version_id ?? '-'}</Descriptions.Item>
             <Descriptions.Item label="最近更新时间">{formatCreativeTimestamp(creative.updated_at)}</Descriptions.Item>
           </Descriptions>
           <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
-            这里先维护作品输入与业务判断，再决定是否发起合成；任务、发布链路与 Cutover 诊断继续作为辅助入口保留。
+            这里先服务作品输入、版本与审核判断；任务诊断、发布链路与 Cutover 对账已收束到“查看高级诊断”入口。
           </Paragraph>
         </Card>
 
@@ -801,49 +692,173 @@ export default function CreativeDetail() {
           }}
         />
 
-        <Card title="执行记录">
-          {diagnosticTaskIds.length > 0 ? (
-            <Space direction="vertical" size={12} style={{ width: '100%' }}>
-              <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                任务管理只承接执行进度、失败重试与排障细节；作品详情仍是当前创作输入与状态判断的主视图。
-              </Paragraph>
-              <Space wrap>
-                {diagnosticTaskIds.map((taskId) => (
-                  <Button key={taskId} onClick={() => openTaskDiagnostics(taskId)} data-testid={`creative-open-task-${taskId}`}>
-                    执行记录 #{taskId}
-                  </Button>
-                ))}
-                <Button onClick={() => navigate('/task/list')}>打开任务管理</Button>
-              </Space>
-            </Space>
-          ) : (
-            <Space direction="vertical" size={12} style={{ width: '100%' }}>
-              <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                这条作品还没有关联执行记录。先保存作品输入，达到“待提交合成”后，可直接在本页提交合成或生成直发准备。
-              </Paragraph>
-              <Space wrap>
-                <Button
-                  type="primary"
-                  ghost
-                  disabled={creative.eligibility_status !== 'READY_TO_COMPOSE'}
-                  loading={submitCreativeComposition.isPending}
-                  onClick={() => void handleSubmitComposition()}
-                >
-                  {submitButtonLabel}
-                </Button>
-                <Button onClick={() => navigate('/task/list')}>打开任务管理</Button>
-              </Space>
-            </Space>
-          )}
-        </Card>
-
-        <Card title="高级诊断" extra={<Text type="secondary">展开查看发布池 / 调度 / Cutover 差异</Text>}>
-          <Paragraph type="secondary">
-            以下信息用于排查发布池、调度切换与 Cutover 问题；只有在需要定位异常时再展开查看。
-          </Paragraph>
-          <Collapse items={diagnosticsPanels} />
-        </Card>
       </Space>
+
+      <Drawer
+        title="高级诊断"
+        open={detailDiagnosticsOpen}
+        width={screens.xl ? 720 : screens.lg ? 640 : screens.md ? 560 : '100vw'}
+        onClose={handleCloseDiagnostics}
+        destroyOnClose
+      >
+        <Space direction="vertical" size={16} style={{ width: '100%' }} data-testid="creative-detail-diagnostics-drawer">
+          <Card title="任务诊断" size="small" data-testid="creative-task-diagnostics-card">
+            {diagnosticTaskIds.length > 0 ? (
+              <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                  任务管理只承接执行进度、失败重试与排障细节；默认详情页不再把这些诊断信息混在业务主视图里。
+                </Paragraph>
+                <Space wrap>
+                  {primaryTaskId ? (
+                    <Button
+                      type="primary"
+                      onClick={() => openTaskDiagnostics(primaryTaskId)}
+                      data-testid="creative-open-task-diagnostics"
+                    >
+                      查看主执行记录
+                    </Button>
+                  ) : null}
+                  {diagnosticTaskIds.map((taskId) => (
+                    <Button key={taskId} onClick={() => openTaskDiagnostics(taskId)} data-testid={`creative-open-task-${taskId}`}>
+                      执行记录 #{taskId}
+                    </Button>
+                  ))}
+                  <Button onClick={() => navigate('/task/list')}>打开任务管理</Button>
+                </Space>
+              </Space>
+            ) : (
+              <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                  这条作品还没有关联执行记录。默认详情页继续聚焦输入、版本与审核；如需排查任务侧信息，可从这里进入任务管理。
+                </Paragraph>
+                <Button onClick={() => navigate('/task/list')}>打开任务管理</Button>
+              </Space>
+            )}
+          </Card>
+
+          <Card title="发布与调度诊断" size="small" data-testid="creative-publish-diagnostics">
+            {diagnosticsUnavailable ? (
+              <Alert
+                type="warning"
+                showIcon
+                message="高级诊断暂不可用"
+                description="发布状态、调度配置或发布池数据加载失败，请稍后重试，或转到任务管理继续排查。"
+                action={(
+                  <Button size="small" icon={<ReloadOutlined />} onClick={retryDiagnostics}>
+                    重试
+                  </Button>
+                )}
+                style={{ marginBottom: 16 }}
+              />
+            ) : null}
+            <Descriptions bordered size="small" column={screens.md ? 2 : 1}>
+              <Descriptions.Item label="入口模式">
+                <Space wrap>
+                  <Tag>{creativeFlowMeta.label}</Tag>
+                  <Tag>{creativeFlowShadowCompare ? 'Shadow Compare：开启' : 'Shadow Compare：关闭'}</Tag>
+                </Space>
+              </Descriptions.Item>
+              <Descriptions.Item label="调度模式">
+                <Tag color={publishStatusQuery.isError && scheduleConfigQuery.isError ? 'warning' : schedulerMode ? publishSchedulerModeMeta[schedulerMode].color : 'default'}>
+                  {schedulerModeLabel}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="当前生效模式">
+                <Tag color={publishStatusQuery.isError ? 'warning' : effectiveSchedulerMode ? publishSchedulerModeMeta[effectiveSchedulerMode].color : 'default'}>
+                  {effectiveSchedulerModeLabel}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="运行状态">
+                <Tag color={publishStatusQuery.isError ? 'warning' : publishStatus?.status ? publishRuntimeStatusMeta[publishStatus.status].color : 'default'}>
+                  {runtimeStatusLabel}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="当前任务">
+                {currentPublishTaskId !== null ? (
+                  <Button type="link" onClick={() => openTaskDiagnostics(currentPublishTaskId)}>
+                    任务 #{currentPublishTaskId}
+                  </Button>
+                ) : publishStatusQuery.isError ? '获取失败' : '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Shadow Read">{shadowReadLabel}</Descriptions.Item>
+              <Descriptions.Item label="Kill Switch">{killSwitchLabel}</Descriptions.Item>
+              <Descriptions.Item label="当前发布池项">
+                {currentPoolItem ? (
+                  <Space wrap>
+                    <Tag color={publishPoolStatusMeta[currentPoolItem.status].color}>{publishPoolStatusMeta[currentPoolItem.status].label}</Tag>
+                    <Tag color={isPoolVersionAligned(currentPoolItem) ? 'success' : 'warning'}>版本 #{currentPoolItem.creative_version_id}</Tag>
+                  </Space>
+                ) : activePoolQuery.isError ? '获取失败' : '当前版本暂未进入发布池'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Pool Item ID">
+                {currentPoolItem ? `#${currentPoolItem.id}` : activePoolQuery.isError ? '获取失败' : '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label="最近失效记录" span={2}>
+                {latestInvalidatedPoolItem ? (
+                  <Space direction="vertical" size={4}>
+                    <Text>Pool #{latestInvalidatedPoolItem.id} / 版本 #{latestInvalidatedPoolItem.creative_version_id}</Text>
+                    <Text type="secondary">失效于 {formatCreativeTimestamp(latestInvalidatedPoolItem.invalidated_at ?? latestInvalidatedPoolItem.updated_at)}</Text>
+                    <Text type="secondary">原因：{latestInvalidatedPoolItem.invalidation_reason ?? '未记录'}</Text>
+                  </Space>
+                ) : invalidatedPoolQuery.isError ? '获取失败' : '暂无失效记录'}
+              </Descriptions.Item>
+            </Descriptions>
+          </Card>
+
+          <Card title="发布池记录" size="small" data-testid="creative-publish-pool-card">
+            {activePoolQuery.isError || invalidatedPoolQuery.isError ? (
+              <Alert
+                type="warning"
+                showIcon
+                message="发布池历史暂时不可用"
+                description="当前不能把发布池请求失败误判为没有历史记录，请稍后重试。"
+                action={(
+                  <Button size="small" icon={<ReloadOutlined />} onClick={retryDiagnostics}>
+                    重试
+                  </Button>
+                )}
+              />
+            ) : activePoolItems.length === 0 && invalidatedPoolItems.length === 0 ? (
+              <Empty description="当前没有发布池记录" />
+            ) : (
+              <List
+                dataSource={[...activePoolItems, ...invalidatedPoolItems]}
+                renderItem={(item) => {
+                  const aligned = isPoolVersionAligned(item)
+                  return (
+                    <List.Item key={`${item.status}-${item.id}`} data-testid={`creative-pool-item-${item.id}`}>
+                      <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                        <Space wrap>
+                          <Tag color={publishPoolStatusMeta[item.status].color}>{publishPoolStatusMeta[item.status].label}</Tag>
+                          <Tag color={aligned ? 'success' : 'warning'}>版本 #{item.creative_version_id}</Tag>
+                          <Tag color={aligned ? 'success' : 'warning'}>{aligned ? '版本已对齐' : '版本存在偏差'}</Tag>
+                          <Tag>Pool #{item.id}</Tag>
+                        </Space>
+                        <Text type="secondary">入池于 {formatCreativeTimestamp(item.created_at)}，最近更新时间 {formatCreativeTimestamp(item.updated_at)}</Text>
+                        {item.invalidation_reason ? <Text type="secondary">失效原因：{item.invalidation_reason}</Text> : null}
+                      </Space>
+                    </List.Item>
+                  )
+                }}
+              />
+            )}
+          </Card>
+
+          {shadowDiff ? (
+            <Card title="Cutover 对账" size="small" data-testid="creative-shadow-diff">
+              <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                <Space wrap>
+                  <Tag color={shadowDiffDiffers ? 'warning' : 'success'}>{shadowDiffDiffers ? '存在差异' : '已对齐'}</Tag>
+                  {shadowDiffReasons.length > 0
+                    ? shadowDiffReasons.map((reason) => <Tag key={reason}>{reason}</Tag>)
+                    : <Tag>无差异原因</Tag>}
+                </Space>
+                <pre style={{ margin: 0, padding: 12, background: '#fafafa', borderRadius: 8, overflow: 'auto' }}>{formatShadowDiffJson(shadowDiff)}</pre>
+              </Space>
+            </Card>
+          ) : null}
+        </Space>
+      </Drawer>
 
       <CheckDrawer creativeId={creativeId} open={drawerOpen} version={currentVersion} onClose={() => setDrawerOpen(false)} />
 

@@ -46,7 +46,8 @@ test.describe('Phase C publish pool visibility', () => {
     await page.getByTestId('creative-workbench-open-detail-101').click()
     await page.waitForURL(/#\/creative\/101\?returnTo=/)
 
-    await page.locator('.ant-collapse-header').nth(1).click()
+    await page.getByTestId('creative-open-advanced-diagnostics').click()
+    await expect(page.getByTestId('creative-detail-diagnostics-drawer')).toBeVisible()
     await expect(page.getByTestId('creative-publish-pool-card')).toContainText('Pool #501')
     await expect(page.getByTestId('creative-publish-pool-card')).toContainText('版本已对齐')
   })

@@ -106,14 +106,14 @@ test.describe('Task diagnostics positioning', () => {
   test('uses workbench as the default entry while keeping dashboard reachable', async ({ page }) => {
     await page.goto(`${BASE_URL}/#/`)
 
-    await page.waitForURL('**/#/creative/workbench')
+    await page.waitForURL(/#\/creative\/workbench/)
     await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
 
     await page.goto(`${BASE_URL}/#/dashboard`)
     await expect(page.getByTestId('dashboard-primary-cta')).toBeVisible()
 
     await page.getByTestId('dashboard-open-workbench').click()
-    await page.waitForURL('**/#/creative/workbench')
+    await page.waitForURL(/#\/creative\/workbench/)
     await expect(page.getByTestId('creative-workbench-publish-summary')).toBeVisible()
   })
 
@@ -132,6 +132,12 @@ test.describe('Task diagnostics positioning', () => {
 
     await page.getByTestId('task-detail-open-creative').click()
     await page.waitForURL('**/#/creative/101?taskId=901&returnTo=*')
+    await expect(page.getByTestId('creative-open-advanced-diagnostics')).toBeVisible()
+    await expect(page.getByTestId('creative-open-task-diagnostics')).toHaveCount(0)
+
+    await page.getByTestId('creative-open-advanced-diagnostics').click()
+    await expect(page).toHaveURL(/diagnostics=advanced/)
+    await expect(page.getByTestId('creative-detail-diagnostics-drawer')).toBeVisible()
     await expect(page.getByTestId('creative-open-task-diagnostics')).toBeVisible()
 
     await page.getByTestId('creative-open-task-diagnostics').click()

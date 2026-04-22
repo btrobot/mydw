@@ -10,6 +10,9 @@ test.describe('Creative review drawer', () => {
   test('supports approve flow on current version', async ({ page }) => {
     await page.goto(`${BASE_URL}/#/creative/101`)
 
+    await expect(page.getByTestId('creative-open-advanced-diagnostics')).toBeVisible()
+    await expect(page.getByTestId('creative-publish-diagnostics')).toHaveCount(0)
+
     await page.getByTestId('creative-open-review').click()
     const drawer = page.getByTestId('creative-check-drawer')
     await expect(drawer).toBeVisible()
