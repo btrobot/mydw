@@ -86,6 +86,7 @@
 - `docs/governance/templates/phase-closeout-template.md` / `docs/governance/templates/next-phase-mainline-selection-template.md`（阶段收尾模板 / 下一阶段选线模板）
 - `docs/governance/next-phase-backlog.md`（压缩后的 open issues / next-phase backlog）
 - `docs/governance/next-phase-prd.md` / `docs/governance/next-phase-test-spec.md` / `docs/governance/next-phase-execution-breakdown.md`（下一阶段启动包的范围/验证/执行分解，需与 kickoff 一起使用）
+- `docs/governance/next-phase-pr1-workbench-manageability-plan.md`（PR-1「Workbench 可管理性收口」的 focused ralplan / slice 规划）
 - `docs/governance/policies/omx-plan-retention.md`（`.omx/plans` 活跃计划与 archive 的分流规则）
 - 专题设计说明（如 settings、topic、task semantics、generation governance）
 - `docs/adr/` 中的决策记录

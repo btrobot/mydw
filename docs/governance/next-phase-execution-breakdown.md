@@ -1,6 +1,6 @@
 # 下一阶段执行分解（Next-Phase Execution Breakdown）
 
-> Version: 1.1.0 | Updated: 2026-04-21  
+> Version: 1.2.0 | Updated: 2026-04-22  
 > Owner: Tech Lead / Codex  
 > Status: Active planning artifact
 
@@ -54,6 +54,10 @@
 - `frontend/src/features/creative/pages/CreativeWorkbench.tsx`
 - workbench 相关 hooks / query params / state
 - `frontend/e2e/creative-workbench/*`
+
+详细规划入口：
+
+- `docs/governance/next-phase-pr1-workbench-manageability-plan.md`
 
 验收：
 

@@ -119,6 +119,7 @@ def test_governance_readme_classifies_core_policies_inventory_standards_and_temp
     assert "docs/governance/inventory/current-project-mvp-closeout-execution.md" in governance_index
     assert "docs/governance/inventory/current-project-phase-transition-decision.md" in governance_index
     assert "docs/governance/inventory/post-mvp-doc-governance-closeout.md" in governance_index
+    assert "docs/governance/next-phase-pr1-workbench-manageability-plan.md" in governance_index
     assert "docs/governance/standards/documentation-strategy.md" in governance_index
     assert "docs/governance/standards/docs-directory-placement-rules.md" in governance_index
     assert "docs/governance/standards/domains-architecture-governance-boundary.md" in governance_index
@@ -222,6 +223,25 @@ def test_current_project_phase_transition_decision_is_indexed_and_approves_next_
     assert "Creative-first 稳定化 / UI-UX 收口主线" in decision
     assert "Approved / 允许切换阶段" in decision
     assert "PR-1：Workbench 可管理性收口" in decision
+
+
+def test_pr1_workbench_manageability_plan_is_indexed_and_stays_within_pr1_scope() -> None:
+    docs_index = _read("docs/README.md")
+    governance_index = _read("docs/governance/README.md")
+    breakdown = _read("docs/governance/next-phase-execution-breakdown.md")
+    ledger = _read("docs/governance/inventory/inventory-ledger.md")
+    plan = _read("docs/governance/next-phase-pr1-workbench-manageability-plan.md")
+
+    assert "docs/governance/next-phase-pr1-workbench-manageability-plan.md" in docs_index
+    assert "docs/governance/next-phase-pr1-workbench-manageability-plan.md" in governance_index
+    assert "docs/governance/next-phase-pr1-workbench-manageability-plan.md" in breakdown
+    assert "docs/governance/next-phase-pr1-workbench-manageability-plan.md" in ledger
+    assert "PR-1 的任务，不是发明一个全新的 Workbench" in plan
+    assert "方案 C：分阶段收口现有 table-first baseline（推荐）" in plan
+    assert "不做默认业务层 / 高级诊断层分层（留给 PR-2）" in plan
+    assert "Slice A：管理模型定稿与 URL 状态收口" in plan
+    assert "Slice B：排序与 preset views 收口" in plan
+    assert "Slice C：规模 guardrail、文档与回归收口" in plan
 
 
 def test_domains_architecture_governance_boundary_doc_is_indexed_and_explains_split() -> None:

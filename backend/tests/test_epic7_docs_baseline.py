@@ -84,6 +84,7 @@ def test_docs_readme_exists_and_separates_current_docs_from_runtime_artifacts() 
     assert "docs/governance/inventory/current-project-mvp-closeout-execution.md" in docs_index
     assert "docs/governance/inventory/current-project-phase-transition-decision.md" in docs_index
     assert "docs/governance/inventory/post-mvp-doc-governance-closeout.md" in docs_index
+    assert "docs/governance/next-phase-pr1-workbench-manageability-plan.md" in docs_index
     assert "docs/governance/policies/runtime-local-artifact-policy.md" in docs_index
     assert "docs/governance/policies/omx-plan-retention.md" in docs_index
     assert "docs/governance/inventory/root-doc-triage.md" in docs_index
@@ -135,6 +136,7 @@ def test_doc_inventory_ledger_classifies_major_document_and_runtime_clusters() -
     assert "docs/governance/next-phase-prd.md" in ledger
     assert "docs/governance/next-phase-test-spec.md" in ledger
     assert "docs/governance/next-phase-execution-breakdown.md" in ledger
+    assert "docs/governance/next-phase-pr1-workbench-manageability-plan.md" in ledger
     assert "Ninth archive batch completed in current cleanup execution" in ledger
 
 
