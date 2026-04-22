@@ -58,6 +58,7 @@ def test_post_mvp_model_and_phase_transition_checklist_are_indexed_and_connected
 
     assert "docs/governance/post-mvp-development-model.md" in docs_index
     assert "docs/governance/phase-transition-checklist.md" in docs_index
+    assert "docs/governance/omx-to-formal-doc-absorption-rules.md" in docs_index
 
     assert "Part A：当前阶段收口检查" in checklist
     assert "Part B：下一阶段启动检查" in checklist
@@ -120,6 +121,7 @@ def test_governance_readme_classifies_core_policies_inventory_standards_and_temp
     assert "docs/governance/inventory/current-project-phase-transition-decision.md" in governance_index
     assert "docs/governance/inventory/post-mvp-doc-governance-closeout.md" in governance_index
     assert "docs/governance/next-phase-pr1-workbench-manageability-plan.md" in governance_index
+    assert "docs/governance/omx-to-formal-doc-absorption-rules.md" in governance_index
     assert "docs/governance/standards/documentation-strategy.md" in governance_index
     assert "docs/governance/standards/docs-directory-placement-rules.md" in governance_index
     assert "docs/governance/standards/domains-architecture-governance-boundary.md" in governance_index
@@ -145,6 +147,21 @@ def test_governance_readme_classifies_core_policies_inventory_standards_and_temp
     assert "盘点 / triage / ledger / stale/version/parity checklist" in governance_index
     assert "长期规范 / strategy / guide / checklist / system spec" in governance_index
     assert "可复制复用的模板 / skeleton / starter" in governance_index
+
+
+def test_omx_to_formal_doc_absorption_rules_are_indexed_and_define_promotion_gate() -> None:
+    docs_index = _read("docs/README.md")
+    governance_index = _read("docs/governance/README.md")
+    rules = _read("docs/governance/omx-to-formal-doc-absorption-rules.md")
+
+    assert "docs/governance/omx-to-formal-doc-absorption-rules.md" in docs_index
+    assert "docs/governance/omx-to-formal-doc-absorption-rules.md" in governance_index
+    assert "已稳定" in rules
+    assert "会被复用" in rules
+    assert "已被验证" in rules
+    assert "开发过程中的 5 个吸收时机" in rules
+    assert "从 OMX 工件里提炼正式 truth" in rules
+    assert "吸收完成后，再把对应 `.omx` 工件降级到 archive" in rules
 
 
 def test_formal_doc_governance_closeout_artifact_is_indexed_and_summarizes_current_state() -> None:

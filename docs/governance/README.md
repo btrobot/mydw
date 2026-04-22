@@ -29,6 +29,7 @@
 - `docs/governance/post-mvp-development-model.md`
 - `docs/governance/phase-transition-checklist.md`
 - `docs/governance/post-mvp-closeout-sequence.md`
+- `docs/governance/omx-to-formal-doc-absorption-rules.md`
 - `docs/governance/next-phase-backlog.md`
 - `docs/governance/next-phase-prd.md`
 - `docs/governance/next-phase-test-spec.md`
@@ -41,6 +42,7 @@
 - 想知道验证底线：看 `verification-baseline.md`
 - 想知道 MVP 后如何推进：看 `post-mvp-development-model.md`
 - 想知道阶段切换怎么做：看 `phase-transition-checklist.md`
+- 想知道 `.omx` 工作文档何时吸收到正式 docs：看 `omx-to-formal-doc-absorption-rules.md`
 - 想知道下一阶段怎么启动：看 `next-phase-*` 一组文档
 - 想知道 PR-1 怎么具体切片：看 `next-phase-pr1-workbench-manageability-plan.md`
 
