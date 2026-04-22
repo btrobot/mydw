@@ -101,17 +101,27 @@ test.describe('Auth transport sync', () => {
 
   test('syncs machine-session state from local backend when EventSource transport fails under revoked auth', async ({ page }) => {
     let authSessionCalls = 0
+    let allowRevokedSession = false
     const accountId = `transport_e2e_${Date.now()}`
     const mockedAccountNumericId = 901
 
     await page.addInitScript(() => {
+      ;(window as typeof window & {
+        __authTransportEmitRevokedError?: () => void
+        __authTransportEventSource?: FakeEventSource | null
+      }).__authTransportEventSource = null
+
       class FakeEventSource {
         onerror: ((event: Event) => void) | null = null
 
         constructor(_url: string) {
-          window.setTimeout(() => {
-            this.onerror?.(new Event('error'))
-          }, 50)
+          ;(window as typeof window & {
+            __authTransportEventSource?: FakeEventSource | null
+          }).__authTransportEventSource = this
+        }
+
+        emitRevokedError() {
+          this.onerror?.(new Event('error'))
         }
 
         addEventListener() {
@@ -123,6 +133,15 @@ test.describe('Auth transport sync', () => {
         }
       }
 
+      ;(window as typeof window & {
+        __authTransportEmitRevokedError?: () => void
+        __authTransportEventSource?: FakeEventSource | null
+      }).__authTransportEmitRevokedError = () => {
+        ;(window as typeof window & {
+          __authTransportEventSource?: FakeEventSource | null
+        }).__authTransportEventSource?.emitRevokedError()
+      }
+
       // @ts-expect-error test double
       window.EventSource = FakeEventSource
     })
@@ -131,7 +150,7 @@ test.describe('Auth transport sync', () => {
       authSessionCalls += 1
 
       const payload =
-        authSessionCalls === 1
+        authSessionCalls === 1 || !allowRevokedSession
           ? {
               auth_state: 'authenticated_active',
               remote_user_id: 'u_123',
@@ -204,7 +223,14 @@ test.describe('Auth transport sync', () => {
     await expect(page.locator('body')).toContainText(accountId)
     const row = page.locator('tr').filter({ hasText: accountId })
     await expect(row).toBeVisible({ timeout: 10000 })
-    await row.locator('button').first().click()
+    await row.getByRole('button', { name: '连接' }).click()
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 10000 })
+    allowRevokedSession = true
+    await page.evaluate(() => {
+      ;(window as typeof window & {
+        __authTransportEmitRevokedError?: () => void
+      }).__authTransportEmitRevokedError?.()
+    })
 
     await page.waitForFunction(
       () => document.documentElement.dataset.authState === 'revoked',
