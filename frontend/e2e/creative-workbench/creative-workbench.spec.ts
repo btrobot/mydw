@@ -301,6 +301,10 @@ test.describe('Creative workbench baseline', () => {
     await expect(page.locator('body')).toContainText('任务管理只承接执行记录、失败重试与排障')
     await expect(page.locator('body')).not.toContainText('兼容入口：新建任务')
     await expect(page.getByTestId('creative-workbench-publish-summary')).toBeVisible()
+    await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
+    await expect(page.getByTestId('creative-workbench-open-diagnostics')).toBeVisible()
+    await expect(page.getByTestId('creative-workbench-scheduler-mode')).toHaveCount(0)
+    await expect(page.getByTestId('creative-workbench-effective-mode')).toHaveCount(0)
     await expect(page.locator('body')).toContainText('Spring campaign')
     await expect(page.locator('body')).toContainText('Summer sale teaser')
     await expect(page.getByTestId('creative-workbench-pool-state-101')).toContainText('已入发布池')
@@ -309,6 +313,21 @@ test.describe('Creative workbench baseline', () => {
     await expect(page.getByTestId('creative-workbench-ai-clip-101')).toBeVisible()
     await expect(page.getByTestId('creative-workbench-preset-waiting_review')).toBeVisible()
     await expect(page.getByTestId('creative-workbench-sort-select')).toBeVisible()
+  })
+
+  test('opens diagnostics through an explicit secondary entry', async ({ page }) => {
+    await page.goto(`${TEST_BASE_URL}/#/creative/workbench`)
+
+    await page.getByTestId('creative-workbench-open-diagnostics').click()
+
+    await expect(page).toHaveURL(/diagnostics=runtime/)
+    await expect(page.getByTestId('creative-workbench-diagnostics-drawer')).toBeVisible()
+    await expect(page.getByTestId('creative-workbench-effective-mode')).toContainText('Task')
+    await expect(page.getByTestId('creative-workbench-runtime-status')).toContainText('空闲')
+
+    await page.locator('.ant-drawer-close').click()
+    await expect(page).not.toHaveURL(/diagnostics=runtime/)
+    await expect(page.getByTestId('creative-workbench-diagnostics-drawer')).toHaveCount(0)
   })
 
   test('shows an explicit window-based guardrail for workbench manageability', async ({ page }) => {

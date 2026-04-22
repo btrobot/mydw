@@ -8,6 +8,8 @@ import {
   App,
   Button,
   Card,
+  Descriptions,
+  Drawer,
   Flex,
   Result,
   Select,
@@ -54,6 +56,7 @@ const DEFAULT_WORKBENCH_PAGE_SIZE = 10
 
 type WorkbenchSortKind = 'updated_desc' | 'updated_asc' | 'attention_desc' | 'failed_desc'
 type WorkbenchPresetKey = 'all' | 'waiting_review' | 'needs_rework' | 'recent_failures' | 'version_mismatch'
+type WorkbenchDiagnosticsView = 'runtime'
 
 type WorkbenchTableRow = CreativeWorkbenchItem & {
   poolItem: PublishPoolItem | null
@@ -145,6 +148,9 @@ const parseWorkbenchSortKind = (value: string | null): WorkbenchSortKind => {
 const parseWorkbenchPreset = (value: string | null): WorkbenchPresetKey | undefined =>
   value && value in workbenchPresetMeta ? value as WorkbenchPresetKey : undefined
 
+const parseWorkbenchDiagnosticsView = (value: string | null): WorkbenchDiagnosticsView | undefined =>
+  value === 'runtime' ? value : undefined
+
 const isPresetCompatible = (
   preset: WorkbenchPresetKey | undefined,
   values: Pick<WorkbenchFormValues, 'keyword' | 'status' | 'poolState'>,
@@ -196,6 +202,7 @@ const parseWorkbenchStateFromSearchParams = (searchParams: URLSearchParams) => {
   const statusValue = searchParams.get('status')
   const poolStateValue = searchParams.get('poolState')
   const preset = parseWorkbenchPreset(searchParams.get('preset'))
+  const diagnostics = parseWorkbenchDiagnosticsView(searchParams.get('diagnostics'))
 
   const status = statusValue && statusValue in creativeStatusMeta
     ? statusValue as keyof typeof creativeStatusMeta
@@ -213,6 +220,7 @@ const parseWorkbenchStateFromSearchParams = (searchParams: URLSearchParams) => {
     } satisfies WorkbenchFormValues,
     current: parsePositiveInteger(searchParams.get('page'), 1),
     pageSize: parsePositiveInteger(searchParams.get('pageSize'), DEFAULT_WORKBENCH_PAGE_SIZE),
+    diagnostics,
     preset,
     sort: parseWorkbenchSortKind(searchParams.get('sort')),
   }
@@ -221,6 +229,7 @@ const parseWorkbenchStateFromSearchParams = (searchParams: URLSearchParams) => {
 const buildWorkbenchSearchParams = (
   params: WorkbenchFormValues,
   sort: WorkbenchSortKind,
+  diagnostics?: WorkbenchDiagnosticsView,
 ): URLSearchParams => {
   const nextSearchParams = new URLSearchParams()
   const keyword = params.keyword?.trim()
@@ -246,6 +255,10 @@ const buildWorkbenchSearchParams = (
   nextSearchParams.set('sort', sort)
   nextSearchParams.set('page', String(params.current ?? 1))
   nextSearchParams.set('pageSize', String(params.pageSize ?? DEFAULT_WORKBENCH_PAGE_SIZE))
+
+  if (diagnostics) {
+    nextSearchParams.set('diagnostics', diagnostics)
+  }
 
   return nextSearchParams
 }
@@ -274,6 +287,7 @@ export default function CreativeWorkbench() {
   const items = creativesQuery.data?.items ?? []
   const total = creativesQuery.data?.total ?? 0
   const activePoolItems = poolQuery.data?.items ?? []
+  const diagnosticsOpen = initialRouteState.diagnostics === 'runtime'
 
   const poolByCreativeId = useMemo(
     () => new Map<number, PublishPoolItem>(activePoolItems.map((item) => [item.creative_item_id, item])),
@@ -393,7 +407,11 @@ export default function CreativeWorkbench() {
 
   const handlePresetChange = useCallback((preset: WorkbenchPresetKey) => {
     const nextPresetState = getPresetState(preset, initialRouteState.pageSize)
-    const nextSearchParams = buildWorkbenchSearchParams(nextPresetState, nextPresetState.sort)
+    const nextSearchParams = buildWorkbenchSearchParams(
+      nextPresetState,
+      nextPresetState.sort,
+      initialRouteState.diagnostics,
+    )
     formRef.current?.setFieldsValue({
       keyword: nextPresetState.keyword,
       status: nextPresetState.status,
@@ -402,7 +420,7 @@ export default function CreativeWorkbench() {
     setSearchParams(nextSearchParams, { replace: true })
     actionRef.current?.setPageInfo?.({ current: 1, pageSize: nextPresetState.pageSize })
     actionRef.current?.reload()
-  }, [initialRouteState.pageSize, setSearchParams])
+  }, [initialRouteState.diagnostics, initialRouteState.pageSize, setSearchParams])
 
   const handleSortChange = useCallback((sort: WorkbenchSortKind) => {
     const currentFormValues = formRef.current?.getFieldsValue?.() ?? {}
@@ -416,11 +434,43 @@ export default function CreativeWorkbench() {
         pageSize: initialRouteState.pageSize,
       },
       sort,
+      initialRouteState.diagnostics,
     )
     setSearchParams(nextSearchParams, { replace: true })
     actionRef.current?.setPageInfo?.({ current: 1, pageSize: initialRouteState.pageSize })
     actionRef.current?.reload()
-  }, [initialRouteState.pageSize, initialRouteState.preset, setSearchParams])
+  }, [initialRouteState.diagnostics, initialRouteState.pageSize, initialRouteState.preset, setSearchParams])
+
+  const setDiagnosticsView = useCallback((diagnostics?: WorkbenchDiagnosticsView) => {
+    const currentFormValues = formRef.current?.getFieldsValue?.() ?? {}
+    const nextSearchParams = buildWorkbenchSearchParams(
+      {
+        keyword: currentFormValues.keyword,
+        status: currentFormValues.status,
+        poolState: currentFormValues.poolState,
+        preset: initialRouteState.preset,
+        current: initialRouteState.current,
+        pageSize: initialRouteState.pageSize,
+      },
+      initialRouteState.sort,
+      diagnostics,
+    )
+    setSearchParams(nextSearchParams, { replace: true })
+  }, [
+    initialRouteState.current,
+    initialRouteState.pageSize,
+    initialRouteState.preset,
+    initialRouteState.sort,
+    setSearchParams,
+  ])
+
+  const handleOpenDiagnostics = useCallback(() => {
+    setDiagnosticsView('runtime')
+  }, [setDiagnosticsView])
+
+  const handleCloseDiagnostics = useCallback(() => {
+    setDiagnosticsView(undefined)
+  }, [setDiagnosticsView])
 
   const columns = useMemo<ProColumns<WorkbenchTableRow>[]>(
     () => [
@@ -617,37 +667,31 @@ export default function CreativeWorkbench() {
       subTitle="先创建作品，再补齐素材、合成配置与执行动作；任务管理只承接执行记录、失败重试与排障。"
     >
       <Space direction="vertical" size={16} style={{ display: 'flex' }}>
-        {(publishStatusQuery.isError || scheduleConfigQuery.isError) && (
-          <Alert
-            type="warning"
-            showIcon
-            message="发布运行摘要暂时不可用"
-            description="发布状态或调度配置加载失败，当前摘要仅展示已成功拿到的数据，不会把失败伪装成正常空闲。"
-            action={(
-              <Button size="small" icon={<ReloadOutlined />} onClick={handleRetryAuxiliary}>
-                重试
-              </Button>
-            )}
-            data-testid="creative-workbench-runtime-warning"
-          />
-        )}
-
-        {poolQuery.isError && (
-          <Alert
-            type="warning"
-            showIcon
-            message="发布池摘要暂时不可用"
-            description="发布池请求失败，已暂停展示对齐统计，请稍后重试。"
-            action={(
-              <Button size="small" icon={<ReloadOutlined />} onClick={handleRetryAuxiliary}>
-                重试
-              </Button>
-            )}
-            data-testid="creative-workbench-pool-warning"
-          />
-        )}
-
         <Card data-testid="creative-workbench-publish-summary">
+          <Flex justify="space-between" align="start" gap={16} wrap="wrap">
+            <Space direction="vertical" size={4}>
+              <Text type="secondary" data-testid="creative-workbench-main-entry-banner">
+                入口模式：{creativeFlowMeta.label}
+              </Text>
+              <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                当前工作台优先承接作品定位、审核与 AIClip 主流程；发布池、调度与运行诊断已收束到“查看运行诊断”入口。
+              </Paragraph>
+            </Space>
+            <Button onClick={handleOpenDiagnostics} data-testid="creative-workbench-open-diagnostics">
+              查看运行诊断
+            </Button>
+          </Flex>
+
+          {(publishStatusQuery.isError || scheduleConfigQuery.isError || poolQuery.isError) && (
+            <Alert
+              type="warning"
+              showIcon
+              message="部分运行诊断暂不可用，可通过“查看运行诊断”重试。"
+              style={{ marginTop: 16 }}
+              data-testid="creative-workbench-diagnostics-notice"
+            />
+          )}
+
           <Flex wrap gap={24}>
             <Statistic title="作品数" value={total} />
             <Statistic title="待审核" value={waitingReviewCount} />
@@ -663,22 +707,6 @@ export default function CreativeWorkbench() {
               loading={poolQuery.isLoading && !poolQuery.isError}
             />
           </Flex>
-
-          <Space wrap size={[8, 8]} style={{ marginTop: 16 }}>
-            <Tag data-testid="creative-workbench-main-entry-banner">入口模式：{creativeFlowMeta.label}</Tag>
-            <Tag data-testid="creative-workbench-shadow-compare">
-              Shadow Compare：{creativeFlowShadowCompare ? '开启' : '关闭'}
-            </Tag>
-            <Tag data-testid="creative-workbench-scheduler-mode">配置模式：{schedulerModeLabel}</Tag>
-            <Tag data-testid="creative-workbench-effective-mode">生效模式：{effectiveSchedulerModeLabel}</Tag>
-            <Tag data-testid="creative-workbench-runtime-status">运行状态：{runtimeStatusLabel}</Tag>
-            <Tag data-testid="creative-workbench-shadow-read">Shadow Read：{shadowReadLabel}</Tag>
-            <Tag data-testid="creative-workbench-kill-switch">Kill Switch：{killSwitchLabel}</Tag>
-          </Space>
-
-          <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
-            {creativeFlowMeta.description} 发布池、调度与运行状态仅作为辅助判断信息，不再占据首屏主流程。
-          </Paragraph>
         </Card>
 
         {rows.length === 0 ? (
@@ -725,6 +753,7 @@ export default function CreativeWorkbench() {
                     pageSize: params.pageSize,
                   },
                   sortKind,
+                  initialRouteState.diagnostics,
                 )
 
                 if (nextSearchParams.toString() !== searchParams.toString()) {
@@ -862,6 +891,89 @@ export default function CreativeWorkbench() {
           </>
         )}
       </Space>
+
+      <Drawer
+        title="运行诊断"
+        open={diagnosticsOpen}
+        onClose={handleCloseDiagnostics}
+        destroyOnClose
+        width={520}
+      >
+        <Space direction="vertical" size={16} style={{ width: '100%' }} data-testid="creative-workbench-diagnostics-drawer">
+          {(publishStatusQuery.isError || scheduleConfigQuery.isError) && (
+            <Alert
+              type="warning"
+              showIcon
+              message="发布运行诊断暂时不可用"
+              description="发布状态或调度配置加载失败，当前不能把失败伪装成空闲状态。"
+              action={(
+                <Button size="small" icon={<ReloadOutlined />} onClick={handleRetryAuxiliary}>
+                  重试
+                </Button>
+              )}
+              data-testid="creative-workbench-runtime-warning"
+            />
+          )}
+
+          {poolQuery.isError && (
+            <Alert
+              type="warning"
+              showIcon
+              message="发布池诊断暂时不可用"
+              description="发布池请求失败，当前无法继续判断池内版本是否对齐。"
+              action={(
+                <Button size="small" icon={<ReloadOutlined />} onClick={handleRetryAuxiliary}>
+                  重试
+                </Button>
+              )}
+              data-testid="creative-workbench-pool-warning"
+            />
+          )}
+
+          <Card size="small" title="运行态摘要">
+            <Descriptions bordered size="small" column={1}>
+              <Descriptions.Item label="入口模式">
+                <Space wrap>
+                  <Tag data-testid="creative-workbench-main-entry-diagnostics">{creativeFlowMeta.label}</Tag>
+                  <Tag data-testid="creative-workbench-shadow-compare">
+                    Shadow Compare：{creativeFlowShadowCompare ? '开启' : '关闭'}
+                  </Tag>
+                </Space>
+              </Descriptions.Item>
+              <Descriptions.Item label="配置模式">
+                <Tag data-testid="creative-workbench-scheduler-mode">{schedulerModeLabel}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="生效模式">
+                <Tag data-testid="creative-workbench-effective-mode">{effectiveSchedulerModeLabel}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="运行状态">
+                <Tag data-testid="creative-workbench-runtime-status">{runtimeStatusLabel}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Shadow Read">
+                <Tag data-testid="creative-workbench-shadow-read">{shadowReadLabel}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Kill Switch">
+                <Tag data-testid="creative-workbench-kill-switch">{killSwitchLabel}</Tag>
+              </Descriptions.Item>
+            </Descriptions>
+          </Card>
+
+          <Card size="small" title="发布池诊断">
+            <Descriptions bordered size="small" column={1}>
+              <Descriptions.Item label="已进发布池">
+                {poolQuery.isError ? '获取失败' : poolQuery.data?.total ?? 0}
+              </Descriptions.Item>
+              <Descriptions.Item label="池版本已对齐">
+                {poolQuery.isError ? '获取失败' : alignedPoolCount}
+              </Descriptions.Item>
+            </Descriptions>
+          </Card>
+
+          <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+            {creativeFlowMeta.description} 这里只有运行排障与发布池观察信息；默认工作台首屏不再承担这些诊断细节。
+          </Paragraph>
+        </Space>
+      </Drawer>
     </PageContainer>
   )
 }
