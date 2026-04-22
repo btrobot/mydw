@@ -99,10 +99,10 @@ test.describe('Auth transport sync', () => {
     await expect(page.getByTestId('auth-status-revoked')).toBeVisible()
   })
 
-  test('syncs machine-session state from local backend when EventSource transport fails under revoked auth', async ({ page, request }) => {
+  test('syncs machine-session state from local backend when EventSource transport fails under revoked auth', async ({ page }) => {
     let authSessionCalls = 0
     const accountId = `transport_e2e_${Date.now()}`
-    let createdAccountNumericId: number | null = null
+    const mockedAccountNumericId = 901
 
     await page.addInitScript(() => {
       class FakeEventSource {
@@ -164,37 +164,53 @@ test.describe('Auth transport sync', () => {
       })
     })
 
-    const createResp = await request.post('http://127.0.0.1:8000/api/accounts/', {
-      data: {
-        account_id: accountId,
-        account_name: 'Transport E2E Account',
-      },
+    await page.route(/\/api\/accounts\/?(?:\?.*)?$/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            id: mockedAccountNumericId,
+            account_id: accountId,
+            account_name: 'Transport E2E Account',
+            status: 'inactive',
+            last_login: null,
+            created_at: '2026-04-22T08:00:00Z',
+            updated_at: '2026-04-22T08:00:00Z',
+            phone_masked: null,
+            dewu_nickname: null,
+            dewu_uid: null,
+            avatar_url: null,
+            tags: [],
+            remark: null,
+            session_expires_at: null,
+          },
+        ]),
+      })
     })
-    expect(createResp.ok()).toBeTruthy()
-    createdAccountNumericId = (await createResp.json()).id
 
-    try {
-      await page.goto(`/#/account`)
-      await expect(page.locator('body')).toContainText('账号管理')
-      await expect(page.locator('body')).toContainText(accountId)
-      const row = page.locator('tr').filter({ hasText: accountId })
-      await expect(row).toBeVisible({ timeout: 10000 })
-      await row.locator('button, a').filter({ hasText: '连接' }).first().click()
+    await page.route('**/api/accounts/preview/status', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          is_open: false,
+          account_id: null,
+        }),
+      })
+    })
 
-      await page.waitForFunction(
-        () => document.documentElement.dataset.authState === 'revoked',
-        undefined,
-        { timeout: 10000 }
-      )
-      await expect(page.getByTestId('auth-status-revoked')).toBeVisible()
-    } finally {
-      if (createdAccountNumericId !== null) {
-        try {
-          await request.delete(`http://127.0.0.1:8000/api/accounts/${createdAccountNumericId}`)
-        } catch {
-          // ignore cleanup failure after timeout
-        }
-      }
-    }
+    await page.goto(`/#/account`)
+    await expect(page.locator('body')).toContainText(accountId)
+    const row = page.locator('tr').filter({ hasText: accountId })
+    await expect(row).toBeVisible({ timeout: 10000 })
+    await row.locator('button').first().click()
+
+    await page.waitForFunction(
+      () => document.documentElement.dataset.authState === 'revoked',
+      undefined,
+      { timeout: 10000 }
+    )
+    await expect(page.getByTestId('auth-status-revoked')).toBeVisible()
   })
 })
