@@ -58,6 +58,9 @@
 详细规划入口：
 
 - `docs/governance/next-phase-pr1-workbench-manageability-plan.md`
+- `.omx/plans/prd-pr1-workbench-manageability.md`
+- `.omx/plans/test-spec-pr1-workbench-manageability.md`
+- `.omx/plans/slice-plan-pr1-workbench-manageability.md`
 
 验收：
 

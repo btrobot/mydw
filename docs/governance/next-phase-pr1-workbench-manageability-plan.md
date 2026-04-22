@@ -23,6 +23,12 @@
 2. PR-1 范围或验证口径变化时，先改本文件，再同步 test spec / breakdown
 3. 本文件只规划 PR-1，不把 PR-2（业务层 / 诊断层分层）和 PR-3（文案与四态统一）混进来
 
+对应的 OMX 工作工件：
+
+- `.omx/plans/prd-pr1-workbench-manageability.md`
+- `.omx/plans/test-spec-pr1-workbench-manageability.md`
+- `.omx/plans/slice-plan-pr1-workbench-manageability.md`
+
 ---
 
 ## 1. Grounded baseline / 当前基线

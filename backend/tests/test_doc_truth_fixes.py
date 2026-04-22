@@ -259,6 +259,9 @@ def test_pr1_workbench_manageability_plan_is_indexed_and_stays_within_pr1_scope(
     assert "Slice A：管理模型定稿与 URL 状态收口" in plan
     assert "Slice B：排序与 preset views 收口" in plan
     assert "Slice C：规模 guardrail、文档与回归收口" in plan
+    assert ".omx/plans/prd-pr1-workbench-manageability.md" in plan
+    assert ".omx/plans/test-spec-pr1-workbench-manageability.md" in plan
+    assert ".omx/plans/slice-plan-pr1-workbench-manageability.md" in plan
 
 
 def test_domains_architecture_governance_boundary_doc_is_indexed_and_explains_split() -> None:
