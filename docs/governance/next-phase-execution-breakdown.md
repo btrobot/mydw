@@ -162,6 +162,7 @@
 > Status: In progress
 > Planning: `docs/governance/next-phase-pr4-regression-and-stage-closeout-plan.md`
 > Slice A closeout: `docs/governance/inventory/pr4-slice-a-gate-lock-closeout.md`
+> Slice B closeout: `docs/governance/inventory/pr4-slice-b-regression-execution-closeout.md`
 
 目标：
 
@@ -196,9 +197,9 @@
 1. **Slice A — 收口门禁锁定与验证范围冻结**
    已完成。PR-4 的 stage closeout gate、最小修复政策、formal docs authority 与 OMX planning artifacts 已锁定；见 `docs/governance/inventory/pr4-slice-a-gate-lock-closeout.md`。
 2. **Slice B — 回归执行、最小修复与证据沉淀**
-   待执行。运行 backend / frontend / 手工 gate，并只吸收通过 gate 所需的最小修复。
+   已完成。backend / contract baseline、frontend typecheck / build、frontend stage closeout suite 已跑通；吸收的最小修复仅为 `frontend/package.json` 中的 Playwright 脚本显式绑定 `e2e/playwright.config.ts`，见 `docs/governance/inventory/pr4-slice-b-regression-execution-closeout.md`。
 3. **Slice C — 正式 closeout 与阶段 handoff**
-   待执行。形成 PR-4 正式收口件，把本阶段为何可退出写成当前 authority。
+   待执行。把 Slice A / Slice B 的 gate 锁定与自动化证据串成 PR-4 正式收口件，并补齐阶段退出 authority 与最终 handoff。
 
 ## 3. 不在本 sequence 首批处理的内容
 
