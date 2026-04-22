@@ -133,7 +133,48 @@ PR-3 对应的专项口径应明确证明：
 | PR-1 — Workbench 可管理性收口 | 列表可定位、可筛选、可排序、可控规模，且 window-based 限制与升级条件显式化 | workbench E2E + 必要手工链路 |
 | PR-2 — 业务层 / 诊断层分层 | 默认业务视图不再承担过量诊断信息；diagnostics 默认隐藏、通过显式入口可达，且打开状态应可稳定恢复 | creative-workbench / creative-review / publish-pool / publish-cutover / task-diagnostics / creative-version-panel targeted E2E + creative-main-entry / auth-routing baseline |
 | PR-3 — 文案与四态统一 | CTA、文案、loading/empty/error/success 四态一致，且 diagnostics failure 不再伪装成 empty/default | `npm run typecheck` + `npm run build` + auth/bootstrap/login/auth shell/routing/error UX/creative main entry/workbench/review/version panel/dashboard targeted E2E + 手工核对 |
-| PR-4 — 回归补强与阶段收口 | 新主线被 regression baseline 接住 | backend/contract baseline + frontend baseline + 手工链路 |
+| PR-4 — 回归补强与阶段收口 | 新主线被阶段 closeout gate 接住，且已有正式收口 authority | backend/contract baseline + frontend typecheck/build + stage closeout E2E suite + 手工链路 + closeout 文档 |
+
+## 3.5 PR-4 阶段 closeout gate
+
+PR-4 的通过口径，不再是模糊的“再跑一轮 baseline”，而是以下门禁同时成立：
+
+### Backend / contract baseline
+
+- `backend/tests/test_creative_workflow_contract.py`
+- `backend/tests/test_openapi_contract_parity.py`
+
+### Frontend build gate
+
+- `npm run typecheck`
+- `npm run build`
+
+### Frontend stage closeout E2E suite
+
+- `frontend/e2e/auth-bootstrap/auth-bootstrap.spec.ts`
+- `frontend/e2e/auth-error-ux/auth-error-ux.spec.ts`
+- `frontend/e2e/auth-error-ux/auth-status-live-state.spec.ts`
+- `frontend/e2e/auth-routing/auth-routing.spec.ts`
+- `frontend/e2e/auth-shell/auth-shell.spec.ts`
+- `frontend/e2e/login/login.spec.ts`
+- `frontend/e2e/creative-main-entry/creative-main-entry.spec.ts`
+- `frontend/e2e/creative-workbench/creative-workbench.spec.ts`
+- `frontend/e2e/creative-review/creative-review.spec.ts`
+- `frontend/e2e/creative-version-panel/creative-version-panel.spec.ts`
+- `frontend/e2e/publish-pool/publish-pool.spec.ts`
+- `frontend/e2e/publish-cutover/publish-cutover.spec.ts`
+- `frontend/e2e/task-diagnostics/task-diagnostics.spec.ts`
+- `frontend/e2e/dashboard/dashboard-state.spec.ts`
+
+### 手工与文档门禁
+
+- 手工主链路仍满足第 4 节定义的 current truth
+- PR-4 完成后，必须有正式 closeout 文档解释：
+  - 实际交付
+  - 未做项
+  - 验证结果
+  - residual risks
+  - 下一步 handoff
 
 ## 4. 手工验证链路
 
@@ -155,6 +196,7 @@ PR-3 对应的专项口径应明确证明：
 - 人工主链路核对通过
 - PR-2 相关页面满足“默认隐藏 diagnostics + 显式可达 + refresh 可恢复”
 - 无新增“必须靠 Alert 解释页面职责”的过渡态设计
+- 若进入 PR-4 收口，还必须有正式 closeout authority 落盘
 
 ## 6. 失败标准
 

@@ -37,6 +37,7 @@
 - `docs/governance/next-phase-pr1-workbench-manageability-plan.md`
 - `docs/governance/next-phase-pr2-business-diagnostics-layering-plan.md`
 - `docs/governance/next-phase-pr3-copy-and-state-unification-plan.md`
+- `docs/governance/next-phase-pr4-regression-and-stage-closeout-plan.md`
 
 推荐理解：
 
@@ -49,6 +50,7 @@
 - 想知道 PR-1 怎么具体切片：看 `next-phase-pr1-workbench-manageability-plan.md`
 - 想知道 PR-2 如何做业务层 / 诊断层分层：看 `next-phase-pr2-business-diagnostics-layering-plan.md`
 - 想知道 PR-3 如何统一文案、CTA 与四态：看 `next-phase-pr3-copy-and-state-unification-plan.md`
+- 想知道 PR-4 如何做回归补强与阶段收口：看 `next-phase-pr4-regression-and-stage-closeout-plan.md`
 
 ### next-phase 文档的最小阅读顺序
 
@@ -61,12 +63,18 @@
 5. `docs/governance/next-phase-pr1-workbench-manageability-plan.md`
 6. `docs/governance/next-phase-pr2-business-diagnostics-layering-plan.md`
 7. `docs/governance/next-phase-pr3-copy-and-state-unification-plan.md`
+8. `docs/governance/next-phase-pr4-regression-and-stage-closeout-plan.md`
 
 当前 PR-3 的正式口径应以 `docs/` 为准，核心事实是：
 
 - auth/login、creative 主链路与 Dashboard 的文案 / CTA / 四态已经形成 current truth
 - diagnostics failure 不再伪装成 empty / placeholder / default
 - 对应 OMX planning 已归档，后续执行先读 `docs/`，再按需回看 `.omx/plans/archive/`
+
+当前自然的下一步是：
+
+- 进入 `PR-4：回归补强与阶段收口`
+- 用 `next-phase-pr4-regression-and-stage-closeout-plan.md` 把阶段 gate、最小修复政策与 closeout authority 锁清
 
 ---
 

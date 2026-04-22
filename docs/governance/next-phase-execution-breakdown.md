@@ -39,7 +39,7 @@
 | PR-1 | Workbench 可管理性收口 | workbench 相关 E2E / 手工主链路 | kickoff（若边界变化）、PRD（若范围变化）、test spec（若验证面变化） |
 | PR-2 | 业务层 / 诊断层分层 | creative-workbench / creative-review / publish-pool / publish-cutover / task-diagnostics / creative-version-panel + creative-main-entry / auth-routing baseline | page spec / domain doc / test spec |
 | PR-3 | 文案与四态统一 | targeted E2E + 手工四态核对 | 文案相关 spec / baseline / test spec |
-| PR-4 | 回归补强与阶段收口 | baseline + full closeout gate | closeout / backlog / phase-transition checklist 对应收口产物 |
+| PR-4 | 回归补强与阶段收口 | backend/contract baseline + frontend stage closeout suite + 手工链路 + closeout evidence | closeout / backlog / phase-transition checklist 对应收口产物 |
 
 ## PR-1 — Workbench 可管理性收口
 
@@ -159,22 +159,45 @@
 
 ## PR-4 — 回归补强与阶段收口
 
+> Status: Planned
+> Planning: `docs/governance/next-phase-pr4-regression-and-stage-closeout-plan.md`
+
 目标：
 
-- 补齐本主线新增测试
-- 清理本阶段遗留边角
-- 形成阶段完成说明
+- 锁定阶段 closeout gate
+- 运行回归并吸收通过 gate 所必需的最小修复
+- 形成阶段完成说明与正式 closeout authority
 
 主要影响面：
 
+- backend / contract baseline
+- frontend typecheck / build / stage closeout E2E suite
 - frontend E2E
-- docs / closeout summary（如需要）
+- docs / inventory / closeout summary
+
+详细规划入口：
+
+- `docs/governance/next-phase-pr4-regression-and-stage-closeout-plan.md`
+- `.omx/plans/prd-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/test-spec-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/slice-plan-pr4-regression-and-stage-closeout.md`
 
 验收：
 
-- 本阶段 test spec 覆盖的最小集合为绿
+- backend / contract baseline 为绿
+- frontend stage closeout suite 为绿
+- 手工主链路核对通过
 - 可以平滑进入下一条 P1 主线（AIClip 产品化）
 - 产出至少一种 closeout / summary / audit / report，并能回填 `docs/governance/phase-transition-checklist.md` 的 Part A 收口语义
+
+执行顺序（计划）：
+
+1. **Slice A — 收口门禁锁定与验证范围冻结**
+   锁定 stage closeout gate、最小修复政策与 closeout 产物 contract。
+2. **Slice B — 回归执行、最小修复与证据沉淀**
+   运行 backend / frontend / 手工 gate，并只吸收通过 gate 所需的最小修复。
+3. **Slice C — 正式 closeout 与阶段 handoff**
+   形成 PR-4 正式收口件，把本阶段为何可退出写成当前 authority。
 
 ## 3. 不在本 sequence 首批处理的内容
 

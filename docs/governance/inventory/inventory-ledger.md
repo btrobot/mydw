@@ -214,6 +214,7 @@ Current location:
 - `docs/governance/next-phase-pr1-workbench-manageability-plan.md` — PR-1「Workbench 可管理性收口」的聚焦规划与 slice 建议
 - `docs/governance/next-phase-pr2-business-diagnostics-layering-plan.md` — PR-2「业务层 / 诊断层分层」的聚焦规划与 slice 建议
 - `docs/governance/next-phase-pr3-copy-and-state-unification-plan.md` — PR-3「文案与四态统一」的聚焦规划与 slice 建议
+- `docs/governance/next-phase-pr4-regression-and-stage-closeout-plan.md` — PR-4「回归补强与阶段收口」的聚焦规划与 stage closeout gate 定义
 
 ## Formal closeout artifact
 
