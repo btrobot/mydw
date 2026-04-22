@@ -222,3 +222,14 @@ Current location:
 - `docs/governance/inventory/current-project-mvp-closeout-checklist.md` — 当前项目 MVP 收口逐项检查清单
 - `docs/governance/inventory/current-project-mvp-closeout-execution.md` — 按清单执行后的项目级收口记录与残留项说明
 - `docs/governance/inventory/current-project-phase-transition-decision.md` — 按阶段切换清单做出的项目级放行决议，确认可以进入下一阶段主线
+- `docs/governance/inventory/pr1-workbench-manageability-closeout.md` — PR-1「Workbench 可管理性收口」的正式收口件，汇总最终交付、当前 current truth、验证结果与后续交接
+
+## Tenth archive batch completed in PR-1 closeout
+
+- `.omx/plans/archive/prd-pr1-workbench-manageability.md`
+- `.omx/plans/archive/test-spec-pr1-workbench-manageability.md`
+- `.omx/plans/archive/slice-plan-pr1-workbench-manageability.md`
+
+Current location:
+
+- `.omx/plans/archive/`

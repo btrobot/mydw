@@ -1,11 +1,13 @@
 # PR-1 Workbench 可管理性收口规划（Focused Ralplan）
 
-> Version: 1.0.0 | Updated: 2026-04-22  
+> Version: 1.1.0 | Updated: 2026-04-22  
 > Owner: Tech Lead / Codex  
-> Status: Active PR-level planning artifact
+> Status: Completed PR-level planning artifact
 
 > 本文件是对 `docs/governance/next-phase-execution-breakdown.md` 中 **PR-1：Workbench 可管理性收口** 的聚焦规划。  
 > 它回答：**PR-1 具体做什么、不做什么、怎么切片、如何验证、为什么按这个方案推进。**
+>
+> PR-1 已于 2026-04-22 收口完成；正式收口件见：`docs/governance/inventory/pr1-workbench-manageability-closeout.md`
 
 ## 0. 在启动包中的角色
 
@@ -25,9 +27,9 @@
 
 对应的 OMX 工作工件：
 
-- `.omx/plans/prd-pr1-workbench-manageability.md`
-- `.omx/plans/test-spec-pr1-workbench-manageability.md`
-- `.omx/plans/slice-plan-pr1-workbench-manageability.md`
+- `.omx/plans/archive/prd-pr1-workbench-manageability.md`
+- `.omx/plans/archive/test-spec-pr1-workbench-manageability.md`
+- `.omx/plans/archive/slice-plan-pr1-workbench-manageability.md`
 
 ---
 

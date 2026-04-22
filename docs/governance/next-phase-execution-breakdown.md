@@ -43,6 +43,9 @@
 
 ## PR-1 — Workbench 可管理性收口
 
+> Status: Completed on 2026-04-22  
+> Closeout: `docs/governance/inventory/pr1-workbench-manageability-closeout.md`
+
 目标：
 
 - 增加搜索 / 状态筛选 / 排序
@@ -58,9 +61,9 @@
 详细规划入口：
 
 - `docs/governance/next-phase-pr1-workbench-manageability-plan.md`
-- `.omx/plans/prd-pr1-workbench-manageability.md`
-- `.omx/plans/test-spec-pr1-workbench-manageability.md`
-- `.omx/plans/slice-plan-pr1-workbench-manageability.md`
+- `.omx/plans/archive/prd-pr1-workbench-manageability.md`
+- `.omx/plans/archive/test-spec-pr1-workbench-manageability.md`
+- `.omx/plans/archive/slice-plan-pr1-workbench-manageability.md`
 
 验收：
 
