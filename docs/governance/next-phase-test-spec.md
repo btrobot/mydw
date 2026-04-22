@@ -1,6 +1,6 @@
 # 下一阶段 Test Spec（Next-Phase Test Spec）
 
-> Version: 1.1.0 | Updated: 2026-04-21  
+> Version: 1.2.0 | Updated: 2026-04-22
 > Owner: Tech Lead / Codex  
 > Status: Active planning artifact
 
@@ -82,6 +82,7 @@ npm run test:e2e -- `
 - workbench window-based guardrail 是否显式说明“当前只对已加载窗口生效”与“何时升级 server-side search planning”
 - 默认业务层是否隐藏高级诊断信息
 - diagnostics 是否仍然通过显式入口可达，且不会把失败伪装成空态
+- diagnostics 打开状态是否支持 URL 恢复 / deep-link / refresh 后保持一致
 - error / empty / loading / success 四态
 - 关键 CTA 文案与导航命名
 
@@ -89,14 +90,27 @@ npm run test:e2e -- `
 
 - `frontend/e2e/creative-workbench/`
 - `frontend/e2e/creative-review/`
-- 如有必要补充 `frontend/e2e/dashboard/` 或 `auth-*` 现有 suite
+- `frontend/e2e/publish-pool/`
+- `frontend/e2e/publish-cutover/`
+- `frontend/e2e/task-diagnostics/`
+- `frontend/e2e/creative-version-panel/`
+- baseline 依赖 `frontend/e2e/creative-main-entry/` 与 `frontend/e2e/auth-routing/`
+
+当前 PR-2 的最小 targeted suite 应至少覆盖：
+
+- `creative-workbench`
+- `creative-review`
+- `publish-pool`
+- `publish-cutover`
+- `task-diagnostics`
+- `creative-version-panel`
 
 ## 3.4 与 PR Sequence 的映射
 
 | PR | 必须证明什么 | 最小验证 |
 | --- | --- | --- |
 | PR-1 — Workbench 可管理性收口 | 列表可定位、可筛选、可排序、可控规模，且 window-based 限制与升级条件显式化 | workbench E2E + 必要手工链路 |
-| PR-2 — 业务层 / 诊断层分层 | 默认业务视图不再承担过量诊断信息，且 diagnostics 仍然显式可达 | creative-workbench / creative-review / publish-pool / publish-cutover / task-diagnostics 相关 E2E |
+| PR-2 — 业务层 / 诊断层分层 | 默认业务视图不再承担过量诊断信息；diagnostics 默认隐藏、通过显式入口可达，且打开状态应可稳定恢复 | creative-workbench / creative-review / publish-pool / publish-cutover / task-diagnostics / creative-version-panel targeted E2E + creative-main-entry / auth-routing baseline |
 | PR-3 — 文案与四态统一 | CTA、文案、loading/empty/error/success 四态一致 | 相关页面 targeted E2E + 手工核对 |
 | PR-4 — 回归补强与阶段收口 | 新主线被 regression baseline 接住 | backend/contract baseline + frontend baseline + 手工链路 |
 
@@ -106,8 +120,10 @@ npm run test:e2e -- `
 
 1. 从 `/` 进入 `CreativeWorkbench`
 2. 能快速定位待处理内容
-3. 从 workbench 进入 detail 时，默认看到的是业务信息而不是工程诊断
-4. auth grace / error / normal 状态下，主页面反馈一致
+3. 默认先看到业务统计、筛选、列表，而不是 runtime / scheduler / shadow / kill-switch 诊断正文
+4. 从 workbench 进入 detail 时，默认看到的是业务概览、作品输入、当前版本、当前有效审核结论
+5. 通过“查看运行诊断”/“查看高级诊断”能够一跳进入 diagnostics 层，并且 refresh 后仍保持同一打开状态
+6. auth grace / error / normal 状态下，主页面反馈一致
 
 ## 5. 通过标准
 
@@ -116,6 +132,7 @@ npm run test:e2e -- `
 - 自动化 baseline 绿
 - 新增 UI/UX 相关 E2E 绿
 - 人工主链路核对通过
+- PR-2 相关页面满足“默认隐藏 diagnostics + 显式可达 + refresh 可恢复”
 - 无新增“必须靠 Alert 解释页面职责”的过渡态设计
 
 ## 6. 失败标准
@@ -124,6 +141,7 @@ npm run test:e2e -- `
 
 - Workbench 增加了功能但仍然难以管理
 - 默认页面继续暴露过量诊断信息
+- diagnostics 入口存在但不显式、不可一跳到达，或 refresh / deep-link 后状态丢失
 - 文案统一后引入明显信息回退
 - Creative-first 主入口 / detail / publish-pool 回归
 

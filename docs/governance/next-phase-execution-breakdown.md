@@ -1,6 +1,6 @@
 # 下一阶段执行分解（Next-Phase Execution Breakdown）
 
-> Version: 1.2.0 | Updated: 2026-04-22  
+> Version: 1.3.0 | Updated: 2026-04-22
 > Owner: Tech Lead / Codex  
 > Status: Active planning artifact
 
@@ -37,7 +37,7 @@
 | PR | 目标 | 主要验证出口 | 需要同步更新 |
 | --- | --- | --- | --- |
 | PR-1 | Workbench 可管理性收口 | workbench 相关 E2E / 手工主链路 | kickoff（若边界变化）、PRD（若范围变化）、test spec（若验证面变化） |
-| PR-2 | 业务层 / 诊断层分层 | creative-review / publish-pool / workbench 相关验证 | page spec / domain doc / test spec |
+| PR-2 | 业务层 / 诊断层分层 | creative-workbench / creative-review / publish-pool / publish-cutover / task-diagnostics / creative-version-panel + creative-main-entry / auth-routing baseline | page spec / domain doc / test spec |
 | PR-3 | 文案与四态统一 | targeted E2E + 手工四态核对 | 文案相关 spec / baseline / test spec |
 | PR-4 | 回归补强与阶段收口 | baseline + full closeout gate | closeout / backlog / phase-transition checklist 对应收口产物 |
 
@@ -74,6 +74,9 @@
 
 ## PR-2 — 业务层 / 诊断层分层
 
+> Status: In progress on 2026-04-22
+> Slice status: Slice A / Slice B 已完成；Slice C 负责文档事实对齐、验证口径收口与正式 closeout
+
 目标：
 
 - 默认业务视图只保留业务信息和主操作
@@ -91,13 +94,25 @@
 - `CreativeWorkbench`
 - `CreativeDetail`
 - review / publish-pool 相关展示区块
+- diagnostics drawer / URL state（`diagnostics=runtime|advanced`）
 
 验收：
 
 - 默认工作台与详情页不再直接暴露过量 scheduler / pool / shadow diagnostics
-- 研发仍可通过显式高级诊断入口拿到必要信息
+- workbench 的“查看运行诊断”和 detail 的“查看高级诊断”成为默认业务面的显式 secondary entry
 - diagnostics 入口必须“一次显式操作可达”，不能退化成隐藏式信息
+- diagnostics 打开状态应可通过 URL 恢复，保证 deep-link / refresh / E2E 稳定复现
+- 研发仍可通过显式高级诊断入口拿到必要信息，且失败态不能伪装成普通空态
 - 若改变默认业务层边界，需要同步更新相关 domain/page docs
+
+执行顺序（当前事实）：
+
+1. **Slice A — Workbench 默认业务层收束**
+   已完成。默认首页保留业务统计、筛选、列表与主操作；运行态摘要移入“查看运行诊断”抽屉。
+2. **Slice B — Detail 默认业务层 / 高级诊断层分层**
+   已完成。默认详情页先服务业务概览、作品输入、版本与审核；任务诊断、发布链路、Cutover 对账移入“查看高级诊断”抽屉。
+3. **Slice C — 验证与文档事实对齐**
+   当前执行中。把“默认隐藏 + 显式可达 + URL 可恢复”的口径同步到 test spec、execution breakdown、README 与 closeout 证据中。
 
 ## PR-3 — 文案与四态统一
 

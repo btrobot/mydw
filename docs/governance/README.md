@@ -48,6 +48,23 @@
 - 想知道 PR-1 怎么具体切片：看 `next-phase-pr1-workbench-manageability-plan.md`
 - 想知道 PR-2 如何做业务层 / 诊断层分层：看 `next-phase-pr2-business-diagnostics-layering-plan.md`
 
+### next-phase 文档的最小阅读顺序
+
+如果你现在要接手“下一阶段主线”，不要在 root 里来回猜，直接按下面顺序：
+
+1. `docs/current/next-phase-kickoff.md`：当前唯一主线是什么
+2. `docs/governance/next-phase-prd.md`：这一阶段到底做什么
+3. `docs/governance/next-phase-test-spec.md`：做到什么才算通过
+4. `docs/governance/next-phase-execution-breakdown.md`：按什么 PR 顺序推进
+5. `docs/governance/next-phase-pr1-workbench-manageability-plan.md`
+6. `docs/governance/next-phase-pr2-business-diagnostics-layering-plan.md`
+
+当前 PR-2 的正式口径应以 `docs/` 为准，核心事实是：
+
+- 默认业务面不再混排 diagnostics
+- diagnostics 必须通过显式入口打开
+- 打开状态应支持 URL 恢复，便于 deep-link、refresh 与 E2E 稳定复现
+
 ---
 
 ## 3. Policies：规则与边界
@@ -253,6 +270,16 @@ current/next-phase-kickoff
 如果只记一句话：
 
 > **model 讲为什么，sequence 讲顺序，checklist 讲门槛，kickoff 讲起点。**
+
+### 场景 B1：我想直接接手当前 next-phase / PR-2
+
+先回到前面的“next-phase 文档的最小阅读顺序”，按那条主线读。
+
+补充说明：
+
+- `docs/` 负责 current truth / 正式指导口径
+- `.omx/plans/` 负责 ralplan / ralph 的工作过程产物
+- 当两边都存在同主题文档时，后续开发应先读 `docs/`，再回到 `.omx/plans/` 看切片细节与执行轨迹
 
 ### 场景 C：我想找具体规则
 
