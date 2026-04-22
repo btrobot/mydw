@@ -1,7 +1,5 @@
 import { expect, test } from '@playwright/test'
 
-const BASE_URL = process.env.E2E_BASE_URL || ''
-
 const ACTIVE_SESSION = {
   auth_state: 'authenticated_active',
   remote_user_id: 'u_123',
@@ -51,7 +49,7 @@ test.describe('Auth admin', () => {
       })
     })
 
-    await page.goto(`${BASE_URL}/#/settings/auth-admin`)
+    await page.goto(`/#/settings/auth-admin`)
     await expect(page.getByTestId('auth-admin-page')).toBeVisible()
     await expect(page.getByTestId('auth-admin-session-list')).toBeVisible()
     await expect(page.locator('body')).toContainText('Alice')
@@ -159,7 +157,7 @@ test.describe('Auth admin', () => {
       })
     })
 
-    await page.goto(`${BASE_URL}/#/settings/auth-admin`)
+    await page.goto(`/#/settings/auth-admin`)
     await page.getByRole('button', { name: 'Revoke' }).click()
     await page.waitForURL('**/#/auth/revoked')
     await expect(page.getByTestId('auth-status-revoked')).toBeVisible()
@@ -245,7 +243,7 @@ test.describe('Auth admin', () => {
       })
     })
 
-    await page.goto(`${BASE_URL}/#/settings/auth-admin`)
+    await page.goto(`/#/settings/auth-admin`)
     await page.getByRole('button', { name: 'Revoke' }).first().click()
     await expect(page.getByTestId('auth-admin-page')).toBeVisible()
     await expect(page.locator('body')).toContainText('Legacy Session')

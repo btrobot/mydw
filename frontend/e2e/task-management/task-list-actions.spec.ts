@@ -1,6 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import { BASE_URL } from '../utils/creativeReviewMocks'
 
 type MockTask = {
   id: number
@@ -331,7 +330,7 @@ test.describe('task list action column', () => {
   })
 
   test('shows a status-specific primary action for each row', async ({ page }) => {
-    await page.goto(`${BASE_URL}/#/task/list`)
+    await page.goto(`/#/task/list`)
 
     await expect(page.getByRole('button', { name: '去作品工作台' })).toBeVisible()
     await expect(page.getByRole('button', { name: '兼容入口：新建任务' })).toBeVisible()
@@ -343,7 +342,7 @@ test.describe('task list action column', () => {
   })
 
   test('supports forward and corrective actions from the action column', async ({ page }) => {
-    await page.goto(`${BASE_URL}/#/task/list`)
+    await page.goto(`/#/task/list`)
 
     await page.getByTestId('task-list-publish-1003').click()
     await expect(page.getByText('已加入发布队列')).toBeVisible()

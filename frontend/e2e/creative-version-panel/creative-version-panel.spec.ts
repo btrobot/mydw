@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { BASE_URL, mockCreativeReviewApis } from '../utils/creativeReviewMocks'
+import { mockCreativeReviewApis } from '../utils/creativeReviewMocks'
 
 test.describe('Creative version panel', () => {
   test.beforeEach(async ({ page }) => {
@@ -8,7 +8,7 @@ test.describe('Creative version panel', () => {
   })
 
   test('shows version history, current marker, and stale old approval', async ({ page }) => {
-    await page.goto(`${BASE_URL}/#/creative/101`)
+    await page.goto(`/#/creative/101`)
 
     await expect(page.getByTestId('creative-version-panel')).toBeVisible()
     await expect(page.getByTestId('creative-version-item-202')).toContainText('当前生效版本')
@@ -18,7 +18,7 @@ test.describe('Creative version panel', () => {
   })
 
   test('after reviewing current version, old approval stays historical only', async ({ page }) => {
-    await page.goto(`${BASE_URL}/#/creative/101`)
+    await page.goto(`/#/creative/101`)
 
     await page.getByTestId('creative-open-review').click()
     const drawer = page.getByTestId('creative-check-drawer')
@@ -32,7 +32,7 @@ test.describe('Creative version panel', () => {
   })
 
   test('task link remains available as diagnostic entry', async ({ page }) => {
-    await page.goto(`${BASE_URL}/#/creative/101`)
+    await page.goto(`/#/creative/101`)
     await page.getByTestId('creative-open-advanced-diagnostics').click()
     await expect(page.getByTestId('creative-detail-diagnostics-drawer')).toBeVisible()
     await page.getByTestId('creative-open-task-diagnostics').click()

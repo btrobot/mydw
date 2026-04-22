@@ -2,8 +2,6 @@ import { expect, test, type Page } from '@playwright/test'
 
 import { createAuthSession, mockWorkbenchLandingApis } from '../utils/workbenchEntryMocks'
 
-const BASE_URL = process.env.E2E_BASE_URL || ''
-
 const createStatus = (overrides: Record<string, unknown> = {}) => ({
   auth_state: 'unauthenticated',
   remote_user_id: null,
@@ -158,7 +156,7 @@ test.describe('Auth shell pages', () => {
       })
     })
 
-    await page.goto(`${BASE_URL}/#/login`)
+    await page.goto(`/#/login`)
     await expect(page.getByTestId('auth-login-page')).toBeVisible()
 
     await page.locator('input#username').fill('alice')
@@ -172,7 +170,7 @@ test.describe('Auth shell pages', () => {
   for (const variant of HARD_STOP_VARIANTS) {
     test(`renders ${variant} shell with fixed copy and single CTA`, async ({ page }) => {
       await mockStatusShell(page, variant)
-      await page.goto(`${BASE_URL}${STATUS_EXPECTATIONS[variant].path}`)
+      await page.goto(`${STATUS_EXPECTATIONS[variant].path}`)
 
       await expect(page.getByTestId(`auth-status-${variant}`)).toBeVisible()
       await expect(page.getByTestId('auth-status-primary-alert')).toContainText(STATUS_EXPECTATIONS[variant].title)
@@ -194,7 +192,7 @@ test.describe('Auth shell pages', () => {
 
   test('renders grace shell with dual CTA and folded diagnostics', async ({ page }) => {
     await mockStatusShell(page, 'grace')
-    await page.goto(`${BASE_URL}${STATUS_EXPECTATIONS.grace.path}`)
+    await page.goto(`${STATUS_EXPECTATIONS.grace.path}`)
 
     await expect(page.getByTestId('auth-status-grace')).toBeVisible()
     await expect(page.getByTestId('auth-status-primary-alert')).toContainText(STATUS_EXPECTATIONS.grace.title)
@@ -247,7 +245,7 @@ test.describe('Auth shell pages', () => {
       })
     })
 
-    await page.goto(`${BASE_URL}${STATUS_EXPECTATIONS.revoked.path}`)
+    await page.goto(`${STATUS_EXPECTATIONS.revoked.path}`)
     await expect(page.getByText('授权状态暂时无法刷新')).toBeVisible()
     await expect(page.getByRole('button', { name: '重试' })).toHaveCount(0)
     await expect(page.getByTestId('auth-status-actions').getByRole('button')).toHaveCount(1)

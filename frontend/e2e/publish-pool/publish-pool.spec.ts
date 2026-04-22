@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test'
 
 import {
-  BASE_URL,
   createCreativeReviewState,
   mockCreativeReviewApis,
 } from '../utils/creativeReviewMocks'
@@ -34,7 +33,7 @@ test.describe('Phase C publish pool visibility', () => {
       ],
     })
 
-    await page.goto(`${BASE_URL}/#/creative/workbench`)
+    await page.goto(`/#/creative/workbench`)
 
     await page.getByTestId('creative-workbench-open-diagnostics').click()
     await expect(page.getByTestId('creative-workbench-effective-mode')).toContainText('Pool')

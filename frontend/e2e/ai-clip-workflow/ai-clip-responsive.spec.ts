@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test'
 
 import {
-  BASE_URL,
   createCreativeReviewState,
   mockCreativeReviewApis,
 } from '../utils/creativeReviewMocks'
@@ -17,10 +16,10 @@ test.describe('AIClip and shell responsive baseline', () => {
     await mockWorkbenchLandingApis(page)
     await mockDashboardRuntimeApis(page)
 
-    await page.goto(`${BASE_URL}/#/`)
+    await page.goto(`/#/`)
     await page.waitForURL('**/#/creative/workbench')
 
-    await page.goto(`${BASE_URL}/#/dashboard`)
+    await page.goto(`/#/dashboard`)
     await page.waitForURL('**/#/dashboard')
 
     await expect(page.getByTestId('dashboard-primary-cta')).toBeVisible()
@@ -42,7 +41,7 @@ test.describe('AIClip and shell responsive baseline', () => {
       })
     })
 
-    await page.goto(`${BASE_URL}/#/creative/101`)
+    await page.goto(`/#/creative/101`)
     await page.getByTestId('creative-open-ai-clip').click()
 
     await expect(page.getByTestId('creative-ai-clip-drawer')).toBeVisible()
@@ -58,7 +57,7 @@ test.describe('AIClip and shell responsive baseline', () => {
   test('review drawer remains operable on narrow screens', async ({ page }) => {
     await mockCreativeReviewApis(page, createCreativeReviewState())
 
-    await page.goto(`${BASE_URL}/#/creative/101`)
+    await page.goto(`/#/creative/101`)
     await page.getByTestId('creative-open-review').click()
 
     await expect(page.getByTestId('creative-check-drawer')).toBeVisible()

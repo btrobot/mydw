@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test'
 
 import {
-  BASE_URL,
   createCreativeReviewState,
   mockCreativeReviewApis,
 } from '../utils/creativeReviewMocks'
@@ -74,7 +73,7 @@ test.describe('Phase C cutover diagnostics', () => {
       },
     })
 
-    await page.goto(`${BASE_URL}/#/creative/101`)
+    await page.goto(`/#/creative/101`)
 
     await expect(page.locator('body')).toContainText('publish pipeline timeout')
 

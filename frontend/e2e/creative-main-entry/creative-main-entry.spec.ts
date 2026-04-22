@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test'
 
 import {
-  BASE_URL,
   createCreativeReviewState,
   mockCreativeReviewApis,
 } from '../utils/creativeReviewMocks'
@@ -15,7 +14,7 @@ test.describe('Creative main entry cutover', () => {
     await mockCreativeReviewApis(page, createCreativeReviewState())
     await mockDashboardRuntimeApis(page)
 
-    await page.goto(`${BASE_URL}/#/`)
+    await page.goto(`/#/`)
     await page.waitForURL('**/#/creative/workbench')
     await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
 
@@ -28,7 +27,7 @@ test.describe('Creative main entry cutover', () => {
     await mockWorkbenchLandingApis(page, { authState: 'authenticated_grace' })
     await mockDashboardRuntimeApis(page)
 
-    await page.goto(`${BASE_URL}/#/login`)
+    await page.goto(`/#/login`)
     await page.waitForURL('**/#/creative/workbench')
     await expect(page.getByTestId('auth-grace-banner')).toBeVisible()
     await expect(page.getByTestId('auth-grace-banner')).toContainText('当前处于宽限模式')
@@ -36,7 +35,7 @@ test.describe('Creative main entry cutover', () => {
     await expect(page.getByTestId('auth-session-status-tag')).toHaveText('宽限模式')
     await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
 
-    await page.goto(`${BASE_URL}/#/dashboard`)
+    await page.goto(`/#/dashboard`)
     await page.waitForURL('**/#/dashboard')
     await expect(page.getByTestId('auth-grace-banner')).toBeVisible()
     await expect(page.getByTestId('auth-grace-banner')).toContainText('当前处于宽限模式')

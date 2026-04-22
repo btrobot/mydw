@@ -1,7 +1,5 @@
 import { expect, test } from '@playwright/test'
 
-const BASE_URL = process.env.E2E_BASE_URL || ''
-
 test.describe('Auth status live-state feedback', () => {
   test('shows an explicit live error when shell status refresh fails', async ({ page }) => {
     await page.route('**/api/auth/session', async (route) => {
@@ -36,7 +34,7 @@ test.describe('Auth status live-state feedback', () => {
       })
     })
 
-    await page.goto(`${BASE_URL}/#/auth/revoked`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`/#/auth/revoked`, { waitUntil: 'domcontentloaded' })
 
     await expect(page.getByTestId('auth-status-primary-alert')).toBeVisible()
     await expect(page.getByTestId('auth-status-live-error')).toBeVisible()

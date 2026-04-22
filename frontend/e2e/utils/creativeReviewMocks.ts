@@ -1,7 +1,5 @@
 import type { Page, Route } from '@playwright/test'
 
-export const BASE_URL = process.env.E2E_BASE_URL || ''
-
 type ReviewConclusion = 'APPROVED' | 'REWORK_REQUIRED' | 'REJECTED'
 type PublishPoolStatus = 'active' | 'invalidated'
 

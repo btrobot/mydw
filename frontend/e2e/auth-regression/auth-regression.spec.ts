@@ -2,8 +2,6 @@ import { expect, test } from '@playwright/test'
 
 import { mockWorkbenchLandingApis } from '../utils/workbenchEntryMocks'
 
-const BASE_URL = process.env.E2E_BASE_URL || ''
-const ROOT_URL = BASE_URL || '/'
 const BOOTSTRAP_WARNING = '暂时无法完成登录准备'
 const BOOTSTRAP_RETRY_LABEL = '重新检查'
 
@@ -11,7 +9,7 @@ test.describe('Auth regression and polish', () => {
   test('redirects authenticated users away from login and shows auth session header', async ({ page }) => {
     await mockWorkbenchLandingApis(page)
 
-    await page.goto(`${BASE_URL}/#/login`)
+    await page.goto(`/#/login`)
     await page.waitForURL('**/#/creative/workbench')
     await expect(page.getByTestId('auth-session-header')).toBeVisible()
     await expect(page.getByTestId('auth-session-status-tag')).toHaveText('已登录')
@@ -58,7 +56,7 @@ test.describe('Auth regression and polish', () => {
       })
     })
 
-    await page.goto(`${BASE_URL}/#/dashboard`)
+    await page.goto(`/#/dashboard`)
     await expect(page.getByTestId('auth-session-header')).toBeVisible()
     await page.getByTestId('auth-logout-button').click()
     await page.waitForURL('**/#/login')
@@ -104,7 +102,7 @@ test.describe('Auth regression and polish', () => {
       })
     })
 
-    await page.goto(`${BASE_URL}/#/auth/revoked`)
+    await page.goto(`/#/auth/revoked`)
     await expect(page.getByTestId('auth-status-revoked')).toBeVisible()
     await page.getByTestId('auth-status-signout-button').click()
     await page.waitForURL('**/#/login')
@@ -141,7 +139,7 @@ test.describe('Auth regression and polish', () => {
       })
     })
 
-    await page.goto(ROOT_URL)
+    await page.goto('/')
     await expect(page.locator('body')).toContainText(BOOTSTRAP_WARNING)
     await page.getByRole('button', { name: BOOTSTRAP_RETRY_LABEL }).click()
     await page.waitForFunction(() => document.documentElement.dataset.authBootstrapStatus === 'ready')

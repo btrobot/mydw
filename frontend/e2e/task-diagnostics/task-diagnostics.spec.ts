@@ -1,7 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
 import {
-  BASE_URL,
   createCreativeReviewState,
   mockCreativeReviewApis,
 } from '../utils/creativeReviewMocks'
@@ -104,12 +103,12 @@ test.describe('Task diagnostics positioning', () => {
   })
 
   test('uses workbench as the default entry while keeping dashboard reachable', async ({ page }) => {
-    await page.goto(`${BASE_URL}/#/`)
+    await page.goto(`/#/`)
 
     await page.waitForURL(/#\/creative\/workbench/)
     await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
 
-    await page.goto(`${BASE_URL}/#/dashboard`)
+    await page.goto(`/#/dashboard`)
     await expect(page.getByTestId('dashboard-primary-cta')).toBeVisible()
 
     await page.getByTestId('dashboard-open-workbench').click()
@@ -120,7 +119,7 @@ test.describe('Task diagnostics positioning', () => {
   test('treats task list/detail as diagnostics surfaces with return links into creative flows', async ({ page }) => {
     const taskRow = page.locator('tbody tr').filter({ hasText: 'Phase E task diagnostic' })
 
-    await page.goto(`${BASE_URL}/#/task/list?status=draft&task_kind=publish&page=1&pageSize=50`)
+    await page.goto(`/#/task/list?status=draft&task_kind=publish&page=1&pageSize=50`)
 
     await expect(page.getByTestId('task-list-semantics')).toBeVisible()
     await expect(page.getByRole('cell', { name: 'Phase E task diagnostic' })).toBeVisible()
@@ -164,7 +163,7 @@ test.describe('Task diagnostics positioning', () => {
       })
     })
 
-    await page.goto(`${BASE_URL}/#/dashboard`)
+    await page.goto(`/#/dashboard`)
 
     await expect(page.getByTestId('dashboard-publish-status-error')).toBeVisible()
     await expect(page.getByTestId('dashboard-publish-status-error').locator('button')).toBeVisible()

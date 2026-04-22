@@ -1,7 +1,5 @@
 import { expect, test } from '@playwright/test'
 
-const BASE_URL = process.env.E2E_BASE_URL || ''
-
 test.describe('Auth transport sync', () => {
   test('syncs machine-session state from local backend when a protected dashboard request returns 403', async ({ page }) => {
     let authSessionCalls = 0
@@ -96,7 +94,7 @@ test.describe('Auth transport sync', () => {
       })
     })
 
-    await page.goto(`${BASE_URL}/#/dashboard`)
+    await page.goto(`/#/dashboard`)
     await page.waitForURL('**/#/auth/revoked')
     await expect(page.getByTestId('auth-status-revoked')).toBeVisible()
   })
@@ -176,7 +174,7 @@ test.describe('Auth transport sync', () => {
     createdAccountNumericId = (await createResp.json()).id
 
     try {
-      await page.goto(`${BASE_URL}/#/account`)
+      await page.goto(`/#/account`)
       await expect(page.locator('body')).toContainText('账号管理')
       await expect(page.locator('body')).toContainText(accountId)
       const row = page.locator('tr').filter({ hasText: accountId })

@@ -2,8 +2,6 @@ import { expect, test, type Page } from '@playwright/test'
 
 import { createAuthSession } from '../utils/workbenchEntryMocks'
 
-const BASE_URL = process.env.E2E_BASE_URL || ''
-
 interface DashboardMockOptions {
   publishStatusCode?: number
   taskStatsStatusCode?: number
@@ -104,7 +102,7 @@ async function mockDashboardShell(page: Page, options: DashboardMockOptions = {}
 test.describe('Dashboard state contract', () => {
   test('keeps dashboard as diagnostics surface while showing explicit success and empty states', async ({ page }) => {
     await mockDashboardShell(page)
-    await page.goto(`${BASE_URL}/#/dashboard`)
+    await page.goto(`/#/dashboard`)
 
     await expect(page.getByTestId('dashboard-primary-cta')).toBeVisible()
     await expect(page.getByText('运行与发布总览')).toBeVisible()
@@ -125,7 +123,7 @@ test.describe('Dashboard state contract', () => {
       systemStatsStatusCode: 500,
       logsStatusCode: 500,
     })
-    await page.goto(`${BASE_URL}/#/dashboard`)
+    await page.goto(`/#/dashboard`)
 
     await expect(page.getByTestId('dashboard-task-stats-error')).toBeVisible()
     await expect(page.getByTestId('dashboard-publish-status-error')).toBeVisible()

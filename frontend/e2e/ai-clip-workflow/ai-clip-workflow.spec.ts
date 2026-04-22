@@ -1,7 +1,6 @@
 ﻿import { expect, test } from '@playwright/test'
 
 import {
-  BASE_URL,
   createCreativeReviewState,
   mockCreativeReviewApis,
 } from '../utils/creativeReviewMocks'
@@ -90,7 +89,7 @@ test.describe('Creative AIClip workflow', () => {
       })
     })
 
-    await page.goto(`${BASE_URL}/#/creative/101`)
+    await page.goto(`/#/creative/101`)
 
     await page.getByTestId('creative-open-ai-clip').click()
     await expect(page.getByTestId('creative-ai-clip-drawer')).toBeVisible()
@@ -110,17 +109,20 @@ test.describe('Creative AIClip workflow', () => {
   test('workbench entry can deep-link directly into the AIClip drawer', async ({ page }) => {
     await mockCreativeReviewApis(page, createCreativeReviewState())
 
-    await page.goto(`${BASE_URL}/#/creative/workbench`)
+    await page.goto(`/#/creative/workbench`)
     await page.getByTestId('creative-workbench-ai-clip-101').click()
 
-    await page.waitForURL('**/#/creative/101?tool=ai-clip')
+    await expect.poll(() => {
+      const [path, query = ''] = new URL(page.url()).hash.split('?')
+      return `${path}|${new URLSearchParams(query).get('tool') ?? ''}`
+    }).toBe('#/creative/101|ai-clip')
     await expect(page.getByTestId('creative-ai-clip-drawer')).toBeVisible()
   })
 
   test('standalone tool route remains available', async ({ page }) => {
     await mockCreativeReviewApis(page, createCreativeReviewState())
 
-    await page.goto(`${BASE_URL}/#/ai-clip`)
+    await page.goto(`/#/ai-clip`)
 
     await expect(page.getByTestId('ai-clip-panel')).toBeVisible()
   })

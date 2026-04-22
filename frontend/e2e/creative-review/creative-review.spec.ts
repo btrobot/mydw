@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { BASE_URL, mockCreativeReviewApis } from '../utils/creativeReviewMocks'
+import { mockCreativeReviewApis } from '../utils/creativeReviewMocks'
 
 test.describe('Creative review drawer', () => {
   test.beforeEach(async ({ page }) => {
@@ -8,7 +8,7 @@ test.describe('Creative review drawer', () => {
   })
 
   test('supports approve flow on current version', async ({ page }) => {
-    await page.goto(`${BASE_URL}/#/creative/101`)
+    await page.goto(`/#/creative/101`)
 
     await expect(page.getByTestId('creative-open-advanced-diagnostics')).toBeVisible()
     await expect(page.getByTestId('creative-publish-diagnostics')).toHaveCount(0)
@@ -26,7 +26,7 @@ test.describe('Creative review drawer', () => {
   })
 
   test('supports rework and reject flows', async ({ page }) => {
-    await page.goto(`${BASE_URL}/#/creative/101`)
+    await page.goto(`/#/creative/101`)
 
     await page.getByTestId('creative-open-review').click()
     let drawer = page.getByTestId('creative-check-drawer')

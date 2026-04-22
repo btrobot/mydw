@@ -6,8 +6,6 @@ import {
   mockWorkbenchLandingApis,
 } from '../utils/workbenchEntryMocks'
 
-const BASE_URL = process.env.E2E_BASE_URL || ''
-
 const createLockedSession = (authState: 'revoked' | 'device_mismatch' | 'expired') => ({
   auth_state: authState,
   remote_user_id: 'u_123',
@@ -83,7 +81,7 @@ test.describe('Auth route gating', () => {
       })
     })
 
-    await page.goto(`${BASE_URL}/#/account`)
+    await page.goto(`/#/account`)
     await page.waitForURL('**/#/login')
     await expect(page.getByTestId('auth-login-page')).toBeVisible()
   })
@@ -91,7 +89,7 @@ test.describe('Auth route gating', () => {
   test('allows active sessions to mount protected routes', async ({ page }) => {
     await mockProtectedShellApis(page, 'authenticated_active')
 
-    await page.goto(`${BASE_URL}/#/account`)
+    await page.goto(`/#/account`)
     await page.waitForURL('**/#/account')
     await expect(page.getByTestId('auth-session-header')).toBeVisible()
   })
@@ -99,7 +97,7 @@ test.describe('Auth route gating', () => {
   test('redirects grace sessions away from non-shell routes', async ({ page }) => {
     await mockProtectedShellApis(page, 'authenticated_grace')
 
-    await page.goto(`${BASE_URL}/#/account`)
+    await page.goto(`/#/account`)
     await page.waitForURL('**/#/auth/grace')
     await expect(page.getByTestId('auth-status-grace')).toBeVisible()
   })
@@ -107,7 +105,7 @@ test.describe('Auth route gating', () => {
   test('redirects grace sessions from login to the workbench shell', async ({ page }) => {
     await mockProtectedShellApis(page, 'authenticated_grace')
 
-    await page.goto(`${BASE_URL}/#/login`)
+    await page.goto(`/#/login`)
     await page.waitForURL('**/#/creative/workbench')
     await expect(page.getByTestId('auth-grace-banner')).toBeVisible()
     await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
@@ -116,7 +114,7 @@ test.describe('Auth route gating', () => {
   test('allows grace sessions to mount the restricted workbench shell', async ({ page }) => {
     await mockProtectedShellApis(page, 'authenticated_grace')
 
-    await page.goto(`${BASE_URL}/#/creative/workbench`)
+    await page.goto(`/#/creative/workbench`)
     await page.waitForURL('**/#/creative/workbench')
     await expect(page.getByTestId('auth-grace-banner')).toBeVisible()
     await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
@@ -125,7 +123,7 @@ test.describe('Auth route gating', () => {
   test('allows grace sessions to keep using the runtime dashboard manually', async ({ page }) => {
     await mockProtectedShellApis(page, 'authenticated_grace')
 
-    await page.goto(`${BASE_URL}/#/dashboard`)
+    await page.goto(`/#/dashboard`)
     await page.waitForURL('**/#/dashboard')
     await expect(page.getByTestId('auth-grace-banner')).toBeVisible()
     await expect(page.getByTestId('dashboard-primary-cta')).toBeVisible()
@@ -134,7 +132,7 @@ test.describe('Auth route gating', () => {
   test('redirects revoked sessions to revoked shell', async ({ page }) => {
     await mockLockedShellApis(page, 'revoked')
 
-    await page.goto(`${BASE_URL}/#/dashboard`)
+    await page.goto(`/#/dashboard`)
     await page.waitForURL('**/#/auth/revoked')
     await expect(page.getByTestId('auth-status-revoked')).toBeVisible()
   })
@@ -142,7 +140,7 @@ test.describe('Auth route gating', () => {
   test('redirects device mismatch sessions to device mismatch shell', async ({ page }) => {
     await mockLockedShellApis(page, 'device_mismatch')
 
-    await page.goto(`${BASE_URL}/#/dashboard`)
+    await page.goto(`/#/dashboard`)
     await page.waitForURL('**/#/auth/device-mismatch')
     await expect(page.getByTestId('auth-status-device_mismatch')).toBeVisible()
   })
@@ -150,7 +148,7 @@ test.describe('Auth route gating', () => {
   test('redirects expired sessions to expired shell', async ({ page }) => {
     await mockLockedShellApis(page, 'expired')
 
-    await page.goto(`${BASE_URL}/#/dashboard`)
+    await page.goto(`/#/dashboard`)
     await page.waitForURL('**/#/auth/expired')
     await expect(page.getByTestId('auth-status-expired')).toBeVisible()
   })

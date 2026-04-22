@@ -2,7 +2,6 @@ import { expect, test, type Page } from '@playwright/test'
 
 import { mockWorkbenchLandingApis } from '../utils/workbenchEntryMocks'
 
-const BASE_URL = process.env.E2E_BASE_URL || ''
 const DEVICE_ID_STORAGE_KEY = 'mydw.auth.device_id'
 
 const createSession = (overrides: Record<string, unknown> = {}) => ({
@@ -56,7 +55,7 @@ async function mockAuthStatus(page: Page, status = createStatus()) {
 }
 
 async function gotoLoginPage(page: Page) {
-  await page.goto(`${BASE_URL}/#/login`, { waitUntil: 'domcontentloaded' })
+  await page.goto(`/#/login`, { waitUntil: 'domcontentloaded' })
   await expect(page.getByTestId('auth-login-page')).toBeVisible()
 }
 

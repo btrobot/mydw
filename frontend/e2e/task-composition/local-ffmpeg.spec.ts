@@ -1,6 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import { BASE_URL } from '../utils/creativeReviewMocks'
 
 async function mockAuthenticatedShell(page: Page) {
   await page.route('**/api/auth/session', async (route) => {
@@ -306,7 +305,7 @@ test.describe('local_ffmpeg frontend alignment', () => {
   })
 
   test('shows accurate local_ffmpeg V1 guidance in profile management', async ({ page }) => {
-    await page.goto(`${BASE_URL}/#/profile-management`)
+    await page.goto(`/#/profile-management`)
 
     await page.getByRole('button', { name: '新建合成配置' }).click()
     await page.locator('.ant-select').first().click()
@@ -318,7 +317,7 @@ test.describe('local_ffmpeg frontend alignment', () => {
   })
 
   test('allows one video plus one audio in local_ffmpeg mode', async ({ page }) => {
-    await page.goto(`${BASE_URL}/#/task/create`)
+    await page.goto(`/#/task/create`)
 
     await expect(page.getByTestId('task-create-mode-label')).toContainText('本地 FFmpeg 合成')
     await expect(page.getByTestId('task-create-mode-guidance')).toContainText('只支持 1 个视频 + 可选 1 个音频')
@@ -330,7 +329,7 @@ test.describe('local_ffmpeg frontend alignment', () => {
   })
 
   test('front-loads multi-video and multi-audio violations for local_ffmpeg', async ({ page }) => {
-    await page.goto(`${BASE_URL}/#/task/create`)
+    await page.goto(`/#/task/create`)
 
     await addMaterial(page, '视频', [0, 1])
 
@@ -348,7 +347,7 @@ test.describe('local_ffmpeg frontend alignment', () => {
   })
 
   test('shows workflow type, job status and final output in task detail', async ({ page }) => {
-    await page.goto(`${BASE_URL}/#/task/931`)
+    await page.goto(`/#/task/931`)
 
     const summary = page.getByTestId('task-detail-composition-summary')
     await expect(summary).toContainText('local_ffmpeg')
@@ -358,7 +357,7 @@ test.describe('local_ffmpeg frontend alignment', () => {
   })
 
   test('guides the next step after task creation and can submit created drafts from task list', async ({ page }) => {
-    await page.goto(`${BASE_URL}/#/task/create`)
+    await page.goto(`/#/task/create`)
 
     await addMaterial(page, '视频', [0])
     await addMaterial(page, '音频', [0])
@@ -376,7 +375,7 @@ test.describe('local_ffmpeg frontend alignment', () => {
   })
 
   test('supports one-click composition submission directly from task list row', async ({ page }) => {
-    await page.goto(`${BASE_URL}/#/task/create`)
+    await page.goto(`/#/task/create`)
     await addMaterial(page, '视频', [0])
     await page.getByTestId('task-create-submit').click()
     await page.waitForURL('**/#/task/list')

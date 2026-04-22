@@ -1,7 +1,5 @@
 import { expect, test } from '@playwright/test'
 
-const BASE_URL = process.env.E2E_BASE_URL || ''
-const ROOT_URL = BASE_URL || '/'
 const BOOTSTRAP_WARNING_TITLE = '暂时无法完成登录准备'
 const BOOTSTRAP_WARNING_DESCRIPTION = '你仍可继续登录；如果问题持续，请稍后重新检查。'
 
@@ -101,7 +99,7 @@ test.describe('Auth error UX', () => {
       })
     })
 
-    await page.goto(`${BASE_URL}/#/login`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`/#/login`, { waitUntil: 'domcontentloaded' })
     await page.locator('input#username').fill('alice')
     await page.locator('input#password').fill('wrong-password')
     await page.locator('button[type="submit"]').click()
@@ -140,7 +138,7 @@ test.describe('Auth error UX', () => {
       })
     })
 
-    await page.goto(`${BASE_URL}/#/login`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`/#/login`, { waitUntil: 'domcontentloaded' })
 
     await expect(page.getByTestId('auth-login-status-message')).toBeVisible()
     await expect(page.getByTestId('auth-login-status-message')).toContainText('授权服务暂不可用')
@@ -161,7 +159,7 @@ test.describe('Auth error UX', () => {
       })
     })
 
-    await page.goto(ROOT_URL, { waitUntil: 'domcontentloaded' })
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('auth-bootstrap-error')).toBeVisible()
     await expect(page.locator('body')).toContainText(BOOTSTRAP_WARNING_TITLE)
     await expect(page.locator('body')).toContainText(BOOTSTRAP_WARNING_DESCRIPTION)
@@ -171,7 +169,7 @@ test.describe('Auth error UX', () => {
 
   test('shows a re-login prompt on the revoked auth shell', async ({ page }) => {
     await mockLockedShell(page, 'revoked')
-    await page.goto(`${BASE_URL}/#/auth/revoked`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`/#/auth/revoked`, { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('auth-status-revoked')).toBeVisible()
     await expect(page.getByTestId('auth-status-primary-alert')).toContainText('访问权限已失效')
     await expect(page.getByTestId('auth-status-live-revoked')).toHaveCount(0)
@@ -182,14 +180,14 @@ test.describe('Auth error UX', () => {
 
   test('shows fixed copy on device mismatch auth shell', async ({ page }) => {
     await mockLockedShell(page, 'device_mismatch')
-    await page.goto(`${BASE_URL}/#/auth/device-mismatch`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`/#/auth/device-mismatch`, { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('auth-status-primary-alert')).toContainText('当前设备未通过校验')
     await expect(page.getByTestId('auth-status-actions').getByRole('button')).toHaveCount(1)
   })
 
   test('shows fixed copy on expired auth shell', async ({ page }) => {
     await mockLockedShell(page, 'expired')
-    await page.goto(`${BASE_URL}/#/auth/expired`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`/#/auth/expired`, { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('auth-status-primary-alert')).toContainText('登录已过期')
     await expect(page.getByTestId('auth-status-actions').getByRole('button')).toHaveCount(1)
   })
@@ -227,7 +225,7 @@ test.describe('Auth error UX', () => {
       })
     })
 
-    await page.goto(`${BASE_URL}/#/auth/grace`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`/#/auth/grace`, { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('auth-status-primary-alert')).toContainText('宽限模式')
     await expect(page.getByTestId('auth-status-live-grace')).toHaveCount(0)
     await expect(page.getByTestId('auth-status-actions').getByRole('button')).toHaveCount(2)

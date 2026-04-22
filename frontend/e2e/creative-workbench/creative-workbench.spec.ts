@@ -1,7 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
 
-const TEST_BASE_URL = process.env.E2E_BASE_URL || 'http://127.0.0.1:4174'
-
 const creativeListPayload = {
   total: 4,
   items: [
@@ -296,7 +294,7 @@ test.describe('Creative workbench baseline', () => {
   })
 
   test('shows the table-first workbench with business-first actions', async ({ page }) => {
-    await page.goto(`${TEST_BASE_URL}/#/creative/workbench`)
+    await page.goto(`/#/creative/workbench`)
 
     await expect(page.locator('body')).toContainText('集中处理作品创建、补料、审核与 AIClip 主流程')
     await expect(page.locator('body')).not.toContainText('兼容入口：新建任务')
@@ -316,7 +314,7 @@ test.describe('Creative workbench baseline', () => {
   })
 
   test('opens diagnostics through an explicit secondary entry', async ({ page }) => {
-    await page.goto(`${TEST_BASE_URL}/#/creative/workbench`)
+    await page.goto(`/#/creative/workbench`)
 
     await page.getByTestId('creative-workbench-open-diagnostics').click()
 
@@ -331,7 +329,7 @@ test.describe('Creative workbench baseline', () => {
   })
 
   test('shows an explicit window-based guardrail for workbench manageability', async ({ page }) => {
-    await page.goto(`${TEST_BASE_URL}/#/creative/workbench`)
+    await page.goto(`/#/creative/workbench`)
 
     await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
     const guardrail = page.getByTestId('creative-workbench-window-guardrail')
@@ -345,7 +343,7 @@ test.describe('Creative workbench baseline', () => {
   })
 
   test('supports search and filtering before entering detail', async ({ page }) => {
-    await page.goto(`${TEST_BASE_URL}/#/creative/workbench`)
+    await page.goto(`/#/creative/workbench`)
 
     await page.getByTestId('creative-workbench-search-input').fill('Spring')
     await page.getByRole('button', { name: '应用筛选' }).click()
@@ -373,7 +371,7 @@ test.describe('Creative workbench baseline', () => {
   })
 
   test('persists applied workbench state after refresh', async ({ page }) => {
-    await page.goto(`${TEST_BASE_URL}/#/creative/workbench`)
+    await page.goto(`/#/creative/workbench`)
 
     await page.getByTestId('creative-workbench-search-input').fill('Spring')
     await chooseAntSelectOption(page, 'creative-workbench-status-filter', '待审核')
@@ -398,7 +396,7 @@ test.describe('Creative workbench baseline', () => {
 
   test('returns to the filtered workbench state after entering detail', async ({ page }) => {
     await page.goto(
-      `${TEST_BASE_URL}/#/creative/workbench?keyword=Spring&status=WAITING_REVIEW&poolState=in_pool&sort=updated_desc&page=1&pageSize=10`,
+      `/#/creative/workbench?keyword=Spring&status=WAITING_REVIEW&poolState=in_pool&sort=updated_desc&page=1&pageSize=10`,
     )
 
     await expect(page.locator('body')).toContainText('Spring campaign')
@@ -415,7 +413,7 @@ test.describe('Creative workbench baseline', () => {
   })
 
   test('supports preset views for high-frequency queues', async ({ page }) => {
-    await page.goto(`${TEST_BASE_URL}/#/creative/workbench`)
+    await page.goto(`/#/creative/workbench`)
 
     await page.getByTestId('creative-workbench-preset-recent_failures').click()
 
@@ -427,7 +425,7 @@ test.describe('Creative workbench baseline', () => {
   })
 
   test('supports explicit workbench sort views', async ({ page }) => {
-    await page.goto(`${TEST_BASE_URL}/#/creative/workbench`)
+    await page.goto(`/#/creative/workbench`)
 
     await chooseWorkbenchSort(page, '待处理优先')
 
@@ -445,7 +443,7 @@ test.describe('Creative workbench baseline', () => {
       })
     })
 
-    await page.goto(`${TEST_BASE_URL}/#/creative/workbench`)
+    await page.goto(`/#/creative/workbench`)
 
     await expect(page.getByTestId('creative-workbench-error')).toBeVisible()
     await expect(page.locator('body')).toContainText('作品列表暂时不可用')
@@ -461,7 +459,7 @@ test.describe('Creative workbench baseline', () => {
       })
     })
 
-    await page.goto(`${TEST_BASE_URL}/#/creative/101`)
+    await page.goto(`/#/creative/101`)
 
     await expect(page.getByTestId('creative-detail-error')).toBeVisible()
     await expect(page.locator('body')).toContainText('作品详情暂时无法加载')

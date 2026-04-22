@@ -1,7 +1,5 @@
 import { expect, test } from '@playwright/test'
 
-const BASE_URL = process.env.E2E_BASE_URL || ''
-const ROOT_URL = BASE_URL || '/'
 
 test.describe('Auth bootstrap', () => {
   test('shows user-facing bootstrap loading state before auth session resolves', async ({ page }) => {
@@ -19,7 +17,7 @@ test.describe('Auth bootstrap', () => {
       })
     })
 
-    await page.goto(ROOT_URL)
+    await page.goto('/')
 
     await expect(page.getByTestId('auth-bootstrap-loading')).toBeVisible()
     await expect(page.getByTestId('auth-bootstrap-loading-copy')).toContainText('正在准备登录环境')
@@ -43,7 +41,7 @@ test.describe('Auth bootstrap', () => {
       })
     })
 
-    await page.goto(ROOT_URL)
+    await page.goto('/')
     await page.waitForFunction(() => document.documentElement.dataset.authBootstrapStatus === 'ready')
 
     const authState = await page.evaluate(() => document.documentElement.dataset.authState)
@@ -70,7 +68,7 @@ test.describe('Auth bootstrap', () => {
       })
     })
 
-    await page.goto(ROOT_URL)
+    await page.goto('/')
     await page.waitForFunction(() => document.documentElement.dataset.authBootstrapStatus === 'ready')
 
     const authState = await page.evaluate(() => document.documentElement.dataset.authState)
@@ -91,7 +89,7 @@ test.describe('Auth bootstrap', () => {
       })
     })
 
-    await page.goto(ROOT_URL)
+    await page.goto('/')
     await page.waitForFunction(() => document.documentElement.dataset.authBootstrapStatus === 'error')
 
     await expect(page.locator('body')).toContainText('暂时无法完成登录准备')
