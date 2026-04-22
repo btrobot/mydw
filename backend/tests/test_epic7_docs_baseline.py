@@ -80,6 +80,7 @@ def test_docs_readme_exists_and_separates_current_docs_from_runtime_artifacts() 
     assert "docs/governance/verification-baseline.md" in docs_index
     assert "docs/current/next-phase-kickoff.md" in docs_index
     assert "docs/governance/inventory/inventory-ledger.md" in docs_index
+    assert "docs/governance/inventory/current-project-mvp-closeout-checklist.md" in docs_index
     assert "docs/governance/inventory/post-mvp-doc-governance-closeout.md" in docs_index
     assert "docs/governance/policies/runtime-local-artifact-policy.md" in docs_index
     assert "docs/governance/policies/omx-plan-retention.md" in docs_index

@@ -181,6 +181,10 @@ Step 6 阶段完成后再次收口，进入下一轮
 
 - `docs/governance/templates/phase-closeout-template.md`
 
+当前项目可直接配套使用：
+
+- `docs/governance/inventory/current-project-mvp-closeout-checklist.md`
+
 ### 4.3 这一步的边界
 
 **这一步不是全局补文档。**
@@ -199,6 +203,7 @@ Step 6 阶段完成后再次收口，进入下一轮
 - `docs/governance/phase-transition-checklist.md`
 - `docs/current/architecture.md`
 - `docs/current/runtime-truth.md`
+- `docs/governance/inventory/current-project-mvp-closeout-checklist.md`
 
 ---
 

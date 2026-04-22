@@ -73,6 +73,7 @@
 - `docs/domains/creative/progressive-rebuild-final-summary.md`（Creative 渐进式重建 A~D 阶段收口总结）
 - `docs/domains/creative/workbench-ui-issues.md`（当前前端界面问题分析与改进方向）
 - `docs/governance/inventory/root-doc-triage.md`（根层未分类文档四分法去向收口）
+- `docs/governance/inventory/current-project-mvp-closeout-checklist.md`（把当前项目 MVP 后收口项拆成逐项执行清单）
 - `docs/governance/inventory/post-mvp-doc-governance-closeout.md`（本轮文档治理工作的正式收口件）
 - `docs/governance/inventory/`（台账 / 分诊 / parity / stale / version inventories）
 - `docs/governance/policies/`（generated artifact、runtime boundary、plan retention 等规则）

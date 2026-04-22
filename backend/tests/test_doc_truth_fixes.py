@@ -115,6 +115,7 @@ def test_governance_readme_classifies_core_policies_inventory_standards_and_temp
     assert "docs/governance/policies/generated-artifact-policy.md" in governance_index
     assert "docs/governance/policies/manual-http-exceptions.md" in governance_index
     assert "docs/governance/inventory/inventory-ledger.md" in governance_index
+    assert "docs/governance/inventory/current-project-mvp-closeout-checklist.md" in governance_index
     assert "docs/governance/inventory/post-mvp-doc-governance-closeout.md" in governance_index
     assert "docs/governance/standards/documentation-strategy.md" in governance_index
     assert "docs/governance/standards/docs-directory-placement-rules.md" in governance_index
@@ -160,6 +161,28 @@ def test_formal_doc_governance_closeout_artifact_is_indexed_and_summarizes_curre
     assert "docs/current/next-phase-kickoff.md" in closeout
     assert "model 讲为什么，sequence 讲顺序，checklist 讲门槛，kickoff 讲起点" in closeout
     assert "不是新的长期规范，而是本轮治理工作的" in closeout
+
+
+def test_current_project_mvp_closeout_checklist_is_indexed_and_covers_six_closeout_areas() -> None:
+    docs_index = _read("docs/README.md")
+    governance_index = _read("docs/governance/README.md")
+    sequence = _read("docs/governance/post-mvp-closeout-sequence.md")
+    transition = _read("docs/governance/phase-transition-checklist.md")
+    checklist = _read("docs/governance/inventory/current-project-mvp-closeout-checklist.md")
+
+    assert "docs/governance/inventory/current-project-mvp-closeout-checklist.md" in docs_index
+    assert "docs/governance/inventory/current-project-mvp-closeout-checklist.md" in governance_index
+    assert "docs/governance/inventory/current-project-mvp-closeout-checklist.md" in sequence
+    assert "docs/governance/inventory/current-project-mvp-closeout-checklist.md" in transition
+    assert "实现状态收口" in checklist
+    assert "系统边界收口" in checklist
+    assert "文档体系收口" in checklist
+    assert "验证基线收口" in checklist
+    assert "Planning / 历史产物收口" in checklist
+    assert "下一阶段决策收口" in checklist
+    assert "Creative-first" in checklist
+    assert "local_ffmpeg V1" in checklist
+    assert ".omx/plans" in checklist
 
 
 def test_domains_architecture_governance_boundary_doc_is_indexed_and_explains_split() -> None:

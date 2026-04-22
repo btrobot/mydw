@@ -159,9 +159,10 @@
 2. `docs/current/architecture.md`
 3. `docs/current/runtime-truth.md`
 4. `docs/governance/verification-baseline.md`
-5. `docs/current/next-phase-kickoff.md`
-6. `docs/governance/next-phase-backlog.md`
-7. `docs/governance/policies/omx-plan-retention.md`
+5. `docs/governance/inventory/current-project-mvp-closeout-checklist.md`
+6. `docs/current/next-phase-kickoff.md`
+7. `docs/governance/next-phase-backlog.md`
+8. `docs/governance/policies/omx-plan-retention.md`
 
 ---
 
