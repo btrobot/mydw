@@ -317,6 +317,17 @@ export default function CreativeWorkbench() {
     }),
     [items, poolByCreativeId],
   )
+  const isWindowLimited = total > rows.length
+  const windowGuardrailMessage = isWindowLimited
+    ? '当前 Workbench 仍采用窗口模式，且当前总量已超过窗口上限'
+    : '当前 Workbench 仍采用窗口模式'
+  const windowGuardrailDescription = [
+    `页面最多只加载最近 ${WORKBENCH_WINDOW_SIZE} 条作品；当前的搜索、筛选、排序与 preset 视图都只对这批已加载窗口生效。`,
+    isWindowLimited
+      ? `当前总量为 ${total} 条，已超过窗口上限；不要把“当前列表里找不到”直接当成“系统里不存在”。`
+      : `当前总量为 ${total} 条，仍在窗口上限以内。`,
+    '当日常使用稳定超出该窗口，或频繁出现“找不到但其实存在”的反馈时，再进入 server-side search planning，而不是在 PR-1 内继续扩边界。',
+  ].join(' ')
 
   const workbenchPresetCounts = useMemo(
     () => ({
@@ -679,13 +690,13 @@ export default function CreativeWorkbench() {
           </Card>
         ) : (
           <>
-            {total > rows.length ? (
-              <Card>
-                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                  当前工作台已加载最近 {rows.length} 条作品，本次搜索、筛选与排序基于当前窗口数据执行；若作品规模继续扩大，后续 PR 会再接入服务端检索能力。
-                </Paragraph>
-              </Card>
-            ) : null}
+            <Alert
+              type={isWindowLimited ? 'warning' : 'info'}
+              showIcon
+              message={windowGuardrailMessage}
+              description={windowGuardrailDescription}
+              data-testid="creative-workbench-window-guardrail"
+            />
 
             <ProTable<WorkbenchTableRow, WorkbenchFormValues>
               actionRef={actionRef}

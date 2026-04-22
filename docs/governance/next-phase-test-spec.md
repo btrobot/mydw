@@ -79,6 +79,7 @@ npm run test:e2e -- `
 新增或补强的自动化测试应重点覆盖：
 
 - 搜索 / 筛选 / 排序 / 分页
+- workbench window-based guardrail 是否显式说明“当前只对已加载窗口生效”与“何时升级 server-side search planning”
 - 默认业务层是否隐藏高级诊断信息
 - error / empty / loading / success 四态
 - 关键 CTA 文案与导航命名
@@ -93,7 +94,7 @@ npm run test:e2e -- `
 
 | PR | 必须证明什么 | 最小验证 |
 | --- | --- | --- |
-| PR-1 — Workbench 可管理性收口 | 列表可定位、可筛选、可排序、可控规模 | workbench E2E + 必要手工链路 |
+| PR-1 — Workbench 可管理性收口 | 列表可定位、可筛选、可排序、可控规模，且 window-based 限制与升级条件显式化 | workbench E2E + 必要手工链路 |
 | PR-2 — 业务层 / 诊断层分层 | 默认业务视图不再承担过量诊断信息 | creative-review / publish-pool / workbench 相关 E2E |
 | PR-3 — 文案与四态统一 | CTA、文案、loading/empty/error/success 四态一致 | 相关页面 targeted E2E + 手工核对 |
 | PR-4 — 回归补强与阶段收口 | 新主线被 regression baseline 接住 | backend/contract baseline + frontend baseline + 手工链路 |

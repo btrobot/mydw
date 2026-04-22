@@ -311,6 +311,19 @@ test.describe('Creative workbench baseline', () => {
     await expect(page.getByTestId('creative-workbench-sort-select')).toBeVisible()
   })
 
+  test('shows an explicit window-based guardrail for workbench manageability', async ({ page }) => {
+    await page.goto(`${TEST_BASE_URL}/#/creative/workbench`)
+
+    const guardrail = page.getByTestId('creative-workbench-window-guardrail')
+
+    await expect(guardrail).toBeVisible()
+    await expect(guardrail).toContainText('窗口模式')
+    await expect(guardrail).toContainText('最多只加载最近 200 条作品')
+    await expect(guardrail).toContainText('搜索、筛选、排序与 preset 视图都只对这批已加载窗口生效')
+    await expect(guardrail).toContainText('找不到但其实存在')
+    await expect(guardrail).toContainText('server-side search planning')
+  })
+
   test('supports search and filtering before entering detail', async ({ page }) => {
     await page.goto(`${TEST_BASE_URL}/#/creative/workbench`)
 

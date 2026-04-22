@@ -261,6 +261,26 @@ Workbench(带状态)
 
 > 当前已覆盖 “Creative Workbench 可管理性收口 / Slice A + Slice B” 所需的上下文保持、工作台排序与高频 preset 能力，但仍未进入服务端检索和更大规模 work queue 系统设计。
 
+### 10.1 Window-based guardrail（Slice C 对齐后的 current truth）
+
+当前 Workbench 是 **window-based model**：
+
+- 页面最多加载最近 `200` 条作品
+- `keyword` / `status` / `poolState` / `preset` / `sort` / `page` 的生效范围，都只在 **已加载的这个窗口内** 成立
+- 因此“当前列表里找不到”，在边界上只说明“当前窗口不包含”，不等于“系统里不存在”
+
+这个 guardrail 的意义是：PR-1 先把日常 workbench 收成可管理的工作台，而不是在同一轮中扩展成 server-side search / full queue architecture。
+
+### 10.2 什么情况下才进入后续 search planning
+
+后续只在以下信号出现时，才应该把 server-side search 提升为新 planning：
+
+1. 日常使用已稳定超出 200-item window
+2. 频繁出现“找不到但其实存在”的使用反馈
+3. 工作台队列已经不再是“近期处理窗口”，而是需要覆盖全量工作堆积的检索平台
+
+在这些信号出现之前，PR-1 的正式 current truth 就是：**继续使用 window-based model，并把它的上限和升级条件显式写清楚。**
+
 ---
 
 ## 11. 架构含义

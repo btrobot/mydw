@@ -66,6 +66,7 @@
 
 - 常见待处理内容可快速定位
 - 不依赖手工滚列表找内容
+- window-based 上限、当前只对窗口生效的语义、何时升级 server-side search planning 显式写入 UI / docs / tests
 - 若引入了新的过滤/排序行为，需要同步更新 `docs/governance/next-phase-test-spec.md`
 
 ## PR-2 — 业务层 / 诊断层分层
