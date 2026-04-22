@@ -74,7 +74,10 @@
 当前自然的下一步是：
 
 - 进入 `PR-4：回归补强与阶段收口`
-- 用 `next-phase-pr4-regression-and-stage-closeout-plan.md` 把阶段 gate、最小修复政策与 closeout authority 锁清
+- `Slice A` 已完成门禁锁定；下一步应进入 `PR-4 Slice B`
+- 当前入口：
+  - `docs/governance/next-phase-pr4-regression-and-stage-closeout-plan.md`
+  - `docs/governance/inventory/pr4-slice-a-gate-lock-closeout.md`
 
 ---
 
@@ -111,6 +114,7 @@
 - `docs/governance/inventory/pr2-business-diagnostics-layering-closeout.md`
 - `docs/governance/inventory/pr3-copy-and-state-unification-closeout.md`
 - `docs/governance/inventory/pr3-slice-b-state-feedback-closeout.md`
+- `docs/governance/inventory/pr4-slice-a-gate-lock-closeout.md`
 - `docs/governance/inventory/post-mvp-doc-governance-closeout.md`
 - `docs/governance/inventory/root-doc-triage.md`
 - `docs/governance/inventory/epic-7-docs-parity-checklist.md`

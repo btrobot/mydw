@@ -159,8 +159,9 @@
 
 ## PR-4 — 回归补强与阶段收口
 
-> Status: Planned
+> Status: In progress
 > Planning: `docs/governance/next-phase-pr4-regression-and-stage-closeout-plan.md`
+> Slice A closeout: `docs/governance/inventory/pr4-slice-a-gate-lock-closeout.md`
 
 目标：
 
@@ -173,7 +174,7 @@
 - backend / contract baseline
 - frontend typecheck / build / stage closeout E2E suite
 - frontend E2E
-- docs / inventory / closeout summary
+- docs / inventory / closeout docs
 
 详细规划入口：
 
@@ -187,17 +188,17 @@
 - backend / contract baseline 为绿
 - frontend stage closeout suite 为绿
 - 手工主链路核对通过
-- 可以平滑进入下一条 P1 主线（AIClip 产品化）
-- 产出至少一种 closeout / summary / audit / report，并能回填 `docs/governance/phase-transition-checklist.md` 的 Part A 收口语义
+- 已具备进入“下一条主线选择 / 启动评估”的阶段退出条件
+- 产出正式 PR-4 closeout 文档，并能回填 `docs/governance/phase-transition-checklist.md` 的 Part A 收口语义
 
-执行顺序（计划）：
+执行顺序（当前进展）：
 
 1. **Slice A — 收口门禁锁定与验证范围冻结**
-   锁定 stage closeout gate、最小修复政策与 closeout 产物 contract。
+   已完成。PR-4 的 stage closeout gate、最小修复政策、formal docs authority 与 OMX planning artifacts 已锁定；见 `docs/governance/inventory/pr4-slice-a-gate-lock-closeout.md`。
 2. **Slice B — 回归执行、最小修复与证据沉淀**
-   运行 backend / frontend / 手工 gate，并只吸收通过 gate 所需的最小修复。
+   待执行。运行 backend / frontend / 手工 gate，并只吸收通过 gate 所需的最小修复。
 3. **Slice C — 正式 closeout 与阶段 handoff**
-   形成 PR-4 正式收口件，把本阶段为何可退出写成当前 authority。
+   待执行。形成 PR-4 正式收口件，把本阶段为何可退出写成当前 authority。
 
 ## 3. 不在本 sequence 首批处理的内容
 
