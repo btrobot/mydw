@@ -112,12 +112,25 @@ async def test_creative_openapi_exposes_phase_a_workbench_and_detail_contracts(
     assert paths["/api/creatives/{creative_id}"]["patch"]["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeUpdateRequest")
     assert paths["/api/creatives/{creative_id}"]["patch"]["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeDetailResponse")
     assert schemas["CreativeCurrentVersionResponse"]["properties"]["package_record_id"]["anyOf"][0]["type"] == "integer"
+    assert schemas["CreativeCreateRequest"]["properties"]["subject_product_id"]["anyOf"][0]["type"] == "integer"
+    assert schemas["CreativeCreateRequest"]["properties"]["main_copywriting_text"]["anyOf"][0]["type"] == "string"
+    assert schemas["CreativeCreateRequest"]["properties"]["target_duration_seconds"]["anyOf"][0]["type"] == "integer"
+    assert schemas["CreativeCreateRequest"]["properties"]["input_items"]["type"] == "array"
+    assert schemas["CreativeUpdateRequest"]["properties"]["input_items"]["anyOf"][0]["type"] == "array"
+    assert schemas["CreativeInputItemResponse"]["properties"]["material_type"]["$ref"].endswith("/CreativeInputMaterialType")
+    assert schemas["CreativeInputItemResponse"]["properties"]["material_id"]["type"] == "integer"
     assert schemas["CreativeDetailResponse"]["properties"]["linked_task_ids"]["type"] == "array"
     assert schemas["CreativeDetailResponse"]["properties"]["versions"]["type"] == "array"
     assert schemas["CreativeDetailResponse"]["properties"]["review_summary"]["anyOf"][0]["$ref"].endswith("/CreativeReviewSummaryResponse")
+    assert schemas["CreativeDetailResponse"]["properties"]["subject_product_id"]["anyOf"][0]["type"] == "integer"
+    assert schemas["CreativeDetailResponse"]["properties"]["main_copywriting_text"]["anyOf"][0]["type"] == "string"
+    assert schemas["CreativeDetailResponse"]["properties"]["target_duration_seconds"]["anyOf"][0]["type"] == "integer"
+    assert schemas["CreativeDetailResponse"]["properties"]["input_items"]["type"] == "array"
     assert schemas["CreativeDetailResponse"]["properties"]["input_snapshot"]["$ref"].endswith("/CreativeInputSnapshotResponse")
     assert schemas["CreativeDetailResponse"]["properties"]["eligibility_status"]["$ref"].endswith("/CreativeEligibilityStatus")
     assert schemas["CreativeDetailResponse"]["properties"]["latest_task_summary"]["anyOf"][0]["$ref"].endswith("/CreativeLatestTaskSummaryResponse")
+    assert schemas["CreativeWorkbenchItemResponse"]["properties"]["input_items"]["type"] == "array"
+    assert schemas["CreativeWorkbenchItemResponse"]["properties"]["input_snapshot"]["$ref"].endswith("/CreativeInputSnapshotResponse")
 
 
 @pytest.mark.asyncio

@@ -3,23 +3,27 @@ Creative aggregate helpers for work-driven flow.
 """
 from __future__ import annotations
 
+from collections import defaultdict
 import hashlib
 import json
 from typing import Any, Optional
 
 from loguru import logger
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import set_committed_value
 
 from models import (
     Audio,
     CompositionJob,
     Copywriting,
     Cover,
+    CreativeInputItem,
     CreativeItem,
     CreativeInputSnapshot,
     CreativeVersion,
+    Product,
     PublishProfile,
     Task,
     TaskAudio,
@@ -34,6 +38,7 @@ from schemas import (
     CreativeCreateRequest,
     CreativeDetailResponse,
     CreativeEligibilityStatus,
+    CreativeInputItemResponse,
     CreativeInputSnapshotResponse,
     CreativeItemResponse,
     CreativeLatestTaskSummaryResponse,
@@ -67,6 +72,36 @@ REVIEW_AND_BEYOND_STATUS_VALUES = {
     CreativeStatus.PUBLISHED.value,
 }
 
+INPUT_ITEM_TO_SNAPSHOT_FIELD = {
+    "video": "video_ids",
+    "copywriting": "copywriting_ids",
+    "cover": "cover_ids",
+    "audio": "audio_ids",
+    "topic": "topic_ids",
+}
+
+SNAPSHOT_FIELD_ORDER: tuple[tuple[str, str], ...] = (
+    ("video_ids", "video"),
+    ("copywriting_ids", "copywriting"),
+    ("cover_ids", "cover"),
+    ("audio_ids", "audio"),
+    ("topic_ids", "topic"),
+)
+
+INPUT_STATE_FIELD_NAMES = (
+    "profile_id",
+    "video_ids",
+    "copywriting_ids",
+    "cover_ids",
+    "audio_ids",
+    "topic_ids",
+    "input_items",
+)
+
+DUPLICATE_EXECUTION_LIMITATION_REASON = (
+    "当前作品定义包含重复素材实例，作品本身有效，但当前执行路径暂不支持将同一素材重复编排到任务资源集合中。"
+)
+
 
 class CreativeService:
     """Creative aggregate service for work-driven creation and projection."""
@@ -90,6 +125,7 @@ class CreativeService:
             .offset(skip)
             .limit(limit)
             .options(
+                selectinload(CreativeItem.input_items),
                 selectinload(CreativeItem.input_profile),
                 selectinload(CreativeItem.input_snapshot_record),
                 selectinload(CreativeItem.tasks).selectinload(Task.profile),
@@ -104,22 +140,40 @@ class CreativeService:
         if await self._creative_no_exists(creative_no):
             raise ValueError("作品编号已存在")
 
+        subject_product_name_snapshot = await self._resolve_subject_product_name_snapshot(
+            subject_product_id=payload.subject_product_id,
+            explicit_snapshot=payload.subject_product_name_snapshot,
+        )
         creative = CreativeItem(
             creative_no=creative_no,
             title=payload.title,
             status=CreativeStatus.PENDING_INPUT.value,
             latest_version_no=0,
+            subject_product_id=payload.subject_product_id,
+            subject_product_name_snapshot=subject_product_name_snapshot,
+            main_copywriting_text=payload.main_copywriting_text,
+            target_duration_seconds=payload.target_duration_seconds,
         )
         self.db.add(creative)
         await self.db.flush()
-        self._apply_input_snapshot(
-            creative,
+
+        input_profile_id, authoritative_input_items = self._resolve_authoritative_input_state(
             profile_id=payload.profile_id,
-            video_ids=payload.video_ids,
-            copywriting_ids=payload.copywriting_ids,
-            cover_ids=payload.cover_ids,
-            audio_ids=payload.audio_ids,
-            topic_ids=payload.topic_ids,
+            current_input_items=[],
+            current_snapshot=None,
+            explicit_input_items=payload.input_items if "input_items" in payload.model_fields_set else None,
+            explicit_snapshot_overrides={
+                "video_ids": payload.video_ids,
+                "copywriting_ids": payload.copywriting_ids,
+                "cover_ids": payload.cover_ids,
+                "audio_ids": payload.audio_ids,
+                "topic_ids": payload.topic_ids,
+            },
+        )
+        await self._apply_authoritative_input_state(
+            creative,
+            profile_id=input_profile_id,
+            input_items=authoritative_input_items,
         )
         await self._sync_pre_compose_status(creative)
         await self.db.commit()
@@ -156,26 +210,50 @@ class CreativeService:
 
         if "title" in payload.model_fields_set:
             creative.title = payload.title
+        if "subject_product_id" in payload.model_fields_set:
+            creative.subject_product_id = payload.subject_product_id
+        if (
+            "subject_product_id" in payload.model_fields_set
+            or "subject_product_name_snapshot" in payload.model_fields_set
+        ):
+            explicit_snapshot = (
+                payload.subject_product_name_snapshot
+                if "subject_product_name_snapshot" in payload.model_fields_set
+                else creative.subject_product_name_snapshot
+            )
+            creative.subject_product_name_snapshot = await self._resolve_subject_product_name_snapshot(
+                subject_product_id=creative.subject_product_id,
+                explicit_snapshot=explicit_snapshot,
+            )
+        if "main_copywriting_text" in payload.model_fields_set:
+            creative.main_copywriting_text = payload.main_copywriting_text
+        if "target_duration_seconds" in payload.model_fields_set:
+            creative.target_duration_seconds = payload.target_duration_seconds
 
-        snapshot = self._extract_input_snapshot(creative)
-        if "profile_id" in payload.model_fields_set:
-            snapshot["profile_id"] = payload.profile_id
-
-        for field_name in ("video_ids", "copywriting_ids", "cover_ids", "audio_ids", "topic_ids"):
-            if field_name not in payload.model_fields_set:
-                continue
-            value = getattr(payload, field_name)
-            snapshot[field_name] = value or []
-
-        self._apply_input_snapshot(
-            creative,
-            profile_id=snapshot["profile_id"],
-            video_ids=snapshot["video_ids"],
-            copywriting_ids=snapshot["copywriting_ids"],
-            cover_ids=snapshot["cover_ids"],
-            audio_ids=snapshot["audio_ids"],
-            topic_ids=snapshot["topic_ids"],
-        )
+        if self._payload_updates_input_state(payload.model_fields_set):
+            current_snapshot = self._extract_legacy_input_snapshot(creative)
+            current_profile_id = (
+                payload.profile_id if "profile_id" in payload.model_fields_set else current_snapshot["profile_id"]
+            )
+            current_input_items = self._extract_authoritative_input_items(creative)
+            input_profile_id, authoritative_input_items = self._resolve_authoritative_input_state(
+                profile_id=current_profile_id,
+                current_input_items=current_input_items,
+                current_snapshot=current_snapshot,
+                explicit_input_items=payload.input_items if "input_items" in payload.model_fields_set else None,
+                explicit_snapshot_overrides={
+                    field_name: (getattr(payload, field_name) or [])
+                    for field_name in ("video_ids", "copywriting_ids", "cover_ids", "audio_ids", "topic_ids")
+                    if field_name in payload.model_fields_set
+                },
+            )
+            await self._apply_authoritative_input_state(
+                creative,
+                profile_id=input_profile_id,
+                input_items=authoritative_input_items,
+            )
+        elif creative.__dict__.get("input_snapshot_record") is None:
+            self._sync_compatibility_snapshot_from_current_state(creative)
         await self._sync_pre_compose_status(creative)
         await self.db.commit()
         return await self.get_creative_detail(creative.id)
@@ -202,6 +280,8 @@ class CreativeService:
             profile = await self.db.get(PublishProfile, input_snapshot.profile_id)
         if profile is None:
             raise ValueError("所选合成配置不存在")
+        if self._has_duplicate_execution_instances(creative):
+            raise ValueError(DUPLICATE_EXECUTION_LIMITATION_REASON)
 
         expected_inputs = await self._build_expected_task_inputs(
             input_snapshot=input_snapshot,
@@ -370,6 +450,7 @@ class CreativeService:
             .where(CreativeItem.id == creative_id)
             .execution_options(populate_existing=True)
             .options(
+                selectinload(CreativeItem.input_items),
                 selectinload(CreativeItem.input_profile),
                 selectinload(CreativeItem.input_snapshot_record),
                 selectinload(CreativeItem.current_version).selectinload(CreativeVersion.package_records),
@@ -396,6 +477,12 @@ class CreativeService:
             title=creative.title,
             status=projection["status"],
             current_version_id=creative.current_version_id,
+            subject_product_id=creative.subject_product_id,
+            subject_product_name_snapshot=creative.subject_product_name_snapshot,
+            main_copywriting_text=creative.main_copywriting_text,
+            target_duration_seconds=creative.target_duration_seconds,
+            input_items=projection["input_items"],
+            input_snapshot=projection["input_snapshot"],
             generation_error_msg=creative.generation_error_msg,
             generation_failed_at=creative.generation_failed_at,
             eligibility_status=projection["eligibility_status"],
@@ -442,6 +529,11 @@ class CreativeService:
             versions=versions,
             review_summary=review_summary,
             linked_task_ids=linked_task_ids,
+            subject_product_id=creative.subject_product_id,
+            subject_product_name_snapshot=creative.subject_product_name_snapshot,
+            main_copywriting_text=creative.main_copywriting_text,
+            target_duration_seconds=creative.target_duration_seconds,
+            input_items=projection["input_items"],
             generation_error_msg=creative.generation_error_msg,
             generation_failed_at=creative.generation_failed_at,
             input_snapshot=projection["input_snapshot"],
@@ -453,6 +545,7 @@ class CreativeService:
         )
 
     async def _build_projection(self, creative: CreativeItem) -> dict[str, Any]:
+        input_items = self._build_input_items_response(creative)
         input_snapshot = self._build_input_snapshot_response(creative)
         eligibility_status, eligibility_reasons = await self._build_eligibility_projection(
             creative,
@@ -465,6 +558,7 @@ class CreativeService:
         )
         return {
             "status": status,
+            "input_items": input_items,
             "input_snapshot": input_snapshot,
             "eligibility_status": eligibility_status,
             "eligibility_reasons": eligibility_reasons,
@@ -505,6 +599,8 @@ class CreativeService:
                 )
             except TaskSemanticsError as exc:
                 invalid_reasons.append(str(exc))
+        if self._has_duplicate_execution_instances(creative):
+            invalid_reasons.append(DUPLICATE_EXECUTION_LIMITATION_REASON)
 
         reasons = [*pending_reasons, *invalid_reasons]
         if invalid_reasons:
@@ -588,7 +684,7 @@ class CreativeService:
         return CreativeStatus.PENDING_INPUT
 
     def _build_input_snapshot_response(self, creative: CreativeItem) -> CreativeInputSnapshotResponse:
-        snapshot = self._extract_input_snapshot(creative)
+        snapshot = self._resolve_current_snapshot_state(creative)
         return CreativeInputSnapshotResponse(
             profile_id=snapshot["profile_id"],
             video_ids=snapshot["video_ids"],
@@ -598,6 +694,277 @@ class CreativeService:
             topic_ids=snapshot["topic_ids"],
             snapshot_hash=snapshot["snapshot_hash"],
         )
+
+    def _build_input_items_response(self, creative: CreativeItem) -> list[CreativeInputItemResponse]:
+        authoritative_input_items = self._extract_authoritative_input_items(creative)
+        if not authoritative_input_items:
+            authoritative_input_items = self._synthesize_input_items_from_snapshot(
+                self._extract_legacy_input_snapshot(creative)
+            )
+        return [
+            CreativeInputItemResponse(
+                id=item.get("id"),
+                material_type=item["material_type"],
+                material_id=item["material_id"],
+                role=item.get("role"),
+                sequence=item["sequence"],
+                instance_no=item["instance_no"],
+                trim_in=item.get("trim_in"),
+                trim_out=item.get("trim_out"),
+                slot_duration_seconds=item.get("slot_duration_seconds"),
+                enabled=item.get("enabled", True),
+            )
+            for item in authoritative_input_items
+        ]
+
+    async def _resolve_subject_product_name_snapshot(
+        self,
+        *,
+        subject_product_id: Optional[int],
+        explicit_snapshot: Optional[str],
+    ) -> Optional[str]:
+        if subject_product_id is None:
+            return explicit_snapshot
+        product = await self.db.get(Product, subject_product_id)
+        if product is None:
+            raise ValueError("所选商品不存在")
+        if explicit_snapshot is not None:
+            return explicit_snapshot
+        return product.name
+
+    def _resolve_authoritative_input_state(
+        self,
+        *,
+        profile_id: Optional[int],
+        current_input_items: list[dict[str, Any]],
+        current_snapshot: Optional[dict[str, Any]],
+        explicit_input_items: Optional[list[Any]],
+        explicit_snapshot_overrides: dict[str, list[int]],
+    ) -> tuple[Optional[int], list[dict[str, Any]]]:
+        if explicit_input_items is not None:
+            return profile_id, self._normalize_input_items(explicit_input_items)
+        if explicit_snapshot_overrides:
+            snapshot = {
+                "profile_id": profile_id,
+                "video_ids": list((current_snapshot or {}).get("video_ids", [])),
+                "copywriting_ids": list((current_snapshot or {}).get("copywriting_ids", [])),
+                "cover_ids": list((current_snapshot or {}).get("cover_ids", [])),
+                "audio_ids": list((current_snapshot or {}).get("audio_ids", [])),
+                "topic_ids": list((current_snapshot or {}).get("topic_ids", [])),
+            }
+            snapshot.update(
+                {
+                    field_name: self._deduplicate_legacy_ids(item_ids)
+                    for field_name, item_ids in explicit_snapshot_overrides.items()
+                }
+            )
+            return profile_id, self._synthesize_input_items_from_snapshot(snapshot)
+        if current_input_items:
+            return profile_id, self._normalize_input_items(current_input_items)
+        if current_snapshot is not None:
+            return profile_id, self._synthesize_input_items_from_snapshot(current_snapshot)
+        return profile_id, []
+
+    async def _apply_authoritative_input_state(
+        self,
+        creative: CreativeItem,
+        *,
+        profile_id: Optional[int],
+        input_items: list[dict[str, Any]],
+    ) -> None:
+        normalized_items = self._normalize_input_items(input_items)
+        if creative.id is not None:
+            await self.db.execute(
+                delete(CreativeInputItem).where(CreativeInputItem.creative_item_id == creative.id)
+            )
+        new_rows = [
+            CreativeInputItem(
+                creative_item_id=creative.id,
+                material_type=item["material_type"],
+                material_id=item["material_id"],
+                role=item.get("role"),
+                sequence=item["sequence"],
+                instance_no=item["instance_no"],
+                trim_in=item.get("trim_in"),
+                trim_out=item.get("trim_out"),
+                slot_duration_seconds=item.get("slot_duration_seconds"),
+                enabled=item.get("enabled", True),
+            )
+            for item in normalized_items
+        ]
+        self.db.add_all(new_rows)
+        set_committed_value(creative, "input_items", new_rows)
+        projected_snapshot = self._project_input_items_to_snapshot(
+            profile_id=profile_id,
+            input_items=normalized_items,
+        )
+        self._apply_input_snapshot(
+            creative,
+            profile_id=projected_snapshot["profile_id"],
+            video_ids=projected_snapshot["video_ids"],
+            copywriting_ids=projected_snapshot["copywriting_ids"],
+            cover_ids=projected_snapshot["cover_ids"],
+            audio_ids=projected_snapshot["audio_ids"],
+            topic_ids=projected_snapshot["topic_ids"],
+        )
+
+    def _sync_compatibility_snapshot_from_current_state(self, creative: CreativeItem) -> None:
+        snapshot = self._resolve_current_snapshot_state(creative)
+        self._apply_input_snapshot(
+            creative,
+            profile_id=snapshot["profile_id"],
+            video_ids=snapshot["video_ids"],
+            copywriting_ids=snapshot["copywriting_ids"],
+            cover_ids=snapshot["cover_ids"],
+            audio_ids=snapshot["audio_ids"],
+            topic_ids=snapshot["topic_ids"],
+        )
+
+    def _resolve_current_snapshot_state(self, creative: CreativeItem) -> dict[str, Any]:
+        authoritative_input_items = self._extract_authoritative_input_items(creative)
+        if not authoritative_input_items:
+            return self._extract_legacy_input_snapshot(creative)
+        profile_id = creative.input_profile_id
+        if profile_id is None:
+            profile_id = self._extract_legacy_input_snapshot(creative)["profile_id"]
+        return self._project_input_items_to_snapshot(
+            profile_id=profile_id,
+            input_items=authoritative_input_items,
+        )
+
+    def _extract_authoritative_input_items(self, creative: CreativeItem) -> list[dict[str, Any]]:
+        rows = list(creative.__dict__.get("input_items") or [])
+        if not rows:
+            return []
+        return self._normalize_input_items(rows)
+
+    def _normalize_input_items(self, items: list[Any]) -> list[dict[str, Any]]:
+        staged: list[tuple[int, int, dict[str, Any]]] = []
+        for index, raw_item in enumerate(items, start=1):
+            material_type = self._read_input_item_value(raw_item, "material_type")
+            if material_type is None:
+                raise ValueError("input_items.material_type 不能为空")
+            material_type_value = getattr(material_type, "value", material_type)
+            material_type_value = str(material_type_value)
+            if material_type_value not in INPUT_ITEM_TO_SNAPSHOT_FIELD:
+                raise ValueError(f"不支持的 input_items.material_type: {material_type_value}")
+            material_id = self._read_input_item_value(raw_item, "material_id")
+            if material_id is None:
+                raise ValueError("input_items.material_id 不能为空")
+            sort_key = self._read_input_item_value(raw_item, "sequence")
+            staged.append(
+                (
+                    int(sort_key) if sort_key is not None else index,
+                    index,
+                    {
+                        "id": self._read_input_item_value(raw_item, "id"),
+                        "material_type": material_type_value,
+                        "material_id": int(material_id),
+                        "role": self._read_input_item_value(raw_item, "role"),
+                        "instance_no": self._read_input_item_value(raw_item, "instance_no"),
+                        "trim_in": self._read_input_item_value(raw_item, "trim_in"),
+                        "trim_out": self._read_input_item_value(raw_item, "trim_out"),
+                        "slot_duration_seconds": self._read_input_item_value(raw_item, "slot_duration_seconds"),
+                        "enabled": self._read_input_item_value(raw_item, "enabled", True),
+                    },
+                )
+            )
+        staged.sort(key=lambda item: (item[0], item[1]))
+        material_instance_counts: defaultdict[tuple[str, int], int] = defaultdict(int)
+        normalized: list[dict[str, Any]] = []
+        for sequence, (_, _, item) in enumerate(staged, start=1):
+            duplicate_key = (item["material_type"], item["material_id"])
+            material_instance_counts[duplicate_key] += 1
+            normalized.append(
+                {
+                    **item,
+                    "sequence": sequence,
+                    "instance_no": (
+                        int(item["instance_no"])
+                        if item.get("instance_no") is not None
+                        else material_instance_counts[duplicate_key]
+                    ),
+                    "enabled": bool(item.get("enabled", True)),
+                }
+            )
+        return normalized
+
+    def _synthesize_input_items_from_snapshot(self, snapshot: dict[str, Any]) -> list[dict[str, Any]]:
+        synthesized: list[dict[str, Any]] = []
+        for field_name, material_type in SNAPSHOT_FIELD_ORDER:
+            for material_id in snapshot.get(field_name, []) or []:
+                synthesized.append(
+                    {
+                        "material_type": material_type,
+                        "material_id": int(material_id),
+                        "enabled": True,
+                    }
+                )
+        return self._normalize_input_items(synthesized)
+
+    def _project_input_items_to_snapshot(
+        self,
+        *,
+        profile_id: Optional[int],
+        input_items: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        snapshot = {
+            "profile_id": profile_id,
+            "video_ids": [],
+            "copywriting_ids": [],
+            "cover_ids": [],
+            "audio_ids": [],
+            "topic_ids": [],
+        }
+        for item in self._normalize_input_items(input_items):
+            if not item.get("enabled", True):
+                continue
+            target_field = INPUT_ITEM_TO_SNAPSHOT_FIELD[item["material_type"]]
+            snapshot[target_field].append(int(item["material_id"]))
+        snapshot["snapshot_hash"] = self._build_snapshot_hash(
+            profile_id=profile_id,
+            video_ids=snapshot["video_ids"],
+            copywriting_ids=snapshot["copywriting_ids"],
+            cover_ids=snapshot["cover_ids"],
+            audio_ids=snapshot["audio_ids"],
+            topic_ids=snapshot["topic_ids"],
+        )
+        return snapshot
+
+    def _read_input_item_value(self, item: Any, key: str, default: Any = None) -> Any:
+        if isinstance(item, dict):
+            return item.get(key, default)
+        return getattr(item, key, default)
+
+    def _deduplicate_legacy_ids(self, values: list[int]) -> list[int]:
+        ordered_ids: list[int] = []
+        seen: set[int] = set()
+        for raw_value in values:
+            item_id = int(raw_value)
+            if item_id in seen:
+                continue
+            seen.add(item_id)
+            ordered_ids.append(item_id)
+        return ordered_ids
+
+    def _payload_updates_input_state(self, model_fields_set: set[str]) -> bool:
+        return any(field_name in model_fields_set for field_name in INPUT_STATE_FIELD_NAMES)
+
+    def _has_duplicate_execution_instances(self, creative: CreativeItem) -> bool:
+        authoritative_input_items = self._extract_authoritative_input_items(creative)
+        if not authoritative_input_items:
+            authoritative_input_items = self._synthesize_input_items_from_snapshot(
+                self._extract_legacy_input_snapshot(creative)
+            )
+        seen: set[tuple[str, int]] = set()
+        for item in authoritative_input_items:
+            if not item.get("enabled", True):
+                continue
+            duplicate_key = (item["material_type"], item["material_id"])
+            if duplicate_key in seen:
+                return True
+            seen.add(duplicate_key)
+        return False
 
     def _build_latest_task_summary(self, task: Optional[Task]) -> Optional[CreativeLatestTaskSummaryResponse]:
         if task is None:
@@ -791,7 +1158,7 @@ class CreativeService:
         creative.__dict__.pop("input_profile", None)
         creative.updated_at = utc_now_naive()
 
-    def _extract_input_snapshot(self, creative: CreativeItem) -> dict[str, Any]:
+    def _extract_legacy_input_snapshot(self, creative: CreativeItem) -> dict[str, Any]:
         snapshot_record = creative.__dict__.get("input_snapshot_record")
         if snapshot_record is not None:
             return {
@@ -889,6 +1256,7 @@ class CreativeService:
         Legacy helper kept for schema-instantiation compatibility in tests.
         """
         input_snapshot = self._build_input_snapshot_response(creative)
+        input_items = self._build_input_items_response(creative)
         return CreativeItemResponse(
             id=creative.id,
             creative_no=creative.creative_no,
@@ -896,6 +1264,11 @@ class CreativeService:
             status=self._coerce_creative_status(creative.status),
             current_version_id=creative.current_version_id,
             latest_version_no=creative.latest_version_no,
+            subject_product_id=creative.subject_product_id,
+            subject_product_name_snapshot=creative.subject_product_name_snapshot,
+            main_copywriting_text=creative.main_copywriting_text,
+            target_duration_seconds=creative.target_duration_seconds,
+            input_items=input_items,
             generation_error_msg=creative.generation_error_msg,
             generation_failed_at=creative.generation_failed_at,
             input_snapshot=input_snapshot,

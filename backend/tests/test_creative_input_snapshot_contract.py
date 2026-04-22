@@ -152,8 +152,9 @@ async def _seed_snapshot_dependencies(
     db_session: AsyncSession,
     *,
     profile_name: str,
+    composition_mode: str = "none",
 ) -> tuple[PublishProfile, Video, Topic]:
-    profile = PublishProfile(name=profile_name, composition_mode="none", composition_params="{}")
+    profile = PublishProfile(name=profile_name, composition_mode=composition_mode, composition_params="{}")
     video = Video(name=f"{profile_name}-video", file_path=f"data/videos/{profile_name}.mp4")
     topic = Topic(name=f"{profile_name}-topic")
     db_session.add_all([profile, video, topic])
@@ -165,13 +166,14 @@ async def _seed_snapshot_dependencies(
 
 
 @pytest.mark.asyncio
-async def test_input_snapshot_contract_deduplicates_ids_and_keeps_hash_stable(
+async def test_authoritative_input_items_preserve_repeated_instances_while_legacy_snapshot_is_projected_in_order(
     client: AsyncClient,
     db_session: AsyncSession,
 ) -> None:
     profile, video, topic = await _seed_snapshot_dependencies(
         db_session,
         profile_name="snapshot-contract-profile",
+        composition_mode="coze",
     )
 
     create_response = await client.post(
@@ -179,26 +181,42 @@ async def test_input_snapshot_contract_deduplicates_ids_and_keeps_hash_stable(
         json={
             "title": "Snapshot Contract",
             "profile_id": profile.id,
-            "video_ids": [video.id, video.id],
-            "topic_ids": [topic.id, topic.id],
+            "input_items": [
+                {"material_type": "video", "material_id": video.id, "role": "opening"},
+                {"material_type": "video", "material_id": video.id, "role": "ending"},
+                {"material_type": "topic", "material_id": topic.id},
+                {"material_type": "topic", "material_id": topic.id},
+            ],
         },
     )
 
     assert create_response.status_code == 201
     created = create_response.json()
     first_hash = created["input_snapshot"]["snapshot_hash"]
-    assert created["input_snapshot"]["video_ids"] == [video.id]
-    assert created["input_snapshot"]["topic_ids"] == [topic.id]
+    assert created["input_snapshot"]["video_ids"] == [video.id, video.id]
+    assert created["input_snapshot"]["topic_ids"] == [topic.id, topic.id]
+    assert [item["instance_no"] for item in created["input_items"]] == [1, 2, 1, 2]
 
     patch_response = await client.patch(
         f"/api/creatives/{created['id']}",
-        json={"video_ids": [video.id, video.id], "topic_ids": [topic.id, topic.id]},
+        json={
+            "input_items": [
+                {"material_type": "video", "material_id": video.id, "role": "opening"},
+                {"material_type": "video", "material_id": video.id, "role": "ending"},
+                {"material_type": "topic", "material_id": topic.id},
+                {"material_type": "topic", "material_id": topic.id},
+            ]
+        },
     )
 
     assert patch_response.status_code == 200
     patched = patch_response.json()
     assert patched["input_snapshot"]["snapshot_hash"] == first_hash
-    assert patched["status"] == "READY_TO_COMPOSE"
+    assert patched["status"] == "PENDING_INPUT"
+    assert patched["eligibility_status"] == "INVALID"
+    assert any("执行路径暂不支持" in reason for reason in patched["eligibility_reasons"])
+    assert patched["input_snapshot"]["video_ids"] == [video.id, video.id]
+    assert patched["input_snapshot"]["topic_ids"] == [topic.id, topic.id]
 
 
 @pytest.mark.asyncio
@@ -225,7 +243,13 @@ async def test_input_snapshot_dual_write_keeps_new_and_legacy_carriers_in_sync(
 
     patch_response = await client.patch(
         f"/api/creatives/{creative_id}",
-        json={"video_ids": [video.id, video.id], "topic_ids": [topic.id]},
+        json={
+            "input_items": [
+                {"material_type": "video", "material_id": video.id},
+                {"material_type": "video", "material_id": video.id},
+                {"material_type": "topic", "material_id": topic.id},
+            ]
+        },
     )
     assert patch_response.status_code == 200
     payload = patch_response.json()
@@ -239,7 +263,7 @@ async def test_input_snapshot_dual_write_keeps_new_and_legacy_carriers_in_sync(
     ).scalar_one()
 
     assert creative.input_profile_id == snapshot_row.profile_id == profile.id
-    assert creative.input_video_ids == snapshot_row.video_ids == f"[{video.id}]"
+    assert creative.input_video_ids == snapshot_row.video_ids == f"[{video.id},{video.id}]"
     assert creative.input_topic_ids == snapshot_row.topic_ids == f"[{topic.id}]"
     assert creative.input_snapshot_hash == snapshot_row.snapshot_hash == payload["input_snapshot"]["snapshot_hash"]
 
@@ -277,12 +301,16 @@ async def test_input_snapshot_read_falls_back_to_legacy_and_next_write_recreates
     assert detail_payload["input_snapshot"]["profile_id"] == profile.id
     assert detail_payload["input_snapshot"]["video_ids"] == [video.id]
     assert detail_payload["input_snapshot"]["topic_ids"] == [topic.id]
+    assert [item["material_type"] for item in detail_payload["input_items"]] == ["video", "topic"]
+    original_input_item_ids = [item["id"] for item in detail_payload["input_items"]]
 
     patch_response = await client.patch(
         f"/api/creatives/{creative_id}",
         json={"title": "Rollback Snapshot Recreated"},
     )
     assert patch_response.status_code == 200
+    patched_payload = patch_response.json()
+    assert [item["id"] for item in patched_payload["input_items"]] == original_input_item_ids
 
     recreated = (
         await db_session.execute(

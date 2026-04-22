@@ -289,11 +289,16 @@ def test_phase_a_task_write_contracts_do_not_expose_task_kind() -> None:
     assert "task_kind" not in TaskUpdate.model_fields
 
 
-def test_work_driven_creative_write_contracts_expose_snapshot_inputs_but_not_status() -> None:
+def test_work_driven_creative_write_contracts_expose_phase1_authoritative_and_compat_inputs_but_not_status() -> None:
     assert "status" not in CreativeCreateRequest.model_fields
     assert "status" not in CreativeUpdateRequest.model_fields
     assert "profile_id" in CreativeCreateRequest.model_fields
     assert "video_ids" in CreativeUpdateRequest.model_fields
+    assert "input_items" in CreativeCreateRequest.model_fields
+    assert "input_items" in CreativeUpdateRequest.model_fields
+    assert "subject_product_id" in CreativeCreateRequest.model_fields
+    assert "main_copywriting_text" in CreativeCreateRequest.model_fields
+    assert "target_duration_seconds" in CreativeCreateRequest.model_fields
 
 
 def test_phase_a_response_contracts_are_instantiable() -> None:

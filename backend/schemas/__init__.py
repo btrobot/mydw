@@ -583,6 +583,51 @@ class CreativeInputSnapshotResponse(BaseModel):
     snapshot_hash: Optional[str] = None
 
 
+class CreativeInputMaterialType(str, Enum):
+    VIDEO = "video"
+    COPYWRITING = "copywriting"
+    COVER = "cover"
+    AUDIO = "audio"
+    TOPIC = "topic"
+
+
+class CreativeInputItemWrite(BaseModel):
+    material_type: CreativeInputMaterialType
+    material_id: int = Field(..., ge=1)
+    role: Optional[str] = Field(None, max_length=64)
+    sequence: Optional[int] = Field(None, ge=1)
+    instance_no: Optional[int] = Field(None, ge=1)
+    trim_in: Optional[int] = Field(None, ge=0)
+    trim_out: Optional[int] = Field(None, ge=0)
+    slot_duration_seconds: Optional[int] = Field(None, ge=0)
+    enabled: bool = True
+
+    @model_validator(mode="after")
+    def validate_trim_window(self) -> "CreativeInputItemWrite":
+        if (
+            self.trim_in is not None
+            and self.trim_out is not None
+            and self.trim_out < self.trim_in
+        ):
+            raise ValueError("trim_out 蹇呴』澶т簬绛変簬 trim_in")
+        return self
+
+
+class CreativeInputItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: Optional[int] = None
+    material_type: CreativeInputMaterialType
+    material_id: int
+    role: Optional[str] = None
+    sequence: int
+    instance_no: int
+    trim_in: Optional[int] = None
+    trim_out: Optional[int] = None
+    slot_duration_seconds: Optional[int] = None
+    enabled: bool = True
+
+
 class CreativeLatestTaskSummaryResponse(BaseModel):
     task_id: int
     task_kind: Optional[TaskKind] = None
@@ -595,34 +640,38 @@ class CreativeLatestTaskSummaryResponse(BaseModel):
 class CreativeCreateRequest(BaseModel):
     creative_no: Optional[str] = Field(None, min_length=1, max_length=64)
     title: Optional[str] = Field(None, max_length=256)
+    subject_product_id: Optional[int] = Field(None, ge=1)
+    subject_product_name_snapshot: Optional[str] = Field(None, max_length=256)
+    main_copywriting_text: Optional[str] = None
+    target_duration_seconds: Optional[int] = Field(None, ge=1)
     profile_id: Optional[int] = None
     video_ids: List[int] = Field(default_factory=list)
     copywriting_ids: List[int] = Field(default_factory=list)
     cover_ids: List[int] = Field(default_factory=list)
     audio_ids: List[int] = Field(default_factory=list)
     topic_ids: List[int] = Field(default_factory=list)
-
-    @field_validator("video_ids", "copywriting_ids", "cover_ids", "audio_ids", "topic_ids")
-    @classmethod
-    def deduplicate_ids(cls, value: List[int]) -> List[int]:
-        return list(dict.fromkeys(value))
+    input_items: List[CreativeInputItemWrite] = Field(
+        default_factory=list,
+        description="Phase 1 authoritative creative input orchestration surface; legacy input_snapshot remains compatibility-only.",
+    )
 
 
 class CreativeUpdateRequest(BaseModel):
     title: Optional[str] = Field(None, max_length=256)
+    subject_product_id: Optional[int] = Field(None, ge=1)
+    subject_product_name_snapshot: Optional[str] = Field(None, max_length=256)
+    main_copywriting_text: Optional[str] = None
+    target_duration_seconds: Optional[int] = Field(None, ge=1)
     profile_id: Optional[int] = None
     video_ids: Optional[List[int]] = None
     copywriting_ids: Optional[List[int]] = None
     cover_ids: Optional[List[int]] = None
     audio_ids: Optional[List[int]] = None
     topic_ids: Optional[List[int]] = None
-
-    @field_validator("video_ids", "copywriting_ids", "cover_ids", "audio_ids", "topic_ids")
-    @classmethod
-    def deduplicate_optional_ids(cls, value: Optional[List[int]]) -> Optional[List[int]]:
-        if value is None:
-            return None
-        return list(dict.fromkeys(value))
+    input_items: Optional[List[CreativeInputItemWrite]] = Field(
+        None,
+        description="When present, input_items is the authoritative Phase 1 source and legacy carrier fields are projected for compatibility.",
+    )
 
 
 class CreativeItemResponse(BaseModel):
@@ -635,9 +684,20 @@ class CreativeItemResponse(BaseModel):
     status: CreativeStatus
     current_version_id: Optional[int] = None
     latest_version_no: int = 0
+    subject_product_id: Optional[int] = None
+    subject_product_name_snapshot: Optional[str] = None
+    main_copywriting_text: Optional[str] = None
+    target_duration_seconds: Optional[int] = None
+    input_items: List[CreativeInputItemResponse] = Field(
+        default_factory=list,
+        description="Phase 1 authoritative source for creative input orchestration.",
+    )
     generation_error_msg: Optional[str] = None
     generation_failed_at: Optional[datetime] = None
-    input_snapshot: CreativeInputSnapshotResponse = Field(default_factory=CreativeInputSnapshotResponse)
+    input_snapshot: CreativeInputSnapshotResponse = Field(
+        default_factory=CreativeInputSnapshotResponse,
+        description="Phase 1 compatibility carrier projected from authoritative creative inputs when available.",
+    )
     eligibility_status: CreativeEligibilityStatus = CreativeEligibilityStatus.PENDING_INPUT
     eligibility_reasons: List[str] = Field(default_factory=list)
     latest_task_summary: Optional[CreativeLatestTaskSummaryResponse] = None
@@ -654,6 +714,12 @@ class CreativeWorkbenchItemResponse(BaseModel):
     title: Optional[str] = None
     status: CreativeStatus
     current_version_id: Optional[int] = None
+    subject_product_id: Optional[int] = None
+    subject_product_name_snapshot: Optional[str] = None
+    main_copywriting_text: Optional[str] = None
+    target_duration_seconds: Optional[int] = None
+    input_items: List[CreativeInputItemResponse] = Field(default_factory=list)
+    input_snapshot: CreativeInputSnapshotResponse = Field(default_factory=CreativeInputSnapshotResponse)
     generation_error_msg: Optional[str] = None
     generation_failed_at: Optional[datetime] = None
     eligibility_status: CreativeEligibilityStatus = CreativeEligibilityStatus.PENDING_INPUT
@@ -741,9 +807,20 @@ class CreativeDetailResponse(BaseModel):
     versions: List[CreativeVersionSummaryResponse] = Field(default_factory=list)
     review_summary: Optional[CreativeReviewSummaryResponse] = None
     linked_task_ids: List[int] = Field(default_factory=list)
+    subject_product_id: Optional[int] = None
+    subject_product_name_snapshot: Optional[str] = None
+    main_copywriting_text: Optional[str] = None
+    target_duration_seconds: Optional[int] = None
+    input_items: List[CreativeInputItemResponse] = Field(
+        default_factory=list,
+        description="Phase 1 authoritative source for creative input orchestration.",
+    )
     generation_error_msg: Optional[str] = None
     generation_failed_at: Optional[datetime] = None
-    input_snapshot: CreativeInputSnapshotResponse = Field(default_factory=CreativeInputSnapshotResponse)
+    input_snapshot: CreativeInputSnapshotResponse = Field(
+        default_factory=CreativeInputSnapshotResponse,
+        description="Phase 1 compatibility carrier projected from authoritative creative inputs when available.",
+    )
     eligibility_status: CreativeEligibilityStatus = CreativeEligibilityStatus.PENDING_INPUT
     eligibility_reasons: List[str] = Field(default_factory=list)
     latest_task_summary: Optional[CreativeLatestTaskSummaryResponse] = None
