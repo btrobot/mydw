@@ -61,14 +61,15 @@ Workbench 当前正式收口到 URL 的参数如下：
 | `keyword` | 作品检索词 | 任意非空字符串 | 无 |
 | `status` | 作品状态筛选 | `CreativeStatus` 枚举值 | 无 |
 | `poolState` | 发布池准备状态筛选 | `in_pool` / `out_pool` / `version_mismatch` | 无 |
-| `sort` | 排序模型 | `updated_at:ascend` / `updated_at:descend` | `updated_at:descend` |
+| `preset` | 高频预设视角 | `all` / `waiting_review` / `needs_rework` / `recent_failures` / `version_mismatch` | 无 |
+| `sort` | 排序模型 | `updated_desc` / `updated_asc` / `attention_desc` / `failed_desc` | `updated_desc` |
 | `page` | 当前页码 | 正整数 | `1` |
 | `pageSize` | 每页条数 | 正整数 | `10` |
 
 示例：
 
 ```text
-#/creative/workbench?keyword=Spring&status=WAITING_REVIEW&poolState=in_pool&sort=updated_at%3Adescend&page=1&pageSize=10
+#/creative/workbench?keyword=Spring&status=WAITING_REVIEW&poolState=in_pool&sort=updated_desc&page=1&pageSize=10
 ```
 
 该 URL 表示：
@@ -76,7 +77,7 @@ Workbench 当前正式收口到 URL 的参数如下：
 - 搜索词为 `Spring`
 - 只看 `WAITING_REVIEW`
 - 只看 `in_pool`
-- 按 `updated_at` 倒序
+- 按“最近更新优先”
 - 第 1 页
 - 每页 10 条
 
@@ -88,6 +89,7 @@ Workbench 当前正式收口到 URL 的参数如下：
 
 - 搜索条件
 - 筛选条件
+- 高频 preset 视角
 - 排序方式
 - 分页位置
 
@@ -114,7 +116,8 @@ Workbench 打开时，URL 是初始化状态的来源。
 - `keyword`：读取后去掉首尾空白；空值视为未设置
 - `status`：只有落在当前状态枚举内才生效，否则回退为未设置
 - `poolState`：只有落在当前池状态枚举内才生效，否则回退为未设置
-- `sort`：当前只接受 `updated_at:ascend` / `updated_at:descend`，非法值回退为默认倒序
+- `preset`：只有落在当前 preset 枚举内才生效，否则回退为未设置
+- `sort`：当前只接受 `updated_desc` / `updated_asc` / `attention_desc` / `failed_desc`；对旧链接中的 `updated_at:ascend` / `updated_at:descend` 仍做兼容解析
 - `page` / `pageSize`：只接受正整数，非法值回退到默认值
 
 ### 6.2 表单与表格初始化
@@ -122,6 +125,7 @@ Workbench 打开时，URL 是初始化状态的来源。
 解析后的 URL 状态会用于：
 
 - 初始化搜索表单
+- 初始化当前 preset
 - 初始化分页
 - 初始化默认排序
 - 触发表格请求逻辑
@@ -137,6 +141,7 @@ Workbench 打开时，URL 是初始化状态的来源。
 当用户在 Workbench 中进行以下动作时，页面会把结果写回 URL：
 
 - 应用搜索/筛选
+- 切换 preset view
 - 切换排序
 - 切换页码
 - 修改每页条数
@@ -155,7 +160,27 @@ Workbench URL 模型只解决“当前工作台状态是什么”。
 
 为了继续解决“从详情返回时要回到哪个状态”，当前实现又引入了 `returnTo`。
 
-### 8.1 Workbench 自身 URL
+## 8.1 高频 preset views
+
+当前 Workbench 提供最小高频 preset 集：
+
+- `all`
+- `waiting_review`
+- `needs_rework`
+- `recent_failures`
+- `version_mismatch`
+
+这些 preset 的目标不是替代所有手工筛选，而是把高频工作队列做成显式入口。
+
+其中：
+
+- `recent_failures`：直接收敛到最近失败内容，并配合 `failed_desc`
+- `version_mismatch`：直接收敛到版本未对齐内容，并配合 `attention_desc`
+- `waiting_review` / `needs_rework`：直接进入高频处理队列
+
+如果用户后续手工调整条件，导致当前 URL 状态不再符合 preset 定义，`preset` 参数会被自动移除，避免 URL 保留失真的预设标签。
+
+### 8.2 Workbench 自身 URL
 
 例如：
 
@@ -167,7 +192,7 @@ Workbench URL 模型只解决“当前工作台状态是什么”。
 
 > 当前 Workbench 状态是什么。
 
-### 8.2 Detail 页 `returnTo`
+### 8.3 Detail 页 `returnTo`
 
 从 Workbench 进入作品详情时，会把当前 Workbench 完整路径编码成 `returnTo`：
 
@@ -179,7 +204,7 @@ Workbench URL 模型只解决“当前工作台状态是什么”。
 
 > 返回时应该回到哪个 Workbench 状态。
 
-### 8.3 当前返回规则
+### 8.4 当前返回规则
 
 - Workbench → Detail：附带 `returnTo`
 - Detail 页返回按钮：优先跳回 `returnTo`
@@ -211,6 +236,7 @@ Workbench(带状态)
   - 负责解析 URL
   - 初始化表格状态
   - 在筛选/排序/分页后回写 URL
+  - 管理 preset views 与工作台排序
   - 打开详情时构造 `returnTo`
 - `CreativeDetail.tsx`
   - 负责读取 `returnTo`
@@ -233,7 +259,7 @@ Workbench(带状态)
 
 当前边界是：
 
-> 只为 “Creative Workbench 可管理性收口 / Slice A” 提供最小但稳定的上下文保持能力。
+> 当前已覆盖 “Creative Workbench 可管理性收口 / Slice A + Slice B” 所需的上下文保持、工作台排序与高频 preset 能力，但仍未进入服务端检索和更大规模 work queue 系统设计。
 
 ---
 
@@ -265,6 +291,7 @@ Workbench(带状态)
 
 - 参数名
 - 参数值枚举
+- preset 定义
 - 默认排序
 - 分页默认值
 - `returnTo` 传递方式
@@ -289,6 +316,8 @@ Workbench(带状态)
   - `e2e/creative-workbench/creative-workbench.spec.ts`
   - 覆盖刷新保持状态
   - 覆盖 detail → back 保持状态
+  - 覆盖 preset 视角
+  - 覆盖工作台排序
 
 ---
 

@@ -271,6 +271,25 @@ async function chooseAntSelectOption(page: Page, testId: string, optionText: str
   await option.click()
 }
 
+async function chooseWorkbenchSort(page: Page, optionText: string) {
+  await page.getByTestId('creative-workbench-sort-select').click()
+  const option = page
+    .locator('.ant-select-item-option-content')
+    .filter({ hasText: optionText })
+    .last()
+  await expect(option).toBeVisible()
+  await option.click()
+}
+
+async function expectWorkbenchOrder(page: Page, creativeIds: number[]) {
+  const actions = page.locator('[data-testid^="creative-workbench-open-detail-"]')
+  await expect(actions).toHaveCount(creativeIds.length)
+
+  for (const [index, creativeId] of creativeIds.entries()) {
+    await expect(actions.nth(index)).toHaveAttribute('data-testid', `creative-workbench-open-detail-${creativeId}`)
+  }
+}
+
 test.describe('Creative workbench baseline', () => {
   test.beforeEach(async ({ page }) => {
     await mockCreativeApis(page)
@@ -288,6 +307,8 @@ test.describe('Creative workbench baseline', () => {
     await expect(page.getByTestId('creative-workbench-pool-state-102')).toContainText('版本未对齐')
     await expect(page.getByTestId('creative-workbench-open-review-101')).toBeVisible()
     await expect(page.getByTestId('creative-workbench-ai-clip-101')).toBeVisible()
+    await expect(page.getByTestId('creative-workbench-preset-waiting_review')).toBeVisible()
+    await expect(page.getByTestId('creative-workbench-sort-select')).toBeVisible()
   })
 
   test('supports search and filtering before entering detail', async ({ page }) => {
@@ -325,7 +346,7 @@ test.describe('Creative workbench baseline', () => {
     await expect(page).toHaveURL(/keyword=Spring/)
     await expect(page).toHaveURL(/status=WAITING_REVIEW/)
     await expect(page).toHaveURL(/poolState=in_pool/)
-    await expect(page).toHaveURL(/sort=updated_at%3Adescend/)
+    await expect(page).toHaveURL(/sort=updated_desc/)
     await expect(page.locator('body')).toContainText('Spring campaign')
     await expect(page.locator('body')).not.toContainText('Summer sale teaser')
 
@@ -340,7 +361,7 @@ test.describe('Creative workbench baseline', () => {
 
   test('returns to the filtered workbench state after entering detail', async ({ page }) => {
     await page.goto(
-      `${TEST_BASE_URL}/#/creative/workbench?keyword=Spring&status=WAITING_REVIEW&poolState=in_pool&sort=updated_at%3Adescend&page=1&pageSize=10`,
+      `${TEST_BASE_URL}/#/creative/workbench?keyword=Spring&status=WAITING_REVIEW&poolState=in_pool&sort=updated_desc&page=1&pageSize=10`,
     )
 
     await expect(page.locator('body')).toContainText('Spring campaign')
@@ -351,9 +372,30 @@ test.describe('Creative workbench baseline', () => {
     await page.waitForURL(/#\/creative\/101\?returnTo=/)
     await page.locator('.ant-page-header-back-button').click()
 
-    await page.waitForURL(/#\/creative\/workbench\?keyword=Spring&status=WAITING_REVIEW&poolState=in_pool&sort=updated_at%3Adescend&page=1&pageSize=10/)
+    await page.waitForURL(/#\/creative\/workbench\?keyword=Spring&status=WAITING_REVIEW&poolState=in_pool&sort=updated_desc&page=1&pageSize=10/)
     await expect(page.locator('body')).toContainText('Spring campaign')
     await expect(page.locator('body')).not.toContainText('Summer sale teaser')
+  })
+
+  test('supports preset views for high-frequency queues', async ({ page }) => {
+    await page.goto(`${TEST_BASE_URL}/#/creative/workbench`)
+
+    await page.getByTestId('creative-workbench-preset-recent_failures').click()
+
+    await expect(page).toHaveURL(/preset=recent_failures/)
+    await expect(page).toHaveURL(/sort=failed_desc/)
+    await expect(page.locator('body')).toContainText('Summer sale teaser')
+    await expect(page.locator('body')).not.toContainText('Spring campaign')
+    await expectWorkbenchOrder(page, [102])
+  })
+
+  test('supports explicit workbench sort views', async ({ page }) => {
+    await page.goto(`${TEST_BASE_URL}/#/creative/workbench`)
+
+    await chooseWorkbenchSort(page, '待处理优先')
+
+    await expect(page).toHaveURL(/sort=attention_desc/)
+    await expectWorkbenchOrder(page, [102, 104, 101, 103])
   })
 
   test('shows an explicit error state when the workbench list request fails', async ({ page }) => {
