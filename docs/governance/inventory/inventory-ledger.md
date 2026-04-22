@@ -202,3 +202,8 @@ Current location:
 ## Formal closeout artifact
 
 - `docs/governance/inventory/post-mvp-doc-governance-closeout.md` — 本轮文档治理收口正式件，汇总入口收口、archive 分类、post-MVP 治理链与后续维护规则
+
+## Current-project closeout execution artifacts
+
+- `docs/governance/inventory/current-project-mvp-closeout-checklist.md` — 当前项目 MVP 收口逐项检查清单
+- `docs/governance/inventory/current-project-mvp-closeout-execution.md` — 按清单执行后的项目级收口记录与残留项说明

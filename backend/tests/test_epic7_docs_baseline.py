@@ -81,6 +81,7 @@ def test_docs_readme_exists_and_separates_current_docs_from_runtime_artifacts() 
     assert "docs/current/next-phase-kickoff.md" in docs_index
     assert "docs/governance/inventory/inventory-ledger.md" in docs_index
     assert "docs/governance/inventory/current-project-mvp-closeout-checklist.md" in docs_index
+    assert "docs/governance/inventory/current-project-mvp-closeout-execution.md" in docs_index
     assert "docs/governance/inventory/post-mvp-doc-governance-closeout.md" in docs_index
     assert "docs/governance/policies/runtime-local-artifact-policy.md" in docs_index
     assert "docs/governance/policies/omx-plan-retention.md" in docs_index
@@ -124,6 +125,8 @@ def test_doc_inventory_ledger_classifies_major_document_and_runtime_clusters() -
     assert "keep" in ledger
     assert "archive" in ledger or "move" in ledger
     assert "docs/governance/inventory/root-doc-triage.md" in ledger
+    assert "docs/governance/inventory/current-project-mvp-closeout-checklist.md" in ledger
+    assert "docs/governance/inventory/current-project-mvp-closeout-execution.md" in ledger
     assert "docs/governance/inventory/post-mvp-doc-governance-closeout.md" in ledger
     assert "docs/governance/next-phase-backlog.md" in ledger
     assert "docs/current/next-phase-kickoff.md" in ledger

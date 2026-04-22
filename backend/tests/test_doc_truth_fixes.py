@@ -116,6 +116,7 @@ def test_governance_readme_classifies_core_policies_inventory_standards_and_temp
     assert "docs/governance/policies/manual-http-exceptions.md" in governance_index
     assert "docs/governance/inventory/inventory-ledger.md" in governance_index
     assert "docs/governance/inventory/current-project-mvp-closeout-checklist.md" in governance_index
+    assert "docs/governance/inventory/current-project-mvp-closeout-execution.md" in governance_index
     assert "docs/governance/inventory/post-mvp-doc-governance-closeout.md" in governance_index
     assert "docs/governance/standards/documentation-strategy.md" in governance_index
     assert "docs/governance/standards/docs-directory-placement-rules.md" in governance_index
@@ -183,6 +184,27 @@ def test_current_project_mvp_closeout_checklist_is_indexed_and_covers_six_closeo
     assert "Creative-first" in checklist
     assert "local_ffmpeg V1" in checklist
     assert ".omx/plans" in checklist
+
+
+def test_current_project_mvp_closeout_execution_record_is_indexed_and_tracks_residual_planning_risk() -> None:
+    docs_index = _read("docs/README.md")
+    governance_index = _read("docs/governance/README.md")
+    ledger = _read("docs/governance/inventory/inventory-ledger.md")
+    execution = _read("docs/governance/inventory/current-project-mvp-closeout-execution.md")
+
+    assert "docs/governance/inventory/current-project-mvp-closeout-execution.md" in docs_index
+    assert "docs/governance/inventory/current-project-mvp-closeout-execution.md" in governance_index
+    assert "docs/governance/inventory/current-project-mvp-closeout-execution.md" in ledger
+    assert "A. 实现状态收口" in execution
+    assert "B. 系统边界收口" in execution
+    assert "C. 文档体系收口" in execution
+    assert "D. 验证基线收口" in execution
+    assert "E. Planning / 历史产物收口" in execution
+    assert "F. 下一阶段决策收口" in execution
+    assert "mostly completed" in execution
+    assert "pending manual review" in execution
+    assert "Creative-first 稳定化 / UI-UX 收口主线" in execution
+    assert "可以进入下一阶段持续开发" in execution
 
 
 def test_domains_architecture_governance_boundary_doc_is_indexed_and_explains_split() -> None:
