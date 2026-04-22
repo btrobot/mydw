@@ -220,3 +220,4 @@ Current location:
 
 - `docs/governance/inventory/current-project-mvp-closeout-checklist.md` — 当前项目 MVP 收口逐项检查清单
 - `docs/governance/inventory/current-project-mvp-closeout-execution.md` — 按清单执行后的项目级收口记录与残留项说明
+- `docs/governance/inventory/current-project-phase-transition-decision.md` — 按阶段切换清单做出的项目级放行决议，确认可以进入下一阶段主线

@@ -75,6 +75,7 @@
 - `docs/governance/inventory/root-doc-triage.md`（根层未分类文档四分法去向收口）
 - `docs/governance/inventory/current-project-mvp-closeout-checklist.md`（把当前项目 MVP 后收口项拆成逐项执行清单）
 - `docs/governance/inventory/current-project-mvp-closeout-execution.md`（当前项目按收口清单执行后的正式记录）
+- `docs/governance/inventory/current-project-phase-transition-decision.md`（当前项目按 phase-transition checklist 做出的阶段切换决议）
 - `docs/governance/inventory/post-mvp-doc-governance-closeout.md`（本轮文档治理工作的正式收口件）
 - `docs/governance/inventory/`（台账 / 分诊 / parity / stale / version inventories）
 - `docs/governance/policies/`（generated artifact、runtime boundary、plan retention 等规则）

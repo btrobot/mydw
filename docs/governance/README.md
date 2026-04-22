@@ -72,6 +72,7 @@
 - `docs/governance/inventory/inventory-ledger.md`
 - `docs/governance/inventory/current-project-mvp-closeout-checklist.md`
 - `docs/governance/inventory/current-project-mvp-closeout-execution.md`
+- `docs/governance/inventory/current-project-phase-transition-decision.md`
 - `docs/governance/inventory/post-mvp-doc-governance-closeout.md`
 - `docs/governance/inventory/root-doc-triage.md`
 - `docs/governance/inventory/epic-7-docs-parity-checklist.md`
@@ -83,6 +84,7 @@
 - 文档盘点台账
 - 当前项目收口清单 / project closeout checklist
 - 当前项目收口执行记录 / project closeout execution record
+- 当前项目阶段切换决议 / project phase transition decision
 - 正式收口件 / closeout record
 - 根层文档分诊与去向表
 - 特定阶段/批次的清单、inventory、parity check

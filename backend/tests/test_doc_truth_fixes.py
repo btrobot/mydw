@@ -117,6 +117,7 @@ def test_governance_readme_classifies_core_policies_inventory_standards_and_temp
     assert "docs/governance/inventory/inventory-ledger.md" in governance_index
     assert "docs/governance/inventory/current-project-mvp-closeout-checklist.md" in governance_index
     assert "docs/governance/inventory/current-project-mvp-closeout-execution.md" in governance_index
+    assert "docs/governance/inventory/current-project-phase-transition-decision.md" in governance_index
     assert "docs/governance/inventory/post-mvp-doc-governance-closeout.md" in governance_index
     assert "docs/governance/standards/documentation-strategy.md" in governance_index
     assert "docs/governance/standards/docs-directory-placement-rules.md" in governance_index
@@ -205,6 +206,22 @@ def test_current_project_mvp_closeout_execution_record_is_indexed_and_tracks_res
     assert "pending-manual-review 文件，已在本轮 follow-up 中继续归档清理" in execution
     assert "Creative-first 稳定化 / UI-UX 收口主线" in execution
     assert "可以进入下一阶段持续开发" in execution
+
+
+def test_current_project_phase_transition_decision_is_indexed_and_approves_next_phase_entry() -> None:
+    docs_index = _read("docs/README.md")
+    governance_index = _read("docs/governance/README.md")
+    ledger = _read("docs/governance/inventory/inventory-ledger.md")
+    decision = _read("docs/governance/inventory/current-project-phase-transition-decision.md")
+
+    assert "docs/governance/inventory/current-project-phase-transition-decision.md" in docs_index
+    assert "docs/governance/inventory/current-project-phase-transition-decision.md" in governance_index
+    assert "docs/governance/inventory/current-project-phase-transition-decision.md" in ledger
+    assert "Part A：当前阶段已收口" in decision
+    assert "Part B：下一阶段已准备好启动" in decision
+    assert "Creative-first 稳定化 / UI-UX 收口主线" in decision
+    assert "Approved / 允许切换阶段" in decision
+    assert "PR-1：Workbench 可管理性收口" in decision
 
 
 def test_domains_architecture_governance_boundary_doc_is_indexed_and_explains_split() -> None:
