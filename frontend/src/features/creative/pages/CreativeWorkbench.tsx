@@ -340,7 +340,7 @@ export default function CreativeWorkbench() {
     isWindowLimited
       ? `当前总量为 ${total} 条，已超过窗口上限；不要把“当前列表里找不到”直接当成“系统里不存在”。`
       : `当前总量为 ${total} 条，仍在窗口上限以内。`,
-    '当日常使用稳定超出该窗口，或频繁出现“找不到但其实存在”的反馈时，再进入 server-side search planning，而不是在 PR-1 内继续扩边界。',
+    '当日常使用稳定超出该窗口，或频繁出现“找不到但其实存在”的反馈时，再升级为服务端检索方案；PR-1 不在这里继续扩边界。',
   ].join(' ')
 
   const workbenchPresetCounts = useMemo(
@@ -376,7 +376,7 @@ export default function CreativeWorkbench() {
   const handleCreateCreative = useCallback(async () => {
     try {
       const created = await createCreative.mutateAsync({})
-      message.success('已创建空白作品，请继续补齐素材与配置')
+      message.success('已创建空白作品，请继续补齐输入')
       navigate(`/creative/${created.id}`)
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -576,7 +576,7 @@ export default function CreativeWorkbench() {
               onClick={() => openCreativeDetail(record.id)}
               data-testid={`creative-workbench-open-detail-${record.id}`}
             >
-              详情
+              查看作品
             </Button>
             <Button
               type="link"
@@ -584,7 +584,7 @@ export default function CreativeWorkbench() {
               disabled={!record.current_version_id}
               data-testid={`creative-workbench-open-review-${record.id}`}
             >
-              审核
+              审核当前版本
             </Button>
             <Button
               type="link"
@@ -593,7 +593,7 @@ export default function CreativeWorkbench() {
               disabled={!record.current_version_id}
               data-testid={`creative-workbench-ai-clip-${record.id}`}
             >
-              AIClip
+              进入 AIClip
             </Button>
           </Space>
         ),
@@ -637,13 +637,13 @@ export default function CreativeWorkbench() {
     return (
       <PageContainer
         title="作品工作台"
-      subTitle="当前无法加载作品列表，请先恢复主业务入口，再进入筛选与处理流程。"
+        subTitle="当前无法加载作品列表，请重试或先回到运行总览。"
       >
         <div data-testid="creative-workbench-error">
           <Result
             status="error"
             title="作品列表暂时不可用"
-            subTitle="作品工作台没有拿到列表数据，当前不能继续把失败状态误当成空白工作台。"
+            subTitle="列表加载失败，当前无法继续筛选、审核或进入作品详情。"
             extra={[
               <Button key="retry" type="primary" icon={<ReloadOutlined />} onClick={handleRetryPrimary}>
                 重试加载
@@ -664,7 +664,7 @@ export default function CreativeWorkbench() {
   return (
     <PageContainer
       title="作品工作台"
-      subTitle="先创建作品，再补齐素材、合成配置与执行动作；任务管理只承接执行记录、失败重试与排障。"
+      subTitle="集中处理作品创建、补料、审核与 AIClip 主流程。"
     >
       <Space direction="vertical" size={16} style={{ display: 'flex' }}>
         <Card data-testid="creative-workbench-publish-summary">
@@ -674,7 +674,7 @@ export default function CreativeWorkbench() {
                 入口模式：{creativeFlowMeta.label}
               </Text>
               <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                当前工作台优先承接作品定位、审核与 AIClip 主流程；发布池、调度与运行诊断已收束到“查看运行诊断”入口。
+                默认先处理作品、审核与 AIClip；运行侧信息请从“查看运行诊断”进入。
               </Paragraph>
             </Space>
             <Button onClick={handleOpenDiagnostics} data-testid="creative-workbench-open-diagnostics">
@@ -687,6 +687,7 @@ export default function CreativeWorkbench() {
               type="warning"
               showIcon
               message="部分运行诊断暂不可用，可通过“查看运行诊断”重试。"
+              description="当前不影响作品主流程，可稍后进入诊断抽屉重试。"
               style={{ marginTop: 16 }}
               data-testid="creative-workbench-diagnostics-notice"
             />
@@ -732,7 +733,7 @@ export default function CreativeWorkbench() {
               rowKey="id"
               columns={columns}
               cardBordered
-              headerTitle="今日待处理作品"
+              headerTitle="待处理作品"
               options={{ density: false, setting: false }}
               request={async (params, sort) => {
                 const keyword = params.keyword?.trim().toLowerCase()
@@ -884,7 +885,7 @@ export default function CreativeWorkbench() {
                   onClick={() => navigate('/dashboard')}
                   data-testid="creative-workbench-open-dashboard"
                 >
-                  查看运行总览
+                  运行总览
                 </Button>,
               ]}
             />
@@ -970,7 +971,7 @@ export default function CreativeWorkbench() {
           </Card>
 
           <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            {creativeFlowMeta.description} 这里只有运行排障与发布池观察信息；默认工作台首屏不再承担这些诊断细节。
+            {creativeFlowMeta.description} 这里仅保留运行排障与发布池观察信息。
           </Paragraph>
         </Space>
       </Drawer>

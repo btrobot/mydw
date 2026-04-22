@@ -10,7 +10,6 @@ export interface AuthErrorDescriptor {
 export interface AuthLoginCopy {
   title: string
   subtitle: string
-  helper: string
   usernameLabel: string
   usernamePlaceholder: string
   usernameRequiredMessage: string
@@ -85,24 +84,23 @@ const AUTH_GRACE_DESCRIPTION = '当前授权服务暂不可用，你仍可查看
 const AUTH_DIAGNOSTICS_TRIGGER_LABEL = '查看诊断信息'
 
 export const AUTH_LOGIN_COPY: AuthLoginCopy = {
-  title: '登录创作控制台',
-  subtitle: '继续使用作品工作台、任务管理和素材管理。',
-  helper: '请输入账号和密码，继续进入当前工作区。',
+  title: '登录作品工作台',
+  subtitle: '继续处理作品、审核与 AIClip 流程。',
   usernameLabel: '账号',
   usernamePlaceholder: '请输入账号',
   usernameRequiredMessage: '请输入账号',
   passwordLabel: '密码',
   passwordPlaceholder: '请输入密码',
   passwordRequiredMessage: '请输入密码',
-  submitLabel: '登录',
+  submitLabel: '登录并进入工作台',
   retryLabel: '重新提交',
   rememberMeLabel: '记住本次选择',
-  rememberMeHint: '仅保留当前界面选择，不会改变设备绑定、会话有效期或后端登录策略。',
+  rememberMeHint: '仅保留当前界面的记住选择，不会改变设备绑定或会话策略。',
   statusSyncLoading: '正在检查当前登录状态，请稍候。',
   statusSyncError: '当前状态检查暂不可用，你仍可继续提交登录。',
   statusSyncRetryLabel: '重新检查',
   diagnosticsLabel: AUTH_DIAGNOSTICS_TRIGGER_LABEL,
-  diagnosticsDescription: '以下信息仅用于排查当前登录环境问题，默认不会影响主流程阅读。',
+  diagnosticsDescription: '以下信息仅用于排查当前登录环境。',
   diagnosticsDeviceIdLabel: '设备标识',
   diagnosticsClientVersionLabel: '客户端版本',
 }
@@ -112,7 +110,7 @@ export const AUTH_BOOTSTRAP_COPY: AuthBootstrapCopy = {
   loadingDescription: '正在检查当前登录状态，请稍候。',
   loadingTip: '正在准备登录环境…',
   errorTitle: '暂时无法完成登录准备',
-  errorDescription: '你仍可进入登录页继续尝试；如果问题持续，请稍后重新检查登录环境。',
+  errorDescription: '你仍可继续登录；如果问题持续，请稍后重新检查。',
   retryLabel: '重新检查',
   retryingLabel: '重新检查中…',
 }
@@ -139,7 +137,7 @@ const STATE_MESSAGES: Record<AuthState, Omit<AuthErrorDescriptor, 'retryLabel'>>
   },
   authenticated_active: {
     title: '已登录',
-    description: '当前可以正常访问应用。',
+    description: '当前可以继续处理作品、审核与常用业务流程。',
     severity: 'info',
   },
   authenticated_grace: {
@@ -149,7 +147,7 @@ const STATE_MESSAGES: Record<AuthState, Omit<AuthErrorDescriptor, 'retryLabel'>>
   },
   refresh_required: {
     title: '需要重新确认登录状态',
-    description: '当前会话需要重新校验后才能继续，请重新登录或稍后重试。',
+    description: '当前会话需要重新确认，请重新登录后继续。',
     severity: 'warning',
   },
   revoked: {
@@ -169,7 +167,7 @@ const STATE_MESSAGES: Record<AuthState, Omit<AuthErrorDescriptor, 'retryLabel'>>
   },
   error: {
     title: '授权服务暂不可用',
-    description: '当前无法完成授权校验，请稍后重试；如果你刚刚提交过登录，请确认网络后再试一次。',
+    description: '当前无法完成授权校验，请稍后重试；如仍失败，请确认网络后重新登录。',
     severity: 'warning',
   },
 }
@@ -223,13 +221,13 @@ const AUTH_STATUS_TAG_META: Record<AuthState, AuthStatusTagMeta> = {
 
 const AUTH_STATUS_PAGE_SHARED_COPY = {
   loadingTitle: '正在刷新授权状态',
-  loadingDescription: '正在同步最新的设备授权结果，请稍候。',
+  loadingDescription: '正在同步最新授权结果，请稍候。',
   refreshErrorTitle: '授权状态暂时无法刷新',
-  refreshErrorDescription: '当前页面保留最近一次会话信息，请稍后重试。',
+  refreshErrorDescription: '当前页面保留最近一次会话信息，请稍后再试。',
   diagnosticsLabel: AUTH_DIAGNOSTICS_TRIGGER_LABEL,
-  diagnosticsDescription: '以下信息仅用于说明当前设备会话状态，不影响下方主操作路径。',
-  emptyDiagnosticsText: '当前授权会话需要重新确认。',
-  signoutLabel: '退出登录并返回登录页',
+  diagnosticsDescription: '以下信息仅用于查看当前设备会话状态。',
+  emptyDiagnosticsText: '暂无可展示的会话信息。',
+  signoutLabel: '重新登录',
 } satisfies Omit<AuthStatusPageCopy, 'descriptor' | 'continueLabel'>
 
 const createHardStopStatusPageCopy = (descriptor: AuthErrorDescriptor): AuthStatusPageCopy => ({
@@ -247,7 +245,8 @@ const AUTH_STATUS_PAGE_COPY: Record<AuthStatusVariant, AuthStatusPageCopy> = {
       ...STATE_MESSAGES.authenticated_grace,
       severity: 'info',
     },
-    continueLabel: '继续进入工作台',
+    continueLabel: '进入作品工作台',
+    signoutLabel: '退出登录',
   },
 }
 

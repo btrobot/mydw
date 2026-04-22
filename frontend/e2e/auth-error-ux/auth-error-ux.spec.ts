@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 const BASE_URL = process.env.E2E_BASE_URL || ''
 const ROOT_URL = BASE_URL || '/'
 const BOOTSTRAP_WARNING_TITLE = '暂时无法完成登录准备'
-const BOOTSTRAP_WARNING_DESCRIPTION = '你仍可进入登录页继续尝试；如果问题持续，请稍后重新检查登录环境。'
+const BOOTSTRAP_WARNING_DESCRIPTION = '你仍可继续登录；如果问题持续，请稍后重新检查。'
 
 const createSession = (overrides: Record<string, unknown> = {}) => ({
   auth_state: 'unauthenticated',
@@ -176,7 +176,7 @@ test.describe('Auth error UX', () => {
     await expect(page.getByTestId('auth-status-primary-alert')).toContainText('访问权限已失效')
     await expect(page.getByTestId('auth-status-live-revoked')).toHaveCount(0)
     await expect(page.getByTestId('auth-status-actions').getByRole('button')).toHaveCount(1)
-    await expect(page.getByTestId('auth-status-signout-button')).toHaveText('退出登录并返回登录页')
+    await expect(page.getByTestId('auth-status-signout-button')).toHaveText('重新登录')
     await expect(page.getByTestId('auth-status-session-meta')).not.toBeVisible()
   })
 
@@ -231,7 +231,7 @@ test.describe('Auth error UX', () => {
     await expect(page.getByTestId('auth-status-primary-alert')).toContainText('宽限模式')
     await expect(page.getByTestId('auth-status-live-grace')).toHaveCount(0)
     await expect(page.getByTestId('auth-status-actions').getByRole('button')).toHaveCount(2)
-    await expect(page.getByRole('button', { name: '继续进入工作台' })).toBeVisible()
-    await expect(page.getByTestId('auth-status-signout-button')).toHaveText('退出登录并返回登录页')
+    await expect(page.getByRole('button', { name: '进入作品工作台' })).toBeVisible()
+    await expect(page.getByTestId('auth-status-signout-button')).toHaveText('退出登录')
   })
 })

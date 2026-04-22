@@ -121,6 +121,16 @@ async function mockStatusShell(page: Page, variant: 'revoked' | 'device_mismatch
 test.describe('Auth shell pages', () => {
   test('renders login page and submits successful login to local auth surface', async ({ page }) => {
     await mockWorkbenchLandingApis(page, { authState: 'unauthenticated' })
+    let currentSession = createSession()
+
+    await page.unroute('**/api/auth/session')
+    await page.route('**/api/auth/session', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(currentSession),
+      })
+    })
 
     await page.route('**/api/auth/login', async (route) => {
       const body = await route.request().postDataJSON()
@@ -128,21 +138,23 @@ test.describe('Auth shell pages', () => {
       expect(body.password).toBe('secret')
       expect(body.device_id).toBeTruthy()
 
+      currentSession = {
+        auth_state: 'authenticated_active',
+        remote_user_id: 'u_123',
+        display_name: 'Alice',
+        license_status: 'active',
+        entitlements: ['dashboard:view'],
+        expires_at: '2026-04-20T10:00:00',
+        last_verified_at: '2026-04-14T00:00:00',
+        offline_grace_until: '2026-04-21T10:00:00',
+        denial_reason: null,
+        device_id: body.device_id,
+      }
+
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          auth_state: 'authenticated_active',
-          remote_user_id: 'u_123',
-          display_name: 'Alice',
-          license_status: 'active',
-          entitlements: ['dashboard:view'],
-          expires_at: '2026-04-20T10:00:00',
-          last_verified_at: '2026-04-14T00:00:00',
-          offline_grace_until: '2026-04-21T10:00:00',
-          denial_reason: null,
-          device_id: body.device_id,
-        }),
+        body: JSON.stringify(currentSession),
       })
     })
 
@@ -169,7 +181,7 @@ test.describe('Auth shell pages', () => {
 
       const actions = page.getByTestId('auth-status-actions').getByRole('button')
       await expect(actions).toHaveCount(1)
-      await expect(page.getByTestId('auth-status-signout-button')).toHaveText('退出登录并返回登录页')
+      await expect(page.getByTestId('auth-status-signout-button')).toHaveText('重新登录')
 
       await expect(page.getByTestId('auth-status-session-meta')).not.toBeVisible()
       await expect(page.getByTestId('auth-status-diagnostics-trigger')).toHaveText('查看诊断信息')
@@ -191,8 +203,8 @@ test.describe('Auth shell pages', () => {
 
     const actions = page.getByTestId('auth-status-actions').getByRole('button')
     await expect(actions).toHaveCount(2)
-    await expect(page.getByRole('button', { name: '继续进入工作台' })).toBeVisible()
-    await expect(page.getByTestId('auth-status-signout-button')).toHaveText('退出登录并返回登录页')
+    await expect(page.getByRole('button', { name: '进入作品工作台' })).toBeVisible()
+    await expect(page.getByTestId('auth-status-signout-button')).toHaveText('退出登录')
 
     await expect(page.getByTestId('auth-status-session-meta')).not.toBeVisible()
     await expect(page.getByTestId('auth-status-diagnostics-trigger')).toHaveText('查看诊断信息')
@@ -239,6 +251,6 @@ test.describe('Auth shell pages', () => {
     await expect(page.getByText('授权状态暂时无法刷新')).toBeVisible()
     await expect(page.getByRole('button', { name: '重试' })).toHaveCount(0)
     await expect(page.getByTestId('auth-status-actions').getByRole('button')).toHaveCount(1)
-    await expect(page.getByTestId('auth-status-signout-button')).toHaveText('退出登录并返回登录页')
+    await expect(page.getByTestId('auth-status-signout-button')).toHaveText('重新登录')
   })
 })

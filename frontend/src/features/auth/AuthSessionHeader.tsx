@@ -26,7 +26,7 @@ export default function AuthSessionHeader() {
         message.error(error.message)
         return
       }
-      message.error('退出登录失败')
+      message.error('退出登录失败，请稍后重试')
     },
   })
 

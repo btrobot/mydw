@@ -95,7 +95,7 @@ test.describe('Auth bootstrap', () => {
     await page.waitForFunction(() => document.documentElement.dataset.authBootstrapStatus === 'error')
 
     await expect(page.locator('body')).toContainText('暂时无法完成登录准备')
-    await expect(page.locator('body')).toContainText('你仍可进入登录页继续尝试；如果问题持续，请稍后重新检查登录环境。')
+    await expect(page.locator('body')).toContainText('你仍可继续登录；如果问题持续，请稍后重新检查。')
     await expect(page.locator('body')).not.toContainText('Local auth bootstrap failed')
     await expect(page.getByRole('link', { name: /忘记密码|需要帮助|联系支持/ })).toHaveCount(0)
     await expect(page.getByTestId('auth-login-page')).toBeVisible()

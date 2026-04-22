@@ -298,7 +298,7 @@ test.describe('Creative workbench baseline', () => {
   test('shows the table-first workbench with business-first actions', async ({ page }) => {
     await page.goto(`${TEST_BASE_URL}/#/creative/workbench`)
 
-    await expect(page.locator('body')).toContainText('任务管理只承接执行记录、失败重试与排障')
+    await expect(page.locator('body')).toContainText('集中处理作品创建、补料、审核与 AIClip 主流程')
     await expect(page.locator('body')).not.toContainText('兼容入口：新建任务')
     await expect(page.getByTestId('creative-workbench-publish-summary')).toBeVisible()
     await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
@@ -340,7 +340,7 @@ test.describe('Creative workbench baseline', () => {
     await expect(guardrail).toContainText('最多只加载最近 200 条作品')
     await expect(guardrail).toContainText('搜索、筛选、排序与 preset 视图都只对这批已加载窗口生效')
     await expect(guardrail).toContainText('找不到但其实存在')
-    await expect(guardrail).toContainText('server-side search planning')
+    await expect(guardrail).toContainText('服务端检索方案')
   })
 
   test('supports search and filtering before entering detail', async ({ page }) => {

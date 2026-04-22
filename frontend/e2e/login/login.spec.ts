@@ -81,9 +81,8 @@ test.describe('Remote auth login page', () => {
 
     const { username, password, rememberMe, submit } = loginForm(page)
 
-    await expect(page.getByRole('heading', { name: '登录创作控制台' })).toBeVisible()
-    await expect(page.getByText('继续使用作品工作台、任务管理和素材管理。')).toBeVisible()
-    await expect(page.getByText('请输入账号和密码，继续进入当前工作区。')).toBeVisible()
+    await expect(page.getByRole('heading', { name: '登录作品工作台' })).toBeVisible()
+    await expect(page.getByText('继续处理作品、审核与 AIClip 流程。')).toBeVisible()
     await expect(username).toBeVisible()
     await expect(password).toBeVisible()
     await expect(rememberMe).toBeVisible()

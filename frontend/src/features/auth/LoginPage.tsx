@@ -117,10 +117,6 @@ export default function LoginPage() {
         data-testid="auth-login-page"
       >
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            {AUTH_LOGIN_COPY.helper}
-          </Typography.Paragraph>
-
           {submitError ? (
             <AuthErrorMessage
               descriptor={submitError}

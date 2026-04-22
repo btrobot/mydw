@@ -46,7 +46,7 @@ export default function VersionPanel({
       extra={<Text type="secondary">共 {versions.length} 个版本</Text>}
     >
       <Paragraph type="secondary">
-        先确认当前版本与当前有效结论，再回看历史版本与审核轨迹。
+        先看当前版本与当前有效结论，再回看历史版本与审核记录。
       </Paragraph>
 
       <List
@@ -69,7 +69,7 @@ export default function VersionPanel({
                     onClick={() => onOpenAiClipWorkflow(version)}
                     data-testid={`creative-version-ai-clip-${version.id}`}
                   >
-                    AIClip 工作流
+                    进入 AIClip
                   </Button>
                 ) : null,
                 version.is_current && onReviewVersion ? (
@@ -153,7 +153,7 @@ export default function VersionPanel({
                   <Alert
                     type={version.is_current ? 'info' : 'warning'}
                     showIcon
-                    message={version.is_current ? '当前版本还没有有效审核结论' : '该历史版本没有审核记录'}
+                    message={version.is_current ? '当前版本待审核' : '该历史版本没有审核记录'}
                   />
                 )}
               </Space>

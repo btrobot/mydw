@@ -431,7 +431,7 @@ export default function CreativeDetail() {
           <Result
             status="error"
             title="作品详情暂时无法加载"
-            subTitle="当前请求失败，已明确展示为错误状态，不再与空作品或无权限场景混淆。"
+            subTitle="详情加载失败，当前无法继续查看输入、版本或审核信息。"
             extra={[
               <Button key="retry" type="primary" icon={<ReloadOutlined />} onClick={retryCreative}>
                 重试加载
@@ -469,7 +469,7 @@ export default function CreativeDetail() {
         </Button>,
         currentVersion ? (
           <Button key="ai-clip" onClick={openAiClipWorkflow} data-testid="creative-open-ai-clip">
-            AIClip 工作流
+            进入 AIClip
           </Button>
         ) : null,
         currentVersion ? (
@@ -507,7 +507,7 @@ export default function CreativeDetail() {
             <Descriptions.Item label="最近更新时间">{formatCreativeTimestamp(creative.updated_at)}</Descriptions.Item>
           </Descriptions>
           <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
-            这里先服务作品输入、版本与审核判断；任务诊断、发布链路与 Cutover 对账已收束到“查看高级诊断”入口。
+            默认先处理作品输入、版本与审核；任务与发布侧信息请从“查看高级诊断”进入。
           </Paragraph>
         </Card>
 
@@ -516,12 +516,11 @@ export default function CreativeDetail() {
           extra={(
             <Space>
               <Text type="secondary">Snapshot Hash：{inputSnapshot.snapshot_hash ?? '-'}</Text>
-              <Button type="primary" loading={updateCreative.isPending} onClick={() => void handleSaveInput()}>
-                保存作品输入
+              <Button loading={updateCreative.isPending} onClick={() => void handleSaveInput()}>
+                保存输入
               </Button>
               <Button
                 type="primary"
-                ghost
                 loading={submitCreativeComposition.isPending}
                 disabled={creative.eligibility_status !== 'READY_TO_COMPOSE' || updateCreative.isPending}
                 onClick={() => void handleSubmitComposition()}
@@ -670,8 +669,8 @@ export default function CreativeDetail() {
               <Alert
                 type="info"
                 showIcon
-                message="当前版本还没有有效审核结论"
-                description="你可以先发起一次审核；历史版本的旧结论仍保留在下方版本时间线中。"
+                message="当前版本待审核"
+                description="请先审核当前版本；历史版本记录保留在下方时间线中。"
               />
             )}
           </Card>
@@ -706,7 +705,7 @@ export default function CreativeDetail() {
             {diagnosticTaskIds.length > 0 ? (
               <Space direction="vertical" size={12} style={{ width: '100%' }}>
                 <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                  任务管理只承接执行进度、失败重试与排障细节；默认详情页不再把这些诊断信息混在业务主视图里。
+                  任务管理只承接执行进度、失败重试与排障；默认详情页不混入这些诊断细节。
                 </Paragraph>
                 <Space wrap>
                   {primaryTaskId ? (
@@ -729,7 +728,7 @@ export default function CreativeDetail() {
             ) : (
               <Space direction="vertical" size={12} style={{ width: '100%' }}>
                 <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                  这条作品还没有关联执行记录。默认详情页继续聚焦输入、版本与审核；如需排查任务侧信息，可从这里进入任务管理。
+                  这条作品还没有关联执行记录；如需排查任务侧信息，可从这里进入任务管理。
                 </Paragraph>
                 <Button onClick={() => navigate('/task/list')}>打开任务管理</Button>
               </Space>
@@ -811,7 +810,7 @@ export default function CreativeDetail() {
                 type="warning"
                 showIcon
                 message="发布池历史暂时不可用"
-                description="当前不能把发布池请求失败误判为没有历史记录，请稍后重试。"
+                description="发布池请求失败，请稍后重试。"
                 action={(
                   <Button size="small" icon={<ReloadOutlined />} onClick={retryDiagnostics}>
                     重试
@@ -862,7 +861,7 @@ export default function CreativeDetail() {
 
       <CheckDrawer creativeId={creativeId} open={drawerOpen} version={currentVersion} onClose={() => setDrawerOpen(false)} />
 
-      <Drawer title="AIClip 工作流" open={aiClipOpen} width={aiClipDrawerWidth} onClose={closeAiClipWorkflow} destroyOnClose styles={{ body: { padding: screens.md ? 24 : 16 } }}>
+      <Drawer title="AIClip" open={aiClipOpen} width={aiClipDrawerWidth} onClose={closeAiClipWorkflow} destroyOnClose styles={{ body: { padding: screens.md ? 24 : 16 } }}>
         <div data-testid="creative-ai-clip-drawer">
           <AIClipWorkflowPanel
             creativeContext={creativeId && currentVersion ? {

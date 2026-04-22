@@ -41,7 +41,7 @@ export default function AuthStatusPage({ variant }: AuthStatusPageProps) {
     onSuccess: (nextSession) => {
       setSession(nextSession)
       setRedirectToLogin(true)
-      message.success('已退出登录')
+      message.success(isGraceVariant ? '已退出登录' : '请重新登录')
     },
     onError: (error: unknown) => {
       if (error instanceof Error) {
