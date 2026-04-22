@@ -86,6 +86,27 @@ npm run test:e2e -- `
 - error / empty / loading / success 四态
 - 关键 CTA 文案与导航命名
 
+当前 **PR-3** 的最小 targeted suite 应至少覆盖：
+
+- `frontend/e2e/auth-bootstrap/auth-bootstrap.spec.ts`
+- `frontend/e2e/auth-error-ux/auth-error-ux.spec.ts`
+- `frontend/e2e/auth-error-ux/auth-status-live-state.spec.ts`
+- `frontend/e2e/auth-routing/auth-routing.spec.ts`
+- `frontend/e2e/auth-shell/auth-shell.spec.ts`
+- `frontend/e2e/login/login.spec.ts`
+- `frontend/e2e/creative-main-entry/creative-main-entry.spec.ts`
+- `frontend/e2e/creative-workbench/creative-workbench.spec.ts`
+- `frontend/e2e/creative-review/creative-review.spec.ts`
+- `frontend/e2e/creative-version-panel/creative-version-panel.spec.ts`
+- `frontend/e2e/dashboard/dashboard-state.spec.ts`
+
+PR-3 对应的专项口径应明确证明：
+
+- auth/login shell 的用户可读文案已稳定，不再暴露假的 support / forgot CTA
+- auth live refresh 的 loading / error 已显式可断言
+- creative workbench / detail / version panel 的主文案、主 CTA 与当前版本语义已稳定
+- Dashboard 仍是 diagnostics surface，但失败不再伪装成 empty / placeholder
+
 建议主要落点：
 
 - `frontend/e2e/creative-workbench/`
@@ -111,7 +132,7 @@ npm run test:e2e -- `
 | --- | --- | --- |
 | PR-1 — Workbench 可管理性收口 | 列表可定位、可筛选、可排序、可控规模，且 window-based 限制与升级条件显式化 | workbench E2E + 必要手工链路 |
 | PR-2 — 业务层 / 诊断层分层 | 默认业务视图不再承担过量诊断信息；diagnostics 默认隐藏、通过显式入口可达，且打开状态应可稳定恢复 | creative-workbench / creative-review / publish-pool / publish-cutover / task-diagnostics / creative-version-panel targeted E2E + creative-main-entry / auth-routing baseline |
-| PR-3 — 文案与四态统一 | CTA、文案、loading/empty/error/success 四态一致 | 相关页面 targeted E2E + 手工核对 |
+| PR-3 — 文案与四态统一 | CTA、文案、loading/empty/error/success 四态一致，且 diagnostics failure 不再伪装成 empty/default | `npm run typecheck` + `npm run build` + auth/bootstrap/login/auth shell/routing/error UX/creative main entry/workbench/review/version panel/dashboard targeted E2E + 手工核对 |
 | PR-4 — 回归补强与阶段收口 | 新主线被 regression baseline 接住 | backend/contract baseline + frontend baseline + 手工链路 |
 
 ## 4. 手工验证链路

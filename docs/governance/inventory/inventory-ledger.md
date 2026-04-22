@@ -213,6 +213,7 @@ Current location:
 - `docs/governance/next-phase-execution-breakdown.md` — 下一阶段 PR sequence 分解
 - `docs/governance/next-phase-pr1-workbench-manageability-plan.md` — PR-1「Workbench 可管理性收口」的聚焦规划与 slice 建议
 - `docs/governance/next-phase-pr2-business-diagnostics-layering-plan.md` — PR-2「业务层 / 诊断层分层」的聚焦规划与 slice 建议
+- `docs/governance/next-phase-pr3-copy-and-state-unification-plan.md` — PR-3「文案与四态统一」的聚焦规划与 slice 建议
 
 ## Formal closeout artifact
 
@@ -225,6 +226,7 @@ Current location:
 - `docs/governance/inventory/current-project-phase-transition-decision.md` — 按阶段切换清单做出的项目级放行决议，确认可以进入下一阶段主线
 - `docs/governance/inventory/pr1-workbench-manageability-closeout.md` — PR-1「Workbench 可管理性收口」的正式收口件，汇总最终交付、当前 current truth、验证结果与后续交接
 - `docs/governance/inventory/pr2-business-diagnostics-layering-closeout.md` — PR-2「业务层 / 诊断层分层」的正式收口件，汇总默认业务面与 diagnostics surface 分层后的 current truth
+- `docs/governance/inventory/pr3-copy-and-state-unification-closeout.md` — PR-3「文案与四态统一」的正式收口件，汇总 auth/login、creative 与 Dashboard 的 CTA / 文案 / 四态 current truth
 - `docs/governance/inventory/pr3-slice-b-state-feedback-closeout.md` — PR-3 / Slice B 的正式收口件，汇总四态统一、失败语义显式化与 targeted verification 证据
 
 ## Tenth archive batch completed in PR-1 closeout
@@ -232,6 +234,16 @@ Current location:
 - `.omx/plans/archive/prd-pr1-workbench-manageability.md`
 - `.omx/plans/archive/test-spec-pr1-workbench-manageability.md`
 - `.omx/plans/archive/slice-plan-pr1-workbench-manageability.md`
+
+Current location:
+
+- `.omx/plans/archive/`
+
+## Eleventh archive batch completed in PR-3 closeout
+
+- `.omx/plans/archive/prd-pr3-copy-and-state-unification.md`
+- `.omx/plans/archive/test-spec-pr3-copy-and-state-unification.md`
+- `.omx/plans/archive/slice-plan-pr3-copy-and-state-unification.md`
 
 Current location:
 

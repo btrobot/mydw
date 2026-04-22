@@ -26,11 +26,11 @@
 2. PR-3 范围或验证口径变化时，先改本文件，再同步 test spec / breakdown
 3. 本文件只规划 PR-3，不把 PR-4（回归补强与阶段收口）或 AIClip 深度产品化混进来
 
-对应的 OMX 工作工件：
+对应的 OMX 工作工件（现已归档）：
 
-- `.omx/plans/prd-pr3-copy-and-state-unification.md`
-- `.omx/plans/test-spec-pr3-copy-and-state-unification.md`
-- `.omx/plans/slice-plan-pr3-copy-and-state-unification.md`
+- `.omx/plans/archive/prd-pr3-copy-and-state-unification.md`
+- `.omx/plans/archive/test-spec-pr3-copy-and-state-unification.md`
+- `.omx/plans/archive/slice-plan-pr3-copy-and-state-unification.md`
 
 ---
 
@@ -429,16 +429,18 @@ $env:E2E_BASE_URL='http://127.0.0.1:4174'
 npm run typecheck
 npm run build
 npm run test:e2e -- `
+  e2e/auth-bootstrap/auth-bootstrap.spec.ts `
   e2e/auth-error-ux/auth-error-ux.spec.ts `
+  e2e/auth-error-ux/auth-status-live-state.spec.ts `
   e2e/auth-shell/auth-shell.spec.ts `
   e2e/auth-routing/auth-routing.spec.ts `
+  e2e/login/login.spec.ts `
   e2e/creative-main-entry/creative-main-entry.spec.ts `
   e2e/creative-workbench/creative-workbench.spec.ts `
   e2e/creative-review/creative-review.spec.ts `
-  e2e/creative-version-panel/creative-version-panel.spec.ts
+  e2e/creative-version-panel/creative-version-panel.spec.ts `
+  e2e/dashboard/dashboard-state.spec.ts
 ```
-
-若 Slice B 修改 Dashboard 的状态语义或断言位置，再额外补一条 dashboard targeted suite。
 
 ### 手工验证
 
@@ -465,13 +467,17 @@ PR-3 执行时，至少同步检查：
 - `docs/governance/next-phase-test-spec.md`
 - `docs/governance/next-phase-execution-breakdown.md`
 - `docs/governance/README.md`
+- `frontend/e2e/auth-bootstrap/auth-bootstrap.spec.ts`
 - `frontend/e2e/auth-error-ux/auth-error-ux.spec.ts`
+- `frontend/e2e/auth-error-ux/auth-status-live-state.spec.ts`
 - `frontend/e2e/auth-shell/auth-shell.spec.ts`
 - `frontend/e2e/auth-routing/auth-routing.spec.ts`
+- `frontend/e2e/login/login.spec.ts`
 - `frontend/e2e/creative-main-entry/creative-main-entry.spec.ts`
 - `frontend/e2e/creative-workbench/creative-workbench.spec.ts`
 - `frontend/e2e/creative-review/creative-review.spec.ts`
 - `frontend/e2e/creative-version-panel/creative-version-panel.spec.ts`
+- `frontend/e2e/dashboard/dashboard-state.spec.ts`
 
 ---
 

@@ -86,7 +86,7 @@ test.describe('Remote auth login page', () => {
     await expect(username).toBeVisible()
     await expect(password).toBeVisible()
     await expect(rememberMe).toBeVisible()
-    await expect(page.getByTestId('auth-login-remember-me-hint')).toContainText('不会改变设备绑定、会话有效期或后端登录策略')
+    await expect(page.getByTestId('auth-login-remember-me-hint')).toContainText('仅保留当前界面的记住选择，不会改变设备绑定或会话策略。')
     await expect(submit).toBeVisible()
     await expect(page.getByTestId('auth-login-diagnostics-trigger')).toBeVisible()
     await expect(page.getByTestId('auth-login-diagnostics-trigger')).toHaveText('查看诊断信息')
@@ -107,25 +107,37 @@ test.describe('Remote auth login page', () => {
   test('submits username/password/device metadata only and redirects on success', async ({ page }) => {
     await mockWorkbenchLandingApis(page, { authState: 'unauthenticated' })
     await mockAuthStatus(page)
+    let currentSession = createSession()
+
+    await page.unroute('**/api/auth/session')
+    await page.route('**/api/auth/session', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(currentSession),
+      })
+    })
 
     let receivedPayload: Record<string, unknown> | null = null
     await page.route('**/api/auth/login', async (route) => {
       receivedPayload = await route.request().postDataJSON()
 
+      currentSession = createSession({
+        auth_state: 'authenticated_active',
+        remote_user_id: 'u_123',
+        display_name: 'Alice',
+        license_status: 'active',
+        entitlements: ['dashboard:view'],
+        expires_at: '2026-04-20T10:00:00',
+        last_verified_at: '2026-04-14T00:00:00',
+        offline_grace_until: '2026-04-21T10:00:00',
+        device_id: receivedPayload?.device_id ?? 'device-test-1',
+      })
+
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(createSession({
-          auth_state: 'authenticated_active',
-          remote_user_id: 'u_123',
-          display_name: 'Alice',
-          license_status: 'active',
-          entitlements: ['dashboard:view'],
-          expires_at: '2026-04-20T10:00:00',
-          last_verified_at: '2026-04-14T00:00:00',
-          offline_grace_until: '2026-04-21T10:00:00',
-          device_id: receivedPayload?.device_id ?? 'device-test-1',
-        })),
+        body: JSON.stringify(currentSession),
       })
     })
 
@@ -239,7 +251,8 @@ test.describe('Remote auth login page', () => {
 
     await expect(page.getByTestId('auth-login-status-message')).toBeVisible()
     await expect(page.getByTestId('auth-login-status-message')).toContainText('需要重新确认登录状态')
-    await expect(page.getByTestId('auth-login-status-message')).toContainText('请重新登录或稍后重试')
+    await expect(page.getByTestId('auth-login-status-message')).toContainText('当前会话需要重新确认，请重新登录后继续。')
+    await expect(page.getByTestId('auth-login-status-message')).toContainText('当前授权服务连接超时，请稍后重试。')
   })
 
   test('prioritizes the login state hint over status-sync feedback', async ({ page }) => {

@@ -26,9 +26,9 @@
 关联规划：
 
 - `docs/governance/next-phase-pr3-copy-and-state-unification-plan.md`
-- `.omx/plans/prd-pr3-copy-and-state-unification.md`
-- `.omx/plans/test-spec-pr3-copy-and-state-unification.md`
-- `.omx/plans/slice-plan-pr3-copy-and-state-unification.md`
+- `.omx/plans/archive/prd-pr3-copy-and-state-unification.md`
+- `.omx/plans/archive/test-spec-pr3-copy-and-state-unification.md`
+- `.omx/plans/archive/slice-plan-pr3-copy-and-state-unification.md`
 
 ---
 

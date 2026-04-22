@@ -116,8 +116,9 @@
 
 ## PR-3 — 文案与四态统一
 
-> Status: In progress on 2026-04-22
+> Status: Completed on 2026-04-22
 > Planning: `docs/governance/next-phase-pr3-copy-and-state-unification-plan.md`
+> Closeout: `docs/governance/inventory/pr3-copy-and-state-unification-closeout.md`
 > Slice B closeout: `docs/governance/inventory/pr3-slice-b-state-feedback-closeout.md`
 
 目标：
@@ -136,9 +137,9 @@
 详细规划入口：
 
 - `docs/governance/next-phase-pr3-copy-and-state-unification-plan.md`
-- `.omx/plans/prd-pr3-copy-and-state-unification.md`
-- `.omx/plans/test-spec-pr3-copy-and-state-unification.md`
-- `.omx/plans/slice-plan-pr3-copy-and-state-unification.md`
+- `.omx/plans/archive/prd-pr3-copy-and-state-unification.md`
+- `.omx/plans/archive/test-spec-pr3-copy-and-state-unification.md`
+- `.omx/plans/archive/slice-plan-pr3-copy-and-state-unification.md`
 
 验收：
 
@@ -154,7 +155,7 @@
 2. **Slice B — 四态统一与关键页面状态反馈收口**
    已完成。Dashboard、auth live state、creative loading state 的 loading / empty / error / success 语义已显式化，失败态不再伪装成 empty / default；见 `docs/governance/inventory/pr3-slice-b-state-feedback-closeout.md`。
 3. **Slice C — 验证与文档事实对齐**
-   待继续。需要把 PR-3 当前已经形成的文案 / 四态 current truth 继续同步到 test spec、execution breakdown 与最终 PR closeout。
+   已完成。`next-phase-test-spec`、`README`、`inventory ledger` 与 PR-3 正式 closeout 已同步当前 truth；对应 OMX planning 已归档，后续以正式 docs 为准。
 
 ## PR-4 — 回归补强与阶段收口
 

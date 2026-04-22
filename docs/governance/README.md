@@ -60,12 +60,13 @@
 4. `docs/governance/next-phase-execution-breakdown.md`：按什么 PR 顺序推进
 5. `docs/governance/next-phase-pr1-workbench-manageability-plan.md`
 6. `docs/governance/next-phase-pr2-business-diagnostics-layering-plan.md`
+7. `docs/governance/next-phase-pr3-copy-and-state-unification-plan.md`
 
-当前 PR-2 的正式口径应以 `docs/` 为准，核心事实是：
+当前 PR-3 的正式口径应以 `docs/` 为准，核心事实是：
 
-- 默认业务面不再混排 diagnostics
-- diagnostics 必须通过显式入口打开
-- 打开状态应支持 URL 恢复，便于 deep-link、refresh 与 E2E 稳定复现
+- auth/login、creative 主链路与 Dashboard 的文案 / CTA / 四态已经形成 current truth
+- diagnostics failure 不再伪装成 empty / placeholder / default
+- 对应 OMX planning 已归档，后续执行先读 `docs/`，再按需回看 `.omx/plans/archive/`
 
 ---
 
@@ -100,6 +101,7 @@
 - `docs/governance/inventory/current-project-phase-transition-decision.md`
 - `docs/governance/inventory/pr1-workbench-manageability-closeout.md`
 - `docs/governance/inventory/pr2-business-diagnostics-layering-closeout.md`
+- `docs/governance/inventory/pr3-copy-and-state-unification-closeout.md`
 - `docs/governance/inventory/pr3-slice-b-state-feedback-closeout.md`
 - `docs/governance/inventory/post-mvp-doc-governance-closeout.md`
 - `docs/governance/inventory/root-doc-triage.md`
@@ -115,6 +117,7 @@
 - 当前项目阶段切换决议 / project phase transition decision
 - PR-1 Workbench 可管理性收口正式件 / PR closeout record
 - PR-2 业务层 / 诊断层分层正式件 / PR closeout record
+- PR-3 文案与四态统一正式件 / PR closeout record
 - PR-3 Slice B 四态统一与关键页面状态反馈收口件 / slice closeout record
 - 正式收口件 / closeout record
 - 根层文档分诊与去向表
@@ -277,7 +280,7 @@ current/next-phase-kickoff
 
 > **model 讲为什么，sequence 讲顺序，checklist 讲门槛，kickoff 讲起点。**
 
-### 场景 B1：我想直接接手当前 next-phase / PR-2
+### 场景 B1：我想直接接手当前 next-phase / PR-3 / PR-4
 
 先回到前面的“next-phase 文档的最小阅读顺序”，按那条主线读。
 
@@ -285,7 +288,7 @@ current/next-phase-kickoff
 
 - `docs/` 负责 current truth / 正式指导口径
 - `.omx/plans/` 负责 ralplan / ralph 的工作过程产物
-- 当两边都存在同主题文档时，后续开发应先读 `docs/`，再回到 `.omx/plans/` 看切片细节与执行轨迹
+- 当两边都存在同主题文档时，后续开发应先读 `docs/`，再回到 `.omx/plans/archive/` 看切片细节与执行轨迹
 
 ### 场景 C：我想找具体规则
 
