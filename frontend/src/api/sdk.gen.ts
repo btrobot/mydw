@@ -1392,14 +1392,14 @@ export const setDefaultProfileApiProfilesProfileIdSetDefaultPut = <ThrowOnError 
 /**
  * List Creatives
  *
- * Return the minimal Creative workbench list for Phase A.
+ * Return the Creative workbench list with Phase 2 semantic-source projections.
  */
 export const listCreativesApiCreativesGet = <ThrowOnError extends boolean = false>(options?: Options<ListCreativesApiCreativesGetData, ThrowOnError>) => (options?.client ?? client).get<ListCreativesApiCreativesGetResponses, ListCreativesApiCreativesGetErrors, ThrowOnError>({ url: '/api/creatives', ...options });
 
 /**
  * Create Creative
  *
- * Create a work-driven creative that may exist before its first version.
+ * Create a creative using Phase 2 brief-plus-input-items semantics.
  */
 export const createCreativeApiCreativesPost = <ThrowOnError extends boolean = false>(options: Options<CreateCreativeApiCreativesPostData, ThrowOnError>) => (options.client ?? client).post<CreateCreativeApiCreativesPostResponses, CreateCreativeApiCreativesPostErrors, ThrowOnError>({
     url: '/api/creatives',
@@ -1413,14 +1413,14 @@ export const createCreativeApiCreativesPost = <ThrowOnError extends boolean = fa
 /**
  * Get Creative
  *
- * Return the minimal Creative detail projection for Phase A.
+ * Return the Creative detail projection with Phase 2 canonical/compatibility fields.
  */
 export const getCreativeApiCreativesCreativeIdGet = <ThrowOnError extends boolean = false>(options: Options<GetCreativeApiCreativesCreativeIdGetData, ThrowOnError>) => (options.client ?? client).get<GetCreativeApiCreativesCreativeIdGetResponses, GetCreativeApiCreativesCreativeIdGetErrors, ThrowOnError>({ url: '/api/creatives/{creative_id}', ...options });
 
 /**
  * Update Creative
  *
- * Update work-driven creative input snapshot and title.
+ * Update a creative using Phase 2 brief-plus-input-items semantics.
  */
 export const updateCreativeApiCreativesCreativeIdPatch = <ThrowOnError extends boolean = false>(options: Options<UpdateCreativeApiCreativesCreativeIdPatchData, ThrowOnError>) => (options.client ?? client).patch<UpdateCreativeApiCreativesCreativeIdPatchResponses, UpdateCreativeApiCreativesCreativeIdPatchErrors, ThrowOnError>({
     url: '/api/creatives/{creative_id}',

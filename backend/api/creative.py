@@ -1,5 +1,5 @@
 """
-Creative Phase A API.
+Creative Phase 2 API.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,7 +24,7 @@ async def list_creatives(
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
 ) -> CreativeWorkbenchListResponse:
-    """Return the minimal Creative workbench list for Phase A."""
+    """Return the Creative workbench list with Phase 2 semantic-source projections."""
     service = CreativeService(db)
     return await service.list_creatives(skip=skip, limit=limit)
 
@@ -34,7 +34,7 @@ async def create_creative(
     payload: CreativeCreateRequest,
     db: AsyncSession = Depends(get_db),
 ) -> CreativeDetailResponse:
-    """Create a work-driven creative that may exist before its first version."""
+    """Create a creative using Phase 2 brief-plus-input-items semantics."""
     service = CreativeService(db)
     try:
         return await service.create_creative(payload)
@@ -47,7 +47,7 @@ async def get_creative(
     creative_id: int,
     db: AsyncSession = Depends(get_db),
 ) -> CreativeDetailResponse:
-    """Return the minimal Creative detail projection for Phase A."""
+    """Return the Creative detail projection with Phase 2 canonical/compatibility fields."""
     service = CreativeService(db)
     creative = await service.get_creative_detail(creative_id)
     if creative is None:
@@ -61,7 +61,7 @@ async def update_creative(
     payload: CreativeUpdateRequest,
     db: AsyncSession = Depends(get_db),
 ) -> CreativeDetailResponse:
-    """Update work-driven creative input snapshot and title."""
+    """Update a creative using Phase 2 brief-plus-input-items semantics."""
     service = CreativeService(db)
     creative = await service.update_creative(creative_id, payload)
     if creative is None:

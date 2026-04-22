@@ -234,8 +234,10 @@ async def test_input_snapshot_dual_write_keeps_new_and_legacy_carriers_in_sync(
         json={
             "title": "Dual Write Snapshot",
             "profile_id": profile.id,
-            "video_ids": [video.id],
-            "topic_ids": [topic.id],
+            "input_items": [
+                {"material_type": "video", "material_id": video.id},
+                {"material_type": "topic", "material_id": topic.id},
+            ],
         },
     )
     assert create_response.status_code == 201
@@ -283,8 +285,10 @@ async def test_input_snapshot_read_falls_back_to_legacy_and_next_write_recreates
         json={
             "title": "Rollback Snapshot",
             "profile_id": profile.id,
-            "video_ids": [video.id],
-            "topic_ids": [topic.id],
+            "input_items": [
+                {"material_type": "video", "material_id": video.id},
+                {"material_type": "topic", "material_id": topic.id},
+            ],
         },
     )
     assert create_response.status_code == 201

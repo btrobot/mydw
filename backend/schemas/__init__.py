@@ -645,15 +645,49 @@ class CreativeCreateRequest(BaseModel):
     main_copywriting_text: Optional[str] = None
     target_duration_seconds: Optional[int] = Field(None, ge=1)
     profile_id: Optional[int] = None
-    video_ids: List[int] = Field(default_factory=list)
-    copywriting_ids: List[int] = Field(default_factory=list)
-    cover_ids: List[int] = Field(default_factory=list)
-    audio_ids: List[int] = Field(default_factory=list)
-    topic_ids: List[int] = Field(default_factory=list)
+    video_ids: List[int] = Field(
+        default_factory=list,
+        description="Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.",
+        json_schema_extra={"deprecated": True},
+    )
+    copywriting_ids: List[int] = Field(
+        default_factory=list,
+        description="Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.",
+        json_schema_extra={"deprecated": True},
+    )
+    cover_ids: List[int] = Field(
+        default_factory=list,
+        description="Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.",
+        json_schema_extra={"deprecated": True},
+    )
+    audio_ids: List[int] = Field(
+        default_factory=list,
+        description="Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.",
+        json_schema_extra={"deprecated": True},
+    )
+    topic_ids: List[int] = Field(
+        default_factory=list,
+        description="Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.",
+        json_schema_extra={"deprecated": True},
+    )
     input_items: List[CreativeInputItemWrite] = Field(
         default_factory=list,
-        description="Phase 1 authoritative creative input orchestration surface; legacy input_snapshot remains compatibility-only.",
+        description="Phase 2 canonical creative input orchestration surface; legacy input_snapshot/list carriers remain compatibility-only projection.",
     )
+
+    @model_validator(mode="after")
+    def validate_phase2_semantic_source(self) -> "CreativeCreateRequest":
+        legacy_fields = [
+            field_name
+            for field_name in ("video_ids", "copywriting_ids", "cover_ids", "audio_ids", "topic_ids")
+            if field_name in self.model_fields_set
+        ]
+        if legacy_fields:
+            raise ValueError(
+                "Phase 2 creative write requests must use input_items; legacy list fields are compatibility-only projection: "
+                + ", ".join(legacy_fields)
+            )
+        return self
 
 
 class CreativeUpdateRequest(BaseModel):
@@ -663,15 +697,49 @@ class CreativeUpdateRequest(BaseModel):
     main_copywriting_text: Optional[str] = None
     target_duration_seconds: Optional[int] = Field(None, ge=1)
     profile_id: Optional[int] = None
-    video_ids: Optional[List[int]] = None
-    copywriting_ids: Optional[List[int]] = None
-    cover_ids: Optional[List[int]] = None
-    audio_ids: Optional[List[int]] = None
-    topic_ids: Optional[List[int]] = None
+    video_ids: Optional[List[int]] = Field(
+        None,
+        description="Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.",
+        json_schema_extra={"deprecated": True},
+    )
+    copywriting_ids: Optional[List[int]] = Field(
+        None,
+        description="Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.",
+        json_schema_extra={"deprecated": True},
+    )
+    cover_ids: Optional[List[int]] = Field(
+        None,
+        description="Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.",
+        json_schema_extra={"deprecated": True},
+    )
+    audio_ids: Optional[List[int]] = Field(
+        None,
+        description="Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.",
+        json_schema_extra={"deprecated": True},
+    )
+    topic_ids: Optional[List[int]] = Field(
+        None,
+        description="Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.",
+        json_schema_extra={"deprecated": True},
+    )
     input_items: Optional[List[CreativeInputItemWrite]] = Field(
         None,
-        description="When present, input_items is the authoritative Phase 1 source and legacy carrier fields are projected for compatibility.",
+        description="When present, input_items is the canonical Phase 2 source and legacy carrier fields are projected for compatibility only.",
     )
+
+    @model_validator(mode="after")
+    def validate_phase2_semantic_source(self) -> "CreativeUpdateRequest":
+        legacy_fields = [
+            field_name
+            for field_name in ("video_ids", "copywriting_ids", "cover_ids", "audio_ids", "topic_ids")
+            if field_name in self.model_fields_set
+        ]
+        if legacy_fields:
+            raise ValueError(
+                "Phase 2 creative write requests must use input_items; legacy list fields are compatibility-only projection: "
+                + ", ".join(legacy_fields)
+            )
+        return self
 
 
 class CreativeItemResponse(BaseModel):
@@ -690,13 +758,13 @@ class CreativeItemResponse(BaseModel):
     target_duration_seconds: Optional[int] = None
     input_items: List[CreativeInputItemResponse] = Field(
         default_factory=list,
-        description="Phase 1 authoritative source for creative input orchestration.",
+        description="Phase 2 canonical source for creative input orchestration.",
     )
     generation_error_msg: Optional[str] = None
     generation_failed_at: Optional[datetime] = None
     input_snapshot: CreativeInputSnapshotResponse = Field(
         default_factory=CreativeInputSnapshotResponse,
-        description="Phase 1 compatibility carrier projected from authoritative creative inputs when available.",
+        description="Phase 2 compatibility projection derived from the canonical creative inputs when available.",
     )
     eligibility_status: CreativeEligibilityStatus = CreativeEligibilityStatus.PENDING_INPUT
     eligibility_reasons: List[str] = Field(default_factory=list)
@@ -813,13 +881,13 @@ class CreativeDetailResponse(BaseModel):
     target_duration_seconds: Optional[int] = None
     input_items: List[CreativeInputItemResponse] = Field(
         default_factory=list,
-        description="Phase 1 authoritative source for creative input orchestration.",
+        description="Phase 2 canonical source for creative input orchestration.",
     )
     generation_error_msg: Optional[str] = None
     generation_failed_at: Optional[datetime] = None
     input_snapshot: CreativeInputSnapshotResponse = Field(
         default_factory=CreativeInputSnapshotResponse,
-        description="Phase 1 compatibility carrier projected from authoritative creative inputs when available.",
+        description="Phase 2 compatibility projection derived from the canonical creative inputs when available.",
     )
     eligibility_status: CreativeEligibilityStatus = CreativeEligibilityStatus.PENDING_INPUT
     eligibility_reasons: List[str] = Field(default_factory=list)

@@ -1,6 +1,7 @@
 ﻿import importlib
 
 import pytest
+from pydantic import ValidationError
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -396,16 +397,32 @@ def test_phase_a_task_write_contracts_do_not_expose_task_kind() -> None:
     assert "task_kind" not in TaskUpdate.model_fields
 
 
-def test_work_driven_creative_write_contracts_expose_phase1_authoritative_and_compat_inputs_but_not_status() -> None:
+def test_work_driven_creative_write_contracts_expose_phase2_canonical_inputs_and_deprecated_legacy_projection_fields() -> None:
     assert "status" not in CreativeCreateRequest.model_fields
     assert "status" not in CreativeUpdateRequest.model_fields
     assert "profile_id" in CreativeCreateRequest.model_fields
+    assert "video_ids" in CreativeCreateRequest.model_fields
     assert "video_ids" in CreativeUpdateRequest.model_fields
     assert "input_items" in CreativeCreateRequest.model_fields
     assert "input_items" in CreativeUpdateRequest.model_fields
     assert "subject_product_id" in CreativeCreateRequest.model_fields
     assert "main_copywriting_text" in CreativeCreateRequest.model_fields
     assert "target_duration_seconds" in CreativeCreateRequest.model_fields
+    assert CreativeCreateRequest.model_fields["video_ids"].json_schema_extra == {"deprecated": True}
+    assert CreativeUpdateRequest.model_fields["video_ids"].json_schema_extra == {"deprecated": True}
+
+    with pytest.raises(ValidationError):
+        CreativeCreateRequest(video_ids=[100])
+
+    with pytest.raises(ValidationError):
+        CreativeUpdateRequest(video_ids=[100])
+
+    request = CreativeCreateRequest(
+        profile_id=1,
+        input_items=[{"material_type": "video", "material_id": 100}],
+    )
+    assert request.profile_id == 1
+    assert len(request.input_items) == 1
 
 
 def test_phase_a_response_contracts_are_instantiable() -> None:

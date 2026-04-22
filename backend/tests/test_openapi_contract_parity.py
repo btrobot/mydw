@@ -34,6 +34,10 @@ def _schema_refs(spec: dict, schema_name: str, property_names: tuple[str, ...]) 
     return refs
 
 
+def _schema_property(spec: dict, schema_name: str, property_name: str) -> dict:
+    return spec["components"]["schemas"][schema_name]["properties"][property_name]
+
+
 PHASE1_CREATIVE_SCHEMA_NAMES = (
     "CreativeCreateRequest",
     "CreativeUpdateRequest",
@@ -52,6 +56,14 @@ PHASE1_CREATIVE_DETAIL_REF_FIELDS = (
     "input_snapshot",
     "eligibility_status",
     "latest_task_summary",
+)
+
+PHASE2_LEGACY_CREATIVE_WRITE_FIELDS = (
+    "video_ids",
+    "copywriting_ids",
+    "cover_ids",
+    "audio_ids",
+    "topic_ids",
 )
 
 
@@ -141,7 +153,7 @@ async def test_task_create_and_update_openapi_do_not_expose_task_kind(
 
 
 @pytest.mark.asyncio
-async def test_creative_openapi_exposes_phase_a_workbench_and_detail_contracts(
+async def test_creative_openapi_exposes_phase2_workbench_and_detail_contracts(
     client: AsyncClient,
 ) -> None:
     response = await client.get("/openapi.json")
@@ -163,6 +175,13 @@ async def test_creative_openapi_exposes_phase_a_workbench_and_detail_contracts(
     assert schemas["CreativeCreateRequest"]["properties"]["target_duration_seconds"]["anyOf"][0]["type"] == "integer"
     assert schemas["CreativeCreateRequest"]["properties"]["input_items"]["type"] == "array"
     assert schemas["CreativeUpdateRequest"]["properties"]["input_items"]["anyOf"][0]["type"] == "array"
+    assert "Phase 2 canonical" in schemas["CreativeCreateRequest"]["properties"]["input_items"]["description"]
+    assert "canonical Phase 2" in schemas["CreativeUpdateRequest"]["properties"]["input_items"]["description"]
+    for field_name in PHASE2_LEGACY_CREATIVE_WRITE_FIELDS:
+        assert schemas["CreativeCreateRequest"]["properties"][field_name]["deprecated"] is True
+        assert schemas["CreativeUpdateRequest"]["properties"][field_name]["deprecated"] is True
+        assert "compatibility-only projection" in schemas["CreativeCreateRequest"]["properties"][field_name]["description"]
+        assert "compatibility-only projection" in schemas["CreativeUpdateRequest"]["properties"][field_name]["description"]
     assert schemas["CreativeInputItemResponse"]["properties"]["material_type"]["$ref"].endswith("/CreativeInputMaterialType")
     assert schemas["CreativeInputItemResponse"]["properties"]["material_id"]["type"] == "integer"
     assert schemas["CreativeDetailResponse"]["properties"]["linked_task_ids"]["type"] == "array"
@@ -180,7 +199,7 @@ async def test_creative_openapi_exposes_phase_a_workbench_and_detail_contracts(
 
 
 @pytest.mark.asyncio
-async def test_frontend_exported_openapi_keeps_phase1_creative_contract_in_sync(
+async def test_frontend_exported_openapi_keeps_phase2_creative_contract_in_sync(
     client: AsyncClient,
 ) -> None:
     response = await client.get("/openapi.json")
@@ -216,6 +235,13 @@ async def test_frontend_exported_openapi_keeps_phase1_creative_contract_in_sync(
         "CreativeWorkbenchItemResponse",
         PHASE1_CREATIVE_DETAIL_REF_FIELDS,
     )
+
+    for schema_name in ("CreativeCreateRequest", "CreativeUpdateRequest"):
+        for field_name in (*PHASE2_LEGACY_CREATIVE_WRITE_FIELDS, "input_items"):
+            exported_property = _schema_property(exported_spec, schema_name, field_name)
+            live_property = _schema_property(live_spec, schema_name, field_name)
+            assert exported_property.get("description") == live_property.get("description")
+            assert exported_property.get("deprecated") == live_property.get("deprecated")
 
 
 @pytest.mark.asyncio

@@ -1313,28 +1313,48 @@ export type CreativeCreateRequest = {
     profile_id?: number | null;
     /**
      * Video Ids
+     *
+     * Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.
+     *
+     * @deprecated
      */
     video_ids?: Array<number>;
     /**
      * Copywriting Ids
+     *
+     * Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.
+     *
+     * @deprecated
      */
     copywriting_ids?: Array<number>;
     /**
      * Cover Ids
+     *
+     * Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.
+     *
+     * @deprecated
      */
     cover_ids?: Array<number>;
     /**
      * Audio Ids
+     *
+     * Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.
+     *
+     * @deprecated
      */
     audio_ids?: Array<number>;
     /**
      * Topic Ids
+     *
+     * Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.
+     *
+     * @deprecated
      */
     topic_ids?: Array<number>;
     /**
      * Input Items
      *
-     * Phase 1 authoritative creative input orchestration surface; legacy input_snapshot remains compatibility-only.
+     * Phase 2 canonical creative input orchestration surface; legacy input_snapshot/list carriers remain compatibility-only projection.
      */
     input_items?: Array<CreativeInputItemWrite>;
 };
@@ -1420,7 +1440,7 @@ export type CreativeDetailResponse = {
     /**
      * Input Items
      *
-     * Phase 1 authoritative source for creative input orchestration.
+     * Phase 2 canonical source for creative input orchestration.
      */
     input_items?: Array<CreativeInputItemResponse>;
     /**
@@ -1432,7 +1452,7 @@ export type CreativeDetailResponse = {
      */
     generation_failed_at?: string | null;
     /**
-     * Phase 1 compatibility carrier projected from authoritative creative inputs when available.
+     * Phase 2 compatibility projection derived from the canonical creative inputs when available.
      */
     input_snapshot?: CreativeInputSnapshotResponse;
     eligibility_status?: CreativeEligibilityStatus;
@@ -1711,28 +1731,48 @@ export type CreativeUpdateRequest = {
     profile_id?: number | null;
     /**
      * Video Ids
+     *
+     * Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.
+     *
+     * @deprecated
      */
     video_ids?: Array<number> | null;
     /**
      * Copywriting Ids
+     *
+     * Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.
+     *
+     * @deprecated
      */
     copywriting_ids?: Array<number> | null;
     /**
      * Cover Ids
+     *
+     * Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.
+     *
+     * @deprecated
      */
     cover_ids?: Array<number> | null;
     /**
      * Audio Ids
+     *
+     * Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.
+     *
+     * @deprecated
      */
     audio_ids?: Array<number> | null;
     /**
      * Topic Ids
+     *
+     * Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.
+     *
+     * @deprecated
      */
     topic_ids?: Array<number> | null;
     /**
      * Input Items
      *
-     * When present, input_items is the authoritative Phase 1 source and legacy carrier fields are projected for compatibility.
+     * When present, input_items is the canonical Phase 2 source and legacy carrier fields are projected for compatibility only.
      */
     input_items?: Array<CreativeInputItemWrite> | null;
 };

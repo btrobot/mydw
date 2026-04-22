@@ -90,11 +90,6 @@ SNAPSHOT_FIELD_ORDER: tuple[tuple[str, str], ...] = (
 
 INPUT_STATE_FIELD_NAMES = (
     "profile_id",
-    "video_ids",
-    "copywriting_ids",
-    "cover_ids",
-    "audio_ids",
-    "topic_ids",
     "input_items",
 )
 
@@ -162,13 +157,6 @@ class CreativeService:
             current_input_items=[],
             current_snapshot=None,
             explicit_input_items=payload.input_items if "input_items" in payload.model_fields_set else None,
-            explicit_snapshot_overrides={
-                "video_ids": payload.video_ids,
-                "copywriting_ids": payload.copywriting_ids,
-                "cover_ids": payload.cover_ids,
-                "audio_ids": payload.audio_ids,
-                "topic_ids": payload.topic_ids,
-            },
         )
         await self._apply_authoritative_input_state(
             creative,
@@ -241,11 +229,6 @@ class CreativeService:
                 current_input_items=current_input_items,
                 current_snapshot=current_snapshot,
                 explicit_input_items=payload.input_items if "input_items" in payload.model_fields_set else None,
-                explicit_snapshot_overrides={
-                    field_name: (getattr(payload, field_name) or [])
-                    for field_name in ("video_ids", "copywriting_ids", "cover_ids", "audio_ids", "topic_ids")
-                    if field_name in payload.model_fields_set
-                },
             )
             await self._apply_authoritative_input_state(
                 creative,
@@ -739,26 +722,9 @@ class CreativeService:
         current_input_items: list[dict[str, Any]],
         current_snapshot: Optional[dict[str, Any]],
         explicit_input_items: Optional[list[Any]],
-        explicit_snapshot_overrides: dict[str, list[int]],
     ) -> tuple[Optional[int], list[dict[str, Any]]]:
         if explicit_input_items is not None:
             return profile_id, self._normalize_input_items(explicit_input_items)
-        if explicit_snapshot_overrides:
-            snapshot = {
-                "profile_id": profile_id,
-                "video_ids": list((current_snapshot or {}).get("video_ids", [])),
-                "copywriting_ids": list((current_snapshot or {}).get("copywriting_ids", [])),
-                "cover_ids": list((current_snapshot or {}).get("cover_ids", [])),
-                "audio_ids": list((current_snapshot or {}).get("audio_ids", [])),
-                "topic_ids": list((current_snapshot or {}).get("topic_ids", [])),
-            }
-            snapshot.update(
-                {
-                    field_name: self._deduplicate_legacy_ids(item_ids)
-                    for field_name, item_ids in explicit_snapshot_overrides.items()
-                }
-            )
-            return profile_id, self._synthesize_input_items_from_snapshot(snapshot)
         if current_input_items:
             return profile_id, self._normalize_input_items(current_input_items)
         if current_snapshot is not None:
@@ -935,17 +901,6 @@ class CreativeService:
         if isinstance(item, dict):
             return item.get(key, default)
         return getattr(item, key, default)
-
-    def _deduplicate_legacy_ids(self, values: list[int]) -> list[int]:
-        ordered_ids: list[int] = []
-        seen: set[int] = set()
-        for raw_value in values:
-            item_id = int(raw_value)
-            if item_id in seen:
-                continue
-            seen.add(item_id)
-            ordered_ids.append(item_id)
-        return ordered_ids
 
     def _payload_updates_input_state(self, model_fields_set: set[str]) -> bool:
         return any(field_name in model_fields_set for field_name in INPUT_STATE_FIELD_NAMES)

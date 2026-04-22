@@ -109,7 +109,7 @@ async def test_create_creative_allows_work_item_without_current_version(
 
 
 @pytest.mark.asyncio
-async def test_create_creative_can_project_ready_to_compose_from_input_snapshot(
+async def test_create_creative_can_project_ready_to_compose_from_input_items(
     client: AsyncClient,
     db_session: AsyncSession,
 ) -> None:
@@ -120,8 +120,10 @@ async def test_create_creative_can_project_ready_to_compose_from_input_snapshot(
         json={
             "title": "Ready Creative",
             "profile_id": profile.id,
-            "video_ids": [video.id],
-            "topic_ids": [topic.id],
+            "input_items": [
+                {"material_type": "video", "material_id": video.id},
+                {"material_type": "topic", "material_id": topic.id},
+            ],
         },
     )
 
@@ -154,7 +156,6 @@ async def test_create_creative_dual_writes_authoritative_input_items_and_legacy_
             "main_copywriting_text": "authoritative copy brief",
             "target_duration_seconds": 45,
             "profile_id": profile.id,
-            "video_ids": [9999],
             "input_items": [
                 {"material_type": "video", "material_id": video.id, "role": "opening", "trim_in": 0, "trim_out": 8},
                 {"material_type": "video", "material_id": video.id, "role": "ending", "trim_in": 9, "trim_out": 16},
@@ -205,7 +206,7 @@ async def test_creative_patch_does_not_silently_deduplicate_repeated_input_items
         json={
             "title": "Creative Patch",
             "profile_id": profile.id,
-            "video_ids": [video.id],
+            "input_items": [{"material_type": "video", "material_id": video.id}],
         },
     )
     assert create_response.status_code == 201
@@ -261,7 +262,30 @@ async def test_submit_composition_reports_execution_layer_limitation_for_duplica
 
 
 @pytest.mark.asyncio
-async def test_legacy_snapshot_patch_deduplicates_ids_before_projecting_authoritative_input_items(
+async def test_create_creative_rejects_legacy_list_write_fields_in_phase2(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    profile, _, video, _, _, _, topic = await _seed_domain_inputs(
+        db_session,
+        composition_mode="coze",
+    )
+    response = await client.post(
+        "/api/creatives",
+        json={
+            "title": "Legacy Carrier Reject",
+            "profile_id": profile.id,
+            "video_ids": [video.id],
+            "topic_ids": [topic.id],
+        },
+    )
+
+    assert response.status_code == 422
+    assert "Phase 2 creative write requests must use input_items" in response.text
+
+
+@pytest.mark.asyncio
+async def test_creative_patch_rejects_legacy_list_write_fields_in_phase2(
     client: AsyncClient,
     db_session: AsyncSession,
 ) -> None:
@@ -272,11 +296,10 @@ async def test_legacy_snapshot_patch_deduplicates_ids_before_projecting_authorit
     create_response = await client.post(
         "/api/creatives",
         json={
-            "title": "Legacy Carrier Dedup",
+            "title": "Legacy Patch Reject",
             "profile_id": profile.id,
             "input_items": [
-                {"material_type": "video", "material_id": video.id, "role": "opening"},
-                {"material_type": "video", "material_id": video.id, "role": "ending"},
+                {"material_type": "video", "material_id": video.id},
                 {"material_type": "topic", "material_id": topic.id},
             ],
         },
@@ -286,19 +309,11 @@ async def test_legacy_snapshot_patch_deduplicates_ids_before_projecting_authorit
 
     patch_response = await client.patch(
         f"/api/creatives/{creative['id']}",
-        json={
-            "video_ids": [video.id, video.id],
-            "topic_ids": [topic.id, topic.id],
-        },
+        json={"video_ids": [video.id]},
     )
 
-    assert patch_response.status_code == 200
-    payload = patch_response.json()
-    assert payload["input_snapshot"]["video_ids"] == [video.id]
-    assert payload["input_snapshot"]["topic_ids"] == [topic.id]
-    assert [item["material_type"] for item in payload["input_items"]] == ["video", "topic"]
-    assert [item["material_id"] for item in payload["input_items"]] == [video.id, topic.id]
-    assert [item["instance_no"] for item in payload["input_items"]] == [1, 1]
+    assert patch_response.status_code == 422
+    assert "Phase 2 creative write requests must use input_items" in patch_response.text
 
 
 @pytest.mark.asyncio
@@ -313,7 +328,7 @@ async def test_creative_update_can_change_snapshot_hash_and_mark_invalid_combo(
         json={
             "title": "Patch Creative",
             "profile_id": profile.id,
-            "video_ids": [video.id],
+            "input_items": [{"material_type": "video", "material_id": video.id}],
         },
     )
     assert create_response.status_code == 201
@@ -321,13 +336,18 @@ async def test_creative_update_can_change_snapshot_hash_and_mark_invalid_combo(
 
     patch_response = await client.patch(
         f"/api/creatives/{created['id']}",
-        json={"audio_ids": [audio.id]},
+        json={
+            "input_items": [
+                {"material_type": "video", "material_id": video.id},
+                {"material_type": "audio", "material_id": audio.id},
+            ]
+        },
     )
 
     assert patch_response.status_code == 200
     payload = patch_response.json()
-    assert payload["status"] == "PENDING_INPUT"
     assert payload["eligibility_status"] == "INVALID"
+    assert payload["status"] == "PENDING_INPUT"
     assert payload["input_snapshot"]["audio_ids"] == [audio.id]
     assert payload["input_snapshot"]["snapshot_hash"] != created["input_snapshot"]["snapshot_hash"]
     assert any("独立音频输入" in reason for reason in payload["eligibility_reasons"])
@@ -344,7 +364,7 @@ async def test_creative_detail_projects_composing_from_task_execution_state(
         json={
             "title": "Composing Creative",
             "profile_id": profile.id,
-            "video_ids": [video.id],
+            "input_items": [{"material_type": "video", "material_id": video.id}],
         },
     )
     assert create_response.status_code == 201
