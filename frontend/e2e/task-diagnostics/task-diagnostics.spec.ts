@@ -137,6 +137,7 @@ test.describe('Task diagnostics positioning', () => {
     await page.getByTestId('creative-open-advanced-diagnostics').click()
     await expect(page).toHaveURL(/diagnostics=advanced/)
     await expect(page.getByTestId('creative-detail-diagnostics-drawer')).toBeVisible()
+    await expect(page.getByTestId('creative-task-diagnostics-note')).toContainText('不回写作品定义、版本结果或发布侧承接语义')
     await expect(page.getByTestId('creative-open-task-diagnostics')).toBeVisible()
 
     await page.getByTestId('creative-open-task-diagnostics').click()

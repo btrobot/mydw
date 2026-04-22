@@ -11,10 +11,11 @@ test.describe('Creative version panel', () => {
     await page.goto(`/#/creative/101`)
 
     await expect(page.getByTestId('creative-version-panel')).toBeVisible()
-    await expect(page.getByTestId('creative-version-item-202')).toContainText('当前生效版本')
-    await expect(page.getByTestId('creative-version-item-201')).toContainText('历史结论')
+    await expect(page.getByTestId('creative-version-semantics')).toContainText('作品定义 → 版本结果 → 审核结论')
+    await expect(page.getByTestId('creative-version-item-202')).toContainText('当前生效版本结果')
+    await expect(page.getByTestId('creative-version-item-201')).toContainText('历史审核结论')
     await expect(page.getByTestId('creative-version-item-201')).toContainText('旧版本已通过')
-    await expect(page.getByTestId('creative-review-summary')).toContainText('当前版本待审核')
+    await expect(page.getByTestId('creative-review-summary')).toContainText('当前版本结果待审核')
   })
 
   test('after reviewing current version, old approval stays historical only', async ({ page }) => {
@@ -26,7 +27,7 @@ test.describe('Creative version panel', () => {
     await drawer.getByTestId('creative-review-submit').click()
 
     await expect(page.getByTestId('creative-version-item-202')).toContainText('当前有效结论')
-    await expect(page.getByTestId('creative-version-item-201')).toContainText('历史结论')
+    await expect(page.getByTestId('creative-version-item-201')).toContainText('历史审核结论')
     await expect(page.getByTestId('creative-review-summary')).toContainText('新版本确认通过')
     await expect(page.getByTestId('creative-review-summary')).toContainText('V2')
   })

@@ -47,7 +47,8 @@ test.describe('Phase C publish pool visibility', () => {
 
     await page.getByTestId('creative-open-advanced-diagnostics').click()
     await expect(page.getByTestId('creative-detail-diagnostics-drawer')).toBeVisible()
+    await expect(page.getByTestId('creative-publish-pool-semantics')).toContainText('发布侧候选与失效历史')
     await expect(page.getByTestId('creative-publish-pool-card')).toContainText('Pool #501')
-    await expect(page.getByTestId('creative-publish-pool-card')).toContainText('版本已对齐')
+    await expect(page.getByTestId('creative-publish-pool-card')).toContainText('发布侧已对齐')
   })
 })

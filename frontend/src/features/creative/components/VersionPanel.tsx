@@ -33,20 +33,20 @@ export default function VersionPanel({
 }: VersionPanelProps) {
   if (versions.length === 0) {
     return (
-      <Card title="版本与审核记录" data-testid="creative-version-panel">
-        <Alert type="info" showIcon message="当前作品还没有版本记录" />
+      <Card title="版本结果与审核记录" data-testid="creative-version-panel">
+        <Alert type="info" showIcon message="当前作品还没有版本结果记录" />
       </Card>
     )
   }
 
   return (
     <Card
-      title="版本与审核记录"
+      title="版本结果与审核记录"
       data-testid="creative-version-panel"
       extra={<Text type="secondary">共 {versions.length} 个版本</Text>}
     >
-      <Paragraph type="secondary">
-        先看当前版本与当前有效结论，再回看历史版本与审核记录。
+      <Paragraph type="secondary" data-testid="creative-version-semantics">
+        这里按“作品定义 → 版本结果 → 审核结论”查看历史；Package 仅表示发布侧承接记录，不替代作品定义。
       </Paragraph>
 
       <List
@@ -91,7 +91,7 @@ export default function VersionPanel({
                   </Tag>
                   {version.is_current ? (
                     <Tag color="processing" data-testid={`creative-version-current-${version.id}`}>
-                      当前生效版本
+                      当前生效版本结果
                     </Tag>
                   ) : null}
                   <Tag icon={<HistoryOutlined />}>{version.version_type}</Tag>
@@ -102,7 +102,7 @@ export default function VersionPanel({
                   <Text type="secondary">
                     <ClockCircleOutlined /> 创建于 {formatCreativeTimestamp(version.created_at)}
                   </Text>
-                  <Text type="secondary">Package #{version.package_record_id ?? '-'}</Text>
+                  <Text type="secondary">发布侧 PackageRecord #{version.package_record_id ?? '-'}</Text>
                   <Text type="secondary">父版本 #{version.parent_version_id ?? '-'}</Text>
                 </Space>
 
@@ -113,7 +113,7 @@ export default function VersionPanel({
                     title={(
                       <Space>
                         <SafetyCertificateOutlined />
-                        <span>审核记录</span>
+                        <span>版本审核记录</span>
                       </Space>
                     )}
                     data-testid={`creative-version-check-${version.id}`}
@@ -129,7 +129,7 @@ export default function VersionPanel({
                           </Tag>
                         ) : (
                           <Tag color="default" data-testid={`creative-stale-check-${version.id}`}>
-                            历史结论
+                            历史审核结论
                           </Tag>
                         )}
                       </Space>
@@ -143,7 +143,7 @@ export default function VersionPanel({
                         <Alert
                           type="warning"
                           showIcon
-                          message="当前版本已有新的有效结论"
+                          message="当前版本结果已有新的有效结论"
                           description={`当前有效结论为 ${formatCheckConclusion(currentSummaryCheck)}，此处仅保留历史记录。`}
                         />
                       ) : null}
@@ -153,7 +153,7 @@ export default function VersionPanel({
                   <Alert
                     type={version.is_current ? 'info' : 'warning'}
                     showIcon
-                    message={version.is_current ? '当前版本待审核' : '该历史版本没有审核记录'}
+                    message={version.is_current ? '当前版本结果待审核' : '该历史版本没有审核记录'}
                   />
                 )}
               </Space>

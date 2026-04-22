@@ -827,21 +827,29 @@ export default function CreativeDetail() {
         </Card>
 
         <Flex gap={16} wrap="wrap" align="stretch">
-          <Card title="当前版本" style={{ flex: 1, minWidth: detailCardMinWidth }}>
+          <Card title="当前版本结果" style={{ flex: 1, minWidth: detailCardMinWidth }}>
             {creative.current_version ? (
-              <Descriptions bordered size="small" column={screens.md ? 2 : 1}>
-                <Descriptions.Item label="版本 ID">{creative.current_version.id}</Descriptions.Item>
-                <Descriptions.Item label="版本号">{getVersionLabel(creative.current_version.version_no)}</Descriptions.Item>
-                <Descriptions.Item label="版本标题" span={2}>{creative.current_version.title ?? '未命名版本'}</Descriptions.Item>
-                <Descriptions.Item label="父版本 ID">{creative.current_version.parent_version_id ?? '-'}</Descriptions.Item>
-                <Descriptions.Item label="PackageRecord ID">{creative.current_version.package_record_id ?? '-'}</Descriptions.Item>
-              </Descriptions>
-            ) : <Empty description="当前还没有可用版本" />}
+              <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                <Descriptions bordered size="small" column={screens.md ? 2 : 1}>
+                  <Descriptions.Item label="版本 ID">{creative.current_version.id}</Descriptions.Item>
+                  <Descriptions.Item label="版本号">{getVersionLabel(creative.current_version.version_no)}</Descriptions.Item>
+                  <Descriptions.Item label="版本标题" span={2}>{creative.current_version.title ?? '未命名版本'}</Descriptions.Item>
+                  <Descriptions.Item label="父版本 ID">{creative.current_version.parent_version_id ?? '-'}</Descriptions.Item>
+                  <Descriptions.Item label="发布侧 PackageRecord">{creative.current_version.package_record_id ?? '-'}</Descriptions.Item>
+                </Descriptions>
+                <Paragraph type="secondary" style={{ marginBottom: 0 }} data-testid="creative-current-version-semantics">
+                  版本结果承接当前作品 brief 与素材编排；它是审核对象，发布侧候选与执行任务请在高级诊断查看。
+                </Paragraph>
+              </Space>
+            ) : <Empty description="当前还没有可用版本结果" />}
           </Card>
 
           <Card title="当前有效审核结论" style={{ flex: 1, minWidth: 320 }} data-testid="creative-review-summary">
             {effectiveCheck && effectiveCheckMeta ? (
               <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                <Paragraph type="secondary" style={{ marginBottom: 0 }} data-testid="creative-review-summary-semantics">
+                  审核结论只判断当前版本结果是否可继续进入发布承接，不改写作品定义本身。
+                </Paragraph>
                 <Space wrap>
                   <Tag color={effectiveCheckMeta.color}>{formatCheckConclusion(effectiveCheck)}</Tag>
                   <Tag color="processing">版本 {getVersionLabel(creative.review_summary?.current_version_id)}</Tag>
@@ -860,8 +868,8 @@ export default function CreativeDetail() {
               <Alert
                 type="info"
                 showIcon
-                message="当前版本待审核"
-                description="请先审核当前版本；历史版本记录保留在下方时间线中。"
+                message="当前版本结果待审核"
+                description="请先审核当前版本结果；历史版本记录保留在下方时间线中。"
               />
             )}
           </Card>
@@ -885,18 +893,18 @@ export default function CreativeDetail() {
       </Space>
 
       <Drawer
-        title="高级诊断"
+        title="高级诊断（任务 / 发布侧）"
         open={detailDiagnosticsOpen}
         width={screens.xl ? 720 : screens.lg ? 640 : screens.md ? 560 : '100vw'}
         onClose={handleCloseDiagnostics}
         destroyOnClose
       >
         <Space direction="vertical" size={16} style={{ width: '100%' }} data-testid="creative-detail-diagnostics-drawer">
-          <Card title="任务诊断" size="small" data-testid="creative-task-diagnostics-card">
+          <Card title="执行任务诊断" size="small" data-testid="creative-task-diagnostics-card">
             {diagnosticTaskIds.length > 0 ? (
               <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                  任务管理只承接执行进度、失败重试与排障；默认详情页不混入这些诊断细节。
+                <Paragraph type="secondary" style={{ marginBottom: 0 }} data-testid="creative-task-diagnostics-note">
+                  任务管理只承接执行进度、失败重试与排障，不回写作品定义、版本结果或发布侧承接语义。
                 </Paragraph>
                 <Space wrap>
                   {primaryTaskId ? (
@@ -905,12 +913,12 @@ export default function CreativeDetail() {
                       onClick={() => openTaskDiagnostics(primaryTaskId)}
                       data-testid="creative-open-task-diagnostics"
                     >
-                      查看主执行记录
+                      查看主执行诊断
                     </Button>
                   ) : null}
                   {diagnosticTaskIds.map((taskId) => (
                     <Button key={taskId} onClick={() => openTaskDiagnostics(taskId)} data-testid={`creative-open-task-${taskId}`}>
-                      执行记录 #{taskId}
+                      执行诊断 #{taskId}
                     </Button>
                   ))}
                   <Button onClick={() => navigate('/task/list')}>打开任务管理</Button>
@@ -919,14 +927,14 @@ export default function CreativeDetail() {
             ) : (
               <Space direction="vertical" size={12} style={{ width: '100%' }}>
                 <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                  这条作品还没有关联执行记录；如需排查任务侧信息，可从这里进入任务管理。
+                  这条作品还没有关联执行记录；如需排查执行侧信息，可从这里进入任务管理。
                 </Paragraph>
                 <Button onClick={() => navigate('/task/list')}>打开任务管理</Button>
               </Space>
             )}
           </Card>
 
-          <Card title="发布与调度诊断" size="small" data-testid="creative-publish-diagnostics">
+          <Card title="发布侧能力与调度诊断" size="small" data-testid="creative-publish-diagnostics">
             {diagnosticsUnavailable ? (
               <Alert
                 type="warning"
@@ -941,6 +949,9 @@ export default function CreativeDetail() {
                 style={{ marginBottom: 16 }}
               />
             ) : null}
+            <Paragraph type="secondary" style={{ marginBottom: 16 }} data-testid="creative-publish-semantics">
+              这里查看发布侧候选项、调度模式与 cutover 对账；如果当前作品定义暂不能直达发布，表示当前执行引擎能力尚未覆盖，并不代表作品定义无效。
+            </Paragraph>
             <Descriptions bordered size="small" column={screens.md ? 2 : 1}>
               <Descriptions.Item label="入口模式">
                 <Space wrap>
@@ -963,7 +974,7 @@ export default function CreativeDetail() {
                   {runtimeStatusLabel}
                 </Tag>
               </Descriptions.Item>
-              <Descriptions.Item label="当前任务">
+              <Descriptions.Item label="当前发布执行任务">
                 {currentPublishTaskId !== null ? (
                   <Button type="link" onClick={() => openTaskDiagnostics(currentPublishTaskId)}>
                     任务 #{currentPublishTaskId}
@@ -972,18 +983,18 @@ export default function CreativeDetail() {
               </Descriptions.Item>
               <Descriptions.Item label="Shadow Read">{shadowReadLabel}</Descriptions.Item>
               <Descriptions.Item label="Kill Switch">{killSwitchLabel}</Descriptions.Item>
-              <Descriptions.Item label="当前发布池项">
+              <Descriptions.Item label="当前发布侧候选项">
                 {currentPoolItem ? (
                   <Space wrap>
                     <Tag color={publishPoolStatusMeta[currentPoolItem.status].color}>{publishPoolStatusMeta[currentPoolItem.status].label}</Tag>
                     <Tag color={isPoolVersionAligned(currentPoolItem) ? 'success' : 'warning'}>版本 #{currentPoolItem.creative_version_id}</Tag>
                   </Space>
-                ) : activePoolQuery.isError ? '获取失败' : '当前版本暂未进入发布池'}
+                ) : activePoolQuery.isError ? '获取失败' : '当前版本尚未生成发布侧候选项'}
               </Descriptions.Item>
-              <Descriptions.Item label="Pool Item ID">
+              <Descriptions.Item label="候选项 ID">
                 {currentPoolItem ? `#${currentPoolItem.id}` : activePoolQuery.isError ? '获取失败' : '-'}
               </Descriptions.Item>
-              <Descriptions.Item label="最近失效记录" span={2}>
+              <Descriptions.Item label="最近候选失效记录" span={2}>
                 {latestInvalidatedPoolItem ? (
                   <Space direction="vertical" size={4}>
                     <Text>Pool #{latestInvalidatedPoolItem.id} / 版本 #{latestInvalidatedPoolItem.creative_version_id}</Text>
@@ -995,7 +1006,10 @@ export default function CreativeDetail() {
             </Descriptions>
           </Card>
 
-          <Card title="发布池记录" size="small" data-testid="creative-publish-pool-card">
+          <Card title="发布侧候选记录" size="small" data-testid="creative-publish-pool-card">
+            <Paragraph type="secondary" style={{ marginBottom: 16 }} data-testid="creative-publish-pool-semantics">
+              这些记录描述发布侧候选与失效历史；若出现不对齐，说明当前发布承接仍受能力边界约束。
+            </Paragraph>
             {activePoolQuery.isError || invalidatedPoolQuery.isError ? (
               <Alert
                 type="warning"
@@ -1009,7 +1023,7 @@ export default function CreativeDetail() {
                 )}
               />
             ) : activePoolItems.length === 0 && invalidatedPoolItems.length === 0 ? (
-              <Empty description="当前没有发布池记录" />
+              <Empty description="当前没有发布侧候选记录" />
             ) : (
               <List
                 dataSource={[...activePoolItems, ...invalidatedPoolItems]}
@@ -1021,7 +1035,7 @@ export default function CreativeDetail() {
                         <Space wrap>
                           <Tag color={publishPoolStatusMeta[item.status].color}>{publishPoolStatusMeta[item.status].label}</Tag>
                           <Tag color={aligned ? 'success' : 'warning'}>版本 #{item.creative_version_id}</Tag>
-                          <Tag color={aligned ? 'success' : 'warning'}>{aligned ? '版本已对齐' : '版本存在偏差'}</Tag>
+                          <Tag color={aligned ? 'success' : 'warning'}>{aligned ? '发布侧已对齐' : '发布侧存在偏差'}</Tag>
                           <Tag>Pool #{item.id}</Tag>
                         </Space>
                         <Text type="secondary">入池于 {formatCreativeTimestamp(item.created_at)}，最近更新时间 {formatCreativeTimestamp(item.updated_at)}</Text>

@@ -10,6 +10,7 @@ test.describe('Creative review drawer', () => {
   test('supports approve flow on current version', async ({ page }) => {
     await page.goto(`/#/creative/101`)
 
+    await expect(page.getByTestId('creative-current-version-semantics')).toContainText('版本结果承接当前作品 brief 与素材编排')
     await expect(page.getByTestId('creative-open-advanced-diagnostics')).toBeVisible()
     await expect(page.getByTestId('creative-publish-diagnostics')).toHaveCount(0)
 
@@ -21,6 +22,7 @@ test.describe('Creative review drawer', () => {
     await drawer.getByTestId('creative-review-submit').click()
 
     await expect(drawer).toBeHidden()
+    await expect(page.getByTestId('creative-review-summary-semantics')).toContainText('审核结论只判断当前版本结果是否可继续进入发布承接')
     await expect(page.getByTestId('creative-review-summary')).toContainText('通过')
     await expect(page.getByTestId('creative-review-summary')).toContainText('V2')
   })
