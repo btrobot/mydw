@@ -31,23 +31,31 @@ function createCompatibilityInputSnapshot(overrides: Record<string, unknown> = {
   }
 }
 
-function createPhase1WorkbenchItem(overrides: Record<string, unknown> = {}) {
+function createCreativeWorkbenchItem(overrides: Record<string, unknown> = {}) {
   return {
     id: 101,
     creative_no: 'CR-000101',
     title: 'Spring campaign',
     status: 'PENDING_INPUT',
     current_version_id: 201,
-    subject_product_id: null,
-    subject_product_name_snapshot: null,
-    main_copywriting_text: null,
-    target_duration_seconds: null,
-    input_items: [],
-    input_snapshot: createCompatibilityInputSnapshot(),
+    subject_product_id: 301,
+    subject_product_name_snapshot: 'Classic Hoodie',
+    main_copywriting_text: '轻盈春装，上身即走。',
+    target_duration_seconds: 30,
+    input_items: [
+      {
+        material_type: 'video',
+        material_id: 11,
+        sequence: 1,
+        instance_no: 1,
+        enabled: true,
+      },
+    ],
+    input_snapshot: createCompatibilityInputSnapshot({ video_ids: [11] }),
     generation_error_msg: null,
     generation_failed_at: null,
     eligibility_status: 'PENDING_INPUT',
-    eligibility_reasons: ['请选择合成配置', '至少选择 1 个视频'],
+    eligibility_reasons: ['请选择合成配置'],
     latest_task_summary: null,
     updated_at: '2026-04-17T10:00:00Z',
     ...overrides,
@@ -124,7 +132,7 @@ export async function mockWorkbenchLandingApis(
       contentType: 'application/json',
       body: JSON.stringify({
         total: 1,
-        items: [createPhase1WorkbenchItem()],
+        items: [createCreativeWorkbenchItem()],
         ...creativeListOverrides,
       }),
     })

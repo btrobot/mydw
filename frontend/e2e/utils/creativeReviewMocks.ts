@@ -100,14 +100,57 @@ function createCompatibilityInputSnapshot(overrides: Record<string, unknown> = {
   }
 }
 
-function createPhase1CreativeFields(overrides: Record<string, unknown> = {}) {
+function projectCompatibilitySnapshot(
+  inputItems: Array<Record<string, unknown>>,
+  profileId: number | null = 1,
+) {
+  const snapshot = createCompatibilityInputSnapshot({
+    profile_id: profileId,
+    video_ids: [],
+    copywriting_ids: [],
+    cover_ids: [],
+    audio_ids: [],
+    topic_ids: [],
+  }) as Record<string, unknown>
+
+  for (const item of inputItems) {
+    if (item.enabled === false) {
+      continue
+    }
+    const fieldName =
+      item.material_type === 'video'
+        ? 'video_ids'
+        : item.material_type === 'copywriting'
+          ? 'copywriting_ids'
+          : item.material_type === 'cover'
+            ? 'cover_ids'
+            : item.material_type === 'audio'
+              ? 'audio_ids'
+              : 'topic_ids'
+    ;(snapshot[fieldName] as number[]).push(Number(item.material_id))
+  }
+
+  return snapshot
+}
+
+function createCreativeBriefFields(overrides: Record<string, unknown> = {}) {
+  const inputItems = [
+    {
+      material_type: 'video',
+      material_id: 11,
+      sequence: 1,
+      instance_no: 1,
+      role: '主镜头',
+      enabled: true,
+    },
+  ]
   return {
-    subject_product_id: null,
-    subject_product_name_snapshot: null,
-    main_copywriting_text: null,
-    target_duration_seconds: null,
-    input_items: [],
-    input_snapshot: createCompatibilityInputSnapshot(),
+    subject_product_id: 301,
+    subject_product_name_snapshot: 'Classic Hoodie',
+    main_copywriting_text: '轻盈春装，上身即走。',
+    target_duration_seconds: 30,
+    input_items: inputItems,
+    input_snapshot: projectCompatibilitySnapshot(inputItems),
     eligibility_status: 'READY_TO_COMPOSE',
     eligibility_reasons: [],
     latest_task_summary: null,
@@ -291,7 +334,7 @@ export function createCreativeReviewState(): CreativeScenarioState {
       updated_at: '2026-04-17T08:00:00Z',
       generation_error_msg: null,
       generation_failed_at: null,
-      ...createPhase1CreativeFields(),
+      ...createCreativeBriefFields(),
     },
   }
 }
@@ -384,6 +427,45 @@ export async function mockCreativeReviewApis(
   })
 
   await page.route(`**/api/creatives/${state.detail.id}`, async (route) => {
+    if (route.request().method() === 'PATCH') {
+      const payload = route.request().postDataJSON() as Record<string, unknown>
+      const nextInputItems = Array.isArray(payload.input_items)
+        ? payload.input_items.map((item, index) => ({
+          sequence: index + 1,
+          instance_no: index + 1,
+          enabled: true,
+          ...(item as Record<string, unknown>),
+        }))
+        : (state.detail.input_items ?? [])
+      const nextProfileId =
+        payload.profile_id === undefined ? (state.detail.input_snapshot?.profile_id as number | null | undefined) : payload.profile_id as number | null
+
+      state.detail = {
+        ...state.detail,
+        title: payload.title === undefined ? state.detail.title : String(payload.title ?? ''),
+        subject_product_id:
+          payload.subject_product_id === undefined ? state.detail.subject_product_id ?? null : Number(payload.subject_product_id ?? 0) || null,
+        subject_product_name_snapshot:
+          payload.subject_product_name_snapshot === undefined
+            ? state.detail.subject_product_name_snapshot ?? null
+            : (payload.subject_product_name_snapshot as string | null),
+        main_copywriting_text:
+          payload.main_copywriting_text === undefined
+            ? state.detail.main_copywriting_text ?? null
+            : (payload.main_copywriting_text as string | null),
+        target_duration_seconds:
+          payload.target_duration_seconds === undefined
+            ? state.detail.target_duration_seconds ?? null
+            : (payload.target_duration_seconds as number | null),
+        input_items: nextInputItems,
+        input_snapshot: projectCompatibilitySnapshot(nextInputItems, nextProfileId ?? null),
+        updated_at: '2026-04-18T08:00:00Z',
+      }
+
+      await fulfillJson(route, state.detail)
+      return
+    }
+
     updateCurrentVersion(state, getVersion(state, state.detail.current_version_id))
     await fulfillJson(route, state.detail)
   })
@@ -432,6 +514,58 @@ export async function mockCreativeReviewApis(
           composition_mode: 'none',
           is_default: true,
         },
+      ],
+    })
+  })
+
+  await page.route('**/api/products?**', async (route) => {
+    await fulfillJson(route, {
+      total: 2,
+      items: [
+        { id: 301, name: 'Classic Hoodie', parse_status: 'ready', video_count: 1, copywriting_count: 1, cover_count: 0, topic_count: 0, created_at: '2026-04-17T08:00:00Z', updated_at: '2026-04-17T08:00:00Z' },
+        { id: 302, name: 'Runner Pro', parse_status: 'ready', video_count: 2, copywriting_count: 1, cover_count: 1, topic_count: 1, created_at: '2026-04-17T08:00:00Z', updated_at: '2026-04-17T08:00:00Z' },
+      ],
+    })
+  })
+
+  await page.route('**/api/videos?**', async (route) => {
+    await fulfillJson(route, {
+      total: 2,
+      items: [
+        { id: 11, name: '开箱主镜头' },
+        { id: 12, name: '细节转场素材' },
+      ],
+    })
+  })
+
+  await page.route('**/api/copywritings?**', async (route) => {
+    await fulfillJson(route, {
+      total: 2,
+      items: [
+        { id: 21, name: '卖点短句 A' },
+        { id: 22, name: '卖点短句 B' },
+      ],
+    })
+  })
+
+  await page.route('**/api/covers?**', async (route) => {
+    await fulfillJson(route, [
+      { id: 31, name: '封面首图' },
+    ])
+  })
+
+  await page.route('**/api/audios?**', async (route) => {
+    await fulfillJson(route, [
+      { id: 41, name: '节奏音轨' },
+    ])
+  })
+
+  await page.route('**/api/topics?**', async (route) => {
+    await fulfillJson(route, {
+      total: 2,
+      items: [
+        { id: 51, name: '#春日穿搭' },
+        { id: 52, name: '#轻运动' },
       ],
     })
   })

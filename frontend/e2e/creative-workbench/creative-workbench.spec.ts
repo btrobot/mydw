@@ -9,6 +9,14 @@ const creativeListPayload = {
       title: 'Spring campaign',
       status: 'WAITING_REVIEW',
       current_version_id: 201,
+      subject_product_id: 301,
+      subject_product_name_snapshot: 'Classic Hoodie',
+      main_copywriting_text: '轻盈春装，上身即走。',
+      target_duration_seconds: 30,
+      input_items: [
+        { material_type: 'video', material_id: 11, sequence: 1, instance_no: 1, enabled: true },
+      ],
+      input_snapshot: { profile_id: 1, video_ids: [11], copywriting_ids: [], cover_ids: [], audio_ids: [], topic_ids: [], snapshot_hash: 'snapshot-101' },
       generation_error_msg: null,
       generation_failed_at: null,
       updated_at: '2026-04-16T10:00:00Z',
@@ -19,6 +27,15 @@ const creativeListPayload = {
       title: 'Summer sale teaser',
       status: 'PENDING_INPUT',
       current_version_id: 202,
+      subject_product_id: 302,
+      subject_product_name_snapshot: 'Runner Pro',
+      main_copywriting_text: '轻盈速跑，全天舒适。',
+      target_duration_seconds: 45,
+      input_items: [
+        { material_type: 'video', material_id: 12, sequence: 1, instance_no: 1, enabled: true },
+        { material_type: 'video', material_id: 12, sequence: 2, instance_no: 2, enabled: true },
+      ],
+      input_snapshot: { profile_id: 1, video_ids: [12, 12], copywriting_ids: [], cover_ids: [], audio_ids: [], topic_ids: [], snapshot_hash: 'snapshot-102' },
       generation_error_msg: '素材解析失败',
       generation_failed_at: '2026-04-16T09:30:00Z',
       updated_at: '2026-04-16T12:00:00Z',
@@ -29,6 +46,14 @@ const creativeListPayload = {
       title: 'Autumn story board',
       status: 'APPROVED',
       current_version_id: 203,
+      subject_product_id: 303,
+      subject_product_name_snapshot: 'Trail Jacket',
+      main_copywriting_text: '保暖轻盈，适合全天候出行。',
+      target_duration_seconds: 25,
+      input_items: [
+        { material_type: 'video', material_id: 13, sequence: 1, instance_no: 1, enabled: true },
+      ],
+      input_snapshot: { profile_id: 1, video_ids: [13], copywriting_ids: [], cover_ids: [], audio_ids: [], topic_ids: [], snapshot_hash: 'snapshot-103' },
       generation_error_msg: null,
       generation_failed_at: null,
       updated_at: '2026-04-16T08:00:00Z',
@@ -39,6 +64,12 @@ const creativeListPayload = {
       title: 'Winter lookbook',
       status: 'REWORK_REQUIRED',
       current_version_id: null,
+      subject_product_id: null,
+      subject_product_name_snapshot: null,
+      main_copywriting_text: null,
+      target_duration_seconds: null,
+      input_items: [],
+      input_snapshot: { profile_id: null, video_ids: [], copywriting_ids: [], cover_ids: [], audio_ids: [], topic_ids: [], snapshot_hash: 'snapshot-104' },
       generation_error_msg: null,
       generation_failed_at: null,
       updated_at: '2026-04-16T11:00:00Z',
@@ -66,6 +97,29 @@ const creativeDetailPayload = {
   },
   linked_task_ids: [901],
   updated_at: '2026-04-16T10:00:00Z',
+  subject_product_id: 301,
+  subject_product_name_snapshot: 'Classic Hoodie',
+  main_copywriting_text: '轻盈春装，上身即走。',
+  target_duration_seconds: 30,
+  input_items: [
+    {
+      material_type: 'video',
+      material_id: 11,
+      role: '主镜头',
+      sequence: 1,
+      instance_no: 1,
+      enabled: true,
+    },
+  ],
+  input_snapshot: {
+    profile_id: 1,
+    video_ids: [11],
+    copywriting_ids: [],
+    cover_ids: [],
+    audio_ids: [],
+    topic_ids: [],
+    snapshot_hash: 'snapshot-101',
+  },
 }
 
 const taskDetailPayload = {
@@ -120,6 +174,8 @@ const publishStatusPayload = {
 }
 
 async function mockCreativeApis(page: Page) {
+  let creativeDetailState = JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload
+
   await page.route('**/api/auth/session', async (route) => {
     await route.fulfill({
       status: 200,
@@ -148,10 +204,41 @@ async function mockCreativeApis(page: Page) {
   })
 
   await page.route('**/api/creatives/101', async (route) => {
+    if (route.request().method() === 'PATCH') {
+      const payload = route.request().postDataJSON() as Record<string, unknown>
+      creativeDetailState = {
+        ...creativeDetailState,
+        title: payload.title === undefined ? creativeDetailState.title : String(payload.title ?? ''),
+        subject_product_id:
+          payload.subject_product_id === undefined ? creativeDetailState.subject_product_id : Number(payload.subject_product_id ?? 0) || null,
+        subject_product_name_snapshot:
+          payload.subject_product_name_snapshot === undefined
+            ? creativeDetailState.subject_product_name_snapshot
+            : (payload.subject_product_name_snapshot as string | null),
+        main_copywriting_text:
+          payload.main_copywriting_text === undefined
+            ? creativeDetailState.main_copywriting_text
+            : (payload.main_copywriting_text as string | null),
+        target_duration_seconds:
+          payload.target_duration_seconds === undefined
+            ? creativeDetailState.target_duration_seconds
+            : (payload.target_duration_seconds as number | null),
+        input_items: Array.isArray(payload.input_items) ? payload.input_items as typeof creativeDetailPayload.input_items : creativeDetailState.input_items,
+        updated_at: '2026-04-18T08:00:00Z',
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(creativeDetailState),
+      })
+      return
+    }
+
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(creativeDetailPayload),
+      body: JSON.stringify(creativeDetailState),
     })
   })
 
@@ -230,7 +317,90 @@ async function mockCreativeApis(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ total: 0, items: [] }),
+      body: JSON.stringify({
+        total: 1,
+        items: [
+          {
+            id: 1,
+            name: 'Default Profile',
+            composition_mode: 'none',
+            is_default: true,
+          },
+        ],
+      }),
+    })
+  })
+
+  await page.route('**/api/products?**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        total: 2,
+        items: [
+          { id: 301, name: 'Classic Hoodie', parse_status: 'ready', created_at: '2026-04-16T10:00:00Z', updated_at: '2026-04-16T10:00:00Z' },
+          { id: 302, name: 'Runner Pro', parse_status: 'ready', created_at: '2026-04-16T10:00:00Z', updated_at: '2026-04-16T10:00:00Z' },
+        ],
+      }),
+    })
+  })
+
+  await page.route('**/api/videos?**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        total: 3,
+        items: [
+          { id: 11, name: '开箱主镜头' },
+          { id: 12, name: '细节转场素材' },
+          { id: 13, name: '上身展示镜头' },
+        ],
+      }),
+    })
+  })
+
+  await page.route('**/api/copywritings?**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        total: 2,
+        items: [
+          { id: 21, name: '卖点短句 A' },
+          { id: 22, name: '卖点短句 B' },
+        ],
+      }),
+    })
+  })
+
+  await page.route('**/api/covers?**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([{ id: 31, name: '封面首图' }]),
+    })
+  })
+
+  await page.route('**/api/audios?**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([{ id: 41, name: '节奏音轨' }]),
+    })
+  })
+
+  await page.route('**/api/topics?**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        total: 2,
+        items: [
+          { id: 51, name: '#春日穿搭' },
+          { id: 52, name: '#轻运动' },
+        ],
+      }),
     })
   })
 
@@ -296,7 +466,7 @@ test.describe('Creative workbench baseline', () => {
   test('shows the table-first workbench with business-first actions', async ({ page }) => {
     await page.goto(`/#/creative/workbench`)
 
-    await expect(page.locator('body')).toContainText('集中处理作品创建、补料、审核与 AIClip 主流程')
+    await expect(page.locator('body')).toContainText('集中处理作品创建、创作 brief、素材编排、审核与 AIClip 主流程')
     await expect(page.locator('body')).not.toContainText('兼容入口：新建任务')
     await expect(page.getByTestId('creative-workbench-publish-summary')).toBeVisible()
     await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
@@ -304,6 +474,9 @@ test.describe('Creative workbench baseline', () => {
     await expect(page.getByTestId('creative-workbench-scheduler-mode')).toHaveCount(0)
     await expect(page.getByTestId('creative-workbench-effective-mode')).toHaveCount(0)
     await expect(page.locator('body')).toContainText('Spring campaign')
+    await expect(page.locator('body')).toContainText('Classic Hoodie')
+    await expect(page.locator('body')).toContainText('30 秒')
+    await expect(page.locator('body')).toContainText('1 个编排项')
     await expect(page.locator('body')).toContainText('Summer sale teaser')
     await expect(page.getByTestId('creative-workbench-pool-state-101')).toContainText('已入发布池')
     await expect(page.getByTestId('creative-workbench-pool-state-102')).toContainText('版本未对齐')
@@ -311,6 +484,60 @@ test.describe('Creative workbench baseline', () => {
     await expect(page.getByTestId('creative-workbench-ai-clip-101')).toBeVisible()
     await expect(page.getByTestId('creative-workbench-preset-waiting_review')).toBeVisible()
     await expect(page.getByTestId('creative-workbench-sort-select')).toBeVisible()
+  })
+
+  test('saves creative brief and input_items without legacy list write fields', async ({ page }) => {
+    let updatePayload: Record<string, unknown> | undefined
+    let detailState = JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload
+
+    await page.unroute('**/api/creatives/101')
+    await page.route('**/api/creatives/101', async (route) => {
+      if (route.request().method() === 'PATCH') {
+        updatePayload = route.request().postDataJSON() as Record<string, unknown>
+        detailState = {
+          ...detailState,
+          ...updatePayload,
+          updated_at: '2026-04-18T08:00:00Z',
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(detailState),
+        })
+        return
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(detailState),
+      })
+    })
+
+    await page.goto(`/#/creative/101`)
+
+    await expect(page.locator('body')).toContainText('创作 brief 与素材编排')
+    await expect(page.getByTestId('creative-detail-product-snapshot')).toHaveValue('Classic Hoodie')
+    await page.getByTestId('creative-detail-product-snapshot').fill('Runner Pro')
+    await page.getByTestId('creative-detail-main-copywriting').fill('主推轻盈舒适与全天候穿着体验。')
+    await page.getByLabel('目标时长（秒）').fill('45')
+    await page.getByTestId('creative-detail-save-authoring').click()
+
+    await expect.poll(() => updatePayload).toBeTruthy()
+    expect(updatePayload).toMatchObject({
+      subject_product_name_snapshot: 'Runner Pro',
+      main_copywriting_text: '主推轻盈舒适与全天候穿着体验。',
+      target_duration_seconds: 45,
+      input_items: [
+        { material_type: 'video', material_id: 11, sequence: 1 },
+      ],
+    })
+    expect(updatePayload).not.toHaveProperty('video_ids')
+    expect(updatePayload).not.toHaveProperty('copywriting_ids')
+    expect(updatePayload).not.toHaveProperty('cover_ids')
+    expect(updatePayload).not.toHaveProperty('audio_ids')
+    expect(updatePayload).not.toHaveProperty('topic_ids')
+    await expect(page.locator('body')).toContainText('45 秒')
   })
 
   test('opens diagnostics through an explicit secondary entry', async ({ page }) => {

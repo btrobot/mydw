@@ -21,6 +21,7 @@ import {
 } from 'antd'
 
 import CreativeEmptyState from '../components/CreativeEmptyState'
+import { countEnabledCreativeInputItems, formatCreativeDuration } from '../creativeAuthoring'
 import {
   creativeFlowModeMeta,
   resolveCreativeFlowMode,
@@ -376,7 +377,7 @@ export default function CreativeWorkbench() {
   const handleCreateCreative = useCallback(async () => {
     try {
       const created = await createCreative.mutateAsync({})
-      message.success('已创建空白作品，请继续补齐输入')
+      message.success('已创建作品，请继续填写 brief 并编排素材')
       navigate(`/creative/${created.id}`)
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -497,13 +498,27 @@ export default function CreativeWorkbench() {
         ),
       },
       {
-        title: '作品标题',
+        title: '作品 / 创作定义',
         dataIndex: 'title',
         ellipsis: true,
         hideInSearch: true,
         render: (_, record) => (
           <Space direction="vertical" size={4}>
             <Text strong>{record.title?.trim() || record.creative_no}</Text>
+            <Text type="secondary">
+              {[
+                record.subject_product_name_snapshot || undefined,
+                formatCreativeDuration(record.target_duration_seconds),
+                `${countEnabledCreativeInputItems(record.input_items)} 个编排项`,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </Text>
+            {record.main_copywriting_text?.trim() ? (
+              <Text type="secondary" ellipsis={{ tooltip: record.main_copywriting_text }}>
+                主文案：{record.main_copywriting_text}
+              </Text>
+            ) : null}
             {record.generation_error_msg ? (
               <Text type="warning">最近一次生成回填失败</Text>
             ) : (
@@ -664,7 +679,7 @@ export default function CreativeWorkbench() {
   return (
     <PageContainer
       title="作品工作台"
-      subTitle="集中处理作品创建、补料、审核与 AIClip 主流程。"
+      subTitle="集中处理作品创建、创作 brief、素材编排、审核与 AIClip 主流程。"
     >
       <Space direction="vertical" size={16} style={{ display: 'flex' }}>
         <Card data-testid="creative-workbench-publish-summary">
@@ -674,7 +689,7 @@ export default function CreativeWorkbench() {
                 入口模式：{creativeFlowMeta.label}
               </Text>
               <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                默认先处理作品、审核与 AIClip；运行侧信息请从“查看运行诊断”进入。
+                默认先处理作品 brief、素材编排、审核与 AIClip；运行侧信息请从“查看运行诊断”进入。
               </Paragraph>
             </Space>
             <Button onClick={handleOpenDiagnostics} data-testid="creative-workbench-open-diagnostics">

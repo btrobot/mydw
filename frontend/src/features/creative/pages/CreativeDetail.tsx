@@ -1,4 +1,10 @@
-import { ReloadOutlined } from '@ant-design/icons'
+import {
+  ArrowDownOutlined,
+  ArrowUpOutlined,
+  DeleteOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+} from '@ant-design/icons'
 import { PageContainer } from '@ant-design/pro-components'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -14,11 +20,13 @@ import {
   Form,
   Grid,
   Input,
+  InputNumber,
   List,
   Result,
   Select,
   Space,
   Spin,
+  Switch,
   Tag,
   Typography,
 } from 'antd'
@@ -28,6 +36,15 @@ import CheckDrawer from '../components/CheckDrawer'
 import VersionPanel from '../components/VersionPanel'
 import { creativeFlowModeMeta, resolveCreativeFlowMode, resolveCreativeFlowShadowCompare } from '../creativeFlow'
 import {
+  buildCreativeAuthoringPayload,
+  countEnabledCreativeInputItems,
+  creativeInputMaterialMeta,
+  formatCreativeDuration,
+  toCreativeAuthoringFormValues,
+  type CreativeAuthoringFormValues,
+  type CreativeInputMaterialType,
+} from '../creativeAuthoring'
+import {
   useCreative,
   usePublishPoolItems,
   usePublishStatus,
@@ -35,6 +52,7 @@ import {
   useSubmitCreativeComposition,
   useUpdateCreative,
 } from '../hooks/useCreatives'
+import { useProducts } from '@/hooks/useProduct'
 import { useSystemConfig } from '@/hooks/useSystem'
 import { useProfiles } from '@/hooks/useProfile'
 import { useVideos } from '@/hooks/useVideo'
@@ -62,16 +80,6 @@ import {
 const { Paragraph, Text } = Typography
 const { useBreakpoint } = Grid
 
-type CreativeInputFormValues = {
-  title?: string
-  profile_id?: number
-  video_ids: number[]
-  copywriting_ids: number[]
-  cover_ids: number[]
-  audio_ids: number[]
-  topic_ids: number[]
-}
-
 type CreativeDetailDiagnosticsView = 'advanced'
 
 export default function CreativeDetail() {
@@ -81,7 +89,7 @@ export default function CreativeDetail() {
   const screens = useBreakpoint()
   const { id } = useParams<{ id: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [form] = Form.useForm<CreativeInputFormValues>()
+  const [form] = Form.useForm<CreativeAuthoringFormValues>()
   const creativeId = id ? Number.parseInt(id, 10) : undefined
   const requestedTaskId = Number.parseInt(searchParams.get('taskId') ?? '', 10)
   const prioritizedTaskId = Number.isFinite(requestedTaskId) ? requestedTaskId : undefined
@@ -97,6 +105,7 @@ export default function CreativeDetail() {
   const publishStatusQuery = usePublishStatus()
   const scheduleConfigQuery = useScheduleConfig()
   const systemConfigQuery = useSystemConfig()
+  const productsQuery = useProducts()
   const { data: profilesData } = useProfiles()
   const videosQuery = useVideos()
   const copywritingsQuery = useCopywritings()
@@ -117,6 +126,9 @@ export default function CreativeDetail() {
   })
   const [drawerOpen, setDrawerOpen] = useState(false)
   const selectedProfileId = Form.useWatch('profile_id', form)
+  const watchedSubjectProductName = Form.useWatch('subject_product_name_snapshot', form)
+  const watchedTargetDuration = Form.useWatch('target_duration_seconds', form)
+  const authoredInputItems = Form.useWatch('input_items', form) ?? []
   const detailDiagnosticsOpen = searchParams.get('diagnostics') === 'advanced'
 
   const creative = creativeQuery.data
@@ -127,6 +139,7 @@ export default function CreativeDetail() {
   const creativeFlowShadowCompare = resolveCreativeFlowShadowCompare(systemConfig)
   const creativeFlowMeta = creativeFlowModeMeta[creativeFlowMode]
   const profiles = profilesData?.items ?? []
+  const products = productsQuery.data ?? []
   const videos = videosQuery.data ?? []
   const copywritings = copywritingsQuery.data ?? []
   const covers = coversQuery.data ?? []
@@ -252,29 +265,13 @@ export default function CreativeDetail() {
     if (!creative) {
       return
     }
-    form.setFieldsValue({
-      title: creative.title ?? undefined,
-      profile_id: inputSnapshot.profile_id ?? undefined,
-      video_ids: inputSnapshot.video_ids ?? [],
-      copywriting_ids: inputSnapshot.copywriting_ids ?? [],
-      cover_ids: inputSnapshot.cover_ids ?? [],
-      audio_ids: inputSnapshot.audio_ids ?? [],
-      topic_ids: inputSnapshot.topic_ids ?? [],
-    })
-  }, [creative, form, inputSnapshot])
+    form.setFieldsValue(toCreativeAuthoringFormValues(creative))
+  }, [creative, form])
 
   const persistCreativeInput = useCallback(async (successMessage?: string) => {
     try {
       const values = await form.validateFields()
-      await updateCreative.mutateAsync({
-        title: values.title?.trim() ? values.title.trim() : undefined,
-        profile_id: values.profile_id ?? null,
-        video_ids: values.video_ids ?? [],
-        copywriting_ids: values.copywriting_ids ?? [],
-        cover_ids: values.cover_ids ?? [],
-        audio_ids: values.audio_ids ?? [],
-        topic_ids: values.topic_ids ?? [],
-      })
+      await updateCreative.mutateAsync(buildCreativeAuthoringPayload(values))
       if (successMessage) {
         message.success(successMessage)
       }
@@ -353,6 +350,14 @@ export default function CreativeDetail() {
     })),
     [profiles],
   )
+  const productOptions = useMemo(
+    () => products.map((product) => ({ value: product.id, label: product.name })),
+    [products],
+  )
+  const productNameById = useMemo(
+    () => new Map(products.map((product) => [product.id, product.name])),
+    [products],
+  )
   const videoOptions = useMemo(
     () => videos.map((item) => ({ value: item.id, label: item.name || `视频 #${item.id}` })),
     [videos],
@@ -373,10 +378,53 @@ export default function CreativeDetail() {
     () => topics.map((item) => ({ value: item.id, label: item.name || `话题 #${item.id}` })),
     [topics],
   )
+  const materialTypeOptions = useMemo(
+    () => Object.entries(creativeInputMaterialMeta).map(([value, meta]) => ({
+      value,
+      label: meta.label,
+    })),
+    [],
+  )
+  const materialOptionsByType = useMemo<Record<CreativeInputMaterialType, Array<{ value: number; label: string }>>>(
+    () => ({
+      video: videoOptions,
+      copywriting: copywritingOptions,
+      cover: coverOptions,
+      audio: audioOptions,
+      topic: topicOptions,
+    }),
+    [audioOptions, copywritingOptions, coverOptions, topicOptions, videoOptions],
+  )
+  const materialLoadingByType = useMemo<Record<CreativeInputMaterialType, boolean>>(
+    () => ({
+      video: videosQuery.isLoading,
+      copywriting: copywritingsQuery.isLoading,
+      cover: coversQuery.isLoading,
+      audio: audiosQuery.isLoading,
+      topic: topicsQuery.isLoading,
+    }),
+    [
+      audiosQuery.isLoading,
+      copywritingsQuery.isLoading,
+      coversQuery.isLoading,
+      topicsQuery.isLoading,
+      videosQuery.isLoading,
+    ],
+  )
   const activeProfile = useMemo(
     () => profiles.find((profile) => profile.id === (selectedProfileId ?? inputSnapshot.profile_id)),
     [inputSnapshot.profile_id, profiles, selectedProfileId],
   )
+  const activeInputItemCount = countEnabledCreativeInputItems(authoredInputItems)
+  const handleSubjectProductChange = useCallback((productId?: number) => {
+    if (!productId) {
+      return
+    }
+    const nextName = productNameById.get(productId)
+    if (nextName) {
+      form.setFieldValue('subject_product_name_snapshot', nextName)
+    }
+  }, [form, productNameById])
   const submitButtonLabel = activeProfile?.composition_mode === 'none'
     ? '提交直发准备'
     : (currentVersion ? '重新提交合成' : '提交合成')
@@ -512,12 +560,17 @@ export default function CreativeDetail() {
         </Card>
 
         <Card
-          title="作品输入"
+          title="创作 brief 与素材编排"
           extra={(
-            <Space>
-              <Text type="secondary">Snapshot Hash：{inputSnapshot.snapshot_hash ?? '-'}</Text>
-              <Button loading={updateCreative.isPending} onClick={() => void handleSaveInput()}>
-                保存输入
+            <Space wrap>
+              <Text type="secondary">编排项：{activeInputItemCount}</Text>
+              <Text type="secondary">兼容 Snapshot Hash：{inputSnapshot.snapshot_hash ?? '-'}</Text>
+              <Button
+                loading={updateCreative.isPending}
+                onClick={() => void handleSaveInput()}
+                data-testid="creative-detail-save-authoring"
+              >
+                保存创作定义
               </Button>
               <Button
                 type="primary"
@@ -532,84 +585,222 @@ export default function CreativeDetail() {
           )}
         >
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+              这里维护作品级业务定义：商品、主文案、目标时长，以及 input_items 编排顺序。旧版列表字段仅保留为兼容投影与快照。
+            </Paragraph>
+
+            <Descriptions bordered size="small" column={screens.lg ? 4 : screens.md ? 2 : 1}>
+              <Descriptions.Item label="主体商品">
+                {watchedSubjectProductName || creative.subject_product_name_snapshot || '待补充'}
+              </Descriptions.Item>
+              <Descriptions.Item label="目标时长">
+                {formatCreativeDuration(watchedTargetDuration ?? creative.target_duration_seconds)}
+              </Descriptions.Item>
+              <Descriptions.Item label="启用编排项">{activeInputItemCount}</Descriptions.Item>
+              <Descriptions.Item label="合成配置">
+                {activeProfile?.name ?? (inputSnapshot.profile_id ? `配置 #${inputSnapshot.profile_id}` : '待选择')}
+              </Descriptions.Item>
+            </Descriptions>
+
             <Form form={form} layout="vertical">
-              <Form.Item name="title" label="作品标题">
-                <Input placeholder="给这条作品起一个便于检索和协作的名字" allowClear />
-              </Form.Item>
+              <Flex gap={16} wrap="wrap" align="start">
+                <Form.Item name="title" label="作品标题" style={{ flex: 1, minWidth: 260 }}>
+                  <Input placeholder="给这条作品起一个便于检索和协作的名字" allowClear />
+                </Form.Item>
 
-              <Form.Item name="profile_id" label="合成配置">
-                <Select
-                  allowClear
-                  showSearch
-                  optionFilterProp="label"
-                  placeholder="选择合成配置"
-                  options={profileOptions}
+                <Form.Item name="profile_id" label="合成配置" style={{ flex: 1, minWidth: 220 }}>
+                  <Select
+                    allowClear
+                    showSearch
+                    optionFilterProp="label"
+                    placeholder="选择合成配置"
+                    options={profileOptions}
+                  />
+                </Form.Item>
+              </Flex>
+
+              <Flex gap={16} wrap="wrap" align="start">
+                <Form.Item name="subject_product_id" label="主体商品" style={{ flex: 1, minWidth: 220 }}>
+                  <Select
+                    allowClear
+                    showSearch
+                    optionFilterProp="label"
+                    placeholder="选择主体商品"
+                    options={productOptions}
+                    loading={productsQuery.isLoading}
+                    onChange={(value) => handleSubjectProductChange(value)}
+                    data-testid="creative-detail-subject-product"
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  name="subject_product_name_snapshot"
+                  label="商品名称快照"
+                  style={{ flex: 1, minWidth: 260 }}
+                >
+                  <Input
+                    placeholder="用于作品 brief / 版本沉淀的商品名称"
+                    allowClear
+                    data-testid="creative-detail-product-snapshot"
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  name="target_duration_seconds"
+                  label="目标时长（秒）"
+                  style={{ width: screens.md ? 180 : '100%' }}
+                >
+                  <InputNumber
+                    min={1}
+                    precision={0}
+                    style={{ width: '100%' }}
+                    placeholder="例如 30"
+                    data-testid="creative-detail-target-duration"
+                  />
+                </Form.Item>
+              </Flex>
+
+              <Form.Item name="main_copywriting_text" label="主文案">
+                <Input.TextArea
+                  autoSize={{ minRows: 3, maxRows: 6 }}
+                  placeholder="填写作品级主文案；它属于作品 brief，而不是单个素材条目。"
+                  data-testid="creative-detail-main-copywriting"
                 />
               </Form.Item>
 
-              <Form.Item
-                name="video_ids"
-                label="视频素材"
-                rules={[{ required: true, type: 'array', min: 1, message: '至少选择 1 个视频' }]}
-              >
-                <Select
-                  mode="multiple"
-                  allowClear
-                  showSearch
-                  optionFilterProp="label"
-                  placeholder="选择视频素材"
-                  options={videoOptions}
-                  loading={videosQuery.isLoading}
-                />
-              </Form.Item>
+              <Form.List name="input_items">
+                {(fields, { add, move, remove }) => (
+                  <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                    <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
+                      <Space direction="vertical" size={0}>
+                        <Text strong>素材编排（input_items）</Text>
+                        <Text type="secondary">支持显式排序、重复添加同一素材，以及为单项补充角色 / 时长 / 裁切信息。</Text>
+                      </Space>
+                      <Button
+                        type="dashed"
+                        icon={<PlusOutlined />}
+                        onClick={() => add({ material_type: 'video', enabled: true })}
+                        data-testid="creative-detail-add-input-item"
+                      >
+                        添加编排项
+                      </Button>
+                    </Flex>
 
-              <Form.Item name="copywriting_ids" label="文案素材">
-                <Select
-                  mode="multiple"
-                  allowClear
-                  showSearch
-                  optionFilterProp="label"
-                  placeholder="可选：选择文案素材"
-                  options={copywritingOptions}
-                  loading={copywritingsQuery.isLoading}
-                />
-              </Form.Item>
+                    {fields.length === 0 ? (
+                      <Alert
+                        type="info"
+                        showIcon
+                        message="当前还没有编排项"
+                        description="请至少添加 1 条素材编排；如果需要重复使用同一条素材，可以重复添加。"
+                      />
+                    ) : null}
 
-              <Form.Item name="cover_ids" label="封面素材">
-                <Select
-                  mode="multiple"
-                  allowClear
-                  showSearch
-                  optionFilterProp="label"
-                  placeholder="可选：选择封面素材"
-                  options={coverOptions}
-                  loading={coversQuery.isLoading}
-                />
-              </Form.Item>
+                    {fields.map((field, index) => {
+                      const materialType =
+                        (form.getFieldValue(['input_items', field.name, 'material_type']) as CreativeInputMaterialType | undefined)
+                        ?? 'video'
+                      const materialOptions = materialOptionsByType[materialType] ?? []
 
-              <Form.Item name="audio_ids" label="音频素材">
-                <Select
-                  mode="multiple"
-                  allowClear
-                  showSearch
-                  optionFilterProp="label"
-                  placeholder="可选：选择音频素材"
-                  options={audioOptions}
-                  loading={audiosQuery.isLoading}
-                />
-              </Form.Item>
+                      return (
+                        <Card
+                          key={field.key}
+                          type="inner"
+                          size="small"
+                          title={`编排项 ${index + 1}`}
+                          extra={(
+                            <Space>
+                              <Button
+                                size="small"
+                                icon={<ArrowUpOutlined />}
+                                disabled={index === 0}
+                                onClick={() => move(index, index - 1)}
+                              >
+                                上移
+                              </Button>
+                              <Button
+                                size="small"
+                                icon={<ArrowDownOutlined />}
+                                disabled={index === fields.length - 1}
+                                onClick={() => move(index, index + 1)}
+                              >
+                                下移
+                              </Button>
+                              <Button
+                                size="small"
+                                danger
+                                icon={<DeleteOutlined />}
+                                onClick={() => remove(field.name)}
+                              >
+                                删除
+                              </Button>
+                            </Space>
+                          )}
+                        >
+                          <Flex gap={16} wrap="wrap" align="start">
+                            <Form.Item
+                              name={[field.name, 'material_type']}
+                              label="素材类型"
+                              rules={[{ required: true, message: '请选择素材类型' }]}
+                              style={{ minWidth: 160, flex: 1 }}
+                            >
+                              <Select
+                                options={materialTypeOptions}
+                                data-testid={`creative-detail-input-item-type-${index}`}
+                              />
+                            </Form.Item>
 
-              <Form.Item name="topic_ids" label="话题">
-                <Select
-                  mode="multiple"
-                  allowClear
-                  showSearch
-                  optionFilterProp="label"
-                  placeholder="可选：选择话题"
-                  options={topicOptions}
-                  loading={topicsQuery.isLoading}
-                />
-              </Form.Item>
+                            <Form.Item
+                              name={[field.name, 'material_id']}
+                              label={creativeInputMaterialMeta[materialType].label}
+                              rules={[{ required: true, message: '请选择素材' }]}
+                              style={{ minWidth: 220, flex: 1.4 }}
+                            >
+                              <Select
+                                allowClear
+                                showSearch
+                                optionFilterProp="label"
+                                placeholder={`选择${creativeInputMaterialMeta[materialType].label}`}
+                                options={materialOptions}
+                                loading={materialLoadingByType[materialType]}
+                                data-testid={`creative-detail-input-item-material-${index}`}
+                              />
+                            </Form.Item>
+
+                            <Form.Item name={[field.name, 'role']} label="用途 / 角色" style={{ minWidth: 180, flex: 1 }}>
+                              <Input placeholder="例如 开场 / 主镜头 / CTA / 封面" allowClear />
+                            </Form.Item>
+
+                            <Form.Item
+                              name={[field.name, 'slot_duration_seconds']}
+                              label="槽位时长（秒）"
+                              style={{ width: 160 }}
+                            >
+                              <InputNumber min={1} precision={0} style={{ width: '100%' }} />
+                            </Form.Item>
+
+                            <Form.Item name={[field.name, 'trim_in']} label="裁切起点（秒）" style={{ width: 160 }}>
+                              <InputNumber min={0} style={{ width: '100%' }} />
+                            </Form.Item>
+
+                            <Form.Item name={[field.name, 'trim_out']} label="裁切终点（秒）" style={{ width: 160 }}>
+                              <InputNumber min={0} style={{ width: '100%' }} />
+                            </Form.Item>
+
+                            <Form.Item
+                              name={[field.name, 'enabled']}
+                              label="启用"
+                              valuePropName="checked"
+                              style={{ width: 120 }}
+                            >
+                              <Switch checkedChildren="启用" unCheckedChildren="停用" />
+                            </Form.Item>
+                          </Flex>
+                        </Card>
+                      )
+                    })}
+                  </Space>
+                )}
+              </Form.List>
             </Form>
 
             <Alert
@@ -620,7 +811,7 @@ export default function CreativeDetail() {
                   ? '当前作品已满足提交合成条件'
                   : creative.eligibility_status === 'INVALID'
                     ? '当前作品输入存在无效项'
-                    : '当前作品仍待补齐输入'
+                    : '当前作品仍待补齐创作定义'
               }
               description={
                 eligibilityReasons.length > 0 ? (
@@ -629,7 +820,7 @@ export default function CreativeDetail() {
                       <li key={reason}>{reason}</li>
                     ))}
                   </ul>
-                ) : '当前输入已满足最小前置条件，可继续进入合成执行链。'
+                ) : '当前作品已具备最小创作 brief 与编排条件，可继续进入合成执行链。'
               }
             />
           </Space>
