@@ -26,9 +26,9 @@
 关联规划：
 
 - `docs/governance/next-phase-pr4-regression-and-stage-closeout-plan.md`
-- `.omx/plans/prd-pr4-regression-and-stage-closeout.md`
-- `.omx/plans/test-spec-pr4-regression-and-stage-closeout.md`
-- `.omx/plans/slice-plan-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/archive/prd-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/archive/test-spec-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/archive/slice-plan-pr4-regression-and-stage-closeout.md`
 
 ---
 
@@ -45,9 +45,9 @@
     - Slice A / B / C 的顺序与边界
 
 - **OMX planning artifacts 已补齐**
-  - `.omx/plans/prd-pr4-regression-and-stage-closeout.md`
-  - `.omx/plans/test-spec-pr4-regression-and-stage-closeout.md`
-  - `.omx/plans/slice-plan-pr4-regression-and-stage-closeout.md`
+  - `.omx/plans/archive/prd-pr4-regression-and-stage-closeout.md`
+  - `.omx/plans/archive/test-spec-pr4-regression-and-stage-closeout.md`
+  - `.omx/plans/archive/slice-plan-pr4-regression-and-stage-closeout.md`
   - 这意味着后续 `$ralph` / `$team` 执行时，不需要重新起草 PR-4 的 PRD、test spec、slice plan
 
 - **阶段 closeout gate 已冻结**
@@ -163,9 +163,9 @@
 
 本地 OMX 工件：
 
-- `.omx/plans/prd-pr4-regression-and-stage-closeout.md`
-- `.omx/plans/test-spec-pr4-regression-and-stage-closeout.md`
-- `.omx/plans/slice-plan-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/archive/prd-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/archive/test-spec-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/archive/slice-plan-pr4-regression-and-stage-closeout.md`
 
 ---
 

@@ -1,6 +1,6 @@
 # 下一阶段执行分解（Next-Phase Execution Breakdown）
 
-> Version: 1.3.0 | Updated: 2026-04-22
+> Version: 1.4.0 | Updated: 2026-04-22
 > Owner: Tech Lead / Codex  
 > Status: Active planning artifact
 
@@ -159,10 +159,11 @@
 
 ## PR-4 — 回归补强与阶段收口
 
-> Status: In progress
+> Status: Completed on 2026-04-22
 > Planning: `docs/governance/next-phase-pr4-regression-and-stage-closeout-plan.md`
 > Slice A closeout: `docs/governance/inventory/pr4-slice-a-gate-lock-closeout.md`
 > Slice B closeout: `docs/governance/inventory/pr4-slice-b-regression-execution-closeout.md`
+> Closeout: `docs/governance/inventory/pr4-regression-and-stage-closeout-closeout.md`
 
 目标：
 
@@ -180,9 +181,9 @@
 详细规划入口：
 
 - `docs/governance/next-phase-pr4-regression-and-stage-closeout-plan.md`
-- `.omx/plans/prd-pr4-regression-and-stage-closeout.md`
-- `.omx/plans/test-spec-pr4-regression-and-stage-closeout.md`
-- `.omx/plans/slice-plan-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/archive/prd-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/archive/test-spec-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/archive/slice-plan-pr4-regression-and-stage-closeout.md`
 
 验收：
 
@@ -199,7 +200,7 @@
 2. **Slice B — 回归执行、最小修复与证据沉淀**
    已完成。backend / contract baseline、frontend typecheck / build、frontend stage closeout suite 已跑通；吸收的最小修复仅为 `frontend/package.json` 中的 Playwright 脚本显式绑定 `e2e/playwright.config.ts`，见 `docs/governance/inventory/pr4-slice-b-regression-execution-closeout.md`。
 3. **Slice C — 正式 closeout 与阶段 handoff**
-   待执行。把 Slice A / Slice B 的 gate 锁定与自动化证据串成 PR-4 正式收口件，并补齐阶段退出 authority 与最终 handoff。
+   已完成。PR-4 正式 closeout、阶段退出 authority、planning 归档与下一步 handoff 已落盘；见 `docs/governance/inventory/pr4-regression-and-stage-closeout-closeout.md`。
 
 ## 3. 不在本 sequence 首批处理的内容
 

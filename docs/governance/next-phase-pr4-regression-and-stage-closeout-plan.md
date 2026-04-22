@@ -27,11 +27,11 @@
 2. PR-4 的 closeout gate 或验证口径变化时，先改本文件，再同步 `next-phase-test-spec`
 3. 本文件只规划 PR-4，不把 AIClip 产品化、remote 扩张、平台级 cleanup 混进来
 
-对应的 OMX working artifacts：
+对应的 OMX working artifacts（现已归档）：
 
-- `.omx/plans/prd-pr4-regression-and-stage-closeout.md`
-- `.omx/plans/test-spec-pr4-regression-and-stage-closeout.md`
-- `.omx/plans/slice-plan-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/archive/prd-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/archive/test-spec-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/archive/slice-plan-pr4-regression-and-stage-closeout.md`
 
 ---
 
@@ -345,9 +345,9 @@ PR-4 执行过程中允许吸收的修复，仅限：
 - `docs/governance/next-phase-test-spec.md`
 - `docs/governance/next-phase-execution-breakdown.md`
 - `docs/governance/README.md`（如导航需同步）
-- `.omx/plans/prd-pr4-regression-and-stage-closeout.md`
-- `.omx/plans/test-spec-pr4-regression-and-stage-closeout.md`
-- `.omx/plans/slice-plan-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/archive/prd-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/archive/test-spec-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/archive/slice-plan-pr4-regression-and-stage-closeout.md`
 
 完成标准：
 
@@ -476,9 +476,9 @@ PR-4 执行时，至少同步检查：
 - `docs/governance/next-phase-execution-breakdown.md`
 - `docs/governance/README.md`
 - `docs/governance/inventory/inventory-ledger.md`
-- `.omx/plans/prd-pr4-regression-and-stage-closeout.md`
-- `.omx/plans/test-spec-pr4-regression-and-stage-closeout.md`
-- `.omx/plans/slice-plan-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/archive/prd-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/archive/test-spec-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/archive/slice-plan-pr4-regression-and-stage-closeout.md`
 
 ---
 

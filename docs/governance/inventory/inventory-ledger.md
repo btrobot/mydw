@@ -231,6 +231,7 @@ Current location:
 - `docs/governance/inventory/pr3-slice-b-state-feedback-closeout.md` — PR-3 / Slice B 的正式收口件，汇总四态统一、失败语义显式化与 targeted verification 证据
 - `docs/governance/inventory/pr4-slice-a-gate-lock-closeout.md` — PR-4 / Slice A 的正式收口件，汇总阶段 closeout gate、最小修复政策与执行 authority 已锁定的当前真相
 - `docs/governance/inventory/pr4-slice-b-regression-execution-closeout.md` — PR-4 / Slice B 的正式收口件，汇总自动化回归执行、最小修复、验证证据与留给 Slice C 的残留风险
+- `docs/governance/inventory/pr4-regression-and-stage-closeout-closeout.md` — PR-4 的正式收口件，汇总阶段级 gate、最终退出依据、planning 归档与下一条主线 handoff
 
 ## Tenth archive batch completed in PR-1 closeout
 
@@ -247,6 +248,16 @@ Current location:
 - `.omx/plans/archive/prd-pr3-copy-and-state-unification.md`
 - `.omx/plans/archive/test-spec-pr3-copy-and-state-unification.md`
 - `.omx/plans/archive/slice-plan-pr3-copy-and-state-unification.md`
+
+Current location:
+
+- `.omx/plans/archive/`
+
+## Twelfth archive batch completed in PR-4 closeout
+
+- `.omx/plans/archive/prd-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/archive/test-spec-pr4-regression-and-stage-closeout.md`
+- `.omx/plans/archive/slice-plan-pr4-regression-and-stage-closeout.md`
 
 Current location:
 

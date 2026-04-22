@@ -73,14 +73,16 @@
 
 当前自然的下一步是：
 
-- 进入 `PR-4：回归补强与阶段收口`
-- `Slice A` 已完成门禁锁定
-- `Slice B` 已完成自动化回归执行、最小修复与证据沉淀
-- 下一步应进入 `PR-4 Slice C`
+- 当前这条 `Creative-first 稳定化 / UI-UX 收口主线` 已由 `PR-4` 正式收口
+- `PR-4` 的 planning、Slice A、Slice B 与整 PR closeout 均已落盘
+- 下一步不应继续在 `PR-4` 内扩项，而应进入“下一条主线选择 / 启动评估”
 - 当前入口：
   - `docs/governance/next-phase-pr4-regression-and-stage-closeout-plan.md`
   - `docs/governance/inventory/pr4-slice-a-gate-lock-closeout.md`
   - `docs/governance/inventory/pr4-slice-b-regression-execution-closeout.md`
+  - `docs/governance/inventory/pr4-regression-and-stage-closeout-closeout.md`
+  - `docs/governance/phase-transition-checklist.md`
+  - `docs/governance/templates/next-phase-mainline-selection-template.md`
 
 ---
 
@@ -119,6 +121,7 @@
 - `docs/governance/inventory/pr3-slice-b-state-feedback-closeout.md`
 - `docs/governance/inventory/pr4-slice-a-gate-lock-closeout.md`
 - `docs/governance/inventory/pr4-slice-b-regression-execution-closeout.md`
+- `docs/governance/inventory/pr4-regression-and-stage-closeout-closeout.md`
 - `docs/governance/inventory/post-mvp-doc-governance-closeout.md`
 - `docs/governance/inventory/root-doc-triage.md`
 - `docs/governance/inventory/epic-7-docs-parity-checklist.md`

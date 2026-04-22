@@ -163,6 +163,7 @@
 6. `docs/current/next-phase-kickoff.md`
 7. `docs/governance/next-phase-backlog.md`
 8. `docs/governance/policies/omx-plan-retention.md`
+9. `docs/governance/inventory/pr4-regression-and-stage-closeout-closeout.md`（如当前要判断这条 next-phase 主线是否已可退出）
 
 ---
 
