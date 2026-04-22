@@ -79,6 +79,13 @@
 - 默认业务视图只保留业务信息和主操作
 - 把 scheduler / pool / shadow / kill-switch 诊断信息下沉到高级诊断层
 
+详细规划入口：
+
+- `docs/governance/next-phase-pr2-business-diagnostics-layering-plan.md`
+- `.omx/plans/prd-pr2-business-diagnostics-layering.md`
+- `.omx/plans/test-spec-pr2-business-diagnostics-layering.md`
+- `.omx/plans/slice-plan-pr2-business-diagnostics-layering.md`
+
 主要影响面：
 
 - `CreativeWorkbench`
@@ -87,8 +94,9 @@
 
 验收：
 
-- 默认工作台与详情页不再带明显“验收台/诊断台”气质
-- 研发仍可通过高级诊断入口拿到必要信息
+- 默认工作台与详情页不再直接暴露过量 scheduler / pool / shadow diagnostics
+- 研发仍可通过显式高级诊断入口拿到必要信息
+- diagnostics 入口必须“一次显式操作可达”，不能退化成隐藏式信息
 - 若改变默认业务层边界，需要同步更新相关 domain/page docs
 
 ## PR-3 — 文案与四态统一

@@ -149,6 +149,22 @@ def test_governance_readme_classifies_core_policies_inventory_standards_and_temp
     assert "可复制复用的模板 / skeleton / starter" in governance_index
 
 
+def test_pr2_business_diagnostics_plan_is_indexed_and_connected() -> None:
+    docs_index = _read("docs/README.md")
+    governance_index = _read("docs/governance/README.md")
+    breakdown = _read("docs/governance/next-phase-execution-breakdown.md")
+    ledger = _read("docs/governance/inventory/inventory-ledger.md")
+    plan = _read("docs/governance/next-phase-pr2-business-diagnostics-layering-plan.md")
+
+    assert "docs/governance/next-phase-pr2-business-diagnostics-layering-plan.md" in docs_index
+    assert "docs/governance/next-phase-pr2-business-diagnostics-layering-plan.md" in governance_index
+    assert "docs/governance/next-phase-pr2-business-diagnostics-layering-plan.md" in breakdown
+    assert "docs/governance/next-phase-pr2-business-diagnostics-layering-plan.md" in ledger
+    assert "默认业务层 + 显式高级诊断层" in plan
+    assert "CreativeWorkbench" in plan
+    assert "CreativeDetail" in plan
+
+
 def test_omx_to_formal_doc_absorption_rules_are_indexed_and_define_promotion_gate() -> None:
     docs_index = _read("docs/README.md")
     governance_index = _read("docs/governance/README.md")

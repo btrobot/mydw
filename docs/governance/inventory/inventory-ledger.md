@@ -212,6 +212,7 @@ Current location:
 - `docs/governance/next-phase-test-spec.md` — 下一阶段验证规格
 - `docs/governance/next-phase-execution-breakdown.md` — 下一阶段 PR sequence 分解
 - `docs/governance/next-phase-pr1-workbench-manageability-plan.md` — PR-1「Workbench 可管理性收口」的聚焦规划与 slice 建议
+- `docs/governance/next-phase-pr2-business-diagnostics-layering-plan.md` — PR-2「业务层 / 诊断层分层」的聚焦规划与 slice 建议
 
 ## Formal closeout artifact
 

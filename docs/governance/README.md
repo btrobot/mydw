@@ -35,6 +35,7 @@
 - `docs/governance/next-phase-test-spec.md`
 - `docs/governance/next-phase-execution-breakdown.md`
 - `docs/governance/next-phase-pr1-workbench-manageability-plan.md`
+- `docs/governance/next-phase-pr2-business-diagnostics-layering-plan.md`
 
 推荐理解：
 
@@ -45,6 +46,7 @@
 - 想知道 `.omx` 工作文档何时吸收到正式 docs：看 `omx-to-formal-doc-absorption-rules.md`
 - 想知道下一阶段怎么启动：看 `next-phase-*` 一组文档
 - 想知道 PR-1 怎么具体切片：看 `next-phase-pr1-workbench-manageability-plan.md`
+- 想知道 PR-2 如何做业务层 / 诊断层分层：看 `next-phase-pr2-business-diagnostics-layering-plan.md`
 
 ---
 
