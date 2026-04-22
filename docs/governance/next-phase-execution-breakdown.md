@@ -116,8 +116,9 @@
 
 ## PR-3 — 文案与四态统一
 
-> Status: Planned on 2026-04-22
+> Status: In progress on 2026-04-22
 > Planning: `docs/governance/next-phase-pr3-copy-and-state-unification-plan.md`
+> Slice B closeout: `docs/governance/inventory/pr3-slice-b-state-feedback-closeout.md`
 
 目标：
 
@@ -145,6 +146,15 @@
 - 文案策略一致
 - loading / empty / error / success 四态显式且不误导
 - 若四态或 CTA 标准变化，需要同步更新 `docs/governance/next-phase-test-spec.md`
+
+执行顺序（当前进展）：
+
+1. **Slice A — 主文案与 CTA 收口**
+   已完成。认证/创作主链路的主 CTA 层级和关键中文主文案已做首轮收束。
+2. **Slice B — 四态统一与关键页面状态反馈收口**
+   已完成。Dashboard、auth live state、creative loading state 的 loading / empty / error / success 语义已显式化，失败态不再伪装成 empty / default；见 `docs/governance/inventory/pr3-slice-b-state-feedback-closeout.md`。
+3. **Slice C — 验证与文档事实对齐**
+   待继续。需要把 PR-3 当前已经形成的文案 / 四态 current truth 继续同步到 test spec、execution breakdown 与最终 PR closeout。
 
 ## PR-4 — 回归补强与阶段收口
 

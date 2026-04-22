@@ -100,6 +100,7 @@
 - `docs/governance/inventory/current-project-phase-transition-decision.md`
 - `docs/governance/inventory/pr1-workbench-manageability-closeout.md`
 - `docs/governance/inventory/pr2-business-diagnostics-layering-closeout.md`
+- `docs/governance/inventory/pr3-slice-b-state-feedback-closeout.md`
 - `docs/governance/inventory/post-mvp-doc-governance-closeout.md`
 - `docs/governance/inventory/root-doc-triage.md`
 - `docs/governance/inventory/epic-7-docs-parity-checklist.md`
@@ -114,6 +115,7 @@
 - 当前项目阶段切换决议 / project phase transition decision
 - PR-1 Workbench 可管理性收口正式件 / PR closeout record
 - PR-2 业务层 / 诊断层分层正式件 / PR closeout record
+- PR-3 Slice B 四态统一与关键页面状态反馈收口件 / slice closeout record
 - 正式收口件 / closeout record
 - 根层文档分诊与去向表
 - 特定阶段/批次的清单、inventory、parity check
