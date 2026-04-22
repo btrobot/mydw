@@ -133,6 +133,7 @@ def test_doc_inventory_ledger_classifies_major_document_and_runtime_clusters() -
     assert "docs/governance/next-phase-prd.md" in ledger
     assert "docs/governance/next-phase-test-spec.md" in ledger
     assert "docs/governance/next-phase-execution-breakdown.md" in ledger
+    assert "Ninth archive batch completed in current cleanup execution" in ledger
 
 
 def test_archive_index_and_second_level_indexes_exist_and_explain_archive_layers() -> None:

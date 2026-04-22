@@ -14,7 +14,7 @@
 
 - 前端搜索字段定义：`frontend/src/pages/TaskList.tsx`
 - 后端任务列表过滤能力：`backend/api/task.py`
-- 原始 PRD：`.omx/plans/prd-task-management-page-closeout.md`
+- 原始 PRD：`.omx/plans/archive/prd-task-management-page-closeout.md`
 
 ---
 

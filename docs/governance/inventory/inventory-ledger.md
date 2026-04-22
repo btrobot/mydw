@@ -174,6 +174,19 @@ Current location:
 
 - `docs/archive/exports/`
 
+## Ninth archive batch completed in current cleanup execution
+
+- `.omx/plans/archive/prd-login-bs-alignment-pr-plan.md`
+- `.omx/plans/archive/test-spec-login-bs-alignment-pr-plan.md`
+- `.omx/plans/archive/prd-task-management-page-closeout.md`
+- `.omx/plans/archive/test-spec-task-management-page-closeout.md`
+- `.omx/plans/archive/prd-work-driven-creative-flow-refactor.md`
+- `.omx/plans/archive/test-spec-work-driven-creative-flow-refactor.md`
+
+Current location:
+
+- `.omx/plans/archive/`
+
 ## Follow-up actions supported by this ledger
 
 1. Maintain `docs/archive/README.md` plus second-level archive indexes whenever archive categories change.

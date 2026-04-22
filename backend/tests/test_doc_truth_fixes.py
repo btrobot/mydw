@@ -201,8 +201,8 @@ def test_current_project_mvp_closeout_execution_record_is_indexed_and_tracks_res
     assert "D. 验证基线收口" in execution
     assert "E. Planning / 历史产物收口" in execution
     assert "F. 下一阶段决策收口" in execution
-    assert "mostly completed" in execution
-    assert "pending manual review" in execution
+    assert "completed" in execution
+    assert "pending-manual-review 文件，已在本轮 follow-up 中继续归档清理" in execution
     assert "Creative-first 稳定化 / UI-UX 收口主线" in execution
     assert "可以进入下一阶段持续开发" in execution
 
@@ -354,7 +354,7 @@ def test_omx_plan_retention_distinguishes_active_archive_and_pending_plan_sets()
     assert ".omx/plans/archive/" in retention
     assert "Keep active in `.omx/plans/`" in retention
     assert "Archive now to `.omx/plans/archive/`" in retention
-    assert "Keep in `.omx/plans/` pending manual review" in retention
+    assert "Pending manual review set" in retention
     assert "prd-remote-full-system.md" in retention
     assert "prd-remote-auth.md" in retention
     assert "prd-creative-progressive-rebuild-roadmap.md" in retention
@@ -372,6 +372,9 @@ def test_omx_plan_retention_distinguishes_active_archive_and_pending_plan_sets()
     assert "ralplan-task-management-filters-2026-04-19.md" in retention
     assert "ralplan-task-management-page-closeout-2026-04-19.md" in retention
     assert "ralplan-work-driven-creative-flow-2026-04-20.md" in retention
+    assert "prd-login-bs-alignment-pr-plan.md" in retention
+    assert "prd-task-management-page-closeout.md" in retention
+    assert "prd-work-driven-creative-flow-refactor.md" in retention
 
 
 def test_product_docs_match_current_name_share_text_parse_and_delete_truth() -> None:
@@ -415,9 +418,27 @@ def test_product_plan_retention_moves_product_create_prd_and_test_spec_out_of_pe
     assert "prd-product-create-name-share-text.md" in retention
     assert "test-spec-product-create-name-share-text.md" in retention
 
-    pending_section = retention.split("## 3.3 Keep in `.omx/plans/` pending manual review", maxsplit=1)[1]
+    pending_section = retention.split("## 3.3 Pending manual review set", maxsplit=1)[1]
     assert "prd-product-create-name-share-text.md" not in pending_section
     assert "test-spec-product-create-name-share-text.md" not in pending_section
+    assert "prd-login-bs-alignment-pr-plan.md" not in pending_section
+    assert "prd-task-management-page-closeout.md" not in pending_section
+    assert "prd-work-driven-creative-flow-refactor.md" not in pending_section
+
+
+def test_followup_archive_batch_moves_remaining_pending_omx_plans_out_of_active_set() -> None:
+    moved_pairs = [
+        (".omx/plans/prd-login-bs-alignment-pr-plan.md", ".omx/plans/archive/prd-login-bs-alignment-pr-plan.md"),
+        (".omx/plans/test-spec-login-bs-alignment-pr-plan.md", ".omx/plans/archive/test-spec-login-bs-alignment-pr-plan.md"),
+        (".omx/plans/prd-task-management-page-closeout.md", ".omx/plans/archive/prd-task-management-page-closeout.md"),
+        (".omx/plans/test-spec-task-management-page-closeout.md", ".omx/plans/archive/test-spec-task-management-page-closeout.md"),
+        (".omx/plans/prd-work-driven-creative-flow-refactor.md", ".omx/plans/archive/prd-work-driven-creative-flow-refactor.md"),
+        (".omx/plans/test-spec-work-driven-creative-flow-refactor.md", ".omx/plans/archive/test-spec-work-driven-creative-flow-refactor.md"),
+    ]
+
+    for old_path, new_path in moved_pairs:
+        assert not (REPO_ROOT / old_path).exists(), f"file should no longer be active: {old_path}"
+        assert (REPO_ROOT / new_path).exists(), f"missing archived file: {new_path}"
 
 
 def test_closeout_docs_point_to_archived_omx_plan_sources() -> None:

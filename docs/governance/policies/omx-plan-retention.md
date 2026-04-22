@@ -1,6 +1,6 @@
 # OMX Planning Artifact Retention / `.omx/plans` 归档规则
 
-> Version: 1.0.0 | Updated: 2026-04-21  
+> Version: 1.1.0 | Updated: 2026-04-22  
 > Owner: Tech Lead / Codex  
 > Status: Active
 
@@ -65,20 +65,16 @@
 | `prd-remote-system-mvp.md` / `test-spec-remote-system-mvp.md` / `prd-remote-system-phase0-pr-plan.md` ~ `prd-remote-system-phase3-pr-plan.md` | 已被新一轮 `remote-full-system` 规划基线取代 | `remote/README.md`、`remote/remote-shared/docs/remote-full-system-operating-model-v1.md`、`remote/remote-shared/docs/phase1-release-gate.md` ~ `phase4-release-gate.md` |
 | `remote-admin-platform-ui-pr-sequence-2026-04-16.md` / `remote-admin-platform-ui-ralplan-2026-04-16.md` | `remote-admin` UI 规划已被正式 spec 接管 | `remote/remote-shared/docs/remote-admin-platform-ui-spec-v1.md` |
 | `prd-product-create-name-share-text.md` / `test-spec-product-create-name-share-text.md` | product-create 双字段规划已经被正式商品域文档、页面规格和文档真相测试吸收 | `docs/domains/products/redesign.md`、`docs/domains/products/requirements.md`、`docs/specs/page-specs/product-list.md`、`docs/specs/page-specs/product-detail.md`、`backend/tests/test_doc_truth_fixes.py` |
+| `prd-login-bs-alignment-pr-plan.md` / `test-spec-login-bs-alignment-pr-plan.md` | 登录 UX / B/S 风格收口已完成，当前保留价值以阶段总结与历史追溯为主 | `reports/login-ux-closeout-stage-summary-2026-04-19.md`、`docs/domains/auth/step5-final-change-list.md`、`frontend/e2e/auth-bootstrap/auth-bootstrap.spec.ts`、`frontend/e2e/auth-error-ux/auth-error-ux.spec.ts` |
+| `prd-task-management-page-closeout.md` / `test-spec-task-management-page-closeout.md` | Task 页面已完成“执行 / 诊断视图”降位，剩余收口意见主要保留为报告和 current truth 说明 | `docs/current/architecture.md`、`docs/domains/creative/progressive-rebuild-final-summary.md`、`docs/domains/creative/progressive-rebuild-completion-audit.md`、`reports/task-management-filter-simplification-plan.md` |
+| `prd-work-driven-creative-flow-refactor.md` / `test-spec-work-driven-creative-flow-refactor.md` | 作品驱动重构已被 Creative-first 当前真相、完成审计与下一阶段治理入口吸收 | `docs/current/architecture.md`、`docs/domains/creative/progressive-rebuild-final-summary.md`、`docs/domains/creative/progressive-rebuild-completion-audit.md`、`docs/current/next-phase-kickoff.md` |
 | `product-create-dual-field-ralplan-2026-04-16.md` / `ralplan-login-bs-alignment-2026-04-20.md` / `ralplan-task-management-filters-2026-04-19.md` / `ralplan-task-management-page-closeout-2026-04-19.md` / `ralplan-work-driven-creative-flow-2026-04-20.md` | 这批属于中间共识/分歧收敛 artifacts，已被后续 PRD / test-spec / report 接管 | `prd-product-create-name-share-text.md`、`test-spec-product-create-name-share-text.md`、`prd-login-bs-alignment-pr-plan.md`、`test-spec-login-bs-alignment-pr-plan.md`、`prd-task-management-page-closeout.md`、`reports/task-management-filter-simplification-plan.md`、`prd-work-driven-creative-flow-refactor.md`、`test-spec-work-driven-creative-flow-refactor.md` |
 
-## 3.3 Keep in `.omx/plans/` pending manual review
+## 3.3 Pending manual review set
 
-以下文件暂不移动，等相关主线是否继续推进更明确后再做下一批：
+当前 **没有** 仍需保留在 `.omx/plans/` 的 pending-manual-review 文件组。
 
-- `prd-login-bs-alignment-pr-plan.md`
-- `test-spec-login-bs-alignment-pr-plan.md`
-- `prd-task-management-page-closeout.md`
-- `test-spec-task-management-page-closeout.md`
-- `prd-work-driven-creative-flow-refactor.md`
-- `test-spec-work-driven-creative-flow-refactor.md`
-
-这批文件的共同特点是：**可能仍有工程参考价值，但还没有足够证据证明它们已经完全被 `docs/` 正式文档吸收。**
+如果后续又出现“还不确定该不该归档”的计划文件，应先临时列在本节，再在下一轮 closeout 中决策去向。
 
 ## 4. 当前执行约定
 
