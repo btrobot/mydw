@@ -1,8 +1,10 @@
 ﻿import importlib
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from models import CreativeInputItem, CreativeItem, Product
 from schemas import (
     CreativeEligibilityStatus,
     CreativeItemResponse,
@@ -144,6 +146,142 @@ async def test_migration_032_creative_input_snapshot_layer_is_additive() -> None
         assert "creative_input_snapshots" in tables
     finally:
         await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_migration_033_creative_domain_model_foundation_is_additive() -> None:
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+    try:
+        async with engine.begin() as conn:
+            await conn.exec_driver_sql(
+                """
+                CREATE TABLE creative_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    creative_no VARCHAR(64) NOT NULL,
+                    title VARCHAR(256),
+                    status VARCHAR(32) NOT NULL DEFAULT 'PENDING_INPUT',
+                    current_version_id INTEGER,
+                    latest_version_no INTEGER NOT NULL DEFAULT 0,
+                    generation_error_msg TEXT,
+                    generation_failed_at DATETIME,
+                    input_profile_id INTEGER,
+                    input_video_ids TEXT DEFAULT '[]' NOT NULL,
+                    input_copywriting_ids TEXT DEFAULT '[]' NOT NULL,
+                    input_cover_ids TEXT DEFAULT '[]' NOT NULL,
+                    input_audio_ids TEXT DEFAULT '[]' NOT NULL,
+                    input_topic_ids TEXT DEFAULT '[]' NOT NULL,
+                    input_snapshot_hash VARCHAR(64),
+                    created_at DATETIME,
+                    updated_at DATETIME
+                )
+                """
+            )
+            await conn.exec_driver_sql(
+                """
+                CREATE TABLE products (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name VARCHAR(256) NOT NULL
+                )
+                """
+            )
+
+        migration_033 = importlib.import_module("migrations.033_creative_domain_model_foundation")
+        await migration_033.run_migration(engine)
+        await migration_033.run_migration(engine)
+
+        async with engine.begin() as conn:
+            creative_columns = {
+                row[1]
+                for row in (await conn.exec_driver_sql("PRAGMA table_info(creative_items)")).fetchall()
+            }
+            tables = {
+                row[0]
+                for row in (await conn.exec_driver_sql(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                )).fetchall()
+            }
+            indexes = {
+                row[1]
+                for row in (await conn.exec_driver_sql("PRAGMA index_list('creative_input_items')")).fetchall()
+            }
+
+        assert {
+            "subject_product_id",
+            "subject_product_name_snapshot",
+            "main_copywriting_text",
+            "target_duration_seconds",
+        }.issubset(creative_columns)
+        assert "creative_input_items" in tables
+        assert "ix_creative_input_items_creative_item_id" in indexes
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_creative_input_items_preserve_duplicate_order_and_trim(db_session) -> None:
+    product = Product(name="creative_phase1_contract_product")
+    creative = CreativeItem(
+        creative_no="CR-PHASE1-PR1-0001",
+        title="Phase 1 PR1 Creative",
+        status=CreativeStatus.PENDING_INPUT.value,
+        latest_version_no=0,
+        subject_product=product,
+        subject_product_name_snapshot="Phase 1 Product Snapshot",
+        main_copywriting_text="Phase 1 Copywriting Snapshot",
+        target_duration_seconds=45,
+    )
+    db_session.add_all([product, creative])
+    await db_session.flush()
+
+    db_session.add_all(
+        [
+            CreativeInputItem(
+                creative_item_id=creative.id,
+                material_type="video",
+                material_id=101,
+                role="primary",
+                sequence=1,
+                instance_no=1,
+                trim_in=0,
+                trim_out=15,
+                enabled=True,
+            ),
+            CreativeInputItem(
+                creative_item_id=creative.id,
+                material_type="video",
+                material_id=101,
+                role="ending",
+                sequence=2,
+                instance_no=2,
+                trim_in=20,
+                trim_out=35,
+                enabled=True,
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    reloaded = (
+        await db_session.execute(
+            select(CreativeItem).where(CreativeItem.id == creative.id)
+        )
+    ).scalar_one()
+    input_items = (
+        await db_session.execute(
+            select(CreativeInputItem)
+            .where(CreativeInputItem.creative_item_id == creative.id)
+            .order_by(CreativeInputItem.sequence.asc(), CreativeInputItem.id.asc())
+        )
+    ).scalars().all()
+
+    assert reloaded.subject_product_id == product.id
+    assert reloaded.subject_product_name_snapshot == "Phase 1 Product Snapshot"
+    assert reloaded.main_copywriting_text == "Phase 1 Copywriting Snapshot"
+    assert reloaded.target_duration_seconds == 45
+    assert [item.material_id for item in input_items] == [101, 101]
+    assert [item.sequence for item in input_items] == [1, 2]
+    assert [item.role for item in input_items] == ["primary", "ending"]
+    assert [(item.trim_in, item.trim_out) for item in input_items] == [(0, 15), (20, 35)]
 
 
 def test_phase_a_task_write_contracts_do_not_expose_task_kind() -> None:

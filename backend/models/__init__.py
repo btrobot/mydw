@@ -125,6 +125,10 @@ class CreativeItem(Base):
     latest_version_no = Column(Integer, nullable=False, default=0)
     generation_error_msg = Column(Text, nullable=True)
     generation_failed_at = Column(DateTime, nullable=True)
+    subject_product_id = Column(Integer, ForeignKey("products.id"), nullable=True, index=True)
+    subject_product_name_snapshot = Column(String(256), nullable=True)
+    main_copywriting_text = Column(Text, nullable=True)
+    target_duration_seconds = Column(Integer, nullable=True)
     input_profile_id = Column(Integer, ForeignKey("publish_profiles.id"), nullable=True, index=True)
     input_video_ids = Column(Text, nullable=False, default="[]")
     input_copywriting_ids = Column(Text, nullable=False, default="[]")
@@ -135,7 +139,15 @@ class CreativeItem(Base):
     created_at = Column(DateTime, default=utc_now_naive)
     updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
+    subject_product = relationship("Product", foreign_keys=[subject_product_id])
     input_profile = relationship("PublishProfile", foreign_keys=[input_profile_id])
+    input_items = relationship(
+        "CreativeInputItem",
+        back_populates="creative_item",
+        foreign_keys="CreativeInputItem.creative_item_id",
+        order_by="CreativeInputItem.sequence",
+        cascade="all, delete-orphan",
+    )
     input_snapshot_record = relationship(
         "CreativeInputSnapshot",
         back_populates="creative_item",
@@ -167,6 +179,33 @@ class CreativeItem(Base):
         back_populates="creative_item",
         foreign_keys="PublishPoolItem.creative_item_id",
         order_by="PublishPoolItem.id",
+    )
+
+
+class CreativeInputItem(Base):
+    """Ordered, duplicate-preserving creative input composition item."""
+    __tablename__ = "creative_input_items"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    creative_item_id = Column(Integer, ForeignKey("creative_items.id"), nullable=False, index=True)
+    material_type = Column(String(32), nullable=False, index=True)
+    material_id = Column(Integer, nullable=False, index=True)
+    role = Column(String(64), nullable=True)
+    sequence = Column(Integer, nullable=False, default=0)
+    instance_no = Column(Integer, nullable=False, default=1)
+    trim_in = Column(Integer, nullable=True)
+    trim_out = Column(Integer, nullable=True)
+    slot_duration_seconds = Column(Integer, nullable=True)
+    enabled = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
+
+    __table_args__ = (UniqueConstraint("creative_item_id", "sequence"),)
+
+    creative_item = relationship(
+        "CreativeItem",
+        back_populates="input_items",
+        foreign_keys=[creative_item_id],
     )
 
 
@@ -841,6 +880,8 @@ async def init_db():
     await migration_031.run_migration(engine)
     migration_032 = importlib.import_module("migrations.032_creative_input_snapshot_layer")
     await migration_032.run_migration(engine)
+    migration_033 = importlib.import_module("migrations.033_creative_domain_model_foundation")
+    await migration_033.run_migration(engine)
 
     logger.info("数据库初始化完成")
 
