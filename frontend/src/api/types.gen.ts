@@ -1292,6 +1292,22 @@ export type CreativeCreateRequest = {
      */
     title?: string | null;
     /**
+     * Subject Product Id
+     */
+    subject_product_id?: number | null;
+    /**
+     * Subject Product Name Snapshot
+     */
+    subject_product_name_snapshot?: string | null;
+    /**
+     * Main Copywriting Text
+     */
+    main_copywriting_text?: string | null;
+    /**
+     * Target Duration Seconds
+     */
+    target_duration_seconds?: number | null;
+    /**
      * Profile Id
      */
     profile_id?: number | null;
@@ -1315,6 +1331,12 @@ export type CreativeCreateRequest = {
      * Topic Ids
      */
     topic_ids?: Array<number>;
+    /**
+     * Input Items
+     *
+     * Phase 1 authoritative creative input orchestration surface; legacy input_snapshot remains compatibility-only.
+     */
+    input_items?: Array<CreativeInputItemWrite>;
 };
 
 /**
@@ -1380,6 +1402,28 @@ export type CreativeDetailResponse = {
      */
     linked_task_ids?: Array<number>;
     /**
+     * Subject Product Id
+     */
+    subject_product_id?: number | null;
+    /**
+     * Subject Product Name Snapshot
+     */
+    subject_product_name_snapshot?: string | null;
+    /**
+     * Main Copywriting Text
+     */
+    main_copywriting_text?: string | null;
+    /**
+     * Target Duration Seconds
+     */
+    target_duration_seconds?: number | null;
+    /**
+     * Input Items
+     *
+     * Phase 1 authoritative source for creative input orchestration.
+     */
+    input_items?: Array<CreativeInputItemResponse>;
+    /**
      * Generation Error Msg
      */
     generation_error_msg?: string | null;
@@ -1387,6 +1431,9 @@ export type CreativeDetailResponse = {
      * Generation Failed At
      */
     generation_failed_at?: string | null;
+    /**
+     * Phase 1 compatibility carrier projected from authoritative creative inputs when available.
+     */
     input_snapshot?: CreativeInputSnapshotResponse;
     eligibility_status?: CreativeEligibilityStatus;
     /**
@@ -1413,6 +1460,93 @@ export type CreativeEligibilityStatus = 'PENDING_INPUT' | 'READY_TO_COMPOSE' | '
  * CreativeFlowMode
  */
 export type CreativeFlowMode = 'task_first' | 'dual' | 'creative_first';
+
+/**
+ * CreativeInputItemResponse
+ */
+export type CreativeInputItemResponse = {
+    /**
+     * Id
+     */
+    id?: number | null;
+    material_type: CreativeInputMaterialType;
+    /**
+     * Material Id
+     */
+    material_id: number;
+    /**
+     * Role
+     */
+    role?: string | null;
+    /**
+     * Sequence
+     */
+    sequence: number;
+    /**
+     * Instance No
+     */
+    instance_no: number;
+    /**
+     * Trim In
+     */
+    trim_in?: number | null;
+    /**
+     * Trim Out
+     */
+    trim_out?: number | null;
+    /**
+     * Slot Duration Seconds
+     */
+    slot_duration_seconds?: number | null;
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+};
+
+/**
+ * CreativeInputItemWrite
+ */
+export type CreativeInputItemWrite = {
+    material_type: CreativeInputMaterialType;
+    /**
+     * Material Id
+     */
+    material_id: number;
+    /**
+     * Role
+     */
+    role?: string | null;
+    /**
+     * Sequence
+     */
+    sequence?: number | null;
+    /**
+     * Instance No
+     */
+    instance_no?: number | null;
+    /**
+     * Trim In
+     */
+    trim_in?: number | null;
+    /**
+     * Trim Out
+     */
+    trim_out?: number | null;
+    /**
+     * Slot Duration Seconds
+     */
+    slot_duration_seconds?: number | null;
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+};
+
+/**
+ * CreativeInputMaterialType
+ */
+export type CreativeInputMaterialType = 'video' | 'copywriting' | 'cover' | 'audio' | 'topic';
 
 /**
  * CreativeInputSnapshotResponse
@@ -1556,6 +1690,22 @@ export type CreativeUpdateRequest = {
      */
     title?: string | null;
     /**
+     * Subject Product Id
+     */
+    subject_product_id?: number | null;
+    /**
+     * Subject Product Name Snapshot
+     */
+    subject_product_name_snapshot?: string | null;
+    /**
+     * Main Copywriting Text
+     */
+    main_copywriting_text?: string | null;
+    /**
+     * Target Duration Seconds
+     */
+    target_duration_seconds?: number | null;
+    /**
      * Profile Id
      */
     profile_id?: number | null;
@@ -1579,6 +1729,12 @@ export type CreativeUpdateRequest = {
      * Topic Ids
      */
     topic_ids?: Array<number> | null;
+    /**
+     * Input Items
+     *
+     * When present, input_items is the authoritative Phase 1 source and legacy carrier fields are projected for compatibility.
+     */
+    input_items?: Array<CreativeInputItemWrite> | null;
 };
 
 /**
@@ -1653,6 +1809,27 @@ export type CreativeWorkbenchItemResponse = {
      * Current Version Id
      */
     current_version_id?: number | null;
+    /**
+     * Subject Product Id
+     */
+    subject_product_id?: number | null;
+    /**
+     * Subject Product Name Snapshot
+     */
+    subject_product_name_snapshot?: string | null;
+    /**
+     * Main Copywriting Text
+     */
+    main_copywriting_text?: string | null;
+    /**
+     * Target Duration Seconds
+     */
+    target_duration_seconds?: number | null;
+    /**
+     * Input Items
+     */
+    input_items?: Array<CreativeInputItemResponse>;
+    input_snapshot?: CreativeInputSnapshotResponse;
     /**
      * Generation Error Msg
      */

@@ -65,6 +65,15 @@ interface CreativeScenarioState {
     }
     linked_task_ids: number[]
     updated_at: string
+    subject_product_id?: number | null
+    subject_product_name_snapshot?: string | null
+    main_copywriting_text?: string | null
+    target_duration_seconds?: number | null
+    input_items?: Array<Record<string, unknown>>
+    input_snapshot?: Record<string, unknown>
+    eligibility_status?: string
+    eligibility_reasons?: string[]
+    latest_task_summary?: Record<string, unknown> | null
     generation_error_msg?: string | null
     generation_failed_at?: string | null
   }
@@ -76,6 +85,56 @@ interface CreativeReviewMockOptions {
   activePoolItems?: PublishPoolItem[]
   invalidatedPoolItems?: PublishPoolItem[]
   taskDetails?: Record<number, Record<string, unknown>>
+}
+
+function createCompatibilityInputSnapshot(overrides: Record<string, unknown> = {}) {
+  return {
+    profile_id: 1,
+    video_ids: [11],
+    copywriting_ids: [],
+    cover_ids: [],
+    audio_ids: [],
+    topic_ids: [],
+    snapshot_hash: 'mock-review-snapshot',
+    ...overrides,
+  }
+}
+
+function createPhase1CreativeFields(overrides: Record<string, unknown> = {}) {
+  return {
+    subject_product_id: null,
+    subject_product_name_snapshot: null,
+    main_copywriting_text: null,
+    target_duration_seconds: null,
+    input_items: [],
+    input_snapshot: createCompatibilityInputSnapshot(),
+    eligibility_status: 'READY_TO_COMPOSE',
+    eligibility_reasons: [],
+    latest_task_summary: null,
+    ...overrides,
+  }
+}
+
+function buildCreativeListItem(detail: CreativeScenarioState['detail']) {
+  return {
+    id: detail.id,
+    creative_no: detail.creative_no,
+    title: detail.title,
+    status: detail.status,
+    current_version_id: detail.current_version_id,
+    subject_product_id: detail.subject_product_id ?? null,
+    subject_product_name_snapshot: detail.subject_product_name_snapshot ?? null,
+    main_copywriting_text: detail.main_copywriting_text ?? null,
+    target_duration_seconds: detail.target_duration_seconds ?? null,
+    input_items: detail.input_items ?? [],
+    input_snapshot: detail.input_snapshot ?? createCompatibilityInputSnapshot(),
+    generation_error_msg: detail.generation_error_msg ?? null,
+    generation_failed_at: detail.generation_failed_at ?? null,
+    eligibility_status: detail.eligibility_status ?? 'READY_TO_COMPOSE',
+    eligibility_reasons: detail.eligibility_reasons ?? [],
+    latest_task_summary: detail.latest_task_summary ?? null,
+    updated_at: detail.updated_at,
+  }
 }
 
 async function fulfillJson(route: Route, body: unknown) {
@@ -232,6 +291,7 @@ export function createCreativeReviewState(): CreativeScenarioState {
       updated_at: '2026-04-17T08:00:00Z',
       generation_error_msg: null,
       generation_failed_at: null,
+      ...createPhase1CreativeFields(),
     },
   }
 }
@@ -319,16 +379,7 @@ export async function mockCreativeReviewApis(
   await page.route('**/api/creatives?**', async (route) => {
     await fulfillJson(route, {
       total: 1,
-      items: [{
-        id: state.detail.id,
-        creative_no: state.detail.creative_no,
-        title: state.detail.title,
-        status: state.detail.status,
-        current_version_id: state.detail.current_version_id,
-        generation_error_msg: state.detail.generation_error_msg ?? null,
-        generation_failed_at: state.detail.generation_failed_at ?? null,
-        updated_at: state.detail.updated_at,
-      }],
+      items: [buildCreativeListItem(state.detail)],
     })
   })
 

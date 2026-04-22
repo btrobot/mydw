@@ -1,12 +1,58 @@
 """
 Phase 3 / PR1: high-value OpenAPI contract parity checks.
 """
+import json
+from pathlib import Path
+
 import pytest
 from httpx import AsyncClient
 
 
 def _find_parameter(parameters: list[dict], name: str) -> dict:
     return next(param for param in parameters if param["name"] == name)
+
+
+def _load_exported_openapi() -> dict:
+    return json.loads(
+        Path("frontend/openapi.local.json").read_text(encoding="utf-8")
+    )
+
+
+def _schema_property_names(spec: dict, schema_name: str) -> set[str]:
+    return set(spec["components"]["schemas"][schema_name].get("properties", {}).keys())
+
+
+def _schema_refs(spec: dict, schema_name: str, property_names: tuple[str, ...]) -> dict[str, str]:
+    properties = spec["components"]["schemas"][schema_name]["properties"]
+    refs: dict[str, str] = {}
+    for property_name in property_names:
+        property_schema = properties[property_name]
+        if "$ref" in property_schema:
+            refs[property_name] = property_schema["$ref"]
+        else:
+            refs[property_name] = property_schema["anyOf"][0]["$ref"]
+    return refs
+
+
+PHASE1_CREATIVE_SCHEMA_NAMES = (
+    "CreativeCreateRequest",
+    "CreativeUpdateRequest",
+    "CreativeDetailResponse",
+    "CreativeWorkbenchItemResponse",
+    "CreativeInputItemResponse",
+    "CreativeInputItemWrite",
+)
+
+PHASE1_CREATIVE_ENUM_SCHEMA_NAMES = (
+    "CreativeInputMaterialType",
+    "CreativeEligibilityStatus",
+)
+
+PHASE1_CREATIVE_DETAIL_REF_FIELDS = (
+    "input_snapshot",
+    "eligibility_status",
+    "latest_task_summary",
+)
 
 
 @pytest.mark.asyncio
@@ -131,6 +177,45 @@ async def test_creative_openapi_exposes_phase_a_workbench_and_detail_contracts(
     assert schemas["CreativeDetailResponse"]["properties"]["latest_task_summary"]["anyOf"][0]["$ref"].endswith("/CreativeLatestTaskSummaryResponse")
     assert schemas["CreativeWorkbenchItemResponse"]["properties"]["input_items"]["type"] == "array"
     assert schemas["CreativeWorkbenchItemResponse"]["properties"]["input_snapshot"]["$ref"].endswith("/CreativeInputSnapshotResponse")
+
+
+@pytest.mark.asyncio
+async def test_frontend_exported_openapi_keeps_phase1_creative_contract_in_sync(
+    client: AsyncClient,
+) -> None:
+    response = await client.get("/openapi.json")
+    assert response.status_code == 200
+
+    live_spec = response.json()
+    exported_spec = _load_exported_openapi()
+    live_schemas = live_spec["components"]["schemas"]
+    exported_schemas = exported_spec["components"]["schemas"]
+
+    for schema_name in PHASE1_CREATIVE_SCHEMA_NAMES:
+        assert schema_name in exported_schemas
+        assert _schema_property_names(exported_spec, schema_name) == _schema_property_names(live_spec, schema_name)
+
+    for schema_name in PHASE1_CREATIVE_ENUM_SCHEMA_NAMES:
+        assert exported_schemas[schema_name] == live_schemas[schema_name]
+
+    assert _schema_refs(
+        exported_spec,
+        "CreativeDetailResponse",
+        PHASE1_CREATIVE_DETAIL_REF_FIELDS,
+    ) == _schema_refs(
+        live_spec,
+        "CreativeDetailResponse",
+        PHASE1_CREATIVE_DETAIL_REF_FIELDS,
+    )
+    assert _schema_refs(
+        exported_spec,
+        "CreativeWorkbenchItemResponse",
+        PHASE1_CREATIVE_DETAIL_REF_FIELDS,
+    ) == _schema_refs(
+        live_spec,
+        "CreativeWorkbenchItemResponse",
+        PHASE1_CREATIVE_DETAIL_REF_FIELDS,
+    )
 
 
 @pytest.mark.asyncio

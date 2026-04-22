@@ -1,7 +1,7 @@
 ﻿import importlib
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from models import CreativeInputItem, CreativeItem, Product
@@ -213,6 +213,113 @@ async def test_migration_033_creative_domain_model_foundation_is_additive() -> N
         }.issubset(creative_columns)
         assert "creative_input_items" in tables
         assert "ix_creative_input_items_creative_item_id" in indexes
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_migration_033_preserves_legacy_snapshot_carriers_without_backfilling_authoritative_items() -> None:
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+    try:
+        async with engine.begin() as conn:
+            await conn.exec_driver_sql(
+                """
+                CREATE TABLE creative_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    creative_no VARCHAR(64) NOT NULL,
+                    title VARCHAR(256),
+                    status VARCHAR(32) NOT NULL DEFAULT 'PENDING_INPUT',
+                    current_version_id INTEGER,
+                    latest_version_no INTEGER NOT NULL DEFAULT 0,
+                    generation_error_msg TEXT,
+                    generation_failed_at DATETIME,
+                    input_profile_id INTEGER,
+                    input_video_ids TEXT DEFAULT '[]' NOT NULL,
+                    input_copywriting_ids TEXT DEFAULT '[]' NOT NULL,
+                    input_cover_ids TEXT DEFAULT '[]' NOT NULL,
+                    input_audio_ids TEXT DEFAULT '[]' NOT NULL,
+                    input_topic_ids TEXT DEFAULT '[]' NOT NULL,
+                    input_snapshot_hash VARCHAR(64),
+                    created_at DATETIME,
+                    updated_at DATETIME
+                )
+                """
+            )
+            await conn.exec_driver_sql(
+                """
+                CREATE TABLE products (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name VARCHAR(256) NOT NULL
+                )
+                """
+            )
+            await conn.exec_driver_sql(
+                """
+                CREATE TABLE creative_input_snapshots (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    creative_item_id INTEGER NOT NULL UNIQUE,
+                    profile_id INTEGER,
+                    video_ids TEXT NOT NULL DEFAULT '[]',
+                    copywriting_ids TEXT NOT NULL DEFAULT '[]',
+                    cover_ids TEXT NOT NULL DEFAULT '[]',
+                    audio_ids TEXT NOT NULL DEFAULT '[]',
+                    topic_ids TEXT NOT NULL DEFAULT '[]',
+                    snapshot_hash VARCHAR(64),
+                    created_at DATETIME,
+                    updated_at DATETIME
+                )
+                """
+            )
+            await conn.exec_driver_sql(
+                """
+                INSERT INTO creative_items (
+                    id, creative_no, title, input_profile_id, input_video_ids, input_copywriting_ids,
+                    input_cover_ids, input_audio_ids, input_topic_ids, input_snapshot_hash
+                ) VALUES (
+                    1, 'CR-MIGRATION-033', 'legacy creative', 8, '[101,101]', '[]', '[]', '[]', '[301]', 'legacy-hash-033'
+                )
+                """
+            )
+            await conn.exec_driver_sql(
+                """
+                INSERT INTO creative_input_snapshots (
+                    creative_item_id, profile_id, video_ids, copywriting_ids, cover_ids, audio_ids, topic_ids, snapshot_hash
+                ) VALUES (
+                    1, 8, '[101,101]', '[]', '[]', '[]', '[301]', 'legacy-hash-033'
+                )
+                """
+            )
+
+        migration_033 = importlib.import_module("migrations.033_creative_domain_model_foundation")
+        await migration_033.run_migration(engine)
+        await migration_033.run_migration(engine)
+
+        async with engine.begin() as conn:
+            creative_row = (
+                await conn.exec_driver_sql(
+                    """
+                    SELECT input_profile_id, input_video_ids, input_topic_ids, input_snapshot_hash
+                    FROM creative_items
+                    WHERE id = 1
+                    """
+                )
+            ).fetchone()
+            snapshot_row = (
+                await conn.exec_driver_sql(
+                    """
+                    SELECT profile_id, video_ids, topic_ids, snapshot_hash
+                    FROM creative_input_snapshots
+                    WHERE creative_item_id = 1
+                    """
+                )
+            ).fetchone()
+            input_item_count = (
+                await conn.execute(text("SELECT COUNT(*) FROM creative_input_items WHERE creative_item_id = 1"))
+            ).scalar_one()
+
+        assert creative_row == (8, "[101,101]", "[301]", "legacy-hash-033")
+        assert snapshot_row == (8, "[101,101]", "[301]", "legacy-hash-033")
+        assert input_item_count == 0
     finally:
         await engine.dispose()
 
