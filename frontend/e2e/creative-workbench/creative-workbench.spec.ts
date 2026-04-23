@@ -806,6 +806,42 @@ test.describe('Creative workbench baseline', () => {
     await expectWorkbenchOrder(page, [102])
   })
 
+  test('restores the full list after cycling preset buttons back to all', async ({ page }) => {
+    await page.goto(`/#/creative/workbench`)
+
+    await page.getByTestId('creative-workbench-preset-waiting_review').click()
+    await expectWorkbenchOrder(page, [101])
+
+    await page.getByTestId('creative-workbench-preset-needs_rework').click()
+    await expectWorkbenchOrder(page, [104])
+
+    await page.getByTestId('creative-workbench-preset-recent_failures').click()
+    await expectWorkbenchOrder(page, [102])
+
+    await page.getByTestId('creative-workbench-preset-version_mismatch').click()
+    await expectWorkbenchOrder(page, [102])
+
+    await page.getByTestId('creative-workbench-preset-recent_failures').click()
+    await expectWorkbenchOrder(page, [102])
+
+    await page.getByTestId('creative-workbench-preset-needs_rework').click()
+    await expectWorkbenchOrder(page, [104])
+
+    await page.getByTestId('creative-workbench-preset-waiting_review').click()
+    await expectWorkbenchOrder(page, [101])
+
+    await page.getByTestId('creative-workbench-preset-all').click()
+
+    await expect(page).toHaveURL(/preset=all/)
+    await expect(page).not.toHaveURL(/status=/)
+    await expect(page).not.toHaveURL(/poolState=/)
+    await expectWorkbenchOrder(page, [102, 104, 101, 103])
+    await expect(page.locator('body')).toContainText('Summer sale teaser')
+    await expect(page.locator('body')).toContainText('Winter lookbook')
+    await expect(page.locator('body')).toContainText('Spring campaign')
+    await expect(page.locator('body')).toContainText('Autumn story board')
+  })
+
   test('supports explicit workbench sort views', async ({ page }) => {
     await page.goto(`/#/creative/workbench`)
 

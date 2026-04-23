@@ -62,9 +62,9 @@ type WorkbenchTableRow = CreativeWorkbenchItem & {
 }
 
 type WorkbenchFormValues = {
-  keyword?: string
-  status?: keyof typeof creativeStatusMeta
-  poolState?: CreativeWorkbenchPoolState
+  keyword?: string | null
+  status?: keyof typeof creativeStatusMeta | null
+  poolState?: CreativeWorkbenchPoolState | null
   preset?: WorkbenchPresetKey
   current?: number
   pageSize?: number
@@ -388,9 +388,9 @@ export default function CreativeWorkbench() {
       initialRouteState.diagnostics,
     )
     formRef.current?.setFieldsValue({
-      keyword: nextPresetState.keyword,
-      status: nextPresetState.status,
-      poolState: nextPresetState.poolState,
+      keyword: nextPresetState.keyword ?? '',
+      status: nextPresetState.status ?? null,
+      poolState: nextPresetState.poolState ?? null,
       preset: nextPresetState.preset,
     })
     setSearchParams(nextSearchParams, { replace: true })
@@ -702,6 +702,7 @@ export default function CreativeWorkbench() {
         ) : (
           <>
             <ProTable<WorkbenchTableRow, WorkbenchFormValues>
+              key={searchParams.toString()}
               actionRef={actionRef}
               formRef={formRef}
               rowKey="id"
@@ -710,8 +711,8 @@ export default function CreativeWorkbench() {
               headerTitle="待处理作品"
               options={{ density: false, setting: false }}
               request={async (params, sort) => {
-                const status = params.status
-                const poolState = params.poolState as CreativeWorkbenchPoolState | undefined
+                const status = params.status ?? undefined
+                const poolState = (params.poolState ?? undefined) as CreativeWorkbenchPoolState | undefined
                 const currentFormValues = formRef.current?.getFieldsValue?.() ?? {}
                 const sortKind = sort.updated_at === 'ascend'
                   ? 'updated_asc'
