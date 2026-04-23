@@ -21,7 +21,6 @@ from models import (
     Cover,
     CreativeInputItem,
     CreativeItem,
-    CreativeInputSnapshot,
     CreativeVersion,
     Product,
     PublishProfile,
@@ -157,7 +156,7 @@ class CreativeService:
         input_profile_id, authoritative_input_items = self._resolve_authoritative_input_state(
             profile_id=payload.profile_id,
             current_input_items=[],
-            current_snapshot=None,
+            current_legacy_snapshot=None,
             explicit_input_items=payload.input_items if "input_items" in payload.model_fields_set else None,
         )
         await self._apply_authoritative_input_state(
@@ -167,19 +166,20 @@ class CreativeService:
         )
         await self._sync_pre_compose_status(creative)
         await self.db.commit()
-        input_snapshot = self._build_input_snapshot_response(creative)
+        runtime_input_state = self._resolve_runtime_input_state(creative)
+        input_orchestration = self._build_input_orchestration_response(
+            profile_id=runtime_input_state["profile_id"],
+            input_items=self._build_input_items_response(
+                creative,
+                runtime_input_state=runtime_input_state,
+            ),
+        )
         logger.info(
-            "event_name=creative_flow_entry_new creative_item_id={} snapshot_hash={} profile_id={} material_counts={} account_mode=creative_only",
+            "event_name=creative_flow_entry_new creative_item_id={} orchestration_hash={} profile_id={} material_counts={} account_mode=creative_only",
             creative.id,
-            input_snapshot.snapshot_hash,
-            input_snapshot.profile_id,
-            {
-                "videos": len(input_snapshot.video_ids),
-                "copywritings": len(input_snapshot.copywriting_ids),
-                "covers": len(input_snapshot.cover_ids),
-                "audios": len(input_snapshot.audio_ids),
-                "topics": len(input_snapshot.topic_ids),
-            },
+            input_orchestration.orchestration_hash,
+            input_orchestration.profile_id,
+            input_orchestration.material_counts.model_dump(),
         )
         return await self.get_creative_detail(creative.id)  # type: ignore[return-value]
 
@@ -221,15 +221,21 @@ class CreativeService:
             creative.target_duration_seconds = payload.target_duration_seconds
 
         if self._payload_updates_input_state(payload.model_fields_set):
-            current_snapshot = self._extract_legacy_input_snapshot(creative)
+            current_legacy_snapshot = self._extract_legacy_input_snapshot(creative)
             current_profile_id = (
-                payload.profile_id if "profile_id" in payload.model_fields_set else current_snapshot["profile_id"]
+                payload.profile_id
+                if "profile_id" in payload.model_fields_set
+                else (
+                    creative.input_profile_id
+                    if creative.input_profile_id is not None
+                    else current_legacy_snapshot["profile_id"]
+                )
             )
             current_input_items = self._extract_authoritative_input_items(creative)
             input_profile_id, authoritative_input_items = self._resolve_authoritative_input_state(
                 profile_id=current_profile_id,
                 current_input_items=current_input_items,
-                current_snapshot=current_snapshot,
+                current_legacy_snapshot=current_legacy_snapshot,
                 explicit_input_items=payload.input_items if "input_items" in payload.model_fields_set else None,
             )
             await self._apply_authoritative_input_state(
@@ -237,8 +243,6 @@ class CreativeService:
                 profile_id=input_profile_id,
                 input_items=authoritative_input_items,
             )
-        elif creative.__dict__.get("input_snapshot_record") is None:
-            self._sync_compatibility_snapshot_from_current_state(creative)
         if (
             creative.current_version is not None
             and creative.status not in REVIEW_AND_BEYOND_STATUS_VALUES
@@ -273,25 +277,29 @@ class CreativeService:
         if creative is None:
             raise ValueError("作品不存在")
 
-        input_snapshot = self._build_input_snapshot_response(creative)
+        runtime_input_state = self._resolve_runtime_input_state(creative)
+        input_snapshot = self._build_input_snapshot_response(
+            creative,
+            runtime_input_state=runtime_input_state,
+        )
         eligibility_status, eligibility_reasons = await self._build_eligibility_projection(
             creative,
-            input_snapshot=input_snapshot,
+            runtime_input_state=runtime_input_state,
         )
         if eligibility_status != CreativeEligibilityStatus.READY_TO_COMPOSE:
             detail = "；".join(eligibility_reasons) if eligibility_reasons else "当前作品输入尚未满足提交条件"
             raise ValueError(detail)
 
         profile = creative.__dict__.get("input_profile")
-        if profile is None and input_snapshot.profile_id is not None:
-            profile = await self.db.get(PublishProfile, input_snapshot.profile_id)
+        if profile is None and runtime_input_state["profile_id"] is not None:
+            profile = await self.db.get(PublishProfile, runtime_input_state["profile_id"])
         if profile is None:
             raise ValueError("所选合成配置不存在")
-        if self._has_duplicate_execution_instances(creative):
+        if self._has_duplicate_execution_instances(creative, runtime_input_state=runtime_input_state):
             raise ValueError(DUPLICATE_EXECUTION_LIMITATION_REASON)
 
         expected_inputs = await self._build_expected_task_inputs(
-            input_snapshot=input_snapshot,
+            runtime_input_state=runtime_input_state,
             profile=profile,
         )
         composition_service = CompositionService(self.db)
@@ -573,15 +581,22 @@ class CreativeService:
         )
 
     async def _build_projection(self, creative: CreativeItem) -> dict[str, Any]:
-        input_items = self._build_input_items_response(creative)
-        input_snapshot = self._build_input_snapshot_response(creative)
+        runtime_input_state = self._resolve_runtime_input_state(creative)
+        input_items = self._build_input_items_response(
+            creative,
+            runtime_input_state=runtime_input_state,
+        )
+        input_snapshot = self._build_input_snapshot_response(
+            creative,
+            runtime_input_state=runtime_input_state,
+        )
         input_orchestration = self._build_input_orchestration_response(
-            profile_id=input_snapshot.profile_id,
+            profile_id=runtime_input_state["profile_id"],
             input_items=input_items,
         )
         eligibility_status, eligibility_reasons = await self._build_eligibility_projection(
             creative,
-            input_snapshot=input_snapshot,
+            runtime_input_state=runtime_input_state,
         )
         latest_task_summary = self._build_latest_task_summary(self._pick_latest_task(creative.tasks))
         status = self._project_creative_status(
@@ -602,37 +617,38 @@ class CreativeService:
         self,
         creative: CreativeItem,
         *,
-        input_snapshot: CreativeInputSnapshotResponse,
+        runtime_input_state: dict[str, Any],
     ) -> tuple[CreativeEligibilityStatus, list[str]]:
         pending_reasons: list[str] = []
         invalid_reasons: list[str] = []
+        compat_snapshot = runtime_input_state["compat_snapshot"]
 
         profile = creative.__dict__.get("input_profile")
-        if input_snapshot.profile_id is None:
+        if runtime_input_state["profile_id"] is None:
             pending_reasons.append("请选择合成配置")
         elif profile is None:
-            profile = await self.db.get(PublishProfile, input_snapshot.profile_id)
+            profile = await self.db.get(PublishProfile, runtime_input_state["profile_id"])
             if profile is None:
                 invalid_reasons.append("所选合成配置不存在")
 
-        if not input_snapshot.video_ids:
+        if not compat_snapshot["video_ids"]:
             pending_reasons.append("至少选择 1 个视频")
 
-        resource_errors = await self._validate_snapshot_resource_ids(input_snapshot)
+        resource_errors = await self._validate_runtime_resource_ids(runtime_input_state)
         invalid_reasons.extend(resource_errors)
 
         if profile is not None and not invalid_reasons and not pending_reasons:
             try:
                 validate_task_resource_inputs(
-                    video_ids=input_snapshot.video_ids,
-                    copywriting_ids=input_snapshot.copywriting_ids,
-                    cover_ids=input_snapshot.cover_ids,
-                    audio_ids=input_snapshot.audio_ids,
+                    video_ids=compat_snapshot["video_ids"],
+                    copywriting_ids=compat_snapshot["copywriting_ids"],
+                    cover_ids=compat_snapshot["cover_ids"],
+                    audio_ids=compat_snapshot["audio_ids"],
                     composition_mode=profile.composition_mode,
                 )
             except TaskSemanticsError as exc:
                 invalid_reasons.append(str(exc))
-        if self._has_duplicate_execution_instances(creative):
+        if self._has_duplicate_execution_instances(creative, runtime_input_state=runtime_input_state):
             invalid_reasons.append(DUPLICATE_EXECUTION_LIMITATION_REASON)
 
         reasons = [*pending_reasons, *invalid_reasons]
@@ -642,17 +658,18 @@ class CreativeService:
             return CreativeEligibilityStatus.PENDING_INPUT, reasons
         return CreativeEligibilityStatus.READY_TO_COMPOSE, []
 
-    async def _validate_snapshot_resource_ids(
+    async def _validate_runtime_resource_ids(
         self,
-        input_snapshot: CreativeInputSnapshotResponse,
+        runtime_input_state: dict[str, Any],
     ) -> list[str]:
         errors: list[str] = []
+        compat_snapshot = runtime_input_state["compat_snapshot"]
         checks = [
-            ("视频", Video, input_snapshot.video_ids),
-            ("文案", Copywriting, input_snapshot.copywriting_ids),
-            ("封面", Cover, input_snapshot.cover_ids),
-            ("音频", Audio, input_snapshot.audio_ids),
-            ("话题", Topic, input_snapshot.topic_ids),
+            ("视频", Video, compat_snapshot["video_ids"]),
+            ("文案", Copywriting, compat_snapshot["copywriting_ids"]),
+            ("封面", Cover, compat_snapshot["cover_ids"]),
+            ("音频", Audio, compat_snapshot["audio_ids"]),
+            ("话题", Topic, compat_snapshot["topic_ids"]),
         ]
         for label, model, ids in checks:
             if not ids:
@@ -716,8 +733,16 @@ class CreativeService:
             return CreativeStatus.FAILED
         return CreativeStatus.PENDING_INPUT
 
-    def _build_input_snapshot_response(self, creative: CreativeItem) -> CreativeInputSnapshotResponse:
-        snapshot = self._resolve_current_snapshot_state(creative)
+    def _build_input_snapshot_response(
+        self,
+        creative: CreativeItem,
+        *,
+        runtime_input_state: Optional[dict[str, Any]] = None,
+    ) -> CreativeInputSnapshotResponse:
+        snapshot = self._resolve_current_snapshot_state(
+            creative,
+            runtime_input_state=runtime_input_state,
+        )
         return CreativeInputSnapshotResponse(
             profile_id=snapshot["profile_id"],
             video_ids=snapshot["video_ids"],
@@ -728,12 +753,14 @@ class CreativeService:
             snapshot_hash=snapshot["snapshot_hash"],
         )
 
-    def _build_input_items_response(self, creative: CreativeItem) -> list[CreativeInputItemResponse]:
-        authoritative_input_items = self._extract_authoritative_input_items(creative)
-        if not authoritative_input_items:
-            authoritative_input_items = self._synthesize_input_items_from_snapshot(
-                self._extract_legacy_input_snapshot(creative)
-            )
+    def _build_input_items_response(
+        self,
+        creative: CreativeItem,
+        *,
+        runtime_input_state: Optional[dict[str, Any]] = None,
+    ) -> list[CreativeInputItemResponse]:
+        resolved_runtime_input_state = runtime_input_state or self._resolve_runtime_input_state(creative)
+        authoritative_input_items = resolved_runtime_input_state["input_items"]
         return [
             CreativeInputItemResponse(
                 id=item.get("id"),
@@ -811,15 +838,15 @@ class CreativeService:
         *,
         profile_id: Optional[int],
         current_input_items: list[dict[str, Any]],
-        current_snapshot: Optional[dict[str, Any]],
+        current_legacy_snapshot: Optional[dict[str, Any]],
         explicit_input_items: Optional[list[Any]],
     ) -> tuple[Optional[int], list[dict[str, Any]]]:
         if explicit_input_items is not None:
             return profile_id, self._normalize_input_items(explicit_input_items)
         if current_input_items:
             return profile_id, self._normalize_input_items(current_input_items)
-        if current_snapshot is not None:
-            return profile_id, self._synthesize_input_items_from_snapshot(current_snapshot)
+        if current_legacy_snapshot is not None:
+            return profile_id, self._synthesize_input_items_from_snapshot(current_legacy_snapshot)
         return profile_id, []
 
     async def _apply_authoritative_input_state(
@@ -850,44 +877,41 @@ class CreativeService:
             for item in normalized_items
         ]
         self.db.add_all(new_rows)
+        creative.input_profile_id = profile_id
+        creative.__dict__.pop("input_profile", None)
         set_committed_value(creative, "input_items", new_rows)
-        projected_snapshot = self._project_input_items_to_snapshot(
-            profile_id=profile_id,
-            input_items=normalized_items,
-        )
-        self._apply_input_snapshot(
-            creative,
-            profile_id=projected_snapshot["profile_id"],
-            video_ids=projected_snapshot["video_ids"],
-            copywriting_ids=projected_snapshot["copywriting_ids"],
-            cover_ids=projected_snapshot["cover_ids"],
-            audio_ids=projected_snapshot["audio_ids"],
-            topic_ids=projected_snapshot["topic_ids"],
-        )
+        creative.updated_at = utc_now_naive()
 
-    def _sync_compatibility_snapshot_from_current_state(self, creative: CreativeItem) -> None:
-        snapshot = self._resolve_current_snapshot_state(creative)
-        self._apply_input_snapshot(
-            creative,
-            profile_id=snapshot["profile_id"],
-            video_ids=snapshot["video_ids"],
-            copywriting_ids=snapshot["copywriting_ids"],
-            cover_ids=snapshot["cover_ids"],
-            audio_ids=snapshot["audio_ids"],
-            topic_ids=snapshot["topic_ids"],
-        )
+    def _resolve_current_snapshot_state(
+        self,
+        creative: CreativeItem,
+        *,
+        runtime_input_state: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        resolved_runtime_input_state = runtime_input_state or self._resolve_runtime_input_state(creative)
+        return resolved_runtime_input_state["compat_snapshot"]
 
-    def _resolve_current_snapshot_state(self, creative: CreativeItem) -> dict[str, Any]:
+    def _resolve_runtime_input_state(self, creative: CreativeItem) -> dict[str, Any]:
         authoritative_input_items = self._extract_authoritative_input_items(creative)
-        if not authoritative_input_items:
-            return self._extract_legacy_input_snapshot(creative)
-        profile_id = creative.input_profile_id
-        if profile_id is None:
-            profile_id = self._extract_legacy_input_snapshot(creative)["profile_id"]
-        return self._project_input_items_to_snapshot(
-            profile_id=profile_id,
-            input_items=authoritative_input_items,
-        )
+        legacy_snapshot: dict[str, Any] | None = None
+        if authoritative_input_items:
+            profile_id = creative.input_profile_id
+        else:
+            legacy_snapshot = self._extract_legacy_input_snapshot(creative)
+            authoritative_input_items = self._synthesize_input_items_from_snapshot(legacy_snapshot)
+            profile_id = (
+                creative.input_profile_id
+                if creative.input_profile_id is not None
+                else legacy_snapshot["profile_id"]
+            )
+        return {
+            "profile_id": profile_id,
+            "input_items": authoritative_input_items,
+            "compat_snapshot": self._project_input_items_to_snapshot(
+                profile_id=profile_id,
+                input_items=authoritative_input_items,
+            ),
+        }
 
     def _extract_authoritative_input_items(self, creative: CreativeItem) -> list[dict[str, Any]]:
         rows = list(creative.__dict__.get("input_items") or [])
@@ -1037,12 +1061,17 @@ class CreativeService:
     def _payload_updates_input_state(self, model_fields_set: set[str]) -> bool:
         return any(field_name in model_fields_set for field_name in INPUT_STATE_FIELD_NAMES)
 
-    def _has_duplicate_execution_instances(self, creative: CreativeItem) -> bool:
-        authoritative_input_items = self._extract_authoritative_input_items(creative)
-        if not authoritative_input_items:
-            authoritative_input_items = self._synthesize_input_items_from_snapshot(
-                self._extract_legacy_input_snapshot(creative)
-            )
+    def _has_duplicate_execution_instances(
+        self,
+        creative: CreativeItem,
+        *,
+        runtime_input_state: Optional[dict[str, Any]] = None,
+    ) -> bool:
+        authoritative_input_items = (
+            runtime_input_state["input_items"]
+            if runtime_input_state is not None
+            else self._resolve_runtime_input_state(creative)["input_items"]
+        )
         seen: set[tuple[str, int]] = set()
         for item in authoritative_input_items:
             if not item.get("enabled", True):
@@ -1073,19 +1102,20 @@ class CreativeService:
     async def _build_expected_task_inputs(
         self,
         *,
-        input_snapshot: CreativeInputSnapshotResponse,
+        runtime_input_state: dict[str, Any],
         profile: PublishProfile,
     ) -> dict[str, Any]:
+        compat_snapshot = runtime_input_state["compat_snapshot"]
         merged_topic_ids = merge_task_topic_ids(
-            explicit_topic_ids=input_snapshot.topic_ids,
+            explicit_topic_ids=compat_snapshot["topic_ids"],
             profile_default_topic_ids=await get_profile_topic_ids(self.db, profile),
         )
         return {
-            "profile_id": input_snapshot.profile_id,
-            "video_ids": input_snapshot.video_ids,
-            "copywriting_ids": input_snapshot.copywriting_ids,
-            "cover_ids": input_snapshot.cover_ids,
-            "audio_ids": input_snapshot.audio_ids,
+            "profile_id": runtime_input_state["profile_id"],
+            "video_ids": compat_snapshot["video_ids"],
+            "copywriting_ids": compat_snapshot["copywriting_ids"],
+            "cover_ids": compat_snapshot["cover_ids"],
+            "audio_ids": compat_snapshot["audio_ids"],
             "topic_ids": merged_topic_ids,
         }
 
@@ -1256,10 +1286,10 @@ class CreativeService:
     async def _sync_pre_compose_status(self, creative: CreativeItem) -> None:
         if creative.current_version_id is not None and creative.status in REVIEW_AND_BEYOND_STATUS_VALUES:
             return
-        input_snapshot = self._build_input_snapshot_response(creative)
+        runtime_input_state = self._resolve_runtime_input_state(creative)
         eligibility_status, _ = await self._build_eligibility_projection(
             creative,
-            input_snapshot=input_snapshot,
+            runtime_input_state=runtime_input_state,
         )
         if eligibility_status == CreativeEligibilityStatus.READY_TO_COMPOSE:
             creative.status = CreativeStatus.READY_TO_COMPOSE.value
@@ -1267,49 +1297,6 @@ class CreativeService:
             creative.status = CreativeStatus.PENDING_INPUT.value
         creative.updated_at = utc_now_naive()
         await self.db.flush()
-
-    def _apply_input_snapshot(
-        self,
-        creative: CreativeItem,
-        *,
-        profile_id: Optional[int],
-        video_ids: list[int],
-        copywriting_ids: list[int],
-        cover_ids: list[int],
-        audio_ids: list[int],
-        topic_ids: list[int],
-    ) -> None:
-        snapshot_hash = self._build_snapshot_hash(
-            profile_id=profile_id,
-            video_ids=video_ids,
-            copywriting_ids=copywriting_ids,
-            cover_ids=cover_ids,
-            audio_ids=audio_ids,
-            topic_ids=topic_ids,
-        )
-        creative.input_profile_id = profile_id
-        creative.input_video_ids = self._encode_id_list(video_ids)
-        creative.input_copywriting_ids = self._encode_id_list(copywriting_ids)
-        creative.input_cover_ids = self._encode_id_list(cover_ids)
-        creative.input_audio_ids = self._encode_id_list(audio_ids)
-        creative.input_topic_ids = self._encode_id_list(topic_ids)
-        creative.input_snapshot_hash = snapshot_hash
-        snapshot_record = creative.__dict__.get("input_snapshot_record")
-        if snapshot_record is None:
-            snapshot_record = CreativeInputSnapshot(creative_item=creative)
-            self.db.add(snapshot_record)
-            creative.input_snapshot_record = snapshot_record
-        snapshot_record.profile_id = profile_id
-        snapshot_record.video_ids = self._encode_id_list(video_ids)
-        snapshot_record.copywriting_ids = self._encode_id_list(copywriting_ids)
-        snapshot_record.cover_ids = self._encode_id_list(cover_ids)
-        snapshot_record.audio_ids = self._encode_id_list(audio_ids)
-        snapshot_record.topic_ids = self._encode_id_list(topic_ids)
-        snapshot_record.snapshot_hash = snapshot_hash
-        snapshot_record.updated_at = utc_now_naive()
-        snapshot_record.__dict__.pop("profile", None)
-        creative.__dict__.pop("input_profile", None)
-        creative.updated_at = utc_now_naive()
 
     def _extract_legacy_input_snapshot(self, creative: CreativeItem) -> dict[str, Any]:
         snapshot_record = creative.__dict__.get("input_snapshot_record")

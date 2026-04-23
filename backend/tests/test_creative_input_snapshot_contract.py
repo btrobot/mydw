@@ -5,7 +5,7 @@ from httpx import AsyncClient
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-from models import CreativeInputSnapshot, CreativeItem, PublishProfile, Topic, Video
+from models import CreativeInputItem, CreativeInputSnapshot, CreativeItem, PublishProfile, Topic, Video
 
 
 @pytest.mark.asyncio
@@ -220,7 +220,7 @@ async def test_authoritative_input_items_preserve_repeated_instances_while_legac
 
 
 @pytest.mark.asyncio
-async def test_input_snapshot_dual_write_keeps_new_and_legacy_carriers_in_sync(
+async def test_input_snapshot_runtime_projects_compat_view_without_dual_write(
     client: AsyncClient,
     db_session: AsyncSession,
 ) -> None:
@@ -258,20 +258,34 @@ async def test_input_snapshot_dual_write_keeps_new_and_legacy_carriers_in_sync(
 
     creative = await db_session.get(CreativeItem, creative_id)
     assert creative is not None
+    input_items = (
+        await db_session.execute(
+            select(CreativeInputItem)
+            .where(CreativeInputItem.creative_item_id == creative_id)
+            .order_by(CreativeInputItem.sequence.asc())
+        )
+    ).scalars().all()
     snapshot_row = (
         await db_session.execute(
             select(CreativeInputSnapshot).where(CreativeInputSnapshot.creative_item_id == creative_id)
         )
-    ).scalar_one()
+    ).scalar_one_or_none()
 
-    assert creative.input_profile_id == snapshot_row.profile_id == profile.id
-    assert creative.input_video_ids == snapshot_row.video_ids == f"[{video.id},{video.id}]"
-    assert creative.input_topic_ids == snapshot_row.topic_ids == f"[{topic.id}]"
-    assert creative.input_snapshot_hash == snapshot_row.snapshot_hash == payload["input_snapshot"]["snapshot_hash"]
+    assert creative.input_profile_id == profile.id
+    assert [item.material_type for item in input_items] == ["video", "video", "topic"]
+    assert [item.material_id for item in input_items] == [video.id, video.id, topic.id]
+    assert creative.input_video_ids == "[]"
+    assert creative.input_topic_ids == "[]"
+    assert creative.input_snapshot_hash is None
+    assert snapshot_row is None
+    assert payload["input_snapshot"]["profile_id"] == profile.id
+    assert payload["input_snapshot"]["video_ids"] == [video.id, video.id]
+    assert payload["input_snapshot"]["topic_ids"] == [topic.id]
+    assert len(payload["input_snapshot"]["snapshot_hash"]) == 64
 
 
 @pytest.mark.asyncio
-async def test_input_snapshot_read_falls_back_to_legacy_and_next_write_recreates_snapshot_row(
+async def test_legacy_only_rows_remain_readable_and_profile_patch_backfills_canonical_items_without_snapshot_row(
     client: AsyncClient,
     db_session: AsyncSession,
 ) -> None:
@@ -295,8 +309,17 @@ async def test_input_snapshot_read_falls_back_to_legacy_and_next_write_recreates
     creative_id = create_response.json()["id"]
 
     await db_session.execute(
+        delete(CreativeInputItem).where(CreativeInputItem.creative_item_id == creative_id)
+    )
+    await db_session.execute(
         delete(CreativeInputSnapshot).where(CreativeInputSnapshot.creative_item_id == creative_id)
     )
+    creative = await db_session.get(CreativeItem, creative_id)
+    assert creative is not None
+    creative.input_profile_id = profile.id
+    creative.input_video_ids = f"[{video.id}]"
+    creative.input_topic_ids = f"[{topic.id}]"
+    creative.input_snapshot_hash = "legacy-only-hash"
     await db_session.commit()
 
     detail_response = await client.get(f"/api/creatives/{creative_id}")
@@ -306,21 +329,54 @@ async def test_input_snapshot_read_falls_back_to_legacy_and_next_write_recreates
     assert detail_payload["input_snapshot"]["video_ids"] == [video.id]
     assert detail_payload["input_snapshot"]["topic_ids"] == [topic.id]
     assert [item["material_type"] for item in detail_payload["input_items"]] == ["video", "topic"]
-    original_input_item_ids = [item["id"] for item in detail_payload["input_items"]]
+    assert detail_payload["input_snapshot"]["snapshot_hash"] != "legacy-only-hash"
 
     patch_response = await client.patch(
         f"/api/creatives/{creative_id}",
-        json={"title": "Rollback Snapshot Recreated"},
+        json={"title": "Legacy Only Creative"},
     )
     assert patch_response.status_code == 200
     patched_payload = patch_response.json()
-    assert [item["id"] for item in patched_payload["input_items"]] == original_input_item_ids
+    assert [item["material_type"] for item in patched_payload["input_items"]] == ["video", "topic"]
 
     recreated = (
         await db_session.execute(
             select(CreativeInputSnapshot).where(CreativeInputSnapshot.creative_item_id == creative_id)
         )
-    ).scalar_one()
-    assert recreated.profile_id == profile.id
-    assert recreated.video_ids == f"[{video.id}]"
-    assert recreated.topic_ids == f"[{topic.id}]"
+    ).scalar_one_or_none()
+    canonical_after_title_patch = (
+        await db_session.execute(
+            select(CreativeInputItem).where(CreativeInputItem.creative_item_id == creative_id)
+        )
+    ).scalars().all()
+    assert recreated is None
+    assert canonical_after_title_patch == []
+
+    profile_patch_response = await client.patch(
+        f"/api/creatives/{creative_id}",
+        json={"profile_id": profile.id},
+    )
+    assert profile_patch_response.status_code == 200
+    profile_patch_payload = profile_patch_response.json()
+    assert [item["material_type"] for item in profile_patch_payload["input_items"]] == ["video", "topic"]
+    assert profile_patch_payload["input_snapshot"]["video_ids"] == [video.id]
+    assert profile_patch_payload["input_snapshot"]["topic_ids"] == [topic.id]
+
+    canonical_items = (
+        await db_session.execute(
+            select(CreativeInputItem)
+            .where(CreativeInputItem.creative_item_id == creative_id)
+            .order_by(CreativeInputItem.sequence.asc())
+        )
+    ).scalars().all()
+    assert [item.material_type for item in canonical_items] == ["video", "topic"]
+    assert [item.material_id for item in canonical_items] == [video.id, topic.id]
+    assert (await db_session.execute(
+        select(CreativeInputSnapshot).where(CreativeInputSnapshot.creative_item_id == creative_id)
+    )).scalar_one_or_none() is None
+
+    refreshed_creative = await db_session.get(CreativeItem, creative_id)
+    assert refreshed_creative is not None
+    assert refreshed_creative.input_video_ids == f"[{video.id}]"
+    assert refreshed_creative.input_topic_ids == f"[{topic.id}]"
+    assert refreshed_creative.input_snapshot_hash == "legacy-only-hash"
