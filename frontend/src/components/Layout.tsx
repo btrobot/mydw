@@ -9,15 +9,24 @@ import {
   SettingOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { Button, Grid, Layout, Menu, Typography, theme } from 'antd'
-import { useMemo, useState } from 'react'
+import { ProLayout } from '@ant-design/pro-components'
+import type { MenuDataItem } from '@ant-design/pro-components'
+import { Button, Grid, Layout as AntLayout, Typography } from 'antd'
+import type { ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { AuthSessionHeader } from '@/features/auth'
 
-const { Header, Sider, Content } = Layout
 const { Title } = Typography
+const { Header } = AntLayout
 const { useBreakpoint } = Grid
+
+type ShellMenuItem = MenuDataItem & {
+  key: string
+  path?: string
+  children?: ShellMenuItem[]
+}
 
 const subMenuKeys = [
   '/material/video',
@@ -32,97 +41,146 @@ const subMenuKeys = [
   '/settings/auth-admin',
 ]
 
-const rootMenuKeys = new Set(['material-group', 'settings-group', 'task-group'])
+const rootMenuPaths: Record<string, string> = {
+  'task-group': '/task/list',
+  'material-group': '/material',
+}
+
+const menuTestIds: Record<string, string> = {
+  '/creative/workbench': 'app-shell-menu-creative-workbench',
+  '/dashboard': 'app-shell-menu-dashboard',
+  '/account': 'app-shell-menu-account',
+  'task-group': 'app-shell-menu-task-group',
+  '/schedule-config': 'app-shell-menu-schedule-config',
+  '/profile-management': 'app-shell-menu-profile-management',
+  'material-group': 'app-shell-menu-material-group',
+  '/material/video': 'app-shell-menu-material-video',
+  '/material/copywriting': 'app-shell-menu-material-copywriting',
+  '/material/cover': 'app-shell-menu-material-cover',
+  '/material/audio': 'app-shell-menu-material-audio',
+  '/material/topic': 'app-shell-menu-material-topic',
+  '/material/product': 'app-shell-menu-material-product',
+  '/material/topic-group': 'app-shell-menu-material-topic-group',
+  '/ai-clip': 'app-shell-menu-ai-clip',
+  'settings-group': 'app-shell-menu-settings-group',
+  '/settings': 'app-shell-menu-settings',
+  '/settings/auth-admin': 'app-shell-menu-auth-admin',
+}
+
+const shellMenuItems: ShellMenuItem[] = [
+  { key: '/creative/workbench', path: '/creative/workbench', icon: <AppstoreOutlined />, name: '作品工作台' },
+  { key: '/dashboard', path: '/dashboard', icon: <DashboardOutlined />, name: '运行总览' },
+  { key: '/account', path: '/account', icon: <UserOutlined />, name: '账号' },
+  {
+    key: 'task-group',
+    path: rootMenuPaths['task-group'],
+    icon: <FileTextOutlined />,
+    name: '任务管理',
+    children: [
+      { key: '/schedule-config', path: '/schedule-config', name: '执行调度' },
+      { key: '/profile-management', path: '/profile-management', name: '合成配置' },
+    ],
+  },
+  {
+    key: 'material-group',
+    path: rootMenuPaths['material-group'],
+    icon: <FolderOutlined />,
+    name: '素材管理',
+    children: [
+      { key: '/material/video', path: '/material/video', name: '视频' },
+      { key: '/material/copywriting', path: '/material/copywriting', name: '文案' },
+      { key: '/material/cover', path: '/material/cover', name: '封面' },
+      { key: '/material/audio', path: '/material/audio', name: '音频' },
+      { key: '/material/topic', path: '/material/topic', name: '话题' },
+      { key: '/material/product', path: '/material/product', name: '商品' },
+      { key: '/material/topic-group', path: '/material/topic-group', name: '话题组' },
+    ],
+  },
+  { key: '/ai-clip', path: '/ai-clip', icon: <ScissorOutlined />, name: 'AIClip 工作流' },
+  {
+    key: 'settings-group',
+    icon: <SettingOutlined />,
+    name: '设置',
+    children: [
+      { key: '/settings', path: '/settings', name: '通用设置' },
+      { key: '/settings/auth-admin', path: '/settings/auth-admin', name: '授权会话' },
+    ],
+  },
+]
+
+const shellRoute = {
+  path: '/',
+  routes: shellMenuItems,
+}
+
+function ShellMenuLabel({ itemKey, children }: { itemKey: string; children: ReactNode }) {
+  return <span data-testid={menuTestIds[itemKey]}>{children}</span>
+}
+
+function getMenuItemKey(item: MenuDataItem) {
+  return String(item.key ?? item.path ?? '')
+}
+
+function getInitialOpenKeys(pathname: string) {
+  const isMaterialRoute = pathname.startsWith('/material')
+  const isSettingsRoute = pathname.startsWith('/settings')
+  const isTaskRoute = pathname.startsWith('/task') || ['/schedule-config', '/profile-management'].includes(pathname)
+
+  return [
+    ...(isMaterialRoute ? ['material-group'] : []),
+    ...(isSettingsRoute ? ['settings-group'] : []),
+    ...(isTaskRoute ? ['task-group'] : []),
+  ]
+}
+
+function getSelectedKey(pathname: string) {
+  const isCreativeRoute = pathname.startsWith('/creative')
+
+  return subMenuKeys.find((key) => pathname === key)
+    ?? (pathname === '/material' ? 'material-group' : undefined)
+    ?? (pathname === '/task/list' || pathname === '/task/create' ? 'task-group' : undefined)
+    ?? (isCreativeRoute ? '/creative/workbench' : undefined)
+    ?? pathname
+}
+
+function isNarrowViewport() {
+  return typeof window !== 'undefined' && window.matchMedia('(max-width: 991.98px)').matches
+}
 
 export default function LayoutComponent() {
   const navigate = useNavigate()
   const location = useLocation()
   const screens = useBreakpoint()
-  const {
-    token: { colorBgContainer },
-  } = theme.useToken()
+  const [openKeys, setOpenKeys] = useState<string[]>(() => getInitialOpenKeys(location.pathname))
+  const [collapsed, setCollapsed] = useState(() => isNarrowViewport())
+  const [isMobileShell, setIsMobileShell] = useState(() => isNarrowViewport())
 
-  const isMaterialRoute = location.pathname.startsWith('/material')
-  const isCreativeRoute = location.pathname.startsWith('/creative')
-  const isSettingsRoute = location.pathname.startsWith('/settings')
-  const isTaskRoute =
-    location.pathname.startsWith('/task')
-    || ['/schedule-config', '/profile-management'].includes(location.pathname)
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 991.98px)')
+    const syncShellBreakpoint = () => {
+      setIsMobileShell(query.matches)
+      setCollapsed(query.matches)
+    }
 
-  const initialOpenKeys = [
-    ...(isMaterialRoute ? ['material-group'] : []),
-    ...(isSettingsRoute ? ['settings-group'] : []),
-    ...(isTaskRoute ? ['task-group'] : []),
-  ]
-  const [openKeys, setOpenKeys] = useState<string[]>(initialOpenKeys)
-  const [collapsed, setCollapsed] = useState(false)
-  const [isBroken, setIsBroken] = useState(false)
+    syncShellBreakpoint()
+    query.addEventListener('change', syncShellBreakpoint)
+    return () => query.removeEventListener('change', syncShellBreakpoint)
+  }, [])
 
-  const items = useMemo(() => ([
-    { key: '/creative/workbench', icon: <AppstoreOutlined />, label: '作品工作台' },
-    { key: '/dashboard', icon: <DashboardOutlined />, label: '运行总览' },
-    { key: '/account', icon: <UserOutlined />, label: '账号' },
-    {
-      key: 'task-group',
-      icon: <FileTextOutlined />,
-      label: (
-        <span
-          onClick={() => {
-            navigate('/task/list')
-          }}
-        >
-          任务管理
-        </span>
-      ),
-      children: [
-        { key: '/schedule-config', label: '执行调度' },
-        { key: '/profile-management', label: '合成配置' },
-      ],
-    },
-    {
-      key: 'material-group',
-      icon: <FolderOutlined />,
-      label: (
-        <span
-          onClick={() => {
-            navigate('/material')
-          }}
-        >
-          素材管理
-        </span>
-      ),
-      children: [
-        { key: '/material/video', label: '视频' },
-        { key: '/material/copywriting', label: '文案' },
-        { key: '/material/cover', label: '封面' },
-        { key: '/material/audio', label: '音频' },
-        { key: '/material/topic', label: '话题' },
-        { type: 'divider' as const },
-        { key: '/material/product', label: '商品' },
-        { key: '/material/topic-group', label: '话题组' },
-      ],
-    },
-    { key: '/ai-clip', icon: <ScissorOutlined />, label: 'AIClip 工作流' },
-    {
-      key: 'settings-group',
-      icon: <SettingOutlined />,
-      label: '设置',
-      children: [
-        { key: '/settings', label: '通用设置' },
-        { key: '/settings/auth-admin', label: '授权会话' },
-      ],
-    },
-  ]), [navigate])
+  const selectedKey = getSelectedKey(location.pathname)
 
-  const selectedKey = subMenuKeys.find((key) => location.pathname === key)
-    ?? (location.pathname === '/material' ? 'material-group' : undefined)
-    ?? (location.pathname === '/task/list' || location.pathname === '/task/create' ? 'task-group' : undefined)
-    ?? (isCreativeRoute ? '/creative/workbench' : undefined)
-    ?? location.pathname
+  const navigateToMenuPath = (path?: string) => {
+    if (!path) return
+    navigate(path)
+    if (isMobileShell) {
+      setCollapsed(true)
+    }
+  }
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <AntLayout style={{ minHeight: '100vh' }} data-testid="app-shell">
       <Header
+        data-testid="app-shell-header"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -148,43 +206,65 @@ export default function LayoutComponent() {
           <AuthSessionHeader />
         </div>
       </Header>
-      <Layout>
-        <Sider
-          width={220}
-          breakpoint="lg"
-          collapsedWidth={isBroken ? 0 : 80}
-          collapsible
-          collapsed={collapsed}
-          onCollapse={(value) => setCollapsed(value)}
-          onBreakpoint={(broken) => {
-            setIsBroken(broken)
-            setCollapsed(broken)
-          }}
-          style={{ background: colorBgContainer }}
-        >
-          <Menu
-            mode="inline"
-            selectedKeys={[selectedKey]}
-            openKeys={openKeys}
-            onOpenChange={(keys) => setOpenKeys(keys as string[])}
-            items={items}
-            onClick={({ key }) => {
-              if (!rootMenuKeys.has(key)) {
-                navigate(key)
-                if (isBroken) {
-                  setCollapsed(true)
-                }
-              }
+      <ProLayout
+        route={shellRoute}
+        location={{ pathname: selectedKey }}
+        layout="side"
+        navTheme="light"
+        title={false}
+        logo={false}
+        menuHeaderRender={false}
+        headerRender={false}
+        breakpoint="lg"
+        collapsed={collapsed}
+        onCollapse={(value) => setCollapsed(value)}
+        openKeys={openKeys}
+        onOpenChange={(keys) => setOpenKeys(keys || [])}
+        menu={{ locale: false, hideMenuWhenCollapsed: true }}
+        menuProps={{
+          selectedKeys: [selectedKey],
+        }}
+        contentStyle={{
+          padding: screens.md ? 24 : 16,
+          minHeight: 360,
+        }}
+        rightContentRender={false}
+        collapsedButtonRender={false}
+        menuContentRender={(props, defaultDom) => (
+          <div
+            data-testid="app-shell-sider"
+            className={collapsed || props.collapsed ? 'ant-layout-sider-collapsed' : undefined}
+          >
+            <div data-testid="app-shell-menu">{defaultDom}</div>
+          </div>
+        )}
+        menuTextRender={(item, defaultDom) => (
+          <ShellMenuLabel itemKey={getMenuItemKey(item)}>{defaultDom}</ShellMenuLabel>
+        )}
+        menuItemRender={(item, defaultDom) => (
+          <span
+            onClick={(event) => {
+              event.preventDefault()
+              navigateToMenuPath(item.path)
             }}
-            style={{ height: '100%', borderRight: 0 }}
-          />
-        </Sider>
-        <Layout style={{ padding: screens.md ? '24px' : '16px' }}>
-          <Content style={{ minHeight: 360 }}>
-            <Outlet />
-          </Content>
-        </Layout>
-      </Layout>
-    </Layout>
+          >
+            {defaultDom}
+          </span>
+        )}
+        subMenuItemRender={(item, defaultDom) => (
+          <span
+            onClick={() => {
+              navigateToMenuPath(rootMenuPaths[getMenuItemKey(item)])
+            }}
+          >
+            {defaultDom}
+          </span>
+        )}
+      >
+        <div data-testid="app-shell-content" style={{ minHeight: 360 }}>
+          <Outlet />
+        </div>
+      </ProLayout>
+    </AntLayout>
   )
 }
