@@ -398,6 +398,7 @@ export default function CreativeWorkbench() {
       keyword: nextPresetState.keyword,
       status: nextPresetState.status,
       poolState: nextPresetState.poolState,
+      preset: nextPresetState.preset,
     })
     setSearchParams(nextSearchParams, { replace: true })
     actionRef.current?.setPageInfo?.({ current: 1, pageSize: nextPresetState.pageSize })
@@ -411,7 +412,7 @@ export default function CreativeWorkbench() {
         keyword: currentFormValues.keyword,
         status: currentFormValues.status,
         poolState: currentFormValues.poolState,
-        preset: initialRouteState.preset,
+        preset: currentFormValues.preset,
         current: 1,
         pageSize: initialRouteState.pageSize,
       },
@@ -430,7 +431,7 @@ export default function CreativeWorkbench() {
         keyword: currentFormValues.keyword,
         status: currentFormValues.status,
         poolState: currentFormValues.poolState,
-        preset: initialRouteState.preset,
+        preset: currentFormValues.preset,
         current: initialRouteState.current,
         pageSize: initialRouteState.pageSize,
       },
@@ -726,6 +727,7 @@ export default function CreativeWorkbench() {
               request={async (params, sort) => {
                 const status = params.status
                 const poolState = params.poolState as CreativeWorkbenchPoolState | undefined
+                const currentFormValues = formRef.current?.getFieldsValue?.() ?? {}
                 const sortKind = sort.updated_at === 'ascend'
                   ? 'updated_asc'
                   : sort.updated_at === 'descend'
@@ -736,7 +738,7 @@ export default function CreativeWorkbench() {
                     keyword: params.keyword,
                     status,
                     poolState,
-                    preset: initialRouteState.preset,
+                    preset: params.preset ?? currentFormValues.preset,
                     current: params.current,
                     pageSize: params.pageSize,
                   },

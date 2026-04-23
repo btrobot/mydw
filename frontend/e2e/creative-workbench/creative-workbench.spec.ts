@@ -789,6 +789,26 @@ test.describe('Creative workbench baseline', () => {
   test('supports preset views for high-frequency queues', async ({ page }) => {
     await page.goto(`/#/creative/workbench`)
 
+    await page.getByTestId('creative-workbench-preset-waiting_review').click()
+
+    await expect(page).toHaveURL(/preset=waiting_review/)
+    await expect(page).toHaveURL(/status=WAITING_REVIEW/)
+    await expect(page).toHaveURL(/sort=updated_desc/)
+    await expect(page.locator('body')).toContainText('Spring campaign')
+    await expect(page.locator('body')).not.toContainText('Summer sale teaser')
+    await expect(page.locator('body')).not.toContainText('Winter lookbook')
+    await expectWorkbenchOrder(page, [101])
+
+    await page.getByTestId('creative-workbench-preset-needs_rework').click()
+
+    await expect(page).toHaveURL(/preset=needs_rework/)
+    await expect(page).toHaveURL(/status=REWORK_REQUIRED/)
+    await expect(page).toHaveURL(/sort=updated_desc/)
+    await expect(page.locator('body')).toContainText('Winter lookbook')
+    await expect(page.locator('body')).not.toContainText('Spring campaign')
+    await expect(page.locator('body')).not.toContainText('Summer sale teaser')
+    await expectWorkbenchOrder(page, [104])
+
     await page.getByTestId('creative-workbench-preset-recent_failures').click()
 
     await expect(page).toHaveURL(/preset=recent_failures/)
