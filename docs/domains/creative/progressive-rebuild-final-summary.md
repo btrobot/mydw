@@ -6,7 +6,7 @@
 > - `.omx/plans/archive/prd-creative-progressive-rebuild-phase-b-pr-plan.md`
 > - `.omx/plans/archive/prd-creative-progressive-rebuild-phase-c-pr-plan.md`
 > - `.omx/plans/archive/prd-creative-progressive-rebuild-phase-d-pr-plan.md`
-> 更新日期：2026-04-18
+> 更新日期：2026-04-23（补充作品域重整 Phase 3 收口）
 
 ## 1. 这次重构的核心目标
 
@@ -261,3 +261,57 @@
 如果只保留一句总结，可以写成：
 
 > **这次重构完成了“Task-first” 到 “Creative-first” 的系统迁移。**
+
+---
+
+## 8. 2026-04-23 补充：作品域重整后的当前真相
+
+上面的 A~D 总结说明了系统如何完成 **Creative-first 主路径迁移**；  
+在这之后，仓库又完成了 `Creative Domain Model Realignment` 的 Phase 0 ~ Phase 3，用来把“作品 / 版本 / 发布包 / 任务”的职责进一步收紧到更清晰的领域边界。
+
+当前应以如下真相理解系统：
+
+### 8.1 Creative（作品）负责“定义要做什么”
+
+- 作品 brief
+- 输入编排
+- 目标时长
+- 当前作品层采用的业务定义
+
+### 8.2 CreativeVersion（版本）负责“这一版实际采用了什么”
+
+- 版本结果
+- adopted truth
+- 实际时长
+- 当前版本最终采用的视频 / 封面 / 商品名 / 文案
+
+### 8.3 PublishPackage / PackageRecord（发布包）负责“最终冻结要发什么”
+
+- 发布冻结四件套
+- 发布 profile / 平台约束
+- package -> version -> task 的追溯关系
+
+### 8.4 Task 负责“怎么执行 / 怎么诊断”
+
+- execution carrier
+- retry carrier
+- diagnostics carrier
+
+Task 继续存在，但不再承担“作品业务定义”或“发布真值”解释权。
+
+### 8.5 推荐引用的最新权威文档
+
+- 领域/迁移规范：
+  - `.omx/plans/prd-creative-domain-model-realignment.md`
+  - `.omx/plans/test-spec-creative-domain-model-realignment.md`
+- 阶段收口：
+  - `.omx/plans/closeout-creative-domain-model-realignment-phase2.md`
+  - `.omx/plans/closeout-creative-domain-model-realignment-phase3.md`
+
+### 8.6 仍未完成的部分
+
+- legacy list/snapshot/public contract retirement 还没有做完
+- 这部分属于后续 **Phase 4** 范围
+- 因此当前仓库应理解为：
+
+> **Creative-first 主路径已经成立，version adopted truth 与 publish freeze truth 也已经落位；下一步不是再争论业务边界，而是有计划地退休 legacy contract。**
