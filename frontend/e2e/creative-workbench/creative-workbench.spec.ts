@@ -1,5 +1,15 @@
 import { expect, test, type Page } from '@playwright/test'
 
+type CreativeListRequestSnapshot = {
+  keyword: string | null
+  status: string | null
+  poolState: string | null
+  sort: string | null
+  recentFailuresOnly: string | null
+  skip: string | null
+  limit: string | null
+}
+
 const creativeListPayload = {
   total: 4,
   summary: {
@@ -595,6 +605,45 @@ async function chooseWorkbenchSort(page: Page, optionText: string) {
   await option.click()
 }
 
+async function captureCreativeListRequests(page: Page) {
+  const requests: CreativeListRequestSnapshot[] = []
+
+  await page.unroute('**/api/creatives?**')
+  await page.route('**/api/creatives?**', async (route) => {
+    const url = new URL(route.request().url())
+    requests.push({
+      keyword: url.searchParams.get('keyword'),
+      status: url.searchParams.get('status'),
+      poolState: url.searchParams.get('pool_state'),
+      sort: url.searchParams.get('sort'),
+      recentFailuresOnly: url.searchParams.get('recent_failures_only'),
+      skip: url.searchParams.get('skip'),
+      limit: url.searchParams.get('limit'),
+    })
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(getCreativeListResponse(url)),
+    })
+  })
+
+  return requests
+}
+
+async function expectLatestCreativeRequest(
+  requests: CreativeListRequestSnapshot[],
+  expected: Partial<CreativeListRequestSnapshot>,
+) {
+  const expectedKeys = Object.keys(expected) as Array<keyof CreativeListRequestSnapshot>
+
+  await expect.poll(() => {
+    const latest = requests.at(-1)
+    return Object.fromEntries(
+      expectedKeys.map((key) => [key, latest?.[key] ?? null]),
+    )
+  }).toEqual(expected)
+}
+
 async function expectWorkbenchOrder(page: Page, creativeIds: number[]) {
   const actions = page.locator('[data-testid^="creative-workbench-open-detail-"]')
   await expect(actions).toHaveCount(creativeIds.length)
@@ -756,6 +805,34 @@ test.describe('Creative workbench baseline', () => {
     await expect(page.locator('body')).not.toContainText('Summer sale teaser')
   })
 
+  test('preserves sort and pagination state across refresh with matching skip/limit requests', async ({ page }) => {
+    const requests = await captureCreativeListRequests(page)
+
+    await page.goto(`/#/creative/workbench?sort=attention_desc&page=2&pageSize=2`)
+
+    await expect(page).toHaveURL(/sort=attention_desc/)
+    await expect(page).toHaveURL(/page=2/)
+    await expect(page).toHaveURL(/pageSize=2/)
+    await expectLatestCreativeRequest(requests, {
+      sort: 'attention_desc',
+      skip: '2',
+      limit: '2',
+    })
+    await expectWorkbenchOrder(page, [101, 103])
+
+    await page.reload()
+
+    await expect(page).toHaveURL(/sort=attention_desc/)
+    await expect(page).toHaveURL(/page=2/)
+    await expect(page).toHaveURL(/pageSize=2/)
+    await expectLatestCreativeRequest(requests, {
+      sort: 'attention_desc',
+      skip: '2',
+      limit: '2',
+    })
+    await expectWorkbenchOrder(page, [101, 103])
+  })
+
   test('returns to the filtered workbench state after entering detail', async ({ page }) => {
     await page.goto(
       `/#/creative/workbench?keyword=Spring&status=WAITING_REVIEW&poolState=in_pool&sort=updated_desc&page=1&pageSize=10`,
@@ -772,6 +849,26 @@ test.describe('Creative workbench baseline', () => {
     await page.waitForURL(/#\/creative\/workbench\?keyword=Spring&status=WAITING_REVIEW&poolState=in_pool&sort=updated_desc&page=1&pageSize=10/)
     await expect(page.locator('body')).toContainText('Spring campaign')
     await expect(page.locator('body')).not.toContainText('Summer sale teaser')
+  })
+
+  test('returns to the original workbench URL after the detail -> task diagnostics round-trip', async ({ page }) => {
+    await page.goto(`/#/creative/workbench?sort=attention_desc&page=2&pageSize=2`)
+
+    await expectWorkbenchOrder(page, [101, 103])
+
+    await page.getByTestId('creative-workbench-open-detail-101').click()
+    await page.waitForURL(/#\/creative\/101\?returnTo=/)
+
+    await page.getByTestId('creative-open-advanced-diagnostics').click()
+    await expect(page).toHaveURL(/diagnostics=advanced/)
+
+    await page.getByTestId('creative-open-task-diagnostics').click()
+    await page.waitForURL(/#\/task\/901\?returnTo=/)
+
+    await page.getByTestId('task-detail-back-to-list').click()
+
+    await page.waitForURL(/#\/creative\/workbench\?sort=attention_desc&page=2&pageSize=2$/)
+    await expectWorkbenchOrder(page, [101, 103])
   })
 
   test('supports preset views for high-frequency queues', async ({ page }) => {
@@ -804,6 +901,149 @@ test.describe('Creative workbench baseline', () => {
     await expect(page.locator('body')).toContainText('Summer sale teaser')
     await expect(page.locator('body')).not.toContainText('Spring campaign')
     await expectWorkbenchOrder(page, [102])
+  })
+
+  test('maps the recent failures preset to recent_failures_only request semantics', async ({ page }) => {
+    const requests = await captureCreativeListRequests(page)
+
+    await page.goto(`/#/creative/workbench`)
+
+    await page.getByTestId('creative-workbench-preset-recent_failures').click()
+
+    await expect(page).toHaveURL(/preset=recent_failures/)
+    await expect(page).toHaveURL(/sort=failed_desc/)
+    await expectLatestCreativeRequest(requests, {
+      sort: 'failed_desc',
+      recentFailuresOnly: 'true',
+      skip: '0',
+      limit: '10',
+    })
+    await expectWorkbenchOrder(page, [102])
+  })
+
+  test('preserves preset state when only pageSize differs in the canonical URL', async ({ page }) => {
+    const requests = await captureCreativeListRequests(page)
+
+    await page.goto(`/#/creative/workbench?preset=waiting_review&status=WAITING_REVIEW&sort=updated_desc&page=1&pageSize=2`)
+
+    await expect(page).toHaveURL(/preset=waiting_review/)
+    await expect(page).toHaveURL(/pageSize=2/)
+    await expectLatestCreativeRequest(requests, {
+      status: 'WAITING_REVIEW',
+      sort: 'updated_desc',
+      skip: '0',
+      limit: '2',
+    })
+    await expectWorkbenchOrder(page, [101])
+
+    await page.reload()
+
+    await expect(page).toHaveURL(/preset=waiting_review/)
+    await expect(page).toHaveURL(/pageSize=2/)
+    await expectLatestCreativeRequest(requests, {
+      status: 'WAITING_REVIEW',
+      sort: 'updated_desc',
+      skip: '0',
+      limit: '2',
+    })
+    await expectWorkbenchOrder(page, [101])
+  })
+
+  test('clears preset when a manual sort makes the current preset incompatible', async ({ page }) => {
+    await page.goto(`/#/creative/workbench`)
+
+    await page.getByTestId('creative-workbench-preset-waiting_review').click()
+    await expect(page).toHaveURL(/preset=waiting_review/)
+
+    await chooseWorkbenchSort(page, '待处理优先')
+
+    await expect(page).not.toHaveURL(/preset=waiting_review/)
+    await expect(page).toHaveURL(/status=WAITING_REVIEW/)
+    await expect(page).toHaveURL(/sort=attention_desc/)
+    await expectWorkbenchOrder(page, [101])
+  })
+
+  test('keeps diagnostics as route chrome and does not rewrite business query state', async ({ page }) => {
+    const requests = await captureCreativeListRequests(page)
+
+    await page.goto(`/#/creative/workbench?keyword=Spring&status=WAITING_REVIEW&poolState=in_pool&sort=updated_desc&page=1&pageSize=2`)
+
+    await expectLatestCreativeRequest(requests, {
+      keyword: 'Spring',
+      status: 'WAITING_REVIEW',
+      poolState: 'in_pool',
+      sort: 'updated_desc',
+      skip: '0',
+      limit: '2',
+    })
+    const requestCount = requests.length
+
+    await page.getByTestId('creative-workbench-open-diagnostics').click()
+
+    await expect(page).toHaveURL(/keyword=Spring/)
+    await expect(page).toHaveURL(/status=WAITING_REVIEW/)
+    await expect(page).toHaveURL(/poolState=in_pool/)
+    await expect(page).toHaveURL(/sort=updated_desc/)
+    await expect(page).toHaveURL(/page=1/)
+    await expect(page).toHaveURL(/pageSize=2/)
+    await expect(page).toHaveURL(/diagnostics=runtime/)
+    await expect(page.getByTestId('creative-workbench-diagnostics-drawer')).toBeVisible()
+    await expect.poll(() => requests.length).toBe(requestCount)
+
+    await page.locator('.ant-drawer-close').click()
+
+    await expect(page).toHaveURL(/keyword=Spring/)
+    await expect(page).toHaveURL(/status=WAITING_REVIEW/)
+    await expect(page).toHaveURL(/poolState=in_pool/)
+    await expect(page).toHaveURL(/sort=updated_desc/)
+    await expect(page).toHaveURL(/page=1/)
+    await expect(page).toHaveURL(/pageSize=2/)
+    await expect(page).not.toHaveURL(/diagnostics=runtime/)
+    await expect.poll(() => requests.length).toBe(requestCount)
+  })
+
+  test('does not promote unapplied draft filters when opening diagnostics or changing sort', async ({ page }) => {
+    const requests = await captureCreativeListRequests(page)
+
+    await page.goto(`/#/creative/workbench?status=WAITING_REVIEW&sort=updated_desc&page=1&pageSize=2`)
+
+    await expectLatestCreativeRequest(requests, {
+      status: 'WAITING_REVIEW',
+      sort: 'updated_desc',
+      skip: '0',
+      limit: '2',
+      keyword: null,
+    })
+    const initialRequestCount = requests.length
+
+    await page.getByTestId('creative-workbench-search-input').fill('Winter')
+
+    await expect(page).not.toHaveURL(/keyword=Winter/)
+    await expect.poll(() => requests.length).toBe(initialRequestCount)
+
+    await page.getByTestId('creative-workbench-open-diagnostics').click()
+
+    await expect(page).toHaveURL(/status=WAITING_REVIEW/)
+    await expect(page).toHaveURL(/sort=updated_desc/)
+    await expect(page).toHaveURL(/pageSize=2/)
+    await expect(page).not.toHaveURL(/keyword=Winter/)
+    await expect.poll(() => requests.length).toBe(initialRequestCount)
+
+    await page.locator('.ant-drawer-close').click()
+
+    await chooseWorkbenchSort(page, '待处理优先')
+
+    await expect(page).toHaveURL(/status=WAITING_REVIEW/)
+    await expect(page).toHaveURL(/sort=attention_desc/)
+    await expect(page).not.toHaveURL(/keyword=Winter/)
+    await expectLatestCreativeRequest(requests, {
+      status: 'WAITING_REVIEW',
+      sort: 'attention_desc',
+      skip: '0',
+      limit: '2',
+      keyword: null,
+    })
+    await expectWorkbenchOrder(page, [101])
   })
 
   test('restores the full list after cycling preset buttons back to all', async ({ page }) => {

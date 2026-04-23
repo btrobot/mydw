@@ -399,13 +399,12 @@ export default function CreativeWorkbench() {
   }, [initialRouteState.diagnostics, initialRouteState.pageSize, setSearchParams])
 
   const handleSortChange = useCallback((sort: WorkbenchSortKind) => {
-    const currentFormValues = formRef.current?.getFieldsValue?.() ?? {}
     const nextSearchParams = buildWorkbenchSearchParams(
       {
-        keyword: currentFormValues.keyword,
-        status: currentFormValues.status,
-        poolState: currentFormValues.poolState,
-        preset: currentFormValues.preset,
+        keyword: initialRouteState.formValues.keyword,
+        status: initialRouteState.formValues.status,
+        poolState: initialRouteState.formValues.poolState,
+        preset: initialRouteState.formValues.preset,
         current: 1,
         pageSize: initialRouteState.pageSize,
       },
@@ -415,16 +414,15 @@ export default function CreativeWorkbench() {
     setSearchParams(nextSearchParams, { replace: true })
     actionRef.current?.setPageInfo?.({ current: 1, pageSize: initialRouteState.pageSize })
     actionRef.current?.reload()
-  }, [initialRouteState.diagnostics, initialRouteState.pageSize, initialRouteState.preset, setSearchParams])
+  }, [initialRouteState.diagnostics, initialRouteState.formValues.keyword, initialRouteState.formValues.poolState, initialRouteState.formValues.preset, initialRouteState.formValues.status, initialRouteState.pageSize, setSearchParams])
 
   const setDiagnosticsView = useCallback((diagnostics?: WorkbenchDiagnosticsView) => {
-    const currentFormValues = formRef.current?.getFieldsValue?.() ?? {}
     const nextSearchParams = buildWorkbenchSearchParams(
       {
-        keyword: currentFormValues.keyword,
-        status: currentFormValues.status,
-        poolState: currentFormValues.poolState,
-        preset: currentFormValues.preset,
+        keyword: initialRouteState.formValues.keyword,
+        status: initialRouteState.formValues.status,
+        poolState: initialRouteState.formValues.poolState,
+        preset: initialRouteState.formValues.preset,
         current: initialRouteState.current,
         pageSize: initialRouteState.pageSize,
       },
@@ -435,7 +433,10 @@ export default function CreativeWorkbench() {
   }, [
     initialRouteState.current,
     initialRouteState.pageSize,
-    initialRouteState.preset,
+    initialRouteState.formValues.keyword,
+    initialRouteState.formValues.poolState,
+    initialRouteState.formValues.preset,
+    initialRouteState.formValues.status,
     initialRouteState.sort,
     setSearchParams,
   ])
