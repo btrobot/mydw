@@ -170,6 +170,10 @@ async def test_creative_openapi_exposes_phase2_workbench_and_detail_contracts(
     assert paths["/api/creatives/{creative_id}"]["patch"]["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeUpdateRequest")
     assert paths["/api/creatives/{creative_id}"]["patch"]["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeDetailResponse")
     assert schemas["CreativeCurrentVersionResponse"]["properties"]["package_record_id"]["anyOf"][0]["type"] == "integer"
+    assert schemas["CreativeCurrentVersionResponse"]["properties"]["package_record"]["anyOf"][0]["$ref"].endswith("/PackageRecordResponse")
+    assert schemas["CreativeCurrentVersionResponse"]["properties"]["final_product_name"]["anyOf"][0]["type"] == "string"
+    assert schemas["CreativeCurrentVersionResponse"]["properties"]["final_copywriting_text"]["anyOf"][0]["type"] == "string"
+    assert schemas["CreativeCurrentVersionResponse"]["properties"]["actual_duration_seconds"]["anyOf"][0]["type"] == "integer"
     assert schemas["CreativeCreateRequest"]["properties"]["subject_product_id"]["anyOf"][0]["type"] == "integer"
     assert schemas["CreativeCreateRequest"]["properties"]["main_copywriting_text"]["anyOf"][0]["type"] == "string"
     assert schemas["CreativeCreateRequest"]["properties"]["target_duration_seconds"]["anyOf"][0]["type"] == "integer"
@@ -196,6 +200,14 @@ async def test_creative_openapi_exposes_phase2_workbench_and_detail_contracts(
     assert schemas["CreativeDetailResponse"]["properties"]["latest_task_summary"]["anyOf"][0]["$ref"].endswith("/CreativeLatestTaskSummaryResponse")
     assert schemas["CreativeWorkbenchItemResponse"]["properties"]["input_items"]["type"] == "array"
     assert schemas["CreativeWorkbenchItemResponse"]["properties"]["input_snapshot"]["$ref"].endswith("/CreativeInputSnapshotResponse")
+    assert schemas["CreativeVersionSummaryResponse"]["properties"]["package_record"]["anyOf"][0]["$ref"].endswith("/PackageRecordResponse")
+    assert schemas["CreativeVersionSummaryResponse"]["properties"]["final_product_name"]["anyOf"][0]["type"] == "string"
+    assert schemas["CreativeVersionSummaryResponse"]["properties"]["final_copywriting_text"]["anyOf"][0]["type"] == "string"
+    assert schemas["CreativeVersionSummaryResponse"]["properties"]["actual_duration_seconds"]["anyOf"][0]["type"] == "integer"
+    assert schemas["PackageRecordResponse"]["properties"]["frozen_product_name"]["anyOf"][0]["type"] == "string"
+    assert schemas["PackageRecordResponse"]["properties"]["frozen_copywriting_text"]["anyOf"][0]["type"] == "string"
+    assert schemas["PackageRecordResponse"]["properties"]["frozen_duration_seconds"]["anyOf"][0]["type"] == "integer"
+    assert schemas["PackageRecordResponse"]["properties"]["publish_profile_id"]["anyOf"][0]["type"] == "integer"
 
 
 @pytest.mark.asyncio

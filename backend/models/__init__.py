@@ -243,6 +243,10 @@ class CreativeVersion(Base):
     version_no = Column(Integer, nullable=False, default=1)
     version_type = Column(String(32), nullable=False, default="generated")
     title = Column(String(256), nullable=True)
+    actual_duration_seconds = Column(Integer, nullable=True)
+    final_video_path = Column(String(512), nullable=True)
+    final_product_name = Column(String(256), nullable=True)
+    final_copywriting_text = Column(Text, nullable=True)
     created_at = Column(DateTime, default=utc_now_naive)
     updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
@@ -293,6 +297,12 @@ class PackageRecord(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     creative_version_id = Column(Integer, ForeignKey("creative_versions.id"), nullable=False, index=True)
     package_status = Column(String(32), nullable=False, default="pending", index=True)
+    publish_profile_id = Column(Integer, ForeignKey("publish_profiles.id"), nullable=True, index=True)
+    frozen_video_path = Column(String(512), nullable=True)
+    frozen_cover_path = Column(String(512), nullable=True)
+    frozen_duration_seconds = Column(Integer, nullable=True)
+    frozen_product_name = Column(String(256), nullable=True)
+    frozen_copywriting_text = Column(Text, nullable=True)
     manifest_json = Column(Text, nullable=True)
     created_at = Column(DateTime, default=utc_now_naive)
     updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
@@ -304,6 +314,7 @@ class PackageRecord(Base):
         back_populates="package_records",
         foreign_keys=[creative_version_id],
     )
+    publish_profile = relationship("PublishProfile", foreign_keys=[publish_profile_id])
 
 
 class CheckRecord(Base):
@@ -882,6 +893,8 @@ async def init_db():
     await migration_032.run_migration(engine)
     migration_033 = importlib.import_module("migrations.033_creative_domain_model_foundation")
     await migration_033.run_migration(engine)
+    migration_034 = importlib.import_module("migrations.034_creative_phase3_freeze_contract")
+    await migration_034.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

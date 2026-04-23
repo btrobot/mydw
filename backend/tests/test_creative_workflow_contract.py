@@ -20,6 +20,9 @@ async def _seed_creative_workflow_sample(
         title="Creative Workflow Sample",
         status="PENDING_INPUT",
         latest_version_no=0,
+        subject_product_name_snapshot="Workflow Product Snapshot",
+        main_copywriting_text="Workflow Copywriting Snapshot",
+        target_duration_seconds=15,
     )
     db_session.add(creative)
     await db_session.flush()
@@ -87,7 +90,15 @@ async def test_creative_workflow_submit_api_contract_returns_new_version(
     assert payload["current_version_id"] == payload["version"]["id"]
     assert payload["version"]["parent_version_id"] == source_version_id
     assert payload["version"]["version_type"] == "ai_clip"
+    assert payload["version"]["actual_duration_seconds"] == 10
+    assert payload["version"]["final_video_path"] == "data/materials/videos/submit-output.mp4"
+    assert payload["version"]["final_product_name"] == "Workflow Product Snapshot"
+    assert payload["version"]["final_copywriting_text"] == "Workflow Copywriting Snapshot"
     assert payload["package_record"]["package_status"] == "ready"
+    assert payload["package_record"]["frozen_video_path"] == "data/materials/videos/submit-output.mp4"
+    assert payload["package_record"]["frozen_duration_seconds"] == 10
+    assert payload["package_record"]["frozen_product_name"] == "Workflow Product Snapshot"
+    assert payload["package_record"]["frozen_copywriting_text"] == "Workflow Copywriting Snapshot"
     assert manifest["workflow_type"] == "full_pipeline"
     assert manifest["metadata"] == {"from": "contract-test"}
 

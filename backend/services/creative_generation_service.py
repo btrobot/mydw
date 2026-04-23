@@ -39,6 +39,24 @@ class CreativeGenerationService:
             package_status="ready",
             status_on_activate="WAITING_REVIEW",
         )
+        await self.version_service.sync_version_result(
+            version,
+            actual_duration_seconds=task.final_video_duration,
+            final_video_path=task.final_video_path,
+            final_product_name=creative.subject_product_name_snapshot,
+            final_copywriting_text=creative.main_copywriting_text,
+        )
+        package_updates: dict[str, object] = {
+            "package_status": "ready",
+            "publish_profile_id": creative.input_profile_id,
+            "frozen_product_name": creative.subject_product_name_snapshot,
+            "frozen_copywriting_text": creative.main_copywriting_text,
+        }
+        if task.final_video_path is not None:
+            package_updates["frozen_video_path"] = task.final_video_path
+        if task.final_video_duration is not None:
+            package_updates["frozen_duration_seconds"] = task.final_video_duration
+        await self.version_service.sync_publish_package(version, **package_updates)
         task.creative_version_id = version.id
         if task.task_kind is None:
             task.task_kind = "composition"

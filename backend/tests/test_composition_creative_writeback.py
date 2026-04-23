@@ -102,6 +102,10 @@ async def test_composition_success_creates_and_activates_reviewable_creative_ver
     db_session: AsyncSession,
 ) -> None:
     creative, initial_version, task, job = await _seed_composition_creative_task(db_session)
+    creative.subject_product_name_snapshot = "Frozen Product Name"
+    creative.main_copywriting_text = "Frozen Copywriting Text"
+    creative.target_duration_seconds = 42
+    await db_session.commit()
 
     await CompositionService(db_session).handle_success(job.id, {"video_url": None})
 
@@ -128,6 +132,10 @@ async def test_composition_success_creates_and_activates_reviewable_creative_ver
     new_version = versions[-1]
     assert new_version.parent_version_id == initial_version.id
     assert new_version.version_no == 2
+    assert new_version.actual_duration_seconds is None
+    assert new_version.final_video_path is None
+    assert new_version.final_product_name == "Frozen Product Name"
+    assert new_version.final_copywriting_text == "Frozen Copywriting Text"
     assert persisted_creative.current_version_id == new_version.id
     assert persisted_creative.latest_version_no == 2
     assert persisted_creative.status == "WAITING_REVIEW"
@@ -136,6 +144,51 @@ async def test_composition_success_creates_and_activates_reviewable_creative_ver
     assert persisted_task.creative_version_id == new_version.id
     assert len(packages) == 1
     assert packages[0].package_status == "ready"
+    assert packages[0].frozen_product_name == "Frozen Product Name"
+    assert packages[0].frozen_copywriting_text == "Frozen Copywriting Text"
+    assert packages[0].frozen_duration_seconds == 42
+
+
+@pytest.mark.asyncio
+async def test_composition_success_freezes_version_result_from_execution_output(
+    db_session: AsyncSession,
+) -> None:
+    creative, initial_version, task, job = await _seed_composition_creative_task(
+        db_session,
+        creative_no="CR-COMP-OUTPUT-0001",
+    )
+    creative.subject_product_name_snapshot = "Output Product Name"
+    creative.main_copywriting_text = "Output Copywriting Text"
+    await db_session.commit()
+
+    await CompositionService(db_session).handle_success(
+        job.id,
+        {"video_path": "final/output.mp4", "duration": 17, "size": 2048},
+    )
+
+    versions = (
+        await db_session.execute(
+            select(CreativeVersion)
+            .where(CreativeVersion.creative_item_id == creative.id)
+            .order_by(CreativeVersion.version_no.asc())
+        )
+    ).scalars().all()
+    new_version = versions[-1]
+    package = (
+        await db_session.execute(
+            select(PackageRecord).where(PackageRecord.creative_version_id == new_version.id)
+        )
+    ).scalars().one()
+
+    assert new_version.parent_version_id == initial_version.id
+    assert new_version.actual_duration_seconds == 17
+    assert new_version.final_video_path == "final/output.mp4"
+    assert new_version.final_product_name == "Output Product Name"
+    assert new_version.final_copywriting_text == "Output Copywriting Text"
+    assert package.frozen_video_path == "final/output.mp4"
+    assert package.frozen_duration_seconds == 17
+    assert package.frozen_product_name == "Output Product Name"
+    assert package.frozen_copywriting_text == "Output Copywriting Text"
 
 
 @pytest.mark.asyncio

@@ -4,15 +4,13 @@ AIClip-to-Creative workflow orchestration for Phase D PR-D1.
 from __future__ import annotations
 
 import json
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from loguru import logger
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import CreativeItem, PackageRecord
+from models import CreativeItem
 from schemas import (
     CreativeAIClipWorkflowResponse,
     CreativeStatus,
@@ -81,8 +79,15 @@ class AIClipWorkflowService:
             package_status="ready",
             status_on_activate=CreativeStatus.WAITING_REVIEW.value,
         )
-        package_record = await self._load_package_record(version.id)
-        package_record.manifest_json = self._build_manifest_json(
+        rounded_duration = int(round(video_info.duration))
+        await self.version_service.sync_version_result(
+            version,
+            actual_duration_seconds=rounded_duration,
+            final_video_path=stored_path,
+            final_product_name=creative.subject_product_name_snapshot,
+            final_copywriting_text=creative.main_copywriting_text,
+        )
+        manifest_json = self._build_manifest_json(
             source_version_id=source_version_id,
             workflow_type=workflow_type,
             original_output_path=str(resolved_output_path),
@@ -98,6 +103,16 @@ class AIClipWorkflowService:
                 "size": video_info.size,
             },
             metadata=metadata or {},
+        )
+        package_record = await self.version_service.sync_publish_package(
+            version,
+            package_status="ready",
+            publish_profile_id=creative.input_profile_id,
+            frozen_video_path=stored_path,
+            frozen_duration_seconds=rounded_duration,
+            frozen_product_name=creative.subject_product_name_snapshot,
+            frozen_copywriting_text=creative.main_copywriting_text,
+            manifest_json=manifest_json,
         )
         creative.generation_error_msg = None
         creative.generation_failed_at = None
@@ -125,7 +140,12 @@ class AIClipWorkflowService:
                 version_no=version.version_no,
                 version_type=version.version_type,
                 title=version.title,
+                actual_duration_seconds=version.actual_duration_seconds,
+                final_video_path=version.final_video_path,
+                final_product_name=version.final_product_name,
+                final_copywriting_text=version.final_copywriting_text,
                 package_record_id=package_record.id,
+                package_record=PackageRecordResponse.model_validate(package_record),
                 is_current=True,
                 latest_check=None,
                 created_at=version.created_at,
@@ -133,15 +153,6 @@ class AIClipWorkflowService:
             ),
             package_record=PackageRecordResponse.model_validate(package_record),
         )
-
-    async def _load_package_record(self, creative_version_id: int) -> PackageRecord:
-        result = await self.db.execute(
-            select(PackageRecord).where(PackageRecord.creative_version_id == creative_version_id)
-        )
-        package_record = result.scalar_one_or_none()
-        if package_record is None:
-            raise CreativeWorkflowError("AIClip workflow 未生成 package record", status_code=500)
-        return package_record
 
     @staticmethod
     def _build_manifest_json(

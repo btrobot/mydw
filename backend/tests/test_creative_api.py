@@ -2,7 +2,8 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import Account, Audio, Copywriting, Cover, Product, PublishProfile, Task, Topic, Video
+from models import Account, Audio, Copywriting, Cover, CreativeItem, CreativeVersion, Product, PublishProfile, Task, Topic, Video
+from services.creative_version_service import CreativeVersionService
 from services.creative_service import CreativeService
 
 
@@ -21,6 +22,25 @@ async def _seed_creative_sample(db_session: AsyncSession) -> tuple[int, int]:
         creative_no="CR-API-0001",
         title="Creative API Sample",
     )
+    creative = await db_session.get(CreativeItem, mapped_task.creative_item_id)
+    assert creative is not None
+    creative.subject_product_name_snapshot = "Creative API Product"
+    creative.main_copywriting_text = "Creative API Copy"
+    version = await db_session.get(CreativeVersion, creative.current_version_id)
+    assert version is not None
+    version_service = CreativeVersionService(db_session)
+    await version_service.sync_version_result(
+        version,
+        final_product_name="Creative API Product",
+        final_copywriting_text="Creative API Copy",
+    )
+    await version_service.sync_publish_package(
+        version,
+        frozen_product_name="Creative API Product",
+        frozen_copywriting_text="Creative API Copy",
+    )
+    await db_session.commit()
+    await db_session.refresh(mapped_task)
     return mapped_task.creative_item_id, mapped_task.id
 
 
@@ -414,7 +434,11 @@ async def test_creative_list_and_detail_return_phase_a_projection(
     assert detail_payload["creative_no"] == "CR-API-0001"
     assert detail_payload["current_version"]["version_no"] == 1
     assert detail_payload["current_version"]["title"] == "Creative API Sample"
+    assert detail_payload["current_version"]["final_product_name"] == "Creative API Product"
+    assert detail_payload["current_version"]["final_copywriting_text"] == "Creative API Copy"
     assert detail_payload["current_version"]["package_record_id"] is not None
+    assert detail_payload["current_version"]["package_record"]["frozen_product_name"] == "Creative API Product"
+    assert detail_payload["current_version"]["package_record"]["frozen_copywriting_text"] == "Creative API Copy"
     assert detail_payload["linked_task_ids"] == [task_id]
 
 

@@ -1382,9 +1382,26 @@ export type CreativeCurrentVersionResponse = {
      */
     parent_version_id?: number | null;
     /**
+     * Actual Duration Seconds
+     */
+    actual_duration_seconds?: number | null;
+    /**
+     * Final Video Path
+     */
+    final_video_path?: string | null;
+    /**
+     * Final Product Name
+     */
+    final_product_name?: string | null;
+    /**
+     * Final Copywriting Text
+     */
+    final_copywriting_text?: string | null;
+    /**
      * Package Record Id
      */
     package_record_id?: number | null;
+    package_record?: PackageRecordResponse | null;
     latest_check?: CheckRecordResponse | null;
 };
 
@@ -1808,9 +1825,26 @@ export type CreativeVersionSummaryResponse = {
      */
     title?: string | null;
     /**
+     * Actual Duration Seconds
+     */
+    actual_duration_seconds?: number | null;
+    /**
+     * Final Video Path
+     */
+    final_video_path?: string | null;
+    /**
+     * Final Product Name
+     */
+    final_product_name?: string | null;
+    /**
+     * Final Copywriting Text
+     */
+    final_copywriting_text?: string | null;
+    /**
      * Package Record Id
      */
     package_record_id?: number | null;
+    package_record?: PackageRecordResponse | null;
     /**
      * Is Current
      */
@@ -2154,6 +2188,30 @@ export type PackageRecordResponse = {
      * Package Status
      */
     package_status: string;
+    /**
+     * Publish Profile Id
+     */
+    publish_profile_id?: number | null;
+    /**
+     * Frozen Video Path
+     */
+    frozen_video_path?: string | null;
+    /**
+     * Frozen Cover Path
+     */
+    frozen_cover_path?: string | null;
+    /**
+     * Frozen Duration Seconds
+     */
+    frozen_duration_seconds?: number | null;
+    /**
+     * Frozen Product Name
+     */
+    frozen_product_name?: string | null;
+    /**
+     * Frozen Copywriting Text
+     */
+    frozen_copywriting_text?: string | null;
     /**
      * Manifest Json
      */

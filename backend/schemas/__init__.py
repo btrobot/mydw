@@ -495,6 +495,12 @@ class PackageRecordResponse(BaseModel):
     id: int
     creative_version_id: int
     package_status: str
+    publish_profile_id: Optional[int] = None
+    frozen_video_path: Optional[str] = None
+    frozen_cover_path: Optional[str] = None
+    frozen_duration_seconds: Optional[int] = None
+    frozen_product_name: Optional[str] = None
+    frozen_copywriting_text: Optional[str] = None
     manifest_json: Optional[str] = None
     created_at: datetime
     updated_at: datetime
@@ -566,7 +572,12 @@ class CreativeVersionSummaryResponse(BaseModel):
     version_no: int
     version_type: str
     title: Optional[str] = None
+    actual_duration_seconds: Optional[int] = None
+    final_video_path: Optional[str] = None
+    final_product_name: Optional[str] = None
+    final_copywriting_text: Optional[str] = None
     package_record_id: Optional[int] = None
+    package_record: Optional[PackageRecordResponse] = None
     is_current: bool = False
     latest_check: Optional[CheckRecordResponse] = None
     created_at: datetime
@@ -810,7 +821,12 @@ class CreativeCurrentVersionResponse(BaseModel):
     version_no: int
     title: Optional[str] = None
     parent_version_id: Optional[int] = None
+    actual_duration_seconds: Optional[int] = None
+    final_video_path: Optional[str] = None
+    final_product_name: Optional[str] = None
+    final_copywriting_text: Optional[str] = None
     package_record_id: Optional[int] = None
+    package_record: Optional[PackageRecordResponse] = None
     latest_check: Optional[CheckRecordResponse] = None
 
 

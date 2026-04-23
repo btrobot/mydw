@@ -237,6 +237,28 @@ class CreativeService:
             )
         elif creative.__dict__.get("input_snapshot_record") is None:
             self._sync_compatibility_snapshot_from_current_state(creative)
+        if (
+            creative.current_version is not None
+            and creative.status not in REVIEW_AND_BEYOND_STATUS_VALUES
+            and creative.current_version.final_video_path is None
+            and creative.current_version.actual_duration_seconds is None
+        ):
+            await self.version_service.sync_version_result(
+                creative.current_version,
+                actual_duration_seconds=None,
+                final_video_path=None,
+                final_product_name=creative.subject_product_name_snapshot,
+                final_copywriting_text=creative.main_copywriting_text,
+            )
+            await self.version_service.sync_publish_package(
+                creative.current_version,
+                publish_profile_id=creative.input_profile_id,
+                frozen_video_path=None,
+                frozen_cover_path=None,
+                frozen_duration_seconds=creative.target_duration_seconds,
+                frozen_product_name=creative.subject_product_name_snapshot,
+                frozen_copywriting_text=creative.main_copywriting_text,
+            )
         await self._sync_pre_compose_status(creative)
         await self.db.commit()
         return await self.get_creative_detail(creative.id)

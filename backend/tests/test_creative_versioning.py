@@ -4,8 +4,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-from models import Account, CreativeItem, CreativeVersion, PublishPoolItem
-from schemas import CreativeStatus
+from models import Account, CreativeItem, CreativeVersion, PackageRecord, PublishPoolItem
+from schemas import CreativeStatus, CreativeUpdateRequest
 from services.creative_review_service import CreativeReviewService
 from services.creative_service import CreativeService
 from services.creative_version_service import CreativeVersionService
@@ -64,6 +64,9 @@ async def test_create_initial_version_sets_current_pointer_and_package_record(
         title="Creative Versioning",
         status="PENDING_INPUT",
         latest_version_no=0,
+        subject_product_name_snapshot="Initial Product Name",
+        main_copywriting_text="Initial Copywriting Text",
+        target_duration_seconds=30,
     )
     db_session.add(creative)
     await db_session.flush()
@@ -87,6 +90,89 @@ async def test_create_initial_version_sets_current_pointer_and_package_record(
     assert detail is not None
     assert detail.current_version is not None
     assert detail.current_version.package_record_id is not None
+    assert detail.current_version.final_product_name == "Initial Product Name"
+    assert detail.current_version.final_copywriting_text == "Initial Copywriting Text"
+    assert detail.current_version.package_record is not None
+    assert detail.current_version.package_record.frozen_product_name == "Initial Product Name"
+    assert detail.current_version.package_record.frozen_copywriting_text == "Initial Copywriting Text"
+    assert detail.current_version.package_record.frozen_duration_seconds == 30
+
+
+@pytest.mark.asyncio
+async def test_migration_034_is_idempotent_and_freeze_contract_columns_exist() -> None:
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+    try:
+        async with engine.begin() as conn:
+            await conn.exec_driver_sql(
+                """
+                CREATE TABLE creative_versions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    creative_item_id INTEGER NOT NULL,
+                    parent_version_id INTEGER,
+                    version_no INTEGER NOT NULL DEFAULT 1,
+                    version_type VARCHAR(32) NOT NULL DEFAULT 'generated',
+                    title VARCHAR(256),
+                    created_at DATETIME,
+                    updated_at DATETIME
+                )
+                """
+            )
+            await conn.exec_driver_sql(
+                """
+                CREATE TABLE publish_profiles (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name VARCHAR(256) NOT NULL
+                )
+                """
+            )
+            await conn.exec_driver_sql(
+                """
+                CREATE TABLE package_records (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    creative_version_id INTEGER NOT NULL,
+                    package_status VARCHAR(32) NOT NULL DEFAULT 'pending',
+                    manifest_json TEXT,
+                    created_at DATETIME,
+                    updated_at DATETIME
+                )
+                """
+            )
+
+        migration_034 = importlib.import_module("migrations.034_creative_phase3_freeze_contract")
+        await migration_034.run_migration(engine)
+        await migration_034.run_migration(engine)
+
+        async with engine.begin() as conn:
+            version_columns = {
+                row[1]
+                for row in (await conn.exec_driver_sql("PRAGMA table_info(creative_versions)")).fetchall()
+            }
+            package_columns = {
+                row[1]
+                for row in (await conn.exec_driver_sql("PRAGMA table_info(package_records)")).fetchall()
+            }
+            package_indexes = {
+                row[1]
+                for row in (await conn.exec_driver_sql("PRAGMA index_list('package_records')")).fetchall()
+            }
+
+        assert {
+            "actual_duration_seconds",
+            "final_video_path",
+            "final_product_name",
+            "final_copywriting_text",
+        }.issubset(version_columns)
+        assert {
+            "publish_profile_id",
+            "frozen_video_path",
+            "frozen_cover_path",
+            "frozen_duration_seconds",
+            "frozen_product_name",
+            "frozen_copywriting_text",
+        }.issubset(package_columns)
+        assert "ix_package_records_publish_profile_id" in package_indexes
+    finally:
+        await engine.dispose()
 
 
 @pytest.mark.asyncio
@@ -140,3 +226,60 @@ async def test_create_next_version_invalidates_previous_approval_summary(
     assert pool_items[0].creative_version_id == v1.id
     assert pool_items[0].status == "invalidated"
     assert pool_items[0].invalidation_reason == "superseded_by_new_version"
+
+
+@pytest.mark.asyncio
+async def test_update_creative_does_not_mutate_approved_version_freeze_snapshot(
+    db_session: AsyncSession,
+) -> None:
+    creative = CreativeItem(
+        creative_no="CR-VERSION-0003",
+        title="Creative Version Freeze Guard",
+        status="PENDING_INPUT",
+        latest_version_no=0,
+        subject_product_name_snapshot="Approved Product",
+        main_copywriting_text="Approved Copy",
+        target_duration_seconds=30,
+    )
+    db_session.add(creative)
+    await db_session.flush()
+
+    version_service = CreativeVersionService(db_session)
+    review_service = CreativeReviewService(db_session)
+
+    version = await version_service.create_initial_version(creative, title="Approved V1")
+    creative.status = "WAITING_REVIEW"
+    await db_session.commit()
+
+    await review_service.approve(creative.id, version_id=version.id, note="freeze it")
+    await db_session.commit()
+
+    await CreativeService(db_session).update_creative(
+        creative.id,
+        CreativeUpdateRequest(
+            subject_product_name_snapshot="Edited Product Definition",
+            main_copywriting_text="Edited Copy Definition",
+            target_duration_seconds=45,
+        ),
+    )
+
+    persisted_version = await db_session.get(CreativeVersion, version.id)
+    assert persisted_version is not None
+    package_record = (
+        await db_session.execute(
+            select(PackageRecord).where(PackageRecord.creative_version_id == version.id)
+        )
+    ).scalars().one()
+    persisted_creative = await db_session.get(CreativeItem, creative.id)
+    assert persisted_creative is not None
+
+    assert persisted_creative.subject_product_name_snapshot == "Edited Product Definition"
+    assert persisted_creative.main_copywriting_text == "Edited Copy Definition"
+    assert persisted_creative.target_duration_seconds == 45
+    assert persisted_version.final_product_name == "Approved Product"
+    assert persisted_version.final_copywriting_text == "Approved Copy"
+    assert persisted_version.actual_duration_seconds is None
+    assert persisted_version.final_video_path is None
+    assert package_record.frozen_product_name == "Approved Product"
+    assert package_record.frozen_copywriting_text == "Approved Copy"
+    assert package_record.frozen_duration_seconds == 30
