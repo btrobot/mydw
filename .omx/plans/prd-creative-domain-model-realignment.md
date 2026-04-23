@@ -1,18 +1,18 @@
 # Creative Domain Model Realignment PRD（作品域重整 PRD）
 
-> Version: 2.1.0  
-> Updated: 2026-04-22  
+> Version: 2.2.0  
+> Updated: 2026-04-23  
 > Owner: Product / Domain Design / Codex  
-> Status: Phase 0 PR1 frozen normative artifact
+> Status: Master PRD / Phase 0-4 integrated closeout artifact
 
-> 本文档用于把现有讨论稿冻结为 **Phase 0 PR1 的正式 PRD**。  
-> 它回答：**为什么现在要调整 Creative 域、推荐采用什么领域边界、迁移如何分阶段推进、以及什么算本轮规划完成。**
+> 本文档最初用于冻结 **Phase 0 PR1 的正式 PRD**；现已吸收 **Phase 1-4 的实施结果与 Phase 4 收口结论**，作为 creative-domain 主线的总 PRD / 当前真相文档。  
+> 它回答：**为什么要调整 Creative 域、当前推荐并已落地的领域边界是什么、迁移是如何分阶段完成的、以及本轮主线已经收口到什么状态。**
 
-> PR1 invariant lines:
-> - docs-only
-> - No runtime behavior changes
-> - Implementation is out of scope
-> - Future implementation PRs must cite the frozen Phase 0 artifacts
+> Origin note:
+> - Originated as Phase 0 PR1 docs-only artifact
+> - Keeps the frozen domain boundary and migration rationale
+> - Now also records the implemented end-state through Phase 4
+> - Future follow-up PRs should still cite this master PRD and the master test spec
 
 ## 0. 在启动包中的角色
 
@@ -27,8 +27,8 @@
 
 1. 本文档负责锁定范围、边界、迁移阶段与验收口径。
 2. 若后续方案改变了对象边界、迁移顺序或非目标，先更新本 PRD，再更新 test spec。
-3. 本文档是 **Phase 0 PR1 的规范性来源**；后续实现 PR 不得绕过本文档重新定义领域边界。
-4. 本轮产出为 docs-only planning artifact，不是实现指令；不得将本文档视为代码变更已获批准。
+3. 本文档仍是 creative-domain 主线的规范性来源；后续 PR 不得绕过本文档重新定义领域边界。
+4. Phase 0 的 planning 属性仍保留为历史来源说明；但本文档同时承担 Phase 4 之后的 master closeout/当前真相职责。
 
 ## 1. 规划主题
 
@@ -44,7 +44,7 @@
 - 默认入口切到 `/creative/workbench`，Dashboard 退回运行态观察页：`docs/domains/creative/progressive-rebuild-final-summary.md:107-117`
 - 重构总结明确写明：`Task` 只负责执行、追踪、诊断：`docs/domains/creative/progressive-rebuild-final-summary.md:186-192`
 
-### 2.2 尚未完成的技术真相
+### 2.2 启动时尚未完成的技术真相（历史背景）
 
 尽管产品主语义已迁移，当前数据与 contract 仍保留明显的 Task-era 表达：
 
@@ -56,9 +56,24 @@
 - 当前任务真实输入面仍定义为 ID 集合字段：`docs/domains/tasks/task-management-domain-model.md:110-118`
 - `local_ffmpeg V1` 当前只支持单视频输入；测试也锁定了这一点：`docs/domains/tasks/task-management-domain-model.md:136-159`、`backend/tests/test_task_creation_semantics.py:70-84`
 
-### 2.3 结论
+### 2.3 启动结论
 
 **当前系统已经是 Creative-first 的产品结构，但仍不是 Creative-first 的领域模型。**
+
+### 2.4 当前收口真相（截至 2026-04-23）
+
+经过 Phase 1-4 的连续落地，当前主线已经收口为：
+
+- **作品定义真值**：`CreativeItem` + `input_items` + `input_profile_id` + `input_orchestration`
+- **版本结果真值**：`CreativeVersion`
+- **发布冻结真值**：`PackageRecord / PublishPackage`
+- **任务定位**：`Task` 仅承担执行 / 诊断 / 运行结果回写，不再反向定义作品输入真值
+
+同时，legacy request list fields（如 `video_ids` / `audio_ids` / `copywriting_ids` 等）当前只作为 **deprecated compatibility surface** 存在：
+
+1. schema / OpenAPI 已标记 deprecated
+2. 写入路径已被 validator 拒绝
+3. 若后续要做 strict API hard-removal，应作为单独 follow-up，而不是回滚本轮主线
 
 ## 3. 问题陈述
 
@@ -275,9 +290,9 @@
 
 原因：它是唯一同时满足“语义正确、表达完整、迁移可控”的方案；其主要成本是规划与迁移纪律，而不是方向风险。
 
-## 9. 迁移阶段建议
+## 9. 迁移阶段与完成状态
 
-### Phase 0 — 共识锁定（当前阶段）
+### Phase 0 — 共识锁定（已完成）
 
 产出：
 
@@ -290,7 +305,12 @@
 - 团队认可新对象边界与新不变量
 - 后续实现工作以新 test spec 为准
 
-### Phase 1 — 模型并行引入
+当前状态：
+
+- 已完成，并沉淀为 master PRD / master test spec / execution breakdown 三件套
+- Phase 0 closeout 已完成：`.omx/plans/closeout-creative-domain-model-realignment-phase0.md`
+
+### Phase 1 — 模型并行引入（已完成）
 
 目标：
 
@@ -306,7 +326,13 @@
 - contract 明确谁是 authoritative source
 - 双写范围与回退策略有书面约束，避免“隐式长期双轨”
 
-### Phase 2 — API / Schema / 前端主语义切换
+当前状态：
+
+- 已完成 `CreativeInputItem` / 作品层业务字段 / 受控双写与兼容回读的引入
+- authoritative source 已开始从旧集合 carrier 向新编排模型迁移
+- Phase 1 结果已被后续 Phase 2-4 持续消费与收口
+
+### Phase 2 — API / Schema / 前端主语义切换（已完成）
 
 目标：
 
@@ -321,7 +347,13 @@
 - 默认页面语义与新领域模型一致
 - Phase 2+ 的新入口、新接口、新文档不再把 `video_ids` 等旧字段描述为 canonical authoring semantics
 
-### Phase 3 — 版本与发布冻结落地
+当前状态：
+
+- 已完成 backend/API 语义源切换
+- Workbench / Detail 主创作流已切到 canonical authoring semantics
+- legacy list/snapshot 字段已降级为 compatibility carrier / deprecated projection
+
+### Phase 3 — 版本与发布冻结落地（已完成）
 
 目标：
 
@@ -334,7 +366,13 @@
 - 发布链路可追溯最终采用值
 - Task 侧不再承担作品定义责任
 
-### Phase 4 — 退役旧合同
+当前状态：
+
+- 已完成版本层结果归位与发布冻结语义落地
+- `CreativeVersion` / `PackageRecord` 已承接最终采用值与冻结值
+- Task 已收敛为执行与诊断载体
+
+### Phase 4 — 退役旧合同（已完成）
 
 目标：
 
@@ -348,6 +386,26 @@
 - 旧集合 contract 不再是主要验收口径
 - 新编排 contract 成为唯一主线
 - legacy carrier retired；旧字段若仍存在，仅用于历史数据读取或迁移观察，不再承担新写入职责
+
+当前状态：
+
+- 已完成 legacy snapshot storage / public snapshot read contract / frontend snapshot narration 的正式退役
+- Phase 4 PR ledger：
+  - PR1 `5fb287b` — canonical orchestration contract / deprecation gate
+  - PR2 `cd56b59` — runtime dual-write / fallback retirement
+  - PR3 `81a2cf6` — frontend / SDK snapshot retirement
+  - PR4 `bf34ec6` — physical cleanup + closeout evidence
+- active runtime / frontend surface 已不再依赖 snapshot carriers
+- destructive cleanup 已由 migration / regression / search audit 证明安全
+
+### Phase 4 之后的主线结论
+
+截至本轮收口，creative-domain 主线已经实现从“集合快照叙事”到“作品 / 输入编排 / 版本 / 发布冻结”模型的完整切换。
+
+剩余 follow-up 不再属于本次主线收口阻塞项，主要包括：
+
+1. deprecated request list fields 的 API hard-removal（可单开后续 slice）
+2. task-diagnostics 首屏跳转偶发 E2E flake 的持续观察
 
 ## 10. 验收标准（testable）
 
@@ -365,6 +423,13 @@
    - 哪一阶段切主语义
    - 哪一阶段退役旧合同
 5. 后续实现 handoff 可以直接按本文档拆解，而不需要重新做领域边界讨论。
+
+截至 2026-04-23，上述规划验收已经被 Phase 1-4 的实现与 closeout 证据满足；后续验证与主线完成情况可回链：
+
+- `.omx/plans/execution-breakdown-creative-domain-model-realignment.md`
+- `.omx/plans/closeout-creative-domain-model-realignment-phase2.md`
+- `.omx/plans/closeout-creative-domain-model-realignment-phase3.md`
+- `.omx/plans/closeout-creative-domain-model-realignment-phase4.md`
 
 ## 11. 风险与缓解
 
