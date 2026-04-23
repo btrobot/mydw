@@ -64,6 +64,8 @@ import {
   creativeStatusMeta,
   creativeReviewConclusionMeta,
   formatCheckConclusion,
+  formatCreativeDurationSeconds,
+  formatCreativeText,
   formatCreativeTimestamp,
   formatModeLabel,
   formatRuntimeStatusLabel,
@@ -71,6 +73,7 @@ import {
   formatShadowDiffReasons,
   getShadowDiffFlag,
   getVersionLabel,
+  hasPackageFrozenTruth,
   isPoolVersionAligned,
   publishPoolStatusMeta,
   publishRuntimeStatusMeta,
@@ -156,6 +159,12 @@ export default function CreativeDetail() {
   }
   const eligibilityReasons = creative?.eligibility_reasons ?? []
   const currentVersion = creative?.versions?.find((version) => version.is_current) ?? null
+  const currentVersionResult = creative?.current_version ?? null
+  const versionById = useMemo(
+    () => new Map((creative?.versions ?? []).map((version) => [version.id, version])),
+    [creative?.versions],
+  )
+  const currentPackageRecord = currentVersionResult?.package_record ?? currentVersion?.package_record ?? null
   const aiClipOpen = searchParams.get('tool') === 'ai-clip' && Boolean(currentVersion)
   const detailCardMinWidth = screens.md ? 320 : '100%'
   const aiClipDrawerWidth = screens.xl ? 720 : screens.lg ? 640 : screens.md ? 560 : '100vw'
@@ -209,6 +218,11 @@ export default function CreativeDetail() {
   }, [activePoolItems, creative?.current_version_id])
 
   const latestInvalidatedPoolItem = invalidatedPoolItems[0] ?? null
+  const currentPoolVersion = currentPoolItem ? versionById.get(currentPoolItem.creative_version_id) ?? null : null
+  const currentPoolPackageRecord = currentPoolVersion?.package_record ?? currentPackageRecord
+  const latestInvalidatedPoolVersion = latestInvalidatedPoolItem
+    ? versionById.get(latestInvalidatedPoolItem.creative_version_id) ?? null
+    : null
 
   const diagnosticTaskIds = useMemo(() => {
     const ids = new Set<number>()
@@ -828,18 +842,76 @@ export default function CreativeDetail() {
 
         <Flex gap={16} wrap="wrap" align="stretch">
           <Card title="当前版本结果" style={{ flex: 1, minWidth: detailCardMinWidth }}>
-            {creative.current_version ? (
+            {currentVersionResult ? (
               <Space direction="vertical" size={12} style={{ width: '100%' }}>
                 <Descriptions bordered size="small" column={screens.md ? 2 : 1}>
-                  <Descriptions.Item label="版本 ID">{creative.current_version.id}</Descriptions.Item>
-                  <Descriptions.Item label="版本号">{getVersionLabel(creative.current_version.version_no)}</Descriptions.Item>
-                  <Descriptions.Item label="版本标题" span={2}>{creative.current_version.title ?? '未命名版本'}</Descriptions.Item>
-                  <Descriptions.Item label="父版本 ID">{creative.current_version.parent_version_id ?? '-'}</Descriptions.Item>
-                  <Descriptions.Item label="发布侧 PackageRecord">{creative.current_version.package_record_id ?? '-'}</Descriptions.Item>
+                  <Descriptions.Item label="版本 ID">{currentVersionResult.id}</Descriptions.Item>
+                  <Descriptions.Item label="版本号">{getVersionLabel(currentVersionResult.version_no)}</Descriptions.Item>
+                  <Descriptions.Item label="版本标题" span={2}>{currentVersionResult.title ?? '未命名版本'}</Descriptions.Item>
+                  <Descriptions.Item label="父版本 ID">{currentVersionResult.parent_version_id ?? '-'}</Descriptions.Item>
+                  <Descriptions.Item label="发布侧 PackageRecord">{currentVersionResult.package_record_id ?? '-'}</Descriptions.Item>
+                  <Descriptions.Item label="结果时长">
+                    {formatCreativeDurationSeconds(currentVersionResult.actual_duration_seconds)}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="成片路径">
+                    {formatCreativeText(currentVersionResult.final_video_path)}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="最终商品名">
+                    {formatCreativeText(currentVersionResult.final_product_name)}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="最终文案" span={2}>
+                    {formatCreativeText(currentVersionResult.final_copywriting_text)}
+                  </Descriptions.Item>
                 </Descriptions>
                 <Paragraph type="secondary" style={{ marginBottom: 0 }} data-testid="creative-current-version-semantics">
-                  版本结果承接当前作品 brief 与素材编排；它是审核对象，发布侧候选与执行任务请在高级诊断查看。
+                  版本结果承接当前作品 brief 与素材编排，并沉淀 adopted truth；发布包冻结值承接发布四件套，执行任务只在高级诊断中作为运行载体出现。
                 </Paragraph>
+                <Card
+                  size="small"
+                  type="inner"
+                  title="当前发布包冻结值"
+                  data-testid="creative-current-package-freeze"
+                >
+                  {currentPackageRecord ? (
+                    <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                      <Text type="secondary">
+                        PackageRecord #{currentPackageRecord.id}
+                        {currentPackageRecord.publish_profile_id ? ` / 发布档案 #${currentPackageRecord.publish_profile_id}` : ''}
+                      </Text>
+                      {hasPackageFrozenTruth(currentPackageRecord) ? (
+                        <Descriptions size="small" column={1}>
+                          <Descriptions.Item label="冻结视频">
+                            {formatCreativeText(currentPackageRecord.frozen_video_path)}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="冻结封面">
+                            {formatCreativeText(currentPackageRecord.frozen_cover_path)}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="冻结时长">
+                            {formatCreativeDurationSeconds(currentPackageRecord.frozen_duration_seconds)}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="冻结商品名">
+                            {formatCreativeText(currentPackageRecord.frozen_product_name)}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="冻结文案">
+                            {formatCreativeText(currentPackageRecord.frozen_copywriting_text)}
+                          </Descriptions.Item>
+                        </Descriptions>
+                      ) : (
+                        <Alert
+                          type="info"
+                          showIcon
+                          message="当前版本已关联发布包，但冻结四件套尚未返回。"
+                        />
+                      )}
+                    </Space>
+                  ) : (
+                    <Alert
+                      type="info"
+                      showIcon
+                      message="当前版本尚未生成发布包冻结值。"
+                    />
+                  )}
+                </Card>
               </Space>
             ) : <Empty description="当前还没有可用版本结果" />}
           </Card>
@@ -904,7 +976,7 @@ export default function CreativeDetail() {
             {diagnosticTaskIds.length > 0 ? (
               <Space direction="vertical" size={12} style={{ width: '100%' }}>
                 <Paragraph type="secondary" style={{ marginBottom: 0 }} data-testid="creative-task-diagnostics-note">
-                  任务管理只承接执行进度、失败重试与排障，不回写作品定义、版本结果或发布侧承接语义。
+                  任务管理只承接执行进度、失败重试与排障，不回写作品定义、版本结果或发布包冻结值。
                 </Paragraph>
                 <Space wrap>
                   {primaryTaskId ? (
@@ -950,7 +1022,7 @@ export default function CreativeDetail() {
               />
             ) : null}
             <Paragraph type="secondary" style={{ marginBottom: 16 }} data-testid="creative-publish-semantics">
-              这里查看发布侧候选项、调度模式与 cutover 对账；如果当前作品定义暂不能直达发布，表示当前执行引擎能力尚未覆盖，并不代表作品定义无效。
+              这里查看发布包冻结值、发布侧候选项、调度模式与 cutover 对账；如果当前作品定义暂不能直达发布，表示当前执行引擎能力尚未覆盖，并不代表作品定义无效。
             </Paragraph>
             <Descriptions bordered size="small" column={screens.md ? 2 : 1}>
               <Descriptions.Item label="入口模式">
@@ -988,16 +1060,41 @@ export default function CreativeDetail() {
                   <Space wrap>
                     <Tag color={publishPoolStatusMeta[currentPoolItem.status].color}>{publishPoolStatusMeta[currentPoolItem.status].label}</Tag>
                     <Tag color={isPoolVersionAligned(currentPoolItem) ? 'success' : 'warning'}>版本 #{currentPoolItem.creative_version_id}</Tag>
+                    {currentPoolPackageRecord ? <Tag>Package #{currentPoolPackageRecord.id}</Tag> : null}
                   </Space>
                 ) : activePoolQuery.isError ? '获取失败' : '当前版本尚未生成发布侧候选项'}
               </Descriptions.Item>
               <Descriptions.Item label="候选项 ID">
                 {currentPoolItem ? `#${currentPoolItem.id}` : activePoolQuery.isError ? '获取失败' : '-'}
               </Descriptions.Item>
+              <Descriptions.Item label="当前发布包冻结值" span={2}>
+                {currentPoolPackageRecord ? (
+                  <Space direction="vertical" size={4} data-testid="creative-current-publish-package-summary">
+                    <Text>Package #{currentPoolPackageRecord.id}</Text>
+                    <Text type="secondary">冻结商品名：{formatCreativeText(currentPoolPackageRecord.frozen_product_name)}</Text>
+                    <Text type="secondary">冻结文案：{formatCreativeText(currentPoolPackageRecord.frozen_copywriting_text)}</Text>
+                    <Text type="secondary">冻结视频：{formatCreativeText(currentPoolPackageRecord.frozen_video_path)}</Text>
+                    <Text type="secondary">冻结时长：{formatCreativeDurationSeconds(currentPoolPackageRecord.frozen_duration_seconds)}</Text>
+                    <Text type="secondary">冻结封面：{formatCreativeText(currentPoolPackageRecord.frozen_cover_path)}</Text>
+                  </Space>
+                ) : activePoolQuery.isError ? '获取失败' : '当前候选项尚未返回发布包冻结值'}
+              </Descriptions.Item>
+              <Descriptions.Item label="当前 package / task 关系" span={2}>
+                {currentPoolPackageRecord ? (
+                  <Space wrap>
+                    <Tag>Package #{currentPoolPackageRecord.id}</Tag>
+                    <Tag>版本 #{currentPoolItem?.creative_version_id ?? currentVersionResult?.id ?? '-'}</Tag>
+                    <Tag>{currentPublishTaskId !== null ? `任务 #${currentPublishTaskId}` : '暂无发布执行任务'}</Tag>
+                  </Space>
+                ) : activePoolQuery.isError ? '获取失败' : '当前暂无 package / task 关系可展示'}
+              </Descriptions.Item>
               <Descriptions.Item label="最近候选失效记录" span={2}>
                 {latestInvalidatedPoolItem ? (
                   <Space direction="vertical" size={4}>
                     <Text>Pool #{latestInvalidatedPoolItem.id} / 版本 #{latestInvalidatedPoolItem.creative_version_id}</Text>
+                    {latestInvalidatedPoolVersion?.package_record ? (
+                      <Text type="secondary">关联 Package #{latestInvalidatedPoolVersion.package_record.id}</Text>
+                    ) : null}
                     <Text type="secondary">失效于 {formatCreativeTimestamp(latestInvalidatedPoolItem.invalidated_at ?? latestInvalidatedPoolItem.updated_at)}</Text>
                     <Text type="secondary">原因：{latestInvalidatedPoolItem.invalidation_reason ?? '未记录'}</Text>
                   </Space>
@@ -1029,6 +1126,8 @@ export default function CreativeDetail() {
                 dataSource={[...activePoolItems, ...invalidatedPoolItems]}
                 renderItem={(item) => {
                   const aligned = isPoolVersionAligned(item)
+                  const poolVersion = versionById.get(item.creative_version_id) ?? null
+                  const packageRecord = poolVersion?.package_record ?? null
                   return (
                     <List.Item key={`${item.status}-${item.id}`} data-testid={`creative-pool-item-${item.id}`}>
                       <Space direction="vertical" size={6} style={{ width: '100%' }}>
@@ -1037,8 +1136,26 @@ export default function CreativeDetail() {
                           <Tag color={aligned ? 'success' : 'warning'}>版本 #{item.creative_version_id}</Tag>
                           <Tag color={aligned ? 'success' : 'warning'}>{aligned ? '发布侧已对齐' : '发布侧存在偏差'}</Tag>
                           <Tag>Pool #{item.id}</Tag>
+                          {packageRecord ? <Tag>Package #{packageRecord.id}</Tag> : null}
                         </Space>
                         <Text type="secondary">入池于 {formatCreativeTimestamp(item.created_at)}，最近更新时间 {formatCreativeTimestamp(item.updated_at)}</Text>
+                        {packageRecord ? (
+                          <Space
+                            direction="vertical"
+                            size={2}
+                            style={{ width: '100%' }}
+                            data-testid={`creative-pool-item-freeze-${item.id}`}
+                          >
+                            <Text type="secondary">冻结商品名：{formatCreativeText(packageRecord.frozen_product_name)}</Text>
+                            <Text type="secondary">冻结文案：{formatCreativeText(packageRecord.frozen_copywriting_text)}</Text>
+                            <Text type="secondary">冻结视频：{formatCreativeText(packageRecord.frozen_video_path)}</Text>
+                            <Text type="secondary">冻结时长：{formatCreativeDurationSeconds(packageRecord.frozen_duration_seconds)}</Text>
+                          </Space>
+                        ) : (
+                          <Text type="secondary" data-testid={`creative-pool-item-freeze-${item.id}`}>
+                            当前候选项尚未返回发布包冻结值
+                          </Text>
+                        )}
                         {item.invalidation_reason ? <Text type="secondary">失效原因：{item.invalidation_reason}</Text> : null}
                       </Space>
                     </List.Item>

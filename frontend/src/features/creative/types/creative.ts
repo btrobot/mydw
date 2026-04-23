@@ -6,6 +6,7 @@ import type {
   CreativeReviewSummaryResponse,
   CreativeStatus,
   CreativeVersionSummaryResponse,
+  PackageRecordResponse,
   CreativeWorkbenchItemResponse,
   PublishPoolItemResponse,
   PublishPoolStatus,
@@ -21,6 +22,7 @@ export type CreativeCurrentVersion = CreativeCurrentVersionResponse
 export type CreativeVersionSummary = CreativeVersionSummaryResponse
 export type CreativeReviewSummary = CreativeReviewSummaryResponse
 export type CreativeCheckRecord = CheckRecordResponse
+export type PublishPackageRecord = PackageRecordResponse
 export type PublishPoolItem = PublishPoolItemResponse
 export type PublishRuntimeStatus = PublishStatusResponse
 export type PublishScheduleConfig = ScheduleConfigResponse
@@ -84,6 +86,68 @@ export const formatCreativeTimestamp = (value?: string | null): string => {
   }
   return new Date(value).toLocaleString('zh-CN')
 }
+
+const hasTextValue = (value?: string | null): boolean => typeof value === 'string' && value.trim().length > 0
+
+const hasNumericValue = (value?: number | null): boolean =>
+  typeof value === 'number' && Number.isFinite(value)
+
+export const formatCreativeText = (value?: string | null): string => {
+  if (!hasTextValue(value)) {
+    return '-'
+  }
+  return (value ?? '').trim()
+}
+
+export const formatCreativeDurationSeconds = (value?: number | null): string =>
+  hasNumericValue(value) ? `${value} 秒` : '-'
+
+export const hasVersionAdoptedTruth = (
+  version:
+    | Pick<
+        CreativeVersionSummary,
+        'actual_duration_seconds' | 'final_video_path' | 'final_product_name' | 'final_copywriting_text'
+      >
+    | Pick<
+        CreativeCurrentVersion,
+        'actual_duration_seconds' | 'final_video_path' | 'final_product_name' | 'final_copywriting_text'
+      >
+    | null
+    | undefined,
+): boolean =>
+  Boolean(
+    version
+    && (
+      hasNumericValue(version.actual_duration_seconds)
+      || hasTextValue(version.final_video_path)
+      || hasTextValue(version.final_product_name)
+      || hasTextValue(version.final_copywriting_text)
+    ),
+  )
+
+export const hasPackageFrozenTruth = (
+  packageRecord:
+    | Pick<
+        PublishPackageRecord,
+        | 'frozen_video_path'
+        | 'frozen_cover_path'
+        | 'frozen_duration_seconds'
+        | 'frozen_product_name'
+        | 'frozen_copywriting_text'
+      >
+    | null
+    | undefined,
+): boolean =>
+  Boolean(
+    packageRecord
+    && (
+      hasTextValue(packageRecord.frozen_video_path)
+      || hasTextValue(packageRecord.frozen_cover_path)
+      || hasNumericValue(packageRecord.frozen_duration_seconds)
+      || hasTextValue(packageRecord.frozen_product_name)
+      || hasTextValue(packageRecord.frozen_copywriting_text)
+    ),
+  )
 
 export const getVersionLabel = (versionNo?: number | null): string =>
   versionNo ? `V${versionNo}` : '未标版本'

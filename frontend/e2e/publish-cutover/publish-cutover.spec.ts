@@ -79,8 +79,10 @@ test.describe('Phase C cutover diagnostics', () => {
 
     await page.getByTestId('creative-open-advanced-diagnostics').click()
     await expect(page.getByTestId('creative-detail-diagnostics-drawer')).toBeVisible()
-    await expect(page.getByTestId('creative-publish-semantics')).toContainText('当前执行引擎能力尚未覆盖')
+    await expect(page.getByTestId('creative-publish-semantics')).toContainText('发布包冻结值')
     await expect(page.getByTestId('creative-publish-diagnostics')).toContainText('Pool')
+    await expect(page.getByTestId('creative-current-publish-package-summary')).toContainText('Package #302')
+    await expect(page.getByTestId('creative-publish-diagnostics')).toContainText('Package #302')
     await expect(page.getByTestId('creative-publish-pool-card')).toContainText('publish_failed')
     await expect(page.getByTestId('creative-shadow-diff')).toContainText('legacy_task_diff')
     await expect(page.getByTestId('creative-shadow-diff')).toContainText('pool_candidate_locked')

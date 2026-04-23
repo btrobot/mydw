@@ -14,6 +14,21 @@ interface CheckRecord {
   updated_at: string
 }
 
+interface PackageRecord {
+  id: number
+  creative_version_id: number
+  package_status: string
+  publish_profile_id?: number | null
+  frozen_video_path?: string | null
+  frozen_cover_path?: string | null
+  frozen_duration_seconds?: number | null
+  frozen_product_name?: string | null
+  frozen_copywriting_text?: string | null
+  manifest_json?: string | null
+  created_at: string
+  updated_at: string
+}
+
 interface CreativeVersion {
   id: number
   creative_item_id: number
@@ -21,7 +36,12 @@ interface CreativeVersion {
   version_no: number
   version_type: string
   title?: string | null
+  actual_duration_seconds?: number | null
+  final_video_path?: string | null
+  final_product_name?: string | null
+  final_copywriting_text?: string | null
   package_record_id?: number | null
+  package_record?: PackageRecord | null
   is_current?: boolean
   latest_check?: CheckRecord | null
   created_at: string
@@ -55,7 +75,12 @@ interface CreativeScenarioState {
       version_no: number
       title: string
       parent_version_id?: number | null
+      actual_duration_seconds?: number | null
+      final_video_path?: string | null
+      final_product_name?: string | null
+      final_copywriting_text?: string | null
       package_record_id?: number | null
+      package_record?: PackageRecord | null
     }
     versions: CreativeVersion[]
     review_summary: {
@@ -218,7 +243,12 @@ function updateCurrentVersion(state: CreativeScenarioState, currentVersion: Crea
     version_no: currentVersion.version_no,
     title: currentVersion.title ?? '',
     parent_version_id: currentVersion.parent_version_id ?? null,
+    actual_duration_seconds: currentVersion.actual_duration_seconds ?? null,
+    final_video_path: currentVersion.final_video_path ?? null,
+    final_product_name: currentVersion.final_product_name ?? null,
+    final_copywriting_text: currentVersion.final_copywriting_text ?? null,
     package_record_id: currentVersion.package_record_id ?? null,
+    package_record: currentVersion.package_record ?? null,
   }
   state.detail.current_version_id = currentVersion.id
 }
@@ -274,6 +304,14 @@ function createTaskBody(taskId: number) {
 
 export function createCreativeReviewState(): CreativeScenarioState {
   const approvedAt = '2026-04-16T09:00:00Z'
+  const currentPackageRecord = buildPackageRecord(302, 202)
+  const historyPackageRecord = buildPackageRecord(301, 201, {
+    frozen_video_path: '/publish/package-301.mp4',
+    frozen_cover_path: '/publish/package-301.png',
+    frozen_duration_seconds: 26,
+    frozen_product_name: 'Classic Hoodie 首版',
+    frozen_copywriting_text: '首发款上线，轻松出街。',
+  })
   return {
     detail: {
       id: 101,
@@ -286,7 +324,12 @@ export function createCreativeReviewState(): CreativeScenarioState {
         version_no: 2,
         title: '二次修订版',
         parent_version_id: 201,
+        actual_duration_seconds: 28,
+        final_video_path: '/creative/version-202.mp4',
+        final_product_name: 'Classic Hoodie 春季轻运动版',
+        final_copywriting_text: '轻盈上身，即刻出发。',
         package_record_id: 302,
+        package_record: currentPackageRecord,
       },
       versions: [
         {
@@ -296,7 +339,12 @@ export function createCreativeReviewState(): CreativeScenarioState {
           version_no: 2,
           version_type: 'COMPOSITION',
           title: '二次修订版',
+          actual_duration_seconds: 28,
+          final_video_path: '/creative/version-202.mp4',
+          final_product_name: 'Classic Hoodie 春季轻运动版',
+          final_copywriting_text: '轻盈上身，即刻出发。',
           package_record_id: 302,
+          package_record: currentPackageRecord,
           is_current: true,
           latest_check: null,
           created_at: '2026-04-16T10:00:00Z',
@@ -309,7 +357,12 @@ export function createCreativeReviewState(): CreativeScenarioState {
           version_no: 1,
           version_type: 'COMPOSITION',
           title: '初版',
+          actual_duration_seconds: 26,
+          final_video_path: '/creative/version-201.mp4',
+          final_product_name: 'Classic Hoodie 首版',
+          final_copywriting_text: '首发款上线，轻松出街。',
           package_record_id: 301,
+          package_record: historyPackageRecord,
           is_current: false,
           latest_check: {
             id: 501,
@@ -336,6 +389,30 @@ export function createCreativeReviewState(): CreativeScenarioState {
       generation_failed_at: null,
       ...createCreativeBriefFields(),
     },
+  }
+}
+
+function buildPackageRecord(
+  id: number,
+  creativeVersionId: number,
+  overrides: Partial<PackageRecord> = {},
+): PackageRecord {
+  const createdAt = overrides.created_at ?? '2026-04-16T09:30:00Z'
+  const updatedAt = overrides.updated_at ?? createdAt
+  return {
+    id,
+    creative_version_id: creativeVersionId,
+    package_status: 'ready',
+    publish_profile_id: 88,
+    frozen_video_path: `/publish/package-${id}.mp4`,
+    frozen_cover_path: `/publish/package-${id}.png`,
+    frozen_duration_seconds: 28,
+    frozen_product_name: 'Classic Hoodie 春季轻运动版',
+    frozen_copywriting_text: '春季轻装，轻盈上身，即刻出发。',
+    manifest_json: null,
+    created_at: createdAt,
+    updated_at: updatedAt,
+    ...overrides,
   }
 }
 

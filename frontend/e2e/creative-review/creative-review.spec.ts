@@ -10,7 +10,10 @@ test.describe('Creative review drawer', () => {
   test('supports approve flow on current version', async ({ page }) => {
     await page.goto(`/#/creative/101`)
 
-    await expect(page.getByTestId('creative-current-version-semantics')).toContainText('版本结果承接当前作品 brief 与素材编排')
+    await expect(page.getByTestId('creative-current-version-semantics')).toContainText('并沉淀 adopted truth')
+    await expect(page.getByTestId('creative-current-package-freeze')).toContainText('PackageRecord #302')
+    await expect(page.getByTestId('creative-current-package-freeze')).toContainText('冻结商品名')
+    await expect(page.getByTestId('creative-current-package-freeze')).toContainText('Classic Hoodie 春季轻运动版')
     await expect(page.getByTestId('creative-open-advanced-diagnostics')).toBeVisible()
     await expect(page.getByTestId('creative-publish-diagnostics')).toHaveCount(0)
 
