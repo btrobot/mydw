@@ -9,7 +9,7 @@ import json
 from typing import Any, Optional
 
 from loguru import logger
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import set_committed_value
@@ -23,6 +23,7 @@ from models import (
     CreativeItem,
     CreativeVersion,
     Product,
+    PublishPoolItem,
     PublishProfile,
     Task,
     TaskAudio,
@@ -48,6 +49,9 @@ from schemas import (
     CreativeUpdateRequest,
     CreativeWorkbenchItemResponse,
     CreativeWorkbenchListResponse,
+    CreativeWorkbenchPoolState,
+    CreativeWorkbenchSort,
+    CreativeWorkbenchSummaryResponse,
     CompositionJobStatus,
     TaskKind,
     TaskStatus,
@@ -102,15 +106,15 @@ class CreativeService:
         *,
         skip: int = 0,
         limit: int = 50,
+        keyword: Optional[str] = None,
+        status: Optional[CreativeStatus] = None,
+        pool_state: Optional[CreativeWorkbenchPoolState] = None,
+        sort: CreativeWorkbenchSort = CreativeWorkbenchSort.UPDATED_DESC,
+        recent_failures_only: bool = False,
     ) -> CreativeWorkbenchListResponse:
-        total_result = await self.db.execute(select(func.count()).select_from(CreativeItem))
-        total = total_result.scalar() or 0
-
         result = await self.db.execute(
             select(CreativeItem)
             .order_by(CreativeItem.updated_at.desc(), CreativeItem.id.desc())
-            .offset(skip)
-            .limit(limit)
             .options(
                 selectinload(CreativeItem.input_items),
                 selectinload(CreativeItem.input_profile),
@@ -118,8 +122,22 @@ class CreativeService:
                 selectinload(CreativeItem.publish_pool_items),
             )
         )
-        items = [await self._build_workbench_item_response(item) for item in result.scalars().all()]
-        return CreativeWorkbenchListResponse(total=total, items=items)
+        all_items = [await self._build_workbench_item_response(item) for item in result.scalars().all()]
+        summary = self._build_workbench_summary(all_items)
+        filtered_items = self._filter_workbench_items(
+            all_items,
+            keyword=keyword,
+            status=status,
+            pool_state=pool_state,
+            recent_failures_only=recent_failures_only,
+        )
+        sorted_items = self._sort_workbench_items(filtered_items, sort=sort)
+        paginated_items = sorted_items[skip:skip + limit]
+        return CreativeWorkbenchListResponse(
+            total=len(filtered_items),
+            items=paginated_items,
+            summary=summary,
+        )
 
     async def create_creative(self, payload: CreativeCreateRequest) -> CreativeDetailResponse:
         creative_no = payload.creative_no or await self._generate_creative_no()
@@ -484,6 +502,11 @@ class CreativeService:
 
     async def _build_workbench_item_response(self, creative: CreativeItem) -> CreativeWorkbenchItemResponse:
         projection = await self._build_projection(creative)
+        active_pool_item = self._pick_active_pool_item(creative.publish_pool_items)
+        pool_state = self._get_creative_workbench_pool_state(
+            creative.current_version_id,
+            active_pool_item,
+        )
         return CreativeWorkbenchItemResponse(
             id=creative.id,
             creative_no=creative.creative_no,
@@ -498,6 +521,13 @@ class CreativeService:
             input_orchestration=projection["input_orchestration"],
             generation_error_msg=creative.generation_error_msg,
             generation_failed_at=creative.generation_failed_at,
+            pool_state=pool_state,
+            active_pool_item_id=active_pool_item.id if active_pool_item is not None else None,
+            active_pool_version_id=active_pool_item.creative_version_id if active_pool_item is not None else None,
+            active_pool_aligned=(
+                active_pool_item is not None
+                and active_pool_item.creative_version_id == creative.current_version_id
+            ),
             eligibility_status=projection["eligibility_status"],
             eligibility_reasons=projection["eligibility_reasons"],
             latest_task_summary=projection["latest_task_summary"],
@@ -704,6 +734,132 @@ class CreativeService:
         if eligibility_status == CreativeEligibilityStatus.INVALID and creative.generation_failed_at is not None:
             return CreativeStatus.FAILED
         return CreativeStatus.PENDING_INPUT
+
+    def _pick_active_pool_item(
+        self,
+        pool_items: list[PublishPoolItem],
+    ) -> Optional[PublishPoolItem]:
+        active_items = [item for item in pool_items if item.status == "active"]
+        if not active_items:
+            return None
+        return max(active_items, key=lambda item: (item.updated_at, item.id))
+
+    def _get_creative_workbench_pool_state(
+        self,
+        current_version_id: Optional[int],
+        active_pool_item: Optional[PublishPoolItem],
+    ) -> CreativeWorkbenchPoolState:
+        if active_pool_item is None:
+            return CreativeWorkbenchPoolState.OUT_POOL
+        if active_pool_item.creative_version_id == current_version_id:
+            return CreativeWorkbenchPoolState.IN_POOL
+        return CreativeWorkbenchPoolState.VERSION_MISMATCH
+
+    def _has_recent_failure(self, item: CreativeWorkbenchItemResponse) -> bool:
+        return bool(
+            item.generation_error_msg
+            or item.status == CreativeStatus.FAILED
+            or item.generation_failed_at is not None
+        )
+
+    def _get_attention_score(self, item: CreativeWorkbenchItemResponse) -> int:
+        score = 0
+
+        if self._has_recent_failure(item):
+            score += 400
+
+        if item.status == CreativeStatus.REWORK_REQUIRED:
+            score += 300
+
+        if item.status == CreativeStatus.WAITING_REVIEW:
+            score += 200
+
+        if item.pool_state == CreativeWorkbenchPoolState.VERSION_MISMATCH:
+            score += 100
+
+        return score
+
+    def _build_workbench_summary(
+        self,
+        items: list[CreativeWorkbenchItemResponse],
+    ) -> CreativeWorkbenchSummaryResponse:
+        return CreativeWorkbenchSummaryResponse(
+            all_count=len(items),
+            waiting_review_count=sum(1 for item in items if item.status == CreativeStatus.WAITING_REVIEW),
+            pending_input_count=sum(1 for item in items if item.status == CreativeStatus.PENDING_INPUT),
+            needs_rework_count=sum(1 for item in items if item.status == CreativeStatus.REWORK_REQUIRED),
+            recent_failures_count=sum(1 for item in items if self._has_recent_failure(item)),
+            active_pool_count=sum(1 for item in items if item.active_pool_item_id is not None),
+            aligned_pool_count=sum(1 for item in items if item.pool_state == CreativeWorkbenchPoolState.IN_POOL),
+            version_mismatch_count=sum(
+                1 for item in items if item.pool_state == CreativeWorkbenchPoolState.VERSION_MISMATCH
+            ),
+        )
+
+    def _filter_workbench_items(
+        self,
+        items: list[CreativeWorkbenchItemResponse],
+        *,
+        keyword: Optional[str],
+        status: Optional[CreativeStatus],
+        pool_state: Optional[CreativeWorkbenchPoolState],
+        recent_failures_only: bool,
+    ) -> list[CreativeWorkbenchItemResponse]:
+        normalized_keyword = keyword.strip().lower() if keyword else None
+        filtered_items: list[CreativeWorkbenchItemResponse] = []
+
+        for item in items:
+            if normalized_keyword is not None:
+                haystack = " ".join(filter(None, [item.title, item.creative_no])).lower()
+                if normalized_keyword not in haystack:
+                    continue
+
+            if status is not None and item.status != status:
+                continue
+
+            if pool_state is not None and item.pool_state != pool_state:
+                continue
+
+            if recent_failures_only and not self._has_recent_failure(item):
+                continue
+
+            filtered_items.append(item)
+
+        return filtered_items
+
+    def _sort_workbench_items(
+        self,
+        items: list[CreativeWorkbenchItemResponse],
+        *,
+        sort: CreativeWorkbenchSort,
+    ) -> list[CreativeWorkbenchItemResponse]:
+        if sort == CreativeWorkbenchSort.UPDATED_ASC:
+            return sorted(items, key=lambda item: (item.updated_at, item.id))
+
+        if sort == CreativeWorkbenchSort.ATTENTION_DESC:
+            return sorted(
+                items,
+                key=lambda item: (
+                    self._get_attention_score(item),
+                    item.updated_at,
+                    item.id,
+                ),
+                reverse=True,
+            )
+
+        if sort == CreativeWorkbenchSort.FAILED_DESC:
+            return sorted(
+                items,
+                key=lambda item: (
+                    self._has_recent_failure(item),
+                    item.generation_failed_at or item.updated_at,
+                    item.updated_at,
+                    item.id,
+                ),
+                reverse=True,
+            )
+
+        return sorted(items, key=lambda item: (item.updated_at, item.id), reverse=True)
 
     def _build_input_items_response(
         self,

@@ -43,6 +43,8 @@ PHASE1_CREATIVE_SCHEMA_NAMES = (
     "CreativeUpdateRequest",
     "CreativeDetailResponse",
     "CreativeWorkbenchItemResponse",
+    "CreativeWorkbenchListResponse",
+    "CreativeWorkbenchSummaryResponse",
     "CreativeInputItemResponse",
     "CreativeInputItemWrite",
     "CreativeInputOrchestrationResponse",
@@ -52,6 +54,8 @@ PHASE1_CREATIVE_SCHEMA_NAMES = (
 PHASE1_CREATIVE_ENUM_SCHEMA_NAMES = (
     "CreativeInputMaterialType",
     "CreativeEligibilityStatus",
+    "CreativeWorkbenchPoolState",
+    "CreativeWorkbenchSort",
 )
 
 PHASE1_CREATIVE_DETAIL_REF_FIELDS = (
@@ -166,6 +170,12 @@ async def test_creative_openapi_exposes_phase4_workbench_and_detail_contracts(
     schemas = spec["components"]["schemas"]
 
     assert paths["/api/creatives"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeWorkbenchListResponse")
+    list_parameters = paths["/api/creatives"]["get"]["parameters"]
+    assert _find_parameter(list_parameters, "keyword")["schema"]["anyOf"][0]["type"] == "string"
+    assert _find_parameter(list_parameters, "status")["schema"]["anyOf"][0]["$ref"].endswith("/CreativeStatus")
+    assert _find_parameter(list_parameters, "pool_state")["schema"]["anyOf"][0]["$ref"].endswith("/CreativeWorkbenchPoolState")
+    assert _find_parameter(list_parameters, "sort")["schema"]["$ref"].endswith("/CreativeWorkbenchSort")
+    assert _find_parameter(list_parameters, "recent_failures_only")["schema"]["type"] == "boolean"
     assert paths["/api/creatives"]["post"]["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeCreateRequest")
     assert paths["/api/creatives"]["post"]["responses"]["201"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeDetailResponse")
     assert paths["/api/creatives/{creative_id}"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/CreativeDetailResponse")
@@ -209,7 +219,14 @@ async def test_creative_openapi_exposes_phase4_workbench_and_detail_contracts(
     assert schemas["CreativeDetailResponse"]["properties"]["latest_task_summary"]["anyOf"][0]["$ref"].endswith("/CreativeLatestTaskSummaryResponse")
     assert schemas["CreativeWorkbenchItemResponse"]["properties"]["input_items"]["type"] == "array"
     assert schemas["CreativeWorkbenchItemResponse"]["properties"]["input_orchestration"]["$ref"].endswith("/CreativeInputOrchestrationResponse")
+    assert schemas["CreativeWorkbenchItemResponse"]["properties"]["pool_state"]["$ref"].endswith("/CreativeWorkbenchPoolState")
+    assert schemas["CreativeWorkbenchItemResponse"]["properties"]["active_pool_item_id"]["anyOf"][0]["type"] == "integer"
+    assert schemas["CreativeWorkbenchItemResponse"]["properties"]["active_pool_version_id"]["anyOf"][0]["type"] == "integer"
+    assert schemas["CreativeWorkbenchItemResponse"]["properties"]["active_pool_aligned"]["type"] == "boolean"
     assert "input_snapshot" not in schemas["CreativeWorkbenchItemResponse"]["properties"]
+    assert schemas["CreativeWorkbenchListResponse"]["properties"]["summary"]["$ref"].endswith("/CreativeWorkbenchSummaryResponse")
+    assert schemas["CreativeWorkbenchSummaryResponse"]["properties"]["all_count"]["type"] == "integer"
+    assert schemas["CreativeWorkbenchSummaryResponse"]["properties"]["active_pool_count"]["type"] == "integer"
     assert schemas["CreativeVersionSummaryResponse"]["properties"]["package_record"]["anyOf"][0]["$ref"].endswith("/PackageRecordResponse")
     assert schemas["CreativeVersionSummaryResponse"]["properties"]["final_product_name"]["anyOf"][0]["type"] == "string"
     assert schemas["CreativeVersionSummaryResponse"]["properties"]["final_copywriting_text"]["anyOf"][0]["type"] == "string"

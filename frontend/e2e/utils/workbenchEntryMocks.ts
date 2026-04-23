@@ -58,6 +58,10 @@ function createCreativeWorkbenchItem(overrides: Record<string, unknown> = {}) {
     }),
     generation_error_msg: null,
     generation_failed_at: null,
+    pool_state: 'out_pool',
+    active_pool_item_id: null,
+    active_pool_version_id: null,
+    active_pool_aligned: false,
     eligibility_status: 'PENDING_INPUT',
     eligibility_reasons: ['请选择合成配置'],
     latest_task_summary: null,
@@ -137,6 +141,16 @@ export async function mockWorkbenchLandingApis(
       body: JSON.stringify({
         total: 1,
         items: [createCreativeWorkbenchItem()],
+        summary: {
+          all_count: 1,
+          waiting_review_count: 0,
+          pending_input_count: 1,
+          needs_rework_count: 0,
+          recent_failures_count: 0,
+          active_pool_count: 0,
+          aligned_pool_count: 0,
+          version_mismatch_count: 0,
+        },
         ...creativeListOverrides,
       }),
     })

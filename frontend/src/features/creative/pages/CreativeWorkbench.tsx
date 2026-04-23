@@ -30,7 +30,6 @@ import {
 import {
   useCreatives,
   useCreateCreative,
-  usePublishPoolItems,
   usePublishStatus,
   useScheduleConfig,
 } from '../hooks/useCreatives'
@@ -38,7 +37,6 @@ import { useSystemConfig } from '@/hooks/useSystem'
 import type {
   CreativeWorkbenchItem,
   CreativeWorkbenchPoolState,
-  PublishPoolItem,
 } from '../types/creative'
 import {
   creativeStatusMeta,
@@ -46,13 +44,10 @@ import {
   formatCreativeTimestamp,
   formatModeLabel,
   formatRuntimeStatusLabel,
-  getCreativeWorkbenchPoolState,
-  isPoolVersionAligned,
 } from '../types/creative'
 
 const { Paragraph, Text } = Typography
 
-const WORKBENCH_WINDOW_SIZE = 200
 const DEFAULT_WORKBENCH_PAGE_SIZE = 10
 
 type WorkbenchSortKind = 'updated_desc' | 'updated_asc' | 'attention_desc' | 'failed_desc'
@@ -60,7 +55,6 @@ type WorkbenchPresetKey = 'all' | 'waiting_review' | 'needs_rework' | 'recent_fa
 type WorkbenchDiagnosticsView = 'runtime'
 
 type WorkbenchTableRow = CreativeWorkbenchItem & {
-  poolItem: PublishPoolItem | null
   poolState: CreativeWorkbenchPoolState
   poolAligned: boolean
   hasRecentFailure: boolean
@@ -97,6 +91,17 @@ const workbenchPresetMeta: Record<WorkbenchPresetKey, { label: string }> = {
   needs_rework: { label: '需返工' },
   recent_failures: { label: '最近失败' },
   version_mismatch: { label: '版本未对齐' },
+}
+
+const defaultWorkbenchSummary = {
+  all_count: 0,
+  waiting_review_count: 0,
+  pending_input_count: 0,
+  needs_rework_count: 0,
+  recent_failures_count: 0,
+  active_pool_count: 0,
+  aligned_pool_count: 0,
+  version_mismatch_count: 0,
 }
 
 const getAttentionScore = (item: CreativeWorkbenchItem, poolState: CreativeWorkbenchPoolState): number => {
@@ -275,40 +280,24 @@ export default function CreativeWorkbench() {
     () => parseWorkbenchStateFromSearchParams(searchParams),
     [searchParams],
   )
-  const creativesQuery = useCreatives({ limit: WORKBENCH_WINDOW_SIZE })
-  const createCreative = useCreateCreative()
-  const poolQuery = usePublishPoolItems({
-    limit: WORKBENCH_WINDOW_SIZE,
-    status: 'active',
+  const creativesQuery = useCreatives({
+    skip: (initialRouteState.current - 1) * initialRouteState.pageSize,
+    limit: initialRouteState.pageSize,
+    keyword: initialRouteState.formValues.keyword,
+    status: initialRouteState.formValues.status,
+    poolState: initialRouteState.formValues.poolState,
+    sort: initialRouteState.sort,
+    recentFailuresOnly: initialRouteState.preset === 'recent_failures',
   })
+  const createCreative = useCreateCreative()
   const publishStatusQuery = usePublishStatus()
   const scheduleConfigQuery = useScheduleConfig()
   const systemConfigQuery = useSystemConfig()
 
   const items = creativesQuery.data?.items ?? []
   const total = creativesQuery.data?.total ?? 0
-  const activePoolItems = poolQuery.data?.items ?? []
+  const summary = creativesQuery.data?.summary ?? defaultWorkbenchSummary
   const diagnosticsOpen = initialRouteState.diagnostics === 'runtime'
-
-  const poolByCreativeId = useMemo(
-    () => new Map<number, PublishPoolItem>(activePoolItems.map((item) => [item.creative_item_id, item])),
-    [activePoolItems],
-  )
-
-  const alignedPoolCount = useMemo(
-    () => activePoolItems.filter((item) => isPoolVersionAligned(item)).length,
-    [activePoolItems],
-  )
-
-  const waitingReviewCount = useMemo(
-    () => items.filter((item) => item.status === 'WAITING_REVIEW').length,
-    [items],
-  )
-
-  const pendingInputCount = useMemo(
-    () => items.filter((item) => item.status === 'PENDING_INPUT').length,
-    [items],
-  )
 
   const schedulerMode = publishStatusQuery.data?.scheduler_mode ?? scheduleConfigQuery.data?.publish_scheduler_mode
   const effectiveSchedulerMode = publishStatusQuery.data?.effective_scheduler_mode ?? schedulerMode
@@ -318,41 +307,34 @@ export default function CreativeWorkbench() {
 
   const rows = useMemo<WorkbenchTableRow[]>(
     () => items.map((item) => {
-      const poolItem = poolByCreativeId.get(item.id) ?? null
-      const poolState = getCreativeWorkbenchPoolState(poolItem)
+      const poolState: CreativeWorkbenchPoolState = item.pool_state ?? 'out_pool'
       const hasRecentFailure = Boolean(item.generation_error_msg || item.status === 'FAILED' || item.generation_failed_at)
       return {
         ...item,
-        poolItem,
         poolState,
-        poolAligned: poolItem ? isPoolVersionAligned(poolItem) : false,
+        poolAligned: item.active_pool_aligned ?? false,
         hasRecentFailure,
         attentionScore: getAttentionScore(item, poolState),
       }
     }),
-    [items, poolByCreativeId],
+    [items],
   )
-  const isWindowLimited = total > rows.length
-  const windowGuardrailMessage = isWindowLimited
-    ? '当前 Workbench 仍采用窗口模式，且当前总量已超过窗口上限'
-    : '当前 Workbench 仍采用窗口模式'
-  const windowGuardrailDescription = [
-    `页面最多只加载最近 ${WORKBENCH_WINDOW_SIZE} 条作品；当前的搜索、筛选、排序与 preset 视图都只对这批已加载窗口生效。`,
-    isWindowLimited
-      ? `当前总量为 ${total} 条，已超过窗口上限；不要把“当前列表里找不到”直接当成“系统里不存在”。`
-      : `当前总量为 ${total} 条，仍在窗口上限以内。`,
-    '当日常使用稳定超出该窗口，或频繁出现“找不到但其实存在”的反馈时，再升级为服务端检索方案；PR-1 不在这里继续扩边界。',
+  const serviceSearchMessage = '当前 Workbench 已升级为服务端检索'
+  const serviceSearchDescription = [
+    '搜索、筛选、排序与 preset 视图现在都基于服务端结果，不再受前端最近 200 条窗口限制。',
+    `当前总量为 ${summary.all_count} 条；本页显示的是符合当前条件的 ${total} 条结果。`,
+    '若后续出现性能瓶颈，再继续推进索引或更深层的服务端优化；本次先完成检索边界升级。',
   ].join(' ')
 
   const workbenchPresetCounts = useMemo(
     () => ({
-      all: rows.length,
-      waiting_review: rows.filter((item) => item.status === 'WAITING_REVIEW').length,
-      needs_rework: rows.filter((item) => item.status === 'REWORK_REQUIRED').length,
-      recent_failures: rows.filter((item) => item.hasRecentFailure).length,
-      version_mismatch: rows.filter((item) => item.poolState === 'version_mismatch').length,
+      all: summary.all_count,
+      waiting_review: summary.waiting_review_count,
+      needs_rework: summary.needs_rework_count,
+      recent_failures: summary.recent_failures_count,
+      version_mismatch: summary.version_mismatch_count,
     }),
-    [rows],
+    [summary],
   )
 
   useEffect(() => {
@@ -367,12 +349,11 @@ export default function CreativeWorkbench() {
 
   const handleRetryAuxiliary = useCallback(() => {
     void Promise.all([
-      poolQuery.refetch(),
       publishStatusQuery.refetch(),
       scheduleConfigQuery.refetch(),
       systemConfigQuery.refetch(),
     ])
-  }, [poolQuery, publishStatusQuery, scheduleConfigQuery, systemConfigQuery])
+  }, [publishStatusQuery, scheduleConfigQuery, systemConfigQuery])
 
   const handleCreateCreative = useCallback(async () => {
     try {
@@ -560,14 +541,14 @@ export default function CreativeWorkbench() {
               <Tag color={creativeWorkbenchPoolStateMeta[record.poolState].color}>
                 {creativeWorkbenchPoolStateMeta[record.poolState].label}
               </Tag>
-              {record.poolItem ? (
+              {record.active_pool_version_id ? (
                 <Tag color={record.poolAligned ? 'success' : 'warning'}>
-                  池版本 #{record.poolItem.creative_version_id}
+                  池版本 #{record.active_pool_version_id}
                 </Tag>
               ) : null}
             </Space>
             <Text type="secondary">
-              {record.poolItem ? `发布池记录 #${record.poolItem.id}` : '当前版本尚未进入发布池'}
+              {record.active_pool_item_id ? `发布池记录 #${record.active_pool_item_id}` : '当前版本尚未进入发布池'}
             </Text>
           </Space>
         ),
@@ -697,7 +678,7 @@ export default function CreativeWorkbench() {
             </Button>
           </Flex>
 
-          {(publishStatusQuery.isError || scheduleConfigQuery.isError || poolQuery.isError) && (
+          {(publishStatusQuery.isError || scheduleConfigQuery.isError) && (
             <Alert
               type="warning"
               showIcon
@@ -709,23 +690,15 @@ export default function CreativeWorkbench() {
           )}
 
           <Flex wrap gap={24}>
-            <Statistic title="作品数" value={total} />
-            <Statistic title="待审核" value={waitingReviewCount} />
-            <Statistic title="待补充" value={pendingInputCount} />
-            <Statistic
-              title="已进发布池"
-              value={poolQuery.isError ? '—' : poolQuery.data?.total ?? 0}
-              loading={poolQuery.isLoading && !poolQuery.isError}
-            />
-            <Statistic
-              title="池版本已对齐"
-              value={poolQuery.isError ? '—' : alignedPoolCount}
-              loading={poolQuery.isLoading && !poolQuery.isError}
-            />
+            <Statistic title="作品数" value={summary.all_count} />
+            <Statistic title="待审核" value={summary.waiting_review_count} />
+            <Statistic title="待补充" value={summary.pending_input_count} />
+            <Statistic title="已进发布池" value={summary.active_pool_count} />
+            <Statistic title="池版本已对齐" value={summary.aligned_pool_count} />
           </Flex>
         </Card>
 
-        {rows.length === 0 ? (
+        {summary.all_count === 0 ? (
           <Card data-testid="creative-workbench-empty">
             <CreativeEmptyState
               mode={creativeFlowMode}
@@ -735,11 +708,11 @@ export default function CreativeWorkbench() {
         ) : (
           <>
             <Alert
-              type={isWindowLimited ? 'warning' : 'info'}
+              type="success"
               showIcon
-              message={windowGuardrailMessage}
-              description={windowGuardrailDescription}
-              data-testid="creative-workbench-window-guardrail"
+              message={serviceSearchMessage}
+              description={serviceSearchDescription}
+              data-testid="creative-workbench-server-search"
             />
 
             <ProTable<WorkbenchTableRow, WorkbenchFormValues>
@@ -751,7 +724,6 @@ export default function CreativeWorkbench() {
               headerTitle="待处理作品"
               options={{ density: false, setting: false }}
               request={async (params, sort) => {
-                const keyword = params.keyword?.trim().toLowerCase()
                 const status = params.status
                 const poolState = params.poolState as CreativeWorkbenchPoolState | undefined
                 const sortKind = sort.updated_at === 'ascend'
@@ -776,66 +748,13 @@ export default function CreativeWorkbench() {
                   setSearchParams(nextSearchParams, { replace: true })
                 }
 
-                let filtered = rows
-
-                if (keyword) {
-                  filtered = filtered.filter((item) =>
-                    [item.title ?? '', item.creative_no]
-                      .join(' ')
-                      .toLowerCase()
-                      .includes(keyword),
-                  )
-                }
-
-                if (status) {
-                  filtered = filtered.filter((item) => item.status === status)
-                }
-
-                if (poolState) {
-                  filtered = filtered.filter((item) => item.poolState === poolState)
-                }
-
-                if (initialRouteState.preset === 'recent_failures') {
-                  filtered = filtered.filter((item) => item.hasRecentFailure)
-                }
-
-                const sorted = [...filtered].sort((left, right) => {
-                  const updatedAtDelta = Date.parse(right.updated_at) - Date.parse(left.updated_at)
-                  const failedAtDelta = Date.parse(right.generation_failed_at ?? right.updated_at) - Date.parse(left.generation_failed_at ?? left.updated_at)
-
-                  switch (sortKind) {
-                    case 'updated_asc':
-                      return -updatedAtDelta
-                    case 'attention_desc':
-                      if (right.attentionScore !== left.attentionScore) {
-                        return right.attentionScore - left.attentionScore
-                      }
-                      return updatedAtDelta
-                    case 'failed_desc':
-                      if (right.hasRecentFailure !== left.hasRecentFailure) {
-                        return Number(right.hasRecentFailure) - Number(left.hasRecentFailure)
-                      }
-                      if (right.hasRecentFailure && left.hasRecentFailure && failedAtDelta !== 0) {
-                        return failedAtDelta
-                      }
-                      return updatedAtDelta
-                    case 'updated_desc':
-                    default:
-                      return updatedAtDelta
-                  }
-                })
-
-                const current = params.current ?? 1
-                const pageSize = params.pageSize ?? 10
-                const start = (current - 1) * pageSize
-
                 return {
-                  data: sorted.slice(start, start + pageSize),
+                  data: rows,
                   success: true,
-                  total: sorted.length,
+                  total,
                 }
               }}
-              loading={creativesQuery.isLoading || poolQuery.isLoading}
+              loading={creativesQuery.isLoading}
               pagination={{
                 current: initialRouteState.current,
                 pageSize: initialRouteState.pageSize,
@@ -870,12 +789,14 @@ export default function CreativeWorkbench() {
                 </Space>
               )}
               locale={{
-                emptyText: (
-                  <CreativeEmptyState
-                    mode={creativeFlowMode}
-                    onCreateCreative={() => void handleCreateCreative()}
-                  />
-                ),
+                emptyText: summary.all_count === 0
+                  ? (
+                    <CreativeEmptyState
+                      mode={creativeFlowMode}
+                      onCreateCreative={() => void handleCreateCreative()}
+                    />
+                  )
+                  : '当前筛选条件下暂无结果',
               }}
               toolBarRender={() => [
                 <div key="sort" data-testid="creative-workbench-sort-select">
@@ -931,21 +852,6 @@ export default function CreativeWorkbench() {
             />
           )}
 
-          {poolQuery.isError && (
-            <Alert
-              type="warning"
-              showIcon
-              message="发布池诊断暂时不可用"
-              description="发布池请求失败，当前无法继续判断池内版本是否对齐。"
-              action={(
-                <Button size="small" icon={<ReloadOutlined />} onClick={handleRetryAuxiliary}>
-                  重试
-                </Button>
-              )}
-              data-testid="creative-workbench-pool-warning"
-            />
-          )}
-
           <Card size="small" title="运行态摘要">
             <Descriptions bordered size="small" column={1}>
               <Descriptions.Item label="入口模式">
@@ -977,10 +883,10 @@ export default function CreativeWorkbench() {
           <Card size="small" title="发布池诊断">
             <Descriptions bordered size="small" column={1}>
               <Descriptions.Item label="已进发布池">
-                {poolQuery.isError ? '获取失败' : poolQuery.data?.total ?? 0}
+                {summary.active_pool_count}
               </Descriptions.Item>
               <Descriptions.Item label="池版本已对齐">
-                {poolQuery.isError ? '获取失败' : alignedPoolCount}
+                {summary.aligned_pool_count}
               </Descriptions.Item>
             </Descriptions>
           </Card>

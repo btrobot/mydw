@@ -164,7 +164,17 @@ function createCreativeBriefFields(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function buildCreativeListItem(detail: CreativeScenarioState['detail']) {
+function buildCreativeListItem(
+  detail: CreativeScenarioState['detail'],
+  activePoolItems: PublishPoolItem[] = [],
+) {
+  const activePoolItem = activePoolItems.find((item) => item.creative_item_id === detail.id && item.status === 'active')
+  const poolState = !activePoolItem
+    ? 'out_pool'
+    : activePoolItem.creative_version_id === detail.current_version_id
+      ? 'in_pool'
+      : 'version_mismatch'
+
   return {
     id: detail.id,
     creative_no: detail.creative_no,
@@ -179,6 +189,10 @@ function buildCreativeListItem(detail: CreativeScenarioState['detail']) {
     input_orchestration: detail.input_orchestration ?? createInputOrchestration(detail.input_items ?? []),
     generation_error_msg: detail.generation_error_msg ?? null,
     generation_failed_at: detail.generation_failed_at ?? null,
+    pool_state: poolState,
+    active_pool_item_id: activePoolItem?.id ?? null,
+    active_pool_version_id: activePoolItem?.creative_version_id ?? null,
+    active_pool_aligned: Boolean(activePoolItem && activePoolItem.creative_version_id === detail.current_version_id),
     eligibility_status: detail.eligibility_status ?? 'READY_TO_COMPOSE',
     eligibility_reasons: detail.eligibility_reasons ?? [],
     latest_task_summary: detail.latest_task_summary ?? null,
@@ -487,9 +501,20 @@ export async function mockCreativeReviewApis(
   })
 
   await page.route('**/api/creatives?**', async (route) => {
+    const listItem = buildCreativeListItem(state.detail, activePoolItems)
     await fulfillJson(route, {
       total: 1,
-      items: [buildCreativeListItem(state.detail)],
+      items: [listItem],
+      summary: {
+        all_count: 1,
+        waiting_review_count: listItem.status === 'WAITING_REVIEW' ? 1 : 0,
+        pending_input_count: listItem.status === 'PENDING_INPUT' ? 1 : 0,
+        needs_rework_count: listItem.status === 'REWORK_REQUIRED' ? 1 : 0,
+        recent_failures_count: listItem.generation_error_msg || listItem.generation_failed_at ? 1 : 0,
+        active_pool_count: listItem.active_pool_item_id ? 1 : 0,
+        aligned_pool_count: listItem.pool_state === 'in_pool' ? 1 : 0,
+        version_mismatch_count: listItem.pool_state === 'version_mismatch' ? 1 : 0,
+      },
     })
   })
 

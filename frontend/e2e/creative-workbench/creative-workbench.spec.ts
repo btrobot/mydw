@@ -2,6 +2,16 @@ import { expect, test, type Page } from '@playwright/test'
 
 const creativeListPayload = {
   total: 4,
+  summary: {
+    all_count: 4,
+    waiting_review_count: 1,
+    pending_input_count: 1,
+    needs_rework_count: 1,
+    recent_failures_count: 1,
+    active_pool_count: 2,
+    aligned_pool_count: 1,
+    version_mismatch_count: 1,
+  },
   items: [
     {
       id: 101,
@@ -11,7 +21,7 @@ const creativeListPayload = {
       current_version_id: 201,
       subject_product_id: 301,
       subject_product_name_snapshot: 'Classic Hoodie',
-      main_copywriting_text: '轻盈春装，上身即走。',
+      main_copywriting_text: '??????????',
       target_duration_seconds: 30,
       input_items: [
         { material_type: 'video', material_id: 11, sequence: 1, instance_no: 1, enabled: true },
@@ -26,6 +36,10 @@ const creativeListPayload = {
       },
       generation_error_msg: null,
       generation_failed_at: null,
+      pool_state: 'in_pool',
+      active_pool_item_id: 801,
+      active_pool_version_id: 201,
+      active_pool_aligned: true,
       updated_at: '2026-04-16T10:00:00Z',
     },
     {
@@ -36,7 +50,7 @@ const creativeListPayload = {
       current_version_id: 202,
       subject_product_id: 302,
       subject_product_name_snapshot: 'Runner Pro',
-      main_copywriting_text: '轻盈速跑，全天舒适。',
+      main_copywriting_text: '??????????',
       target_duration_seconds: 45,
       input_items: [
         { material_type: 'video', material_id: 12, sequence: 1, instance_no: 1, enabled: true },
@@ -50,8 +64,12 @@ const creativeListPayload = {
         material_counts: { video: 2, copywriting: 0, cover: 0, audio: 0, topic: 0 },
         enabled_material_counts: { video: 2, copywriting: 0, cover: 0, audio: 0, topic: 0 },
       },
-      generation_error_msg: '素材解析失败',
+      generation_error_msg: '??????',
       generation_failed_at: '2026-04-16T09:30:00Z',
+      pool_state: 'version_mismatch',
+      active_pool_item_id: 802,
+      active_pool_version_id: 999,
+      active_pool_aligned: false,
       updated_at: '2026-04-16T12:00:00Z',
     },
     {
@@ -62,7 +80,7 @@ const creativeListPayload = {
       current_version_id: 203,
       subject_product_id: 303,
       subject_product_name_snapshot: 'Trail Jacket',
-      main_copywriting_text: '保暖轻盈，适合全天候出行。',
+      main_copywriting_text: '?????????????',
       target_duration_seconds: 25,
       input_items: [
         { material_type: 'video', material_id: 13, sequence: 1, instance_no: 1, enabled: true },
@@ -77,6 +95,10 @@ const creativeListPayload = {
       },
       generation_error_msg: null,
       generation_failed_at: null,
+      pool_state: 'out_pool',
+      active_pool_item_id: null,
+      active_pool_version_id: null,
+      active_pool_aligned: false,
       updated_at: '2026-04-16T08:00:00Z',
     },
     {
@@ -100,6 +122,10 @@ const creativeListPayload = {
       },
       generation_error_msg: null,
       generation_failed_at: null,
+      pool_state: 'out_pool',
+      active_pool_item_id: null,
+      active_pool_version_id: null,
+      active_pool_aligned: false,
       updated_at: '2026-04-16T11:00:00Z',
     },
   ],
@@ -200,6 +226,98 @@ const publishStatusPayload = {
   scheduler_shadow_diff: null,
 }
 
+function hasRecentFailure(item: (typeof creativeListPayload.items)[number]) {
+  return Boolean(item.generation_error_msg || item.status === 'FAILED' || item.generation_failed_at)
+}
+
+function getAttentionScore(item: (typeof creativeListPayload.items)[number]) {
+  let score = 0
+
+  if (hasRecentFailure(item)) {
+    score += 400
+  }
+
+  if (item.status === 'REWORK_REQUIRED') {
+    score += 300
+  }
+
+  if (item.status === 'WAITING_REVIEW') {
+    score += 200
+  }
+
+  if (item.pool_state === 'version_mismatch') {
+    score += 100
+  }
+
+  return score
+}
+
+function getCreativeListResponse(url: URL) {
+  const keyword = url.searchParams.get('keyword')?.trim().toLowerCase()
+  const status = url.searchParams.get('status')
+  const poolState = url.searchParams.get('pool_state')
+  const sort = url.searchParams.get('sort') ?? 'updated_desc'
+  const recentFailuresOnly = url.searchParams.get('recent_failures_only') === 'true'
+  const skip = Number.parseInt(url.searchParams.get('skip') ?? '0', 10)
+  const limit = Number.parseInt(url.searchParams.get('limit') ?? `${creativeListPayload.items.length}`, 10)
+
+  let filtered = creativeListPayload.items.filter((item) => {
+    if (keyword) {
+      const haystack = `${item.title ?? ''} ${item.creative_no}`.toLowerCase()
+      if (!haystack.includes(keyword)) {
+        return false
+      }
+    }
+
+    if (status && item.status !== status) {
+      return false
+    }
+
+    if (poolState && item.pool_state !== poolState) {
+      return false
+    }
+
+    if (recentFailuresOnly && !hasRecentFailure(item)) {
+      return false
+    }
+
+    return true
+  })
+
+  filtered = [...filtered].sort((left, right) => {
+    const updatedAtDelta = Date.parse(right.updated_at) - Date.parse(left.updated_at)
+    const failedAtDelta =
+      Date.parse(right.generation_failed_at ?? right.updated_at) - Date.parse(left.generation_failed_at ?? left.updated_at)
+
+    switch (sort) {
+      case 'updated_asc':
+        return -updatedAtDelta
+      case 'attention_desc':
+        if (getAttentionScore(right) !== getAttentionScore(left)) {
+          return getAttentionScore(right) - getAttentionScore(left)
+        }
+        return updatedAtDelta
+      case 'failed_desc':
+        if (hasRecentFailure(right) !== hasRecentFailure(left)) {
+          return Number(hasRecentFailure(right)) - Number(hasRecentFailure(left))
+        }
+        if (hasRecentFailure(right) && hasRecentFailure(left) && failedAtDelta !== 0) {
+          return failedAtDelta
+        }
+        return updatedAtDelta
+      case 'updated_desc':
+      default:
+        return updatedAtDelta
+    }
+  })
+
+  return {
+    total: filtered.length,
+    items: filtered.slice(skip, skip + limit),
+    summary: creativeListPayload.summary,
+  }
+}
+
 async function mockCreativeApis(page: Page) {
   let creativeDetailState = JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload
 
@@ -223,10 +341,11 @@ async function mockCreativeApis(page: Page) {
   })
 
   await page.route('**/api/creatives?**', async (route) => {
+    const url = new URL(route.request().url())
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(creativeListPayload),
+      body: JSON.stringify(getCreativeListResponse(url)),
     })
   })
 
@@ -585,18 +704,16 @@ test.describe('Creative workbench baseline', () => {
     await expect(page.getByTestId('creative-workbench-diagnostics-drawer')).toHaveCount(0)
   })
 
-  test('shows an explicit window-based guardrail for workbench manageability', async ({ page }) => {
+  test('shows an explicit service-side retrieval notice for the workbench', async ({ page }) => {
     await page.goto(`/#/creative/workbench`)
 
     await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
-    const guardrail = page.getByTestId('creative-workbench-window-guardrail')
+    const guardrail = page.getByTestId('creative-workbench-server-search')
 
     await expect(guardrail).toBeVisible({ timeout: 10000 })
-    await expect(guardrail).toContainText('窗口模式')
-    await expect(guardrail).toContainText('最多只加载最近 200 条作品')
-    await expect(guardrail).toContainText('搜索、筛选、排序与 preset 视图都只对这批已加载窗口生效')
-    await expect(guardrail).toContainText('找不到但其实存在')
-    await expect(guardrail).toContainText('服务端检索方案')
+    await expect(guardrail).toContainText('已升级为服务端检索')
+    await expect(guardrail).toContainText('不再受前端最近 200 条窗口限制')
+    await expect(guardrail).toContainText('当前总量为 4 条')
   })
 
   test('supports search and filtering before entering detail', async ({ page }) => {

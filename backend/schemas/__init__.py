@@ -70,6 +70,19 @@ class CreativeStatus(str, Enum):
     FAILED = "FAILED"
 
 
+class CreativeWorkbenchPoolState(str, Enum):
+    IN_POOL = "in_pool"
+    OUT_POOL = "out_pool"
+    VERSION_MISMATCH = "version_mismatch"
+
+
+class CreativeWorkbenchSort(str, Enum):
+    UPDATED_DESC = "updated_desc"
+    UPDATED_ASC = "updated_asc"
+    ATTENTION_DESC = "attention_desc"
+    FAILED_DESC = "failed_desc"
+
+
 class CreativeEligibilityStatus(str, Enum):
     PENDING_INPUT = "PENDING_INPUT"
     READY_TO_COMPOSE = "READY_TO_COMPOSE"
@@ -840,10 +853,27 @@ class CreativeWorkbenchItemResponse(BaseModel):
     )
     generation_error_msg: Optional[str] = None
     generation_failed_at: Optional[datetime] = None
+    pool_state: CreativeWorkbenchPoolState = CreativeWorkbenchPoolState.OUT_POOL
+    active_pool_item_id: Optional[int] = None
+    active_pool_version_id: Optional[int] = None
+    active_pool_aligned: bool = False
     eligibility_status: CreativeEligibilityStatus = CreativeEligibilityStatus.PENDING_INPUT
     eligibility_reasons: List[str] = Field(default_factory=list)
     latest_task_summary: Optional[CreativeLatestTaskSummaryResponse] = None
     updated_at: datetime
+
+
+class CreativeWorkbenchSummaryResponse(BaseModel):
+    """Creative workbench summary counts for service-side retrieval."""
+
+    all_count: int = 0
+    waiting_review_count: int = 0
+    pending_input_count: int = 0
+    needs_rework_count: int = 0
+    recent_failures_count: int = 0
+    active_pool_count: int = 0
+    aligned_pool_count: int = 0
+    version_mismatch_count: int = 0
 
 
 class CreativeWorkbenchListResponse(BaseModel):
@@ -851,6 +881,7 @@ class CreativeWorkbenchListResponse(BaseModel):
 
     total: int
     items: List[CreativeWorkbenchItemResponse]
+    summary: CreativeWorkbenchSummaryResponse = Field(default_factory=CreativeWorkbenchSummaryResponse)
 
 
 class CreativeCurrentVersionResponse(BaseModel):

@@ -1,14 +1,24 @@
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+from utils.time import utc_now_naive
+from datetime import timedelta
 
-from models import Account, Audio, Copywriting, Cover, CreativeItem, CreativeVersion, Product, PublishProfile, Task, Topic, Video
+from models import Account, Audio, Copywriting, Cover, CreativeItem, CreativeVersion, Product, PublishPoolItem, PublishProfile, Task, Topic, Video
 from services.creative_version_service import CreativeVersionService
 from services.creative_service import CreativeService
 
 
-async def _seed_creative_sample(db_session: AsyncSession) -> tuple[int, int]:
-    account = Account(account_id="creative-api-account", account_name="Creative API Account")
+async def _seed_creative_sample(
+    db_session: AsyncSession,
+    *,
+    creative_no: str = "CR-API-0001",
+    title: str = "Creative API Sample",
+) -> tuple[int, int]:
+    account = Account(
+        account_id=f"creative-api-account-{creative_no.lower()}",
+        account_name=f"Creative API Account {creative_no}",
+    )
     db_session.add(account)
     await db_session.flush()
 
@@ -19,8 +29,8 @@ async def _seed_creative_sample(db_session: AsyncSession) -> tuple[int, int]:
     service = CreativeService(db_session)
     mapped_task = await service.attach_task_to_creative_sample(
         task.id,
-        creative_no="CR-API-0001",
-        title="Creative API Sample",
+        creative_no=creative_no,
+        title=title,
     )
     creative = await db_session.get(CreativeItem, mapped_task.creative_item_id)
     assert creative is not None
@@ -94,7 +104,20 @@ async def test_list_creatives_returns_empty_state(client: AsyncClient) -> None:
     response = await client.get("/api/creatives")
 
     assert response.status_code == 200
-    assert response.json() == {"total": 0, "items": []}
+    assert response.json() == {
+        "total": 0,
+        "items": [],
+        "summary": {
+            "all_count": 0,
+            "waiting_review_count": 0,
+            "pending_input_count": 0,
+            "needs_rework_count": 0,
+            "recent_failures_count": 0,
+            "active_pool_count": 0,
+            "aligned_pool_count": 0,
+            "version_mismatch_count": 0,
+        },
+    }
 
 
 @pytest.mark.asyncio
@@ -426,11 +449,17 @@ async def test_creative_list_and_detail_return_phase_a_projection(
     assert list_response.status_code == 200
     list_payload = list_response.json()
     assert list_payload["total"] == 1
+    assert list_payload["summary"]["all_count"] == 1
+    assert list_payload["summary"]["active_pool_count"] == 0
     assert list_payload["items"][0]["id"] == creative_id
     assert list_payload["items"][0]["creative_no"] == "CR-API-0001"
     assert list_payload["items"][0]["title"] == "Creative API Sample"
     assert list_payload["items"][0]["status"] == "PENDING_INPUT"
     assert list_payload["items"][0]["current_version_id"] is not None
+    assert list_payload["items"][0]["pool_state"] == "out_pool"
+    assert list_payload["items"][0]["active_pool_item_id"] is None
+    assert list_payload["items"][0]["active_pool_version_id"] is None
+    assert list_payload["items"][0]["active_pool_aligned"] is False
 
     detail_response = await client.get(f"/api/creatives/{creative_id}")
     assert detail_response.status_code == 200
@@ -461,3 +490,156 @@ async def test_task_detail_remains_compatible_after_creative_attach_helper(
     assert payload["creative_item_id"] == creative_id
     assert payload["creative_version_id"] is not None
     assert payload["task_kind"] == "composition"
+
+
+@pytest.mark.asyncio
+async def test_list_creatives_supports_service_side_filters_and_summary(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    alpha_id, _ = await _seed_creative_sample(
+        db_session,
+        creative_no="CR-API-0101",
+        title="Alpha Review",
+    )
+    beta_id, _ = await _seed_creative_sample(
+        db_session,
+        creative_no="CR-API-0102",
+        title="Beta Failure",
+    )
+    gamma_id, _ = await _seed_creative_sample(
+        db_session,
+        creative_no="CR-API-0103",
+        title="Gamma Draft",
+    )
+    delta_id, _ = await _seed_creative_sample(
+        db_session,
+        creative_no="CR-API-0104",
+        title="Delta Pool",
+    )
+
+    alpha = await db_session.get(CreativeItem, alpha_id)
+    beta = await db_session.get(CreativeItem, beta_id)
+    gamma = await db_session.get(CreativeItem, gamma_id)
+    delta = await db_session.get(CreativeItem, delta_id)
+    assert alpha is not None
+    assert beta is not None
+    assert gamma is not None
+    assert delta is not None
+
+    now = utc_now_naive()
+
+    alpha.status = "WAITING_REVIEW"
+    alpha.updated_at = now - timedelta(hours=2)
+    beta.status = "REWORK_REQUIRED"
+    beta.generation_error_msg = "boom"
+    beta.generation_failed_at = now - timedelta(minutes=5)
+    beta.updated_at = now - timedelta(minutes=10)
+    gamma.status = "PENDING_INPUT"
+    gamma.current_version_id = None
+    gamma.updated_at = now - timedelta(hours=1)
+    delta.status = "APPROVED"
+    delta.updated_at = now - timedelta(minutes=30)
+
+    db_session.add_all([
+        PublishPoolItem(
+            creative_item_id=beta.id,
+            creative_version_id=beta.current_version_id,
+            status="active",
+        ),
+        PublishPoolItem(
+            creative_item_id=delta.id,
+            creative_version_id=delta.current_version_id,
+            status="active",
+        ),
+    ])
+    beta.current_version_id = None
+    await db_session.commit()
+
+    response = await client.get(
+        "/api/creatives",
+        params={
+            "keyword": "beta",
+            "status": "REWORK_REQUIRED",
+            "pool_state": "version_mismatch",
+            "recent_failures_only": "true",
+            "sort": "failed_desc",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 1
+    assert [item["id"] for item in payload["items"]] == [beta_id]
+    assert payload["items"][0]["pool_state"] == "version_mismatch"
+    assert payload["items"][0]["active_pool_item_id"] is not None
+    assert payload["items"][0]["active_pool_aligned"] is False
+    assert payload["summary"] == {
+        "all_count": 4,
+        "waiting_review_count": 1,
+        "pending_input_count": 1,
+        "needs_rework_count": 1,
+        "recent_failures_count": 1,
+        "active_pool_count": 2,
+        "aligned_pool_count": 1,
+        "version_mismatch_count": 1,
+    }
+
+
+@pytest.mark.asyncio
+async def test_list_creatives_supports_service_side_sort_and_pagination(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    alpha_id, _ = await _seed_creative_sample(
+        db_session,
+        creative_no="CR-API-0201",
+        title="Alpha Review",
+    )
+    beta_id, _ = await _seed_creative_sample(
+        db_session,
+        creative_no="CR-API-0202",
+        title="Beta Failure",
+    )
+    gamma_id, _ = await _seed_creative_sample(
+        db_session,
+        creative_no="CR-API-0203",
+        title="Gamma Draft",
+    )
+
+    alpha = await db_session.get(CreativeItem, alpha_id)
+    beta = await db_session.get(CreativeItem, beta_id)
+    gamma = await db_session.get(CreativeItem, gamma_id)
+    assert alpha is not None
+    assert beta is not None
+    assert gamma is not None
+
+    now = utc_now_naive()
+    alpha.status = "WAITING_REVIEW"
+    alpha.updated_at = now - timedelta(hours=2)
+    beta.status = "REWORK_REQUIRED"
+    beta.generation_error_msg = "boom"
+    beta.generation_failed_at = now - timedelta(minutes=5)
+    beta.updated_at = now - timedelta(minutes=10)
+    gamma.status = "PENDING_INPUT"
+    gamma.updated_at = now - timedelta(hours=1)
+
+    db_session.add_all([
+        PublishPoolItem(
+            creative_item_id=beta.id,
+            creative_version_id=beta.current_version_id,
+            status="active",
+        ),
+    ])
+    beta.current_version_id = None
+    await db_session.commit()
+
+    attention_response = await client.get("/api/creatives", params={"sort": "attention_desc"})
+    assert attention_response.status_code == 200
+    assert [item["id"] for item in attention_response.json()["items"]] == [beta_id, alpha_id, gamma_id]
+
+    page_response = await client.get("/api/creatives", params={"sort": "updated_desc", "skip": 1, "limit": 1})
+    assert page_response.status_code == 200
+    assert page_response.json()["total"] == 3
+    assert len(page_response.json()["items"]) == 1
+    assert page_response.json()["items"][0]["id"] == gamma_id

@@ -10,8 +10,11 @@ from schemas import (
     CreativeCreateRequest,
     CreativeDetailResponse,
     CreativeComposeSubmitResponse,
+    CreativeStatus,
     CreativeUpdateRequest,
     CreativeWorkbenchListResponse,
+    CreativeWorkbenchPoolState,
+    CreativeWorkbenchSort,
 )
 from services.creative_service import CreativeService
 
@@ -22,11 +25,24 @@ router = APIRouter()
 async def list_creatives(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    keyword: str | None = Query(None, min_length=1),
+    status: CreativeStatus | None = Query(None),
+    pool_state: CreativeWorkbenchPoolState | None = Query(None),
+    sort: CreativeWorkbenchSort = Query(CreativeWorkbenchSort.UPDATED_DESC),
+    recent_failures_only: bool = Query(False),
     db: AsyncSession = Depends(get_db),
 ) -> CreativeWorkbenchListResponse:
     """Return the Creative workbench list with Phase 4 canonical orchestration metadata plus deprecated compatibility snapshot projections."""
     service = CreativeService(db)
-    return await service.list_creatives(skip=skip, limit=limit)
+    return await service.list_creatives(
+        skip=skip,
+        limit=limit,
+        keyword=keyword,
+        status=status,
+        pool_state=pool_state,
+        sort=sort,
+        recent_failures_only=recent_failures_only,
+    )
 
 
 @router.post("", response_model=CreativeDetailResponse, status_code=201, dependencies=ACTIVE_ROUTE_DEPENDENCIES)

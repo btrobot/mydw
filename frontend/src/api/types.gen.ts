@@ -1947,6 +1947,19 @@ export type CreativeWorkbenchItemResponse = {
      * Generation Failed At
      */
     generation_failed_at?: string | null;
+    pool_state?: CreativeWorkbenchPoolState;
+    /**
+     * Active Pool Item Id
+     */
+    active_pool_item_id?: number | null;
+    /**
+     * Active Pool Version Id
+     */
+    active_pool_version_id?: number | null;
+    /**
+     * Active Pool Aligned
+     */
+    active_pool_aligned?: boolean;
     eligibility_status?: CreativeEligibilityStatus;
     /**
      * Eligibility Reasons
@@ -1973,6 +1986,57 @@ export type CreativeWorkbenchListResponse = {
      * Items
      */
     items: Array<CreativeWorkbenchItemResponse>;
+    summary?: CreativeWorkbenchSummaryResponse;
+};
+
+/**
+ * CreativeWorkbenchPoolState
+ */
+export type CreativeWorkbenchPoolState = 'in_pool' | 'out_pool' | 'version_mismatch';
+
+/**
+ * CreativeWorkbenchSort
+ */
+export type CreativeWorkbenchSort = 'updated_desc' | 'updated_asc' | 'attention_desc' | 'failed_desc';
+
+/**
+ * CreativeWorkbenchSummaryResponse
+ *
+ * Creative workbench summary counts for service-side retrieval.
+ */
+export type CreativeWorkbenchSummaryResponse = {
+    /**
+     * All Count
+     */
+    all_count?: number;
+    /**
+     * Waiting Review Count
+     */
+    waiting_review_count?: number;
+    /**
+     * Pending Input Count
+     */
+    pending_input_count?: number;
+    /**
+     * Needs Rework Count
+     */
+    needs_rework_count?: number;
+    /**
+     * Recent Failures Count
+     */
+    recent_failures_count?: number;
+    /**
+     * Active Pool Count
+     */
+    active_pool_count?: number;
+    /**
+     * Aligned Pool Count
+     */
+    aligned_pool_count?: number;
+    /**
+     * Version Mismatch Count
+     */
+    version_mismatch_count?: number;
 };
 
 /**
@@ -8149,6 +8213,23 @@ export type ListCreativesApiCreativesGetData = {
          * Limit
          */
         limit?: number;
+        /**
+         * Keyword
+         */
+        keyword?: string | null;
+        /**
+         * Status
+         */
+        status?: CreativeStatus | null;
+        /**
+         * Pool State
+         */
+        pool_state?: CreativeWorkbenchPoolState | null;
+        sort?: CreativeWorkbenchSort;
+        /**
+         * Recent Failures Only
+         */
+        recent_failures_only?: boolean;
     };
     url: '/api/creatives';
 };

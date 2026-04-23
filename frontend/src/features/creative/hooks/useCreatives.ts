@@ -18,6 +18,7 @@ import type {
   CreativeComposeSubmitResponse,
   CreativeCreateRequest,
   CreativeDetailResponse,
+  CreativeStatus,
   CreativeRejectRequest,
   CreativeReviewActionResponse,
   CreativeReworkRequest,
@@ -32,6 +33,11 @@ import type {
 export type CreativeListParams = {
   skip?: number
   limit?: number
+  keyword?: string
+  status?: CreativeStatus
+  poolState?: 'in_pool' | 'out_pool' | 'version_mismatch'
+  sort?: 'updated_desc' | 'updated_asc' | 'attention_desc' | 'failed_desc'
+  recentFailuresOnly?: boolean
   enabled?: boolean
 }
 
@@ -39,7 +45,18 @@ export const creativeQueryKeys = {
   all: ['creatives'] as const,
   lists: () => [...creativeQueryKeys.all, 'list'] as const,
   list: (params?: CreativeListParams) =>
-    [...creativeQueryKeys.lists(), params?.skip ?? 0, params?.limit ?? 50] as const,
+    [
+      ...creativeQueryKeys.lists(),
+      {
+        skip: params?.skip ?? 0,
+        limit: params?.limit ?? 50,
+        keyword: params?.keyword ?? '',
+        status: params?.status ?? 'all',
+        poolState: params?.poolState ?? 'all',
+        sort: params?.sort ?? 'updated_desc',
+        recentFailuresOnly: params?.recentFailuresOnly ?? false,
+      },
+    ] as const,
   details: () => [...creativeQueryKeys.all, 'detail'] as const,
   detail: (creativeId: number | undefined) => [...creativeQueryKeys.details(), creativeId] as const,
   publishPool: () => [...creativeQueryKeys.all, 'publish-pool'] as const,
@@ -60,20 +77,40 @@ export const creativeQueryKeys = {
   scheduleConfig: () => [...creativeQueryKeys.all, 'schedule-config'] as const,
 }
 
+export const fetchCreatives = async (params?: CreativeListParams): Promise<CreativeWorkbenchListResponse> => {
+  const response = await listCreativesApiCreativesGet({
+    throwOnError: true,
+    query: {
+      skip: params?.skip ?? 0,
+      limit: params?.limit ?? 50,
+      keyword: params?.keyword?.trim() || undefined,
+      status: params?.status,
+      pool_state: params?.poolState,
+      sort: params?.sort ?? 'updated_desc',
+      recent_failures_only: params?.recentFailuresOnly ?? false,
+    },
+  })
+
+  return response.data ?? {
+    total: 0,
+    items: [],
+    summary: {
+      all_count: 0,
+      waiting_review_count: 0,
+      pending_input_count: 0,
+      needs_rework_count: 0,
+      recent_failures_count: 0,
+      active_pool_count: 0,
+      aligned_pool_count: 0,
+      version_mismatch_count: 0,
+    },
+  }
+}
+
 export const useCreatives = (params?: CreativeListParams) =>
   useQuery<CreativeWorkbenchListResponse>({
     queryKey: creativeQueryKeys.list(params),
-    queryFn: async () => {
-      const response = await listCreativesApiCreativesGet({
-        throwOnError: true,
-        query: {
-          skip: params?.skip ?? 0,
-          limit: params?.limit ?? 50,
-        },
-      })
-
-      return response.data ?? { total: 0, items: [] }
-    },
+    queryFn: async () => fetchCreatives(params),
     enabled: params?.enabled ?? true,
     retry: false,
   })
