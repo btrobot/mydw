@@ -130,12 +130,6 @@ class CreativeItem(Base):
     main_copywriting_text = Column(Text, nullable=True)
     target_duration_seconds = Column(Integer, nullable=True)
     input_profile_id = Column(Integer, ForeignKey("publish_profiles.id"), nullable=True, index=True)
-    input_video_ids = Column(Text, nullable=False, default="[]")
-    input_copywriting_ids = Column(Text, nullable=False, default="[]")
-    input_cover_ids = Column(Text, nullable=False, default="[]")
-    input_audio_ids = Column(Text, nullable=False, default="[]")
-    input_topic_ids = Column(Text, nullable=False, default="[]")
-    input_snapshot_hash = Column(String(64), nullable=True, index=True)
     created_at = Column(DateTime, default=utc_now_naive)
     updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
@@ -146,13 +140,6 @@ class CreativeItem(Base):
         back_populates="creative_item",
         foreign_keys="CreativeInputItem.creative_item_id",
         order_by="CreativeInputItem.sequence",
-        cascade="all, delete-orphan",
-    )
-    input_snapshot_record = relationship(
-        "CreativeInputSnapshot",
-        back_populates="creative_item",
-        foreign_keys="CreativeInputSnapshot.creative_item_id",
-        uselist=False,
         cascade="all, delete-orphan",
     )
     current_version = relationship(
@@ -207,30 +194,6 @@ class CreativeInputItem(Base):
         back_populates="input_items",
         foreign_keys=[creative_item_id],
     )
-
-
-class CreativeInputSnapshot(Base):
-    """Independent 1:1 carrier for creative pre-compose input snapshot."""
-    __tablename__ = "creative_input_snapshots"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    creative_item_id = Column(Integer, ForeignKey("creative_items.id"), nullable=False, unique=True, index=True)
-    profile_id = Column(Integer, ForeignKey("publish_profiles.id"), nullable=True, index=True)
-    video_ids = Column(Text, nullable=False, default="[]")
-    copywriting_ids = Column(Text, nullable=False, default="[]")
-    cover_ids = Column(Text, nullable=False, default="[]")
-    audio_ids = Column(Text, nullable=False, default="[]")
-    topic_ids = Column(Text, nullable=False, default="[]")
-    snapshot_hash = Column(String(64), nullable=True, index=True)
-    created_at = Column(DateTime, default=utc_now_naive)
-    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
-
-    creative_item = relationship(
-        "CreativeItem",
-        back_populates="input_snapshot_record",
-        foreign_keys=[creative_item_id],
-    )
-    profile = relationship("PublishProfile", foreign_keys=[profile_id])
 
 
 class CreativeVersion(Base):
@@ -895,6 +858,8 @@ async def init_db():
     await migration_033.run_migration(engine)
     migration_034 = importlib.import_module("migrations.034_creative_phase3_freeze_contract")
     await migration_034.run_migration(engine)
+    migration_035 = importlib.import_module("migrations.035_creative_phase4_snapshot_retirement")
+    await migration_035.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

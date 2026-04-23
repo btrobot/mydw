@@ -125,9 +125,7 @@ async def test_create_creative_allows_work_item_without_current_version(
     assert payload["input_orchestration"]["item_count"] == 0
     assert payload["input_orchestration"]["enabled_item_count"] == 0
     assert len(payload["input_orchestration"]["orchestration_hash"]) == 64
-    assert payload["input_snapshot"]["video_ids"] == []
-    assert payload["input_snapshot"]["profile_id"] is None
-    assert payload["input_snapshot"]["snapshot_hash"] is not None
+    assert "input_snapshot" not in payload
     assert "请选择合成配置" in payload["eligibility_reasons"]
     assert "至少选择 1 个视频" in payload["eligibility_reasons"]
 
@@ -161,10 +159,7 @@ async def test_create_creative_can_project_ready_to_compose_from_input_items(
     assert payload["input_orchestration"]["enabled_item_count"] == 2
     assert payload["input_orchestration"]["material_counts"]["video"] == 1
     assert payload["input_orchestration"]["material_counts"]["topic"] == 1
-    assert payload["input_snapshot"]["profile_id"] == profile.id
-    assert payload["input_snapshot"]["video_ids"] == [video.id]
-    assert payload["input_snapshot"]["topic_ids"] == [topic.id]
-    assert len(payload["input_snapshot"]["snapshot_hash"]) == 64
+    assert "input_snapshot" not in payload
 
 
 @pytest.mark.asyncio
@@ -218,12 +213,7 @@ async def test_create_creative_dual_writes_authoritative_input_items_and_legacy_
     assert payload["input_orchestration"]["enabled_item_count"] == 6
     assert payload["input_orchestration"]["material_counts"]["video"] == 2
     assert payload["input_orchestration"]["enabled_material_counts"]["audio"] == 1
-    assert payload["input_snapshot"]["profile_id"] == profile.id
-    assert payload["input_snapshot"]["video_ids"] == [video.id, video.id]
-    assert payload["input_snapshot"]["copywriting_ids"] == [copywriting.id]
-    assert payload["input_snapshot"]["cover_ids"] == [cover.id]
-    assert payload["input_snapshot"]["audio_ids"] == [audio.id]
-    assert payload["input_snapshot"]["topic_ids"] == [topic.id]
+    assert "input_snapshot" not in payload
 
 
 @pytest.mark.asyncio
@@ -261,7 +251,7 @@ async def test_creative_patch_does_not_silently_deduplicate_repeated_input_items
     assert [item["material_id"] for item in payload["input_items"]] == [video.id, video.id]
     assert [item["instance_no"] for item in payload["input_items"]] == [1, 2]
     assert [item["role"] for item in payload["input_items"]] == ["opening", "ending"]
-    assert payload["input_snapshot"]["video_ids"] == [video.id, video.id]
+    assert payload["input_orchestration"]["material_counts"]["video"] == 2
 
 
 @pytest.mark.asyncio
@@ -351,7 +341,7 @@ async def test_creative_patch_rejects_legacy_list_write_fields_in_phase2(
 
 
 @pytest.mark.asyncio
-async def test_creative_update_can_change_snapshot_hash_and_mark_invalid_combo(
+async def test_creative_update_can_change_orchestration_hash_and_mark_invalid_combo(
     client: AsyncClient,
     db_session: AsyncSession,
 ) -> None:
@@ -384,8 +374,7 @@ async def test_creative_update_can_change_snapshot_hash_and_mark_invalid_combo(
     assert payload["status"] == "PENDING_INPUT"
     assert payload["input_orchestration"]["material_counts"]["audio"] == 1
     assert payload["input_orchestration"]["orchestration_hash"] != created["input_orchestration"]["orchestration_hash"]
-    assert payload["input_snapshot"]["audio_ids"] == [audio.id]
-    assert payload["input_snapshot"]["snapshot_hash"] != created["input_snapshot"]["snapshot_hash"]
+    assert "input_snapshot" not in payload
     assert any("独立音频输入" in reason for reason in payload["eligibility_reasons"])
 
 

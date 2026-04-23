@@ -95,7 +95,7 @@ interface CreativeScenarioState {
     main_copywriting_text?: string | null
     target_duration_seconds?: number | null
     input_items?: Array<Record<string, unknown>>
-    input_snapshot?: Record<string, unknown>
+    input_orchestration?: Record<string, unknown>
     eligibility_status?: string
     eligibility_reasons?: string[]
     latest_task_summary?: Record<string, unknown> | null
@@ -112,50 +112,31 @@ interface CreativeReviewMockOptions {
   taskDetails?: Record<number, Record<string, unknown>>
 }
 
-function createCompatibilityInputSnapshot(overrides: Record<string, unknown> = {}) {
-  return {
-    profile_id: 1,
-    video_ids: [11],
-    copywriting_ids: [],
-    cover_ids: [],
-    audio_ids: [],
-    topic_ids: [],
-    snapshot_hash: 'mock-review-snapshot',
-    ...overrides,
-  }
-}
-
-function projectCompatibilitySnapshot(
+function createInputOrchestration(
   inputItems: Array<Record<string, unknown>>,
   profileId: number | null = 1,
+  overrides: Record<string, unknown> = {},
 ) {
-  const snapshot = createCompatibilityInputSnapshot({
-    profile_id: profileId,
-    video_ids: [],
-    copywriting_ids: [],
-    cover_ids: [],
-    audio_ids: [],
-    topic_ids: [],
-  }) as Record<string, unknown>
+  const materialCounts = { video: 0, copywriting: 0, cover: 0, audio: 0, topic: 0 }
+  const enabledMaterialCounts = { video: 0, copywriting: 0, cover: 0, audio: 0, topic: 0 }
 
   for (const item of inputItems) {
-    if (item.enabled === false) {
-      continue
+    const materialType = String(item.material_type ?? 'video') as keyof typeof materialCounts
+    materialCounts[materialType] += 1
+    if (item.enabled !== false) {
+      enabledMaterialCounts[materialType] += 1
     }
-    const fieldName =
-      item.material_type === 'video'
-        ? 'video_ids'
-        : item.material_type === 'copywriting'
-          ? 'copywriting_ids'
-          : item.material_type === 'cover'
-            ? 'cover_ids'
-            : item.material_type === 'audio'
-              ? 'audio_ids'
-              : 'topic_ids'
-    ;(snapshot[fieldName] as number[]).push(Number(item.material_id))
   }
 
-  return snapshot
+  return {
+    profile_id: profileId,
+    orchestration_hash: 'mock-review-orchestration',
+    item_count: inputItems.length,
+    enabled_item_count: inputItems.filter((item) => item.enabled !== false).length,
+    material_counts: materialCounts,
+    enabled_material_counts: enabledMaterialCounts,
+    ...overrides,
+  }
 }
 
 function createCreativeBriefFields(overrides: Record<string, unknown> = {}) {
@@ -175,7 +156,7 @@ function createCreativeBriefFields(overrides: Record<string, unknown> = {}) {
     main_copywriting_text: '轻盈春装，上身即走。',
     target_duration_seconds: 30,
     input_items: inputItems,
-    input_snapshot: projectCompatibilitySnapshot(inputItems),
+    input_orchestration: createInputOrchestration(inputItems),
     eligibility_status: 'READY_TO_COMPOSE',
     eligibility_reasons: [],
     latest_task_summary: null,
@@ -195,7 +176,7 @@ function buildCreativeListItem(detail: CreativeScenarioState['detail']) {
     main_copywriting_text: detail.main_copywriting_text ?? null,
     target_duration_seconds: detail.target_duration_seconds ?? null,
     input_items: detail.input_items ?? [],
-    input_snapshot: detail.input_snapshot ?? createCompatibilityInputSnapshot(),
+    input_orchestration: detail.input_orchestration ?? createInputOrchestration(detail.input_items ?? []),
     generation_error_msg: detail.generation_error_msg ?? null,
     generation_failed_at: detail.generation_failed_at ?? null,
     eligibility_status: detail.eligibility_status ?? 'READY_TO_COMPOSE',
@@ -447,6 +428,14 @@ function buildDefaultScheduleConfig() {
   }
 }
 
+function buildDefaultSystemConfig() {
+  return {
+    material_base_path: 'E:/mock-materials',
+    creative_flow_mode: 'creative_first',
+    creative_flow_shadow_compare: false,
+  }
+}
+
 function filterPoolItems(items: PublishPoolItem[], url: URL) {
   const status = url.searchParams.get('status')
   const creativeId = url.searchParams.get('creative_id')
@@ -478,6 +467,7 @@ export async function mockCreativeReviewApis(
 ) {
   const scheduleConfig = { ...buildDefaultScheduleConfig(), ...options.scheduleConfig }
   const publishStatus = { ...buildDefaultPublishStatus(), ...options.publishStatus }
+  const systemConfig = buildDefaultSystemConfig()
   const activePoolItems = options.activePoolItems ?? []
   const invalidatedPoolItems = options.invalidatedPoolItems ?? []
 
@@ -515,7 +505,7 @@ export async function mockCreativeReviewApis(
         }))
         : (state.detail.input_items ?? [])
       const nextProfileId =
-        payload.profile_id === undefined ? (state.detail.input_snapshot?.profile_id as number | null | undefined) : payload.profile_id as number | null
+        payload.profile_id === undefined ? (state.detail.input_orchestration?.profile_id as number | null | undefined) : payload.profile_id as number | null
 
       state.detail = {
         ...state.detail,
@@ -535,7 +525,7 @@ export async function mockCreativeReviewApis(
             ? state.detail.target_duration_seconds ?? null
             : (payload.target_duration_seconds as number | null),
         input_items: nextInputItems,
-        input_snapshot: projectCompatibilitySnapshot(nextInputItems, nextProfileId ?? null),
+        input_orchestration: createInputOrchestration(nextInputItems, nextProfileId ?? null),
         updated_at: '2026-04-18T08:00:00Z',
       }
 
@@ -549,6 +539,10 @@ export async function mockCreativeReviewApis(
 
   await page.route('**/api/publish/status**', async (route) => {
     await fulfillJson(route, publishStatus)
+  })
+
+  await page.route('**/api/system/config**', async (route) => {
+    await fulfillJson(route, systemConfig)
   })
 
   await page.route('**/api/schedule-config**', async (route) => {
@@ -671,5 +665,5 @@ export async function mockCreativeReviewApis(
     await fulfillJson(route, { total: 0, items: [] })
   })
 
-  return { state, publishStatus, scheduleConfig, activePoolItems, invalidatedPoolItems }
+  return { state, publishStatus, scheduleConfig, systemConfig, activePoolItems, invalidatedPoolItems }
 }

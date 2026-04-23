@@ -18,15 +18,14 @@ interface WorkbenchLandingMockOptions {
   poolItems?: Array<Record<string, unknown>>
 }
 
-function createCompatibilityInputSnapshot(overrides: Record<string, unknown> = {}) {
+function createInputOrchestration(overrides: Record<string, unknown> = {}) {
   return {
     profile_id: null,
-    video_ids: [],
-    copywriting_ids: [],
-    cover_ids: [],
-    audio_ids: [],
-    topic_ids: [],
-    snapshot_hash: 'mock-workbench-snapshot',
+    orchestration_hash: 'mock-workbench-orchestration',
+    item_count: 0,
+    enabled_item_count: 0,
+    material_counts: { video: 0, copywriting: 0, cover: 0, audio: 0, topic: 0 },
+    enabled_material_counts: { video: 0, copywriting: 0, cover: 0, audio: 0, topic: 0 },
     ...overrides,
   }
 }
@@ -51,7 +50,12 @@ function createCreativeWorkbenchItem(overrides: Record<string, unknown> = {}) {
         enabled: true,
       },
     ],
-    input_snapshot: createCompatibilityInputSnapshot({ video_ids: [11] }),
+    input_orchestration: createInputOrchestration({
+      item_count: 1,
+      enabled_item_count: 1,
+      material_counts: { video: 1, copywriting: 0, cover: 0, audio: 0, topic: 0 },
+      enabled_material_counts: { video: 1, copywriting: 0, cover: 0, audio: 0, topic: 0 },
+    }),
     generation_error_msg: null,
     generation_failed_at: null,
     eligibility_status: 'PENDING_INPUT',

@@ -103,9 +103,11 @@ test.describe('Task diagnostics positioning', () => {
   })
 
   test('uses workbench as the default entry while keeping dashboard reachable', async ({ page }) => {
-    await page.goto(`/#/`)
+    await expect(async () => {
+      await page.goto(`/#/`)
+      await expect(page).toHaveURL(/#\/creative\/workbench/)
+    }).toPass({ timeout: 30000 })
 
-    await page.waitForURL(/#\/creative\/workbench/)
     await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
 
     await page.goto(`/#/dashboard`)

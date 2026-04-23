@@ -56,7 +56,6 @@ PHASE1_CREATIVE_ENUM_SCHEMA_NAMES = (
 
 PHASE1_CREATIVE_DETAIL_REF_FIELDS = (
     "input_orchestration",
-    "input_snapshot",
     "eligibility_status",
     "latest_task_summary",
 )
@@ -156,7 +155,7 @@ async def test_task_create_and_update_openapi_do_not_expose_task_kind(
 
 
 @pytest.mark.asyncio
-async def test_creative_openapi_exposes_phase2_workbench_and_detail_contracts(
+async def test_creative_openapi_exposes_phase4_workbench_and_detail_contracts(
     client: AsyncClient,
 ) -> None:
     response = await client.get("/openapi.json")
@@ -191,8 +190,7 @@ async def test_creative_openapi_exposes_phase2_workbench_and_detail_contracts(
         assert "compatibility-only projection" in schemas["CreativeUpdateRequest"]["properties"][field_name]["description"]
     assert schemas["CreativeInputItemResponse"]["properties"]["material_type"]["$ref"].endswith("/CreativeInputMaterialType")
     assert schemas["CreativeInputItemResponse"]["properties"]["material_id"]["type"] == "integer"
-    assert schemas["CreativeInputSnapshotResponse"]["properties"]["snapshot_hash"]["deprecated"] is True
-    assert "input_orchestration.orchestration_hash" in schemas["CreativeInputSnapshotResponse"]["properties"]["snapshot_hash"]["description"]
+    assert "CreativeInputSnapshotResponse" not in schemas
     assert schemas["CreativeInputOrchestrationResponse"]["properties"]["orchestration_hash"]["type"] == "string"
     assert schemas["CreativeInputOrchestrationResponse"]["properties"]["item_count"]["type"] == "integer"
     assert schemas["CreativeInputOrchestrationResponse"]["properties"]["enabled_item_count"]["type"] == "integer"
@@ -206,14 +204,12 @@ async def test_creative_openapi_exposes_phase2_workbench_and_detail_contracts(
     assert schemas["CreativeDetailResponse"]["properties"]["target_duration_seconds"]["anyOf"][0]["type"] == "integer"
     assert schemas["CreativeDetailResponse"]["properties"]["input_items"]["type"] == "array"
     assert schemas["CreativeDetailResponse"]["properties"]["input_orchestration"]["$ref"].endswith("/CreativeInputOrchestrationResponse")
-    assert schemas["CreativeDetailResponse"]["properties"]["input_snapshot"]["$ref"].endswith("/CreativeInputSnapshotResponse")
-    assert schemas["CreativeDetailResponse"]["properties"]["input_snapshot"]["deprecated"] is True
+    assert "input_snapshot" not in schemas["CreativeDetailResponse"]["properties"]
     assert schemas["CreativeDetailResponse"]["properties"]["eligibility_status"]["$ref"].endswith("/CreativeEligibilityStatus")
     assert schemas["CreativeDetailResponse"]["properties"]["latest_task_summary"]["anyOf"][0]["$ref"].endswith("/CreativeLatestTaskSummaryResponse")
     assert schemas["CreativeWorkbenchItemResponse"]["properties"]["input_items"]["type"] == "array"
     assert schemas["CreativeWorkbenchItemResponse"]["properties"]["input_orchestration"]["$ref"].endswith("/CreativeInputOrchestrationResponse")
-    assert schemas["CreativeWorkbenchItemResponse"]["properties"]["input_snapshot"]["$ref"].endswith("/CreativeInputSnapshotResponse")
-    assert schemas["CreativeWorkbenchItemResponse"]["properties"]["input_snapshot"]["deprecated"] is True
+    assert "input_snapshot" not in schemas["CreativeWorkbenchItemResponse"]["properties"]
     assert schemas["CreativeVersionSummaryResponse"]["properties"]["package_record"]["anyOf"][0]["$ref"].endswith("/PackageRecordResponse")
     assert schemas["CreativeVersionSummaryResponse"]["properties"]["final_product_name"]["anyOf"][0]["type"] == "string"
     assert schemas["CreativeVersionSummaryResponse"]["properties"]["final_copywriting_text"]["anyOf"][0]["type"] == "string"
@@ -225,7 +221,7 @@ async def test_creative_openapi_exposes_phase2_workbench_and_detail_contracts(
 
 
 @pytest.mark.asyncio
-async def test_frontend_exported_openapi_keeps_phase2_creative_contract_in_sync(
+async def test_frontend_exported_openapi_keeps_phase4_creative_contract_in_sync(
     client: AsyncClient,
 ) -> None:
     response = await client.get("/openapi.json")
@@ -242,6 +238,9 @@ async def test_frontend_exported_openapi_keeps_phase2_creative_contract_in_sync(
 
     for schema_name in PHASE1_CREATIVE_ENUM_SCHEMA_NAMES:
         assert exported_schemas[schema_name] == live_schemas[schema_name]
+
+    assert "CreativeInputSnapshotResponse" not in exported_schemas
+    assert "CreativeInputSnapshotResponse" not in live_schemas
 
     assert _schema_refs(
         exported_spec,

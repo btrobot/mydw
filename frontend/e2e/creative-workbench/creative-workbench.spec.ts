@@ -16,7 +16,14 @@ const creativeListPayload = {
       input_items: [
         { material_type: 'video', material_id: 11, sequence: 1, instance_no: 1, enabled: true },
       ],
-      input_snapshot: { profile_id: 1, video_ids: [11], copywriting_ids: [], cover_ids: [], audio_ids: [], topic_ids: [], snapshot_hash: 'snapshot-101' },
+      input_orchestration: {
+        profile_id: 1,
+        orchestration_hash: 'orchestration-101',
+        item_count: 1,
+        enabled_item_count: 1,
+        material_counts: { video: 1, copywriting: 0, cover: 0, audio: 0, topic: 0 },
+        enabled_material_counts: { video: 1, copywriting: 0, cover: 0, audio: 0, topic: 0 },
+      },
       generation_error_msg: null,
       generation_failed_at: null,
       updated_at: '2026-04-16T10:00:00Z',
@@ -35,7 +42,14 @@ const creativeListPayload = {
         { material_type: 'video', material_id: 12, sequence: 1, instance_no: 1, enabled: true },
         { material_type: 'video', material_id: 12, sequence: 2, instance_no: 2, enabled: true },
       ],
-      input_snapshot: { profile_id: 1, video_ids: [12, 12], copywriting_ids: [], cover_ids: [], audio_ids: [], topic_ids: [], snapshot_hash: 'snapshot-102' },
+      input_orchestration: {
+        profile_id: 1,
+        orchestration_hash: 'orchestration-102',
+        item_count: 2,
+        enabled_item_count: 2,
+        material_counts: { video: 2, copywriting: 0, cover: 0, audio: 0, topic: 0 },
+        enabled_material_counts: { video: 2, copywriting: 0, cover: 0, audio: 0, topic: 0 },
+      },
       generation_error_msg: '素材解析失败',
       generation_failed_at: '2026-04-16T09:30:00Z',
       updated_at: '2026-04-16T12:00:00Z',
@@ -53,7 +67,14 @@ const creativeListPayload = {
       input_items: [
         { material_type: 'video', material_id: 13, sequence: 1, instance_no: 1, enabled: true },
       ],
-      input_snapshot: { profile_id: 1, video_ids: [13], copywriting_ids: [], cover_ids: [], audio_ids: [], topic_ids: [], snapshot_hash: 'snapshot-103' },
+      input_orchestration: {
+        profile_id: 1,
+        orchestration_hash: 'orchestration-103',
+        item_count: 1,
+        enabled_item_count: 1,
+        material_counts: { video: 1, copywriting: 0, cover: 0, audio: 0, topic: 0 },
+        enabled_material_counts: { video: 1, copywriting: 0, cover: 0, audio: 0, topic: 0 },
+      },
       generation_error_msg: null,
       generation_failed_at: null,
       updated_at: '2026-04-16T08:00:00Z',
@@ -69,7 +90,14 @@ const creativeListPayload = {
       main_copywriting_text: null,
       target_duration_seconds: null,
       input_items: [],
-      input_snapshot: { profile_id: null, video_ids: [], copywriting_ids: [], cover_ids: [], audio_ids: [], topic_ids: [], snapshot_hash: 'snapshot-104' },
+      input_orchestration: {
+        profile_id: null,
+        orchestration_hash: 'orchestration-104',
+        item_count: 0,
+        enabled_item_count: 0,
+        material_counts: { video: 0, copywriting: 0, cover: 0, audio: 0, topic: 0 },
+        enabled_material_counts: { video: 0, copywriting: 0, cover: 0, audio: 0, topic: 0 },
+      },
       generation_error_msg: null,
       generation_failed_at: null,
       updated_at: '2026-04-16T11:00:00Z',
@@ -118,15 +146,6 @@ const creativeDetailPayload = {
     enabled_item_count: 1,
     material_counts: { video: 1, copywriting: 0, cover: 0, audio: 0, topic: 0 },
     enabled_material_counts: { video: 1, copywriting: 0, cover: 0, audio: 0, topic: 0 },
-  },
-  input_snapshot: {
-    profile_id: 1,
-    video_ids: [11],
-    copywriting_ids: [],
-    cover_ids: [],
-    audio_ids: [],
-    topic_ids: [],
-    snapshot_hash: 'snapshot-101',
   },
 }
 
@@ -496,10 +515,7 @@ test.describe('Creative workbench baseline', () => {
 
   test('saves creative brief and input_items without legacy list write fields', async ({ page }) => {
     let updatePayload: Record<string, unknown> | undefined
-    let detailState = {
-      ...(JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload),
-      input_snapshot: undefined,
-    }
+    let detailState = JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload
 
     await page.unroute('**/api/creatives/101')
     await page.route('**/api/creatives/101', async (route) => {

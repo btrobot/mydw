@@ -584,40 +584,6 @@ class CreativeVersionSummaryResponse(BaseModel):
     updated_at: datetime
 
 
-class CreativeInputSnapshotResponse(BaseModel):
-    profile_id: Optional[int] = None
-    video_ids: List[int] = Field(
-        default_factory=list,
-        description="Deprecated compatibility-only projected video ids. Canonical authoring source is input_items.",
-        json_schema_extra={"deprecated": True},
-    )
-    copywriting_ids: List[int] = Field(
-        default_factory=list,
-        description="Deprecated compatibility-only projected copywriting ids. Canonical authoring source is input_items.",
-        json_schema_extra={"deprecated": True},
-    )
-    cover_ids: List[int] = Field(
-        default_factory=list,
-        description="Deprecated compatibility-only projected cover ids. Canonical authoring source is input_items.",
-        json_schema_extra={"deprecated": True},
-    )
-    audio_ids: List[int] = Field(
-        default_factory=list,
-        description="Deprecated compatibility-only projected audio ids. Canonical authoring source is input_items.",
-        json_schema_extra={"deprecated": True},
-    )
-    topic_ids: List[int] = Field(
-        default_factory=list,
-        description="Deprecated compatibility-only projected topic ids. Canonical authoring source is input_items.",
-        json_schema_extra={"deprecated": True},
-    )
-    snapshot_hash: Optional[str] = Field(
-        None,
-        description="Deprecated compatibility-only snapshot hash. Use input_orchestration.orchestration_hash as the canonical creative-input hash.",
-        json_schema_extra={"deprecated": True},
-    )
-
-
 class CreativeInputMaterialCountsResponse(BaseModel):
     video: int = 0
     copywriting: int = 0
@@ -750,7 +716,7 @@ class CreativeCreateRequest(BaseModel):
     )
     input_items: List[CreativeInputItemWrite] = Field(
         default_factory=list,
-        description="Phase 4 canonical creative input orchestration surface; use together with input_orchestration, while legacy input_snapshot/list carriers remain compatibility-only projection.",
+        description="Phase 4 canonical creative input orchestration surface.",
     )
 
     @model_validator(mode="after")
@@ -802,7 +768,7 @@ class CreativeUpdateRequest(BaseModel):
     )
     input_items: Optional[List[CreativeInputItemWrite]] = Field(
         None,
-        description="When present, input_items is the Phase 4 canonical creative input orchestration source and legacy carrier fields remain compatibility-only projection.",
+        description="When present, input_items is the Phase 4 canonical creative input orchestration source.",
     )
 
     @model_validator(mode="after")
@@ -844,11 +810,6 @@ class CreativeItemResponse(BaseModel):
     )
     generation_error_msg: Optional[str] = None
     generation_failed_at: Optional[datetime] = None
-    input_snapshot: CreativeInputSnapshotResponse = Field(
-        default_factory=CreativeInputSnapshotResponse,
-        description="Deprecated compatibility-only projection derived from canonical input_items/input_orchestration when available.",
-        json_schema_extra={"deprecated": True},
-    )
     eligibility_status: CreativeEligibilityStatus = CreativeEligibilityStatus.PENDING_INPUT
     eligibility_reasons: List[str] = Field(default_factory=list)
     latest_task_summary: Optional[CreativeLatestTaskSummaryResponse] = None
@@ -876,11 +837,6 @@ class CreativeWorkbenchItemResponse(BaseModel):
     input_orchestration: CreativeInputOrchestrationResponse = Field(
         default_factory=_default_creative_input_orchestration_response,
         description="Phase 4 canonical orchestration metadata/hash paired with input_items.",
-    )
-    input_snapshot: CreativeInputSnapshotResponse = Field(
-        default_factory=CreativeInputSnapshotResponse,
-        description="Deprecated compatibility-only projection derived from canonical input_items/input_orchestration when available.",
-        json_schema_extra={"deprecated": True},
     )
     generation_error_msg: Optional[str] = None
     generation_failed_at: Optional[datetime] = None
@@ -988,11 +944,6 @@ class CreativeDetailResponse(BaseModel):
     )
     generation_error_msg: Optional[str] = None
     generation_failed_at: Optional[datetime] = None
-    input_snapshot: CreativeInputSnapshotResponse = Field(
-        default_factory=CreativeInputSnapshotResponse,
-        description="Deprecated compatibility-only projection derived from canonical input_items/input_orchestration when available.",
-        json_schema_extra={"deprecated": True},
-    )
     eligibility_status: CreativeEligibilityStatus = CreativeEligibilityStatus.PENDING_INPUT
     eligibility_reasons: List[str] = Field(default_factory=list)
     latest_task_summary: Optional[CreativeLatestTaskSummaryResponse] = None

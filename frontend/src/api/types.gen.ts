@@ -1354,7 +1354,7 @@ export type CreativeCreateRequest = {
     /**
      * Input Items
      *
-     * Phase 4 canonical creative input orchestration surface; use together with input_orchestration, while legacy input_snapshot/list carriers remain compatibility-only projection.
+     * Phase 4 canonical creative input orchestration surface.
      */
     input_items?: Array<CreativeInputItemWrite>;
 };
@@ -1472,12 +1472,6 @@ export type CreativeDetailResponse = {
      * Generation Failed At
      */
     generation_failed_at?: string | null;
-    /**
-     * Deprecated compatibility-only projection derived from canonical input_items/input_orchestration when available.
-     *
-     * @deprecated
-     */
-    input_snapshot?: CreativeInputSnapshotResponse;
     eligibility_status?: CreativeEligibilityStatus;
     /**
      * Eligibility Reasons
@@ -1656,64 +1650,6 @@ export type CreativeInputOrchestrationResponse = {
 };
 
 /**
- * CreativeInputSnapshotResponse
- */
-export type CreativeInputSnapshotResponse = {
-    /**
-     * Profile Id
-     */
-    profile_id?: number | null;
-    /**
-     * Video Ids
-     *
-     * Deprecated compatibility-only projected video ids. Canonical authoring source is input_items.
-     *
-     * @deprecated
-     */
-    video_ids?: Array<number>;
-    /**
-     * Copywriting Ids
-     *
-     * Deprecated compatibility-only projected copywriting ids. Canonical authoring source is input_items.
-     *
-     * @deprecated
-     */
-    copywriting_ids?: Array<number>;
-    /**
-     * Cover Ids
-     *
-     * Deprecated compatibility-only projected cover ids. Canonical authoring source is input_items.
-     *
-     * @deprecated
-     */
-    cover_ids?: Array<number>;
-    /**
-     * Audio Ids
-     *
-     * Deprecated compatibility-only projected audio ids. Canonical authoring source is input_items.
-     *
-     * @deprecated
-     */
-    audio_ids?: Array<number>;
-    /**
-     * Topic Ids
-     *
-     * Deprecated compatibility-only projected topic ids. Canonical authoring source is input_items.
-     *
-     * @deprecated
-     */
-    topic_ids?: Array<number>;
-    /**
-     * Snapshot Hash
-     *
-     * Deprecated compatibility-only snapshot hash. Use input_orchestration.orchestration_hash as the canonical creative-input hash.
-     *
-     * @deprecated
-     */
-    snapshot_hash?: string | null;
-};
-
-/**
  * CreativeLatestTaskSummaryResponse
  */
 export type CreativeLatestTaskSummaryResponse = {
@@ -1883,7 +1819,7 @@ export type CreativeUpdateRequest = {
     /**
      * Input Items
      *
-     * When present, input_items is the Phase 4 canonical creative input orchestration source and legacy carrier fields remain compatibility-only projection.
+     * When present, input_items is the Phase 4 canonical creative input orchestration source.
      */
     input_items?: Array<CreativeInputItemWrite> | null;
 };
@@ -2003,12 +1939,6 @@ export type CreativeWorkbenchItemResponse = {
      * Phase 4 canonical orchestration metadata/hash paired with input_items.
      */
     input_orchestration?: CreativeInputOrchestrationResponse;
-    /**
-     * Deprecated compatibility-only projection derived from canonical input_items/input_orchestration when available.
-     *
-     * @deprecated
-     */
-    input_snapshot?: CreativeInputSnapshotResponse;
     /**
      * Generation Error Msg
      */

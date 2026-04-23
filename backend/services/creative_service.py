@@ -40,7 +40,6 @@ from schemas import (
     CreativeInputItemResponse,
     CreativeInputMaterialCountsResponse,
     CreativeInputOrchestrationResponse,
-    CreativeInputSnapshotResponse,
     CreativeItemResponse,
     CreativeLatestTaskSummaryResponse,
     CreativeComposeSubmitResponse,
@@ -73,21 +72,13 @@ REVIEW_AND_BEYOND_STATUS_VALUES = {
     CreativeStatus.PUBLISHED.value,
 }
 
-INPUT_ITEM_TO_SNAPSHOT_FIELD = {
+INPUT_ITEM_TO_RESOURCE_FIELD = {
     "video": "video_ids",
     "copywriting": "copywriting_ids",
     "cover": "cover_ids",
     "audio": "audio_ids",
     "topic": "topic_ids",
 }
-
-SNAPSHOT_FIELD_ORDER: tuple[tuple[str, str], ...] = (
-    ("video_ids", "video"),
-    ("copywriting_ids", "copywriting"),
-    ("cover_ids", "cover"),
-    ("audio_ids", "audio"),
-    ("topic_ids", "topic"),
-)
 
 INPUT_STATE_FIELD_NAMES = (
     "profile_id",
@@ -123,7 +114,6 @@ class CreativeService:
             .options(
                 selectinload(CreativeItem.input_items),
                 selectinload(CreativeItem.input_profile),
-                selectinload(CreativeItem.input_snapshot_record),
                 selectinload(CreativeItem.tasks).selectinload(Task.profile),
                 selectinload(CreativeItem.publish_pool_items),
             )
@@ -156,7 +146,6 @@ class CreativeService:
         input_profile_id, authoritative_input_items = self._resolve_authoritative_input_state(
             profile_id=payload.profile_id,
             current_input_items=[],
-            current_legacy_snapshot=None,
             explicit_input_items=payload.input_items if "input_items" in payload.model_fields_set else None,
         )
         await self._apply_authoritative_input_state(
@@ -221,21 +210,15 @@ class CreativeService:
             creative.target_duration_seconds = payload.target_duration_seconds
 
         if self._payload_updates_input_state(payload.model_fields_set):
-            current_legacy_snapshot = self._extract_legacy_input_snapshot(creative)
             current_profile_id = (
                 payload.profile_id
                 if "profile_id" in payload.model_fields_set
-                else (
-                    creative.input_profile_id
-                    if creative.input_profile_id is not None
-                    else current_legacy_snapshot["profile_id"]
-                )
+                else creative.input_profile_id
             )
             current_input_items = self._extract_authoritative_input_items(creative)
             input_profile_id, authoritative_input_items = self._resolve_authoritative_input_state(
                 profile_id=current_profile_id,
                 current_input_items=current_input_items,
-                current_legacy_snapshot=current_legacy_snapshot,
                 explicit_input_items=payload.input_items if "input_items" in payload.model_fields_set else None,
             )
             await self._apply_authoritative_input_state(
@@ -278,10 +261,7 @@ class CreativeService:
             raise ValueError("作品不存在")
 
         runtime_input_state = self._resolve_runtime_input_state(creative)
-        input_snapshot = self._build_input_snapshot_response(
-            creative,
-            runtime_input_state=runtime_input_state,
-        )
+        execution_inputs = runtime_input_state["execution_inputs"]
         eligibility_status, eligibility_reasons = await self._build_eligibility_projection(
             creative,
             runtime_input_state=runtime_input_state,
@@ -355,11 +335,11 @@ class CreativeService:
 
             task = await TaskAssembler(self.db).assemble(
                 account_id=None,
-                video_ids=input_snapshot.video_ids,
-                copywriting_ids=input_snapshot.copywriting_ids,
-                cover_ids=input_snapshot.cover_ids,
-                audio_ids=input_snapshot.audio_ids,
-                topic_ids=input_snapshot.topic_ids,
+                video_ids=execution_inputs["video_ids"],
+                copywriting_ids=execution_inputs["copywriting_ids"],
+                cover_ids=execution_inputs["cover_ids"],
+                audio_ids=execution_inputs["audio_ids"],
+                topic_ids=execution_inputs["topic_ids"],
                 profile_id=profile.id,
                 name=self._build_task_name(creative),
                 creative_item_id=creative.id,
@@ -486,7 +466,6 @@ class CreativeService:
             .options(
                 selectinload(CreativeItem.input_items),
                 selectinload(CreativeItem.input_profile),
-                selectinload(CreativeItem.input_snapshot_record),
                 selectinload(CreativeItem.current_version).selectinload(CreativeVersion.package_records),
                 selectinload(CreativeItem.current_version).selectinload(CreativeVersion.check_records),
                 selectinload(CreativeItem.versions).selectinload(CreativeVersion.package_records),
@@ -517,7 +496,6 @@ class CreativeService:
             target_duration_seconds=creative.target_duration_seconds,
             input_items=projection["input_items"],
             input_orchestration=projection["input_orchestration"],
-            input_snapshot=projection["input_snapshot"],
             generation_error_msg=creative.generation_error_msg,
             generation_failed_at=creative.generation_failed_at,
             eligibility_status=projection["eligibility_status"],
@@ -572,7 +550,6 @@ class CreativeService:
             input_orchestration=projection["input_orchestration"],
             generation_error_msg=creative.generation_error_msg,
             generation_failed_at=creative.generation_failed_at,
-            input_snapshot=projection["input_snapshot"],
             eligibility_status=projection["eligibility_status"],
             eligibility_reasons=projection["eligibility_reasons"],
             latest_task_summary=projection["latest_task_summary"],
@@ -583,10 +560,6 @@ class CreativeService:
     async def _build_projection(self, creative: CreativeItem) -> dict[str, Any]:
         runtime_input_state = self._resolve_runtime_input_state(creative)
         input_items = self._build_input_items_response(
-            creative,
-            runtime_input_state=runtime_input_state,
-        )
-        input_snapshot = self._build_input_snapshot_response(
             creative,
             runtime_input_state=runtime_input_state,
         )
@@ -607,7 +580,6 @@ class CreativeService:
             "status": status,
             "input_items": input_items,
             "input_orchestration": input_orchestration,
-            "input_snapshot": input_snapshot,
             "eligibility_status": eligibility_status,
             "eligibility_reasons": eligibility_reasons,
             "latest_task_summary": latest_task_summary,
@@ -621,7 +593,7 @@ class CreativeService:
     ) -> tuple[CreativeEligibilityStatus, list[str]]:
         pending_reasons: list[str] = []
         invalid_reasons: list[str] = []
-        compat_snapshot = runtime_input_state["compat_snapshot"]
+        execution_inputs = runtime_input_state["execution_inputs"]
 
         profile = creative.__dict__.get("input_profile")
         if runtime_input_state["profile_id"] is None:
@@ -631,7 +603,7 @@ class CreativeService:
             if profile is None:
                 invalid_reasons.append("所选合成配置不存在")
 
-        if not compat_snapshot["video_ids"]:
+        if not execution_inputs["video_ids"]:
             pending_reasons.append("至少选择 1 个视频")
 
         resource_errors = await self._validate_runtime_resource_ids(runtime_input_state)
@@ -640,10 +612,10 @@ class CreativeService:
         if profile is not None and not invalid_reasons and not pending_reasons:
             try:
                 validate_task_resource_inputs(
-                    video_ids=compat_snapshot["video_ids"],
-                    copywriting_ids=compat_snapshot["copywriting_ids"],
-                    cover_ids=compat_snapshot["cover_ids"],
-                    audio_ids=compat_snapshot["audio_ids"],
+                    video_ids=execution_inputs["video_ids"],
+                    copywriting_ids=execution_inputs["copywriting_ids"],
+                    cover_ids=execution_inputs["cover_ids"],
+                    audio_ids=execution_inputs["audio_ids"],
                     composition_mode=profile.composition_mode,
                 )
             except TaskSemanticsError as exc:
@@ -663,13 +635,13 @@ class CreativeService:
         runtime_input_state: dict[str, Any],
     ) -> list[str]:
         errors: list[str] = []
-        compat_snapshot = runtime_input_state["compat_snapshot"]
+        execution_inputs = runtime_input_state["execution_inputs"]
         checks = [
-            ("视频", Video, compat_snapshot["video_ids"]),
-            ("文案", Copywriting, compat_snapshot["copywriting_ids"]),
-            ("封面", Cover, compat_snapshot["cover_ids"]),
-            ("音频", Audio, compat_snapshot["audio_ids"]),
-            ("话题", Topic, compat_snapshot["topic_ids"]),
+            ("视频", Video, execution_inputs["video_ids"]),
+            ("文案", Copywriting, execution_inputs["copywriting_ids"]),
+            ("封面", Cover, execution_inputs["cover_ids"]),
+            ("音频", Audio, execution_inputs["audio_ids"]),
+            ("话题", Topic, execution_inputs["topic_ids"]),
         ]
         for label, model, ids in checks:
             if not ids:
@@ -732,26 +704,6 @@ class CreativeService:
         if eligibility_status == CreativeEligibilityStatus.INVALID and creative.generation_failed_at is not None:
             return CreativeStatus.FAILED
         return CreativeStatus.PENDING_INPUT
-
-    def _build_input_snapshot_response(
-        self,
-        creative: CreativeItem,
-        *,
-        runtime_input_state: Optional[dict[str, Any]] = None,
-    ) -> CreativeInputSnapshotResponse:
-        snapshot = self._resolve_current_snapshot_state(
-            creative,
-            runtime_input_state=runtime_input_state,
-        )
-        return CreativeInputSnapshotResponse(
-            profile_id=snapshot["profile_id"],
-            video_ids=snapshot["video_ids"],
-            copywriting_ids=snapshot["copywriting_ids"],
-            cover_ids=snapshot["cover_ids"],
-            audio_ids=snapshot["audio_ids"],
-            topic_ids=snapshot["topic_ids"],
-            snapshot_hash=snapshot["snapshot_hash"],
-        )
 
     def _build_input_items_response(
         self,
@@ -838,15 +790,12 @@ class CreativeService:
         *,
         profile_id: Optional[int],
         current_input_items: list[dict[str, Any]],
-        current_legacy_snapshot: Optional[dict[str, Any]],
         explicit_input_items: Optional[list[Any]],
     ) -> tuple[Optional[int], list[dict[str, Any]]]:
         if explicit_input_items is not None:
             return profile_id, self._normalize_input_items(explicit_input_items)
         if current_input_items:
             return profile_id, self._normalize_input_items(current_input_items)
-        if current_legacy_snapshot is not None:
-            return profile_id, self._synthesize_input_items_from_snapshot(current_legacy_snapshot)
         return profile_id, []
 
     async def _apply_authoritative_input_state(
@@ -882,32 +831,13 @@ class CreativeService:
         set_committed_value(creative, "input_items", new_rows)
         creative.updated_at = utc_now_naive()
 
-    def _resolve_current_snapshot_state(
-        self,
-        creative: CreativeItem,
-        *,
-        runtime_input_state: Optional[dict[str, Any]] = None,
-    ) -> dict[str, Any]:
-        resolved_runtime_input_state = runtime_input_state or self._resolve_runtime_input_state(creative)
-        return resolved_runtime_input_state["compat_snapshot"]
-
     def _resolve_runtime_input_state(self, creative: CreativeItem) -> dict[str, Any]:
         authoritative_input_items = self._extract_authoritative_input_items(creative)
-        legacy_snapshot: dict[str, Any] | None = None
-        if authoritative_input_items:
-            profile_id = creative.input_profile_id
-        else:
-            legacy_snapshot = self._extract_legacy_input_snapshot(creative)
-            authoritative_input_items = self._synthesize_input_items_from_snapshot(legacy_snapshot)
-            profile_id = (
-                creative.input_profile_id
-                if creative.input_profile_id is not None
-                else legacy_snapshot["profile_id"]
-            )
+        profile_id = creative.input_profile_id
         return {
             "profile_id": profile_id,
             "input_items": authoritative_input_items,
-            "compat_snapshot": self._project_input_items_to_snapshot(
+            "execution_inputs": self._project_input_items_to_execution_inputs(
                 profile_id=profile_id,
                 input_items=authoritative_input_items,
             ),
@@ -927,7 +857,7 @@ class CreativeService:
                 raise ValueError("input_items.material_type 不能为空")
             material_type_value = getattr(material_type, "value", material_type)
             material_type_value = str(material_type_value)
-            if material_type_value not in INPUT_ITEM_TO_SNAPSHOT_FIELD:
+            if material_type_value not in INPUT_ITEM_TO_RESOURCE_FIELD:
                 raise ValueError(f"不支持的 input_items.material_type: {material_type_value}")
             material_id = self._read_input_item_value(raw_item, "material_id")
             if material_id is None:
@@ -970,26 +900,13 @@ class CreativeService:
             )
         return normalized
 
-    def _synthesize_input_items_from_snapshot(self, snapshot: dict[str, Any]) -> list[dict[str, Any]]:
-        synthesized: list[dict[str, Any]] = []
-        for field_name, material_type in SNAPSHOT_FIELD_ORDER:
-            for material_id in snapshot.get(field_name, []) or []:
-                synthesized.append(
-                    {
-                        "material_type": material_type,
-                        "material_id": int(material_id),
-                        "enabled": True,
-                    }
-                )
-        return self._normalize_input_items(synthesized)
-
-    def _project_input_items_to_snapshot(
+    def _project_input_items_to_execution_inputs(
         self,
         *,
         profile_id: Optional[int],
         input_items: list[dict[str, Any]],
     ) -> dict[str, Any]:
-        snapshot = {
+        resource_inputs = {
             "profile_id": profile_id,
             "video_ids": [],
             "copywriting_ids": [],
@@ -1000,17 +917,9 @@ class CreativeService:
         for item in self._normalize_input_items(input_items):
             if not item.get("enabled", True):
                 continue
-            target_field = INPUT_ITEM_TO_SNAPSHOT_FIELD[item["material_type"]]
-            snapshot[target_field].append(int(item["material_id"]))
-        snapshot["snapshot_hash"] = self._build_snapshot_hash(
-            profile_id=profile_id,
-            video_ids=snapshot["video_ids"],
-            copywriting_ids=snapshot["copywriting_ids"],
-            cover_ids=snapshot["cover_ids"],
-            audio_ids=snapshot["audio_ids"],
-            topic_ids=snapshot["topic_ids"],
-        )
-        return snapshot
+            target_field = INPUT_ITEM_TO_RESOURCE_FIELD[item["material_type"]]
+            resource_inputs[target_field].append(int(item["material_id"]))
+        return resource_inputs
 
     def _build_orchestration_hash(
         self,
@@ -1105,17 +1014,17 @@ class CreativeService:
         runtime_input_state: dict[str, Any],
         profile: PublishProfile,
     ) -> dict[str, Any]:
-        compat_snapshot = runtime_input_state["compat_snapshot"]
+        execution_inputs = runtime_input_state["execution_inputs"]
         merged_topic_ids = merge_task_topic_ids(
-            explicit_topic_ids=compat_snapshot["topic_ids"],
+            explicit_topic_ids=execution_inputs["topic_ids"],
             profile_default_topic_ids=await get_profile_topic_ids(self.db, profile),
         )
         return {
             "profile_id": runtime_input_state["profile_id"],
-            "video_ids": compat_snapshot["video_ids"],
-            "copywriting_ids": compat_snapshot["copywriting_ids"],
-            "cover_ids": compat_snapshot["cover_ids"],
-            "audio_ids": compat_snapshot["audio_ids"],
+            "video_ids": execution_inputs["video_ids"],
+            "copywriting_ids": execution_inputs["copywriting_ids"],
+            "cover_ids": execution_inputs["cover_ids"],
+            "audio_ids": execution_inputs["audio_ids"],
             "topic_ids": merged_topic_ids,
         }
 
@@ -1298,63 +1207,6 @@ class CreativeService:
         creative.updated_at = utc_now_naive()
         await self.db.flush()
 
-    def _extract_legacy_input_snapshot(self, creative: CreativeItem) -> dict[str, Any]:
-        snapshot_record = creative.__dict__.get("input_snapshot_record")
-        if snapshot_record is not None:
-            return {
-                "profile_id": snapshot_record.profile_id,
-                "video_ids": self._decode_id_list(snapshot_record.video_ids),
-                "copywriting_ids": self._decode_id_list(snapshot_record.copywriting_ids),
-                "cover_ids": self._decode_id_list(snapshot_record.cover_ids),
-                "audio_ids": self._decode_id_list(snapshot_record.audio_ids),
-                "topic_ids": self._decode_id_list(snapshot_record.topic_ids),
-                "snapshot_hash": snapshot_record.snapshot_hash,
-            }
-        return {
-            "profile_id": creative.input_profile_id,
-            "video_ids": self._decode_id_list(creative.input_video_ids),
-            "copywriting_ids": self._decode_id_list(creative.input_copywriting_ids),
-            "cover_ids": self._decode_id_list(creative.input_cover_ids),
-            "audio_ids": self._decode_id_list(creative.input_audio_ids),
-            "topic_ids": self._decode_id_list(creative.input_topic_ids),
-            "snapshot_hash": creative.input_snapshot_hash,
-        }
-
-    def _build_snapshot_hash(
-        self,
-        *,
-        profile_id: Optional[int],
-        video_ids: list[int],
-        copywriting_ids: list[int],
-        cover_ids: list[int],
-        audio_ids: list[int],
-        topic_ids: list[int],
-    ) -> str:
-        payload = {
-            "profile_id": profile_id,
-            "video_ids": video_ids,
-            "copywriting_ids": copywriting_ids,
-            "cover_ids": cover_ids,
-            "audio_ids": audio_ids,
-            "topic_ids": topic_ids,
-        }
-        canonical = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
-        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-
-    def _encode_id_list(self, values: list[int]) -> str:
-        return json.dumps(values, ensure_ascii=False, separators=(",", ":"))
-
-    def _decode_id_list(self, raw_value: Optional[str]) -> list[int]:
-        if raw_value in (None, ""):
-            return []
-        try:
-            parsed = json.loads(raw_value)
-        except (TypeError, ValueError):
-            return []
-        if not isinstance(parsed, list):
-            return []
-        return [int(item) for item in parsed]
-
     async def _creative_no_exists(self, creative_no: str) -> bool:
         result = await self.db.execute(
             select(CreativeItem.id).where(CreativeItem.creative_no == creative_no)
@@ -1395,10 +1247,10 @@ class CreativeService:
         """
         Legacy helper kept for schema-instantiation compatibility in tests.
         """
-        input_snapshot = self._build_input_snapshot_response(creative)
         input_items = self._build_input_items_response(creative)
+        runtime_input_state = self._resolve_runtime_input_state(creative)
         input_orchestration = self._build_input_orchestration_response(
-            profile_id=input_snapshot.profile_id,
+            profile_id=runtime_input_state["profile_id"],
             input_items=input_items,
         )
         return CreativeItemResponse(
@@ -1416,7 +1268,6 @@ class CreativeService:
             input_orchestration=input_orchestration,
             generation_error_msg=creative.generation_error_msg,
             generation_failed_at=creative.generation_failed_at,
-            input_snapshot=input_snapshot,
             eligibility_status=CreativeEligibilityStatus.PENDING_INPUT,
             eligibility_reasons=[],
             latest_task_summary=None,

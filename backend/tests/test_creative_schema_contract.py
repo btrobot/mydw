@@ -1,19 +1,19 @@
-﻿import importlib
+import importlib
 
 import pytest
 from pydantic import ValidationError
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from models import CreativeInputItem, CreativeItem, Product
 from schemas import (
+    CreativeCreateRequest,
     CreativeEligibilityStatus,
     CreativeItemResponse,
     CreativeStatus,
+    CreativeUpdateRequest,
     CreativeVersionSummaryResponse,
     PackageRecordResponse,
-    CreativeCreateRequest,
-    CreativeUpdateRequest,
     TaskCreateRequest,
     TaskKind,
     TaskResponse,
@@ -44,9 +44,11 @@ async def test_migration_024_is_idempotent_and_creative_columns_exist() -> None:
         async with engine.begin() as conn:
             tables = {
                 row[0]
-                for row in (await conn.exec_driver_sql(
-                    "SELECT name FROM sqlite_master WHERE type='table'"
-                )).fetchall()
+                for row in (
+                    await conn.exec_driver_sql(
+                        "SELECT name FROM sqlite_master WHERE type='table'"
+                    )
+                ).fetchall()
             }
             task_columns = {
                 row[1]
@@ -54,97 +56,14 @@ async def test_migration_024_is_idempotent_and_creative_columns_exist() -> None:
             }
             creative_item_indexes = {
                 row[1]
-                for row in (await conn.exec_driver_sql("PRAGMA index_list('creative_items')")).fetchall()
+                for row in (
+                    await conn.exec_driver_sql("PRAGMA index_list('creative_items')")
+                ).fetchall()
             }
 
         assert {"creative_items", "creative_versions", "package_records"}.issubset(tables)
         assert {"creative_item_id", "creative_version_id", "task_kind"}.issubset(task_columns)
         assert "ix_creative_items_creative_no" in creative_item_indexes
-    finally:
-        await engine.dispose()
-
-
-@pytest.mark.asyncio
-async def test_migration_031_creative_snapshot_columns_are_additive() -> None:
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
-    try:
-        async with engine.begin() as conn:
-            await conn.exec_driver_sql(
-                """
-                CREATE TABLE tasks (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    account_id INTEGER NOT NULL,
-                    status VARCHAR(32) DEFAULT 'draft'
-                )
-                """
-            )
-            await conn.exec_driver_sql(
-                """
-                CREATE TABLE publish_profiles (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name VARCHAR(128) NOT NULL
-                )
-                """
-            )
-
-        migration_024 = importlib.import_module("migrations.024_creative_phase_a_skeleton")
-        migration_031 = importlib.import_module("migrations.031_creative_workdriven_phase1")
-        await migration_024.run_migration(engine)
-        await migration_031.run_migration(engine)
-        await migration_031.run_migration(engine)
-
-        async with engine.begin() as conn:
-            creative_columns = {
-                row[1]
-                for row in (await conn.exec_driver_sql("PRAGMA table_info(creative_items)")).fetchall()
-            }
-
-        assert "input_profile_id" in creative_columns
-        assert "input_snapshot_hash" in creative_columns
-    finally:
-        await engine.dispose()
-
-
-@pytest.mark.asyncio
-async def test_migration_032_creative_input_snapshot_layer_is_additive() -> None:
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
-    try:
-        async with engine.begin() as conn:
-            await conn.exec_driver_sql(
-                """
-                CREATE TABLE tasks (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    account_id INTEGER NOT NULL,
-                    status VARCHAR(32) DEFAULT 'draft'
-                )
-                """
-            )
-            await conn.exec_driver_sql(
-                """
-                CREATE TABLE publish_profiles (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name VARCHAR(128) NOT NULL
-                )
-                """
-            )
-
-        migration_024 = importlib.import_module("migrations.024_creative_phase_a_skeleton")
-        migration_031 = importlib.import_module("migrations.031_creative_workdriven_phase1")
-        migration_032 = importlib.import_module("migrations.032_creative_input_snapshot_layer")
-        await migration_024.run_migration(engine)
-        await migration_031.run_migration(engine)
-        await migration_032.run_migration(engine)
-        await migration_032.run_migration(engine)
-
-        async with engine.begin() as conn:
-            tables = {
-                row[0]
-                for row in (await conn.exec_driver_sql(
-                    "SELECT name FROM sqlite_master WHERE type='table'"
-                )).fetchall()
-            }
-
-        assert "creative_input_snapshots" in tables
     finally:
         await engine.dispose()
 
@@ -197,13 +116,17 @@ async def test_migration_033_creative_domain_model_foundation_is_additive() -> N
             }
             tables = {
                 row[0]
-                for row in (await conn.exec_driver_sql(
-                    "SELECT name FROM sqlite_master WHERE type='table'"
-                )).fetchall()
+                for row in (
+                    await conn.exec_driver_sql(
+                        "SELECT name FROM sqlite_master WHERE type='table'"
+                    )
+                ).fetchall()
             }
             indexes = {
                 row[1]
-                for row in (await conn.exec_driver_sql("PRAGMA index_list('creative_input_items')")).fetchall()
+                for row in (
+                    await conn.exec_driver_sql("PRAGMA index_list('creative_input_items')")
+                ).fetchall()
             }
 
         assert {
@@ -219,7 +142,7 @@ async def test_migration_033_creative_domain_model_foundation_is_additive() -> N
 
 
 @pytest.mark.asyncio
-async def test_migration_033_preserves_legacy_snapshot_carriers_without_backfilling_authoritative_items() -> None:
+async def test_migration_035_backfills_missing_input_items_and_retires_snapshot_storage() -> None:
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
     try:
         async with engine.begin() as conn:
@@ -234,6 +157,10 @@ async def test_migration_033_preserves_legacy_snapshot_carriers_without_backfill
                     latest_version_no INTEGER NOT NULL DEFAULT 0,
                     generation_error_msg TEXT,
                     generation_failed_at DATETIME,
+                    subject_product_id INTEGER,
+                    subject_product_name_snapshot VARCHAR(256),
+                    main_copywriting_text TEXT,
+                    target_duration_seconds INTEGER,
                     input_profile_id INTEGER,
                     input_video_ids TEXT DEFAULT '[]' NOT NULL,
                     input_copywriting_ids TEXT DEFAULT '[]' NOT NULL,
@@ -247,10 +174,28 @@ async def test_migration_033_preserves_legacy_snapshot_carriers_without_backfill
                 """
             )
             await conn.exec_driver_sql(
+                "CREATE INDEX ix_creative_items_input_profile_id ON creative_items(input_profile_id)"
+            )
+            await conn.exec_driver_sql(
+                "CREATE INDEX ix_creative_items_input_snapshot_hash ON creative_items(input_snapshot_hash)"
+            )
+            await conn.exec_driver_sql(
                 """
-                CREATE TABLE products (
+                CREATE TABLE creative_input_items (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name VARCHAR(256) NOT NULL
+                    creative_item_id INTEGER NOT NULL,
+                    material_type VARCHAR(32) NOT NULL,
+                    material_id INTEGER NOT NULL,
+                    role VARCHAR(64),
+                    sequence INTEGER NOT NULL DEFAULT 0,
+                    instance_no INTEGER NOT NULL DEFAULT 1,
+                    trim_in INTEGER,
+                    trim_out INTEGER,
+                    slot_duration_seconds INTEGER,
+                    enabled BOOLEAN NOT NULL DEFAULT 1,
+                    created_at DATETIME,
+                    updated_at DATETIME,
+                    UNIQUE(creative_item_id, sequence)
                 )
                 """
             )
@@ -272,12 +217,21 @@ async def test_migration_033_preserves_legacy_snapshot_carriers_without_backfill
                 """
             )
             await conn.exec_driver_sql(
+                "CREATE INDEX ix_creative_input_snapshots_creative_item_id ON creative_input_snapshots(creative_item_id)"
+            )
+            await conn.exec_driver_sql(
+                "CREATE INDEX ix_creative_input_snapshots_profile_id ON creative_input_snapshots(profile_id)"
+            )
+            await conn.exec_driver_sql(
+                "CREATE INDEX ix_creative_input_snapshots_snapshot_hash ON creative_input_snapshots(snapshot_hash)"
+            )
+            await conn.exec_driver_sql(
                 """
                 INSERT INTO creative_items (
                     id, creative_no, title, input_profile_id, input_video_ids, input_copywriting_ids,
                     input_cover_ids, input_audio_ids, input_topic_ids, input_snapshot_hash
                 ) VALUES (
-                    1, 'CR-MIGRATION-033', 'legacy creative', 8, '[101,101]', '[]', '[]', '[]', '[301]', 'legacy-hash-033'
+                    1, 'CR-000001', 'legacy row', NULL, '[11,11]', '[21]', '[]', '[]', '[51]', 'legacy-hash'
                 )
                 """
             )
@@ -286,41 +240,65 @@ async def test_migration_033_preserves_legacy_snapshot_carriers_without_backfill
                 INSERT INTO creative_input_snapshots (
                     creative_item_id, profile_id, video_ids, copywriting_ids, cover_ids, audio_ids, topic_ids, snapshot_hash
                 ) VALUES (
-                    1, 8, '[101,101]', '[]', '[]', '[]', '[301]', 'legacy-hash-033'
+                    1, 9, '[11,11]', '[21]', '[]', '[]', '[51]', 'legacy-hash'
                 )
                 """
             )
 
-        migration_033 = importlib.import_module("migrations.033_creative_domain_model_foundation")
-        await migration_033.run_migration(engine)
-        await migration_033.run_migration(engine)
+        migration_035 = importlib.import_module("migrations.035_creative_phase4_snapshot_retirement")
+        await migration_035.run_migration(engine)
+        await migration_035.run_migration(engine)
 
         async with engine.begin() as conn:
-            creative_row = (
+            tables = {
+                row[0]
+                for row in (
+                    await conn.exec_driver_sql(
+                        "SELECT name FROM sqlite_master WHERE type='table'"
+                    )
+                ).fetchall()
+            }
+            creative_columns = {
+                row[1]
+                for row in (await conn.exec_driver_sql("PRAGMA table_info(creative_items)")).fetchall()
+            }
+            creative_indexes = {
+                row[1]
+                for row in (
+                    await conn.exec_driver_sql("PRAGMA index_list('creative_items')")
+                ).fetchall()
+            }
+            backfilled_items = (
                 await conn.exec_driver_sql(
                     """
-                    SELECT input_profile_id, input_video_ids, input_topic_ids, input_snapshot_hash
-                    FROM creative_items
-                    WHERE id = 1
-                    """
-                )
-            ).fetchone()
-            snapshot_row = (
-                await conn.exec_driver_sql(
-                    """
-                    SELECT profile_id, video_ids, topic_ids, snapshot_hash
-                    FROM creative_input_snapshots
+                    SELECT material_type, material_id, sequence, instance_no, enabled
+                    FROM creative_input_items
                     WHERE creative_item_id = 1
+                    ORDER BY sequence
                     """
                 )
-            ).fetchone()
-            input_item_count = (
-                await conn.execute(text("SELECT COUNT(*) FROM creative_input_items WHERE creative_item_id = 1"))
+            ).fetchall()
+            profile_id = (
+                await conn.exec_driver_sql(
+                    "SELECT input_profile_id FROM creative_items WHERE id = 1"
+                )
             ).scalar_one()
 
-        assert creative_row == (8, "[101,101]", "[301]", "legacy-hash-033")
-        assert snapshot_row == (8, "[101,101]", "[301]", "legacy-hash-033")
-        assert input_item_count == 0
+        assert "creative_input_snapshots" not in tables
+        assert "ix_creative_items_input_snapshot_hash" not in creative_indexes
+        assert "input_video_ids" not in creative_columns
+        assert "input_copywriting_ids" not in creative_columns
+        assert "input_cover_ids" not in creative_columns
+        assert "input_audio_ids" not in creative_columns
+        assert "input_topic_ids" not in creative_columns
+        assert "input_snapshot_hash" not in creative_columns
+        assert profile_id == 9
+        assert backfilled_items == [
+            ("video", 11, 1, 1, 1),
+            ("video", 11, 2, 2, 1),
+            ("copywriting", 21, 3, 1, 1),
+            ("topic", 51, 4, 1, 1),
+        ]
     finally:
         await engine.dispose()
 
@@ -370,9 +348,7 @@ async def test_creative_input_items_preserve_duplicate_order_and_trim(db_session
     await db_session.commit()
 
     reloaded = (
-        await db_session.execute(
-            select(CreativeItem).where(CreativeItem.id == creative.id)
-        )
+        await db_session.execute(select(CreativeItem).where(CreativeItem.id == creative.id))
     ).scalar_one()
     input_items = (
         await db_session.execute(
@@ -397,7 +373,7 @@ def test_phase_a_task_write_contracts_do_not_expose_task_kind() -> None:
     assert "task_kind" not in TaskUpdate.model_fields
 
 
-def test_work_driven_creative_write_contracts_expose_phase2_canonical_inputs_and_deprecated_legacy_projection_fields() -> None:
+def test_work_driven_creative_write_contracts_expose_canonical_inputs_without_snapshot_response_contracts() -> None:
     assert "status" not in CreativeCreateRequest.model_fields
     assert "status" not in CreativeUpdateRequest.model_fields
     assert "profile_id" in CreativeCreateRequest.model_fields
@@ -418,8 +394,7 @@ def test_work_driven_creative_write_contracts_expose_phase2_canonical_inputs_and
         CreativeUpdateRequest(video_ids=[100])
 
     assert "input_orchestration" in CreativeItemResponse.model_fields
-    assert CreativeItemResponse.model_fields["input_snapshot"].json_schema_extra == {"deprecated": True}
-    assert "Deprecated compatibility-only snapshot hash" in CreativeItemResponse.model_fields["input_snapshot"].annotation.model_fields["snapshot_hash"].description
+    assert "input_snapshot" not in CreativeItemResponse.model_fields
 
     request = CreativeCreateRequest(
         profile_id=1,
