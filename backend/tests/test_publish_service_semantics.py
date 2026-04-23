@@ -30,6 +30,7 @@ from services.creative_review_service import CreativeReviewService
 from services.creative_version_service import CreativeVersionService
 from services.publish_planner_service import PublishPlannerService
 from services.publish_service import PublishService
+from services.task_service import TaskService
 from services.task_execution_semantics import (
     PublishabilityError,
     resolve_publish_execution_view,
@@ -144,7 +145,8 @@ async def _seed_bound_publish_task(db: AsyncSession) -> tuple[Task, int]:
     db.add(creative)
     await db.flush()
 
-    version = await CreativeVersionService(db).create_initial_version(
+    version_service = CreativeVersionService(db)
+    version = await version_service.create_initial_version(
         creative,
         title="Bound Publish V1",
         package_status="ready",
@@ -165,6 +167,20 @@ async def _seed_bound_publish_task(db: AsyncSession) -> tuple[Task, int]:
     source_task.creative_version_id = version.id
     source_task.task_kind = "composition"
     source_task.final_video_path = "final/bound_publish.mp4"
+    await version_service.sync_version_result(
+        version,
+        final_video_path=source_task.final_video_path,
+        final_product_name=creative.subject_product_name_snapshot,
+        final_copywriting_text=copywriting.content,
+    )
+    await version_service.sync_publish_package(
+        version,
+        publish_profile_id=profile.id,
+        frozen_video_path=source_task.final_video_path,
+        frozen_cover_path=cover.file_path,
+        frozen_product_name=creative.subject_product_name_snapshot,
+        frozen_copywriting_text=copywriting.content,
+    )
     await db.commit()
 
     await CreativeReviewService(db).approve(
@@ -445,3 +461,39 @@ async def test_publish_task_invalidates_bound_pool_item_when_publish_task_succee
     assert refreshed_pool_item.invalidation_reason == "published_successfully"
     assert refreshed_pool_item.locked_at is None
     assert refreshed_pool_item.locked_by_task_id is None
+
+
+@pytest.mark.asyncio
+async def test_publish_task_uses_snapshot_execution_view_when_publish_shell_has_no_relations(
+    db_session: AsyncSession,
+    active_remote_auth_session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    publish_task, _ = await _seed_bound_publish_task(db_session)
+    publish_task = await TaskService(db_session)._load_task_with_resources(publish_task.id)
+    for collection_name in ("videos", "copywritings", "covers", "topics"):
+        getattr(publish_task, collection_name).clear()
+    publish_task.final_video_path = None
+    await db_session.commit()
+
+    mock_client = MagicMock()
+    mock_client.check_login_status = AsyncMock(return_value=(True, "ok"))
+    mock_client.upload_video = AsyncMock(return_value=(True, "ok"))
+    monkeypatch.setattr("services.publish_service.get_dewu_client", AsyncMock(return_value=mock_client))
+    monkeypatch.setattr(
+        "services.publish_service.browser_manager",
+        SimpleNamespace(
+            get_or_create_context=AsyncMock(return_value=SimpleNamespace(pages=[MagicMock()])),
+            new_page=AsyncMock(return_value=MagicMock()),
+        ),
+    )
+
+    success, message = await PublishService(db_session).publish_task(publish_task)
+
+    assert success is True
+    assert message == "发布成功"
+    kwargs = mock_client.upload_video.await_args.kwargs
+    assert kwargs["video_path"] == "final/bound_publish.mp4"
+    assert kwargs["content"] == "文案 bound_publish"
+    assert kwargs["cover_path"] == "covers/cover_bound_publish.jpg"
+    assert kwargs["topic"] == "topic_bound_publish"

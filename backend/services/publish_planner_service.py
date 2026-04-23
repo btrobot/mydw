@@ -12,10 +12,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core.auth_dependencies import require_active_service_session
-from models import CreativeVersion, PublishExecutionSnapshot, PublishPoolItem, Task
+from models import CreativeVersion, PackageRecord, PublishExecutionSnapshot, PublishPoolItem, Task
 from schemas.auth import LocalAuthSessionSummary
 from services.publish_pool_service import PublishPoolService
-from services.task_execution_semantics import resolve_publish_execution_view
+from services.task_execution_semantics import (
+    PublishExecutionView,
+    build_publish_execution_view,
+    resolve_publish_execution_view,
+)
 from services.task_service import TaskService
 
 
@@ -61,6 +65,8 @@ class PublishPlannerService:
         try:
             source_task = await self._resolve_source_task(pool_item, source_task_id=source_task_id)
             resolved_profile = await task_service.resolve_profile(source_task)
+            version = await self._load_creative_version(pool_item.creative_version_id)
+            package_record = version.package_records[0] if version.package_records else None
             snapshot = PublishExecutionSnapshot(
                 pool_item_id=pool_item.id,
                 source_task_id=source_task.id,
@@ -72,6 +78,8 @@ class PublishPlannerService:
                     await self._build_snapshot_payload(
                         pool_item,
                         source_task,
+                        version=version,
+                        package_record=package_record,
                         profile=resolved_profile,
                     ),
                     ensure_ascii=False,
@@ -84,7 +92,13 @@ class PublishPlannerService:
                 source_task,
                 creative_item_id=pool_item.creative_item_id,
                 creative_version_id=pool_item.creative_version_id,
+                account_id=source_task.account_id,
                 profile_id=resolved_profile.id if resolved_profile is not None else None,
+                frozen_video_path=self._resolve_frozen_video_path(version=version, package_record=package_record),
+                frozen_duration_seconds=self._resolve_frozen_duration_seconds(
+                    version=version,
+                    package_record=package_record,
+                ),
                 batch_id=f"publish-pool:{pool_item.id}",
             )
             snapshot.task_id = publish_task.id
@@ -228,12 +242,16 @@ class PublishPlannerService:
         pool_item: PublishPoolItem,
         source_task: Task,
         *,
+        version: CreativeVersion,
+        package_record: PackageRecord | None,
         profile,
     ) -> dict:
-        version = await self._load_creative_version(pool_item.creative_version_id)
-        package_record = version.package_records[0] if version.package_records else None
         creative = pool_item.creative_item
-        execution_view = resolve_publish_execution_view(source_task)
+        execution_view, execution_view_source = self._resolve_snapshot_execution_view(
+            version=version,
+            package_record=package_record,
+            source_task=source_task,
+        )
 
         return {
             "pool_item": {
@@ -254,9 +272,27 @@ class PublishPlannerService:
                 "version_no": version.version_no,
                 "title": version.title,
                 "parent_version_id": version.parent_version_id,
+                "actual_duration_seconds": version.actual_duration_seconds,
+                "final_video_path": version.final_video_path,
+                "final_product_name": version.final_product_name,
+                "final_copywriting_text": version.final_copywriting_text,
                 "package_record_id": package_record.id if package_record is not None else None,
                 "package_status": package_record.package_status if package_record is not None else None,
             },
+            "publish_package": (
+                {
+                    "id": package_record.id,
+                    "package_status": package_record.package_status,
+                    "publish_profile_id": package_record.publish_profile_id,
+                    "frozen_video_path": package_record.frozen_video_path,
+                    "frozen_cover_path": package_record.frozen_cover_path,
+                    "frozen_duration_seconds": package_record.frozen_duration_seconds,
+                    "frozen_product_name": package_record.frozen_product_name,
+                    "frozen_copywriting_text": package_record.frozen_copywriting_text,
+                }
+                if package_record is not None
+                else None
+            ),
             "account": {
                 "id": source_task.account.id if source_task.account is not None else source_task.account_id,
                 "account_id": source_task.account.account_id if source_task.account is not None else None,
@@ -280,11 +316,6 @@ class PublishPlannerService:
                 "profile_id": source_task.profile_id,
                 "name": source_task.name,
                 "final_video_path": source_task.final_video_path,
-                "video_ids": [video.id for video in source_task.videos or []],
-                "copywriting_ids": [copywriting.id for copywriting in source_task.copywritings or []],
-                "cover_ids": [cover.id for cover in source_task.covers or []],
-                "audio_ids": [audio.id for audio in source_task.audios or []],
-                "topic_ids": [topic.id for topic in source_task.topics or []],
             },
             "execution_view": {
                 "video_path": execution_view.video_path,
@@ -292,7 +323,64 @@ class PublishPlannerService:
                 "cover_path": execution_view.cover_path,
                 "topic": execution_view.topic,
             },
+            "execution_view_source": execution_view_source,
         }
+
+    def _resolve_snapshot_execution_view(
+        self,
+        *,
+        version: CreativeVersion,
+        package_record: PackageRecord | None,
+        source_task: Task,
+    ) -> tuple[PublishExecutionView, str]:
+        topic = ", ".join(topic.name for topic in source_task.topics or []) or None
+        frozen_video_path = self._resolve_frozen_video_path(version=version, package_record=package_record)
+        if frozen_video_path:
+            return (
+                build_publish_execution_view(
+                    video_path=frozen_video_path,
+                    content=self._resolve_frozen_copywriting_text(version=version, package_record=package_record),
+                    cover_path=self._resolve_frozen_cover_path(package_record),
+                    topic=topic,
+                ),
+                "freeze_truth",
+            )
+
+        return resolve_publish_execution_view(source_task), "source_task_fallback"
+
+    @staticmethod
+    def _resolve_frozen_video_path(
+        *,
+        version: CreativeVersion,
+        package_record: PackageRecord | None = None,
+    ) -> str | None:
+        if package_record is not None and package_record.frozen_video_path:
+            return package_record.frozen_video_path
+        return version.final_video_path
+
+    @staticmethod
+    def _resolve_frozen_cover_path(package_record: PackageRecord | None) -> str | None:
+        return package_record.frozen_cover_path if package_record is not None else None
+
+    @staticmethod
+    def _resolve_frozen_copywriting_text(
+        *,
+        version: CreativeVersion,
+        package_record: PackageRecord | None = None,
+    ) -> str:
+        if package_record is not None and package_record.frozen_copywriting_text is not None:
+            return package_record.frozen_copywriting_text
+        return version.final_copywriting_text or ""
+
+    @staticmethod
+    def _resolve_frozen_duration_seconds(
+        *,
+        version: CreativeVersion,
+        package_record: PackageRecord | None = None,
+    ) -> int | None:
+        if package_record is not None and package_record.frozen_duration_seconds is not None:
+            return package_record.frozen_duration_seconds
+        return version.actual_duration_seconds
 
     async def _load_task_with_resources(self, task_id: int) -> Task:
         result = await self.db.execute(

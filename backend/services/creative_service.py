@@ -376,7 +376,26 @@ class CreativeService:
                 creative.generation_error_msg = None
                 creative.generation_failed_at = None
                 creative.updated_at = utc_now_naive()
+                await self._sync_direct_publish_freeze_truth(
+                    creative=creative,
+                    version=version,
+                    task=task,
+                    profile=profile,
+                )
                 await self.db.commit()
+            else:
+                version = next(
+                    (item for item in creative.versions if item.id == task.creative_version_id),
+                    None,
+                )
+                if version is not None:
+                    await self._sync_direct_publish_freeze_truth(
+                        creative=creative,
+                        version=version,
+                        task=task,
+                        profile=profile,
+                    )
+                    await self.db.commit()
 
             refreshed = await self._load_creative_detail(creative.id)
             if refreshed is None:
@@ -1042,6 +1061,72 @@ class CreativeService:
         if title:
             return title
         return creative.creative_no
+
+    async def _sync_direct_publish_freeze_truth(
+        self,
+        *,
+        creative: CreativeItem,
+        version: CreativeVersion,
+        task: Task,
+        profile: PublishProfile,
+    ) -> None:
+        resolved_video_path = self._resolve_direct_publish_video_path(task)
+        resolved_cover_path = self._resolve_direct_publish_cover_path(task)
+        resolved_copywriting_text = self._resolve_direct_publish_copywriting_text(task)
+        resolved_duration_seconds = self._resolve_direct_publish_duration_seconds(
+            creative=creative,
+            task=task,
+        )
+        await self.version_service.sync_version_result(
+            version,
+            actual_duration_seconds=resolved_duration_seconds,
+            final_video_path=resolved_video_path,
+            final_product_name=creative.subject_product_name_snapshot,
+            final_copywriting_text=resolved_copywriting_text,
+        )
+        await self.version_service.sync_publish_package(
+            version,
+            package_status="ready",
+            publish_profile_id=profile.id,
+            frozen_video_path=resolved_video_path,
+            frozen_cover_path=resolved_cover_path,
+            frozen_duration_seconds=resolved_duration_seconds,
+            frozen_product_name=creative.subject_product_name_snapshot,
+            frozen_copywriting_text=resolved_copywriting_text,
+        )
+
+    def _resolve_direct_publish_video_path(self, task: Task) -> str | None:
+        if task.final_video_path:
+            return task.final_video_path
+        videos = list(task.videos or [])
+        if len(videos) != 1:
+            return None
+        return videos[0].file_path
+
+    def _resolve_direct_publish_cover_path(self, task: Task) -> str | None:
+        covers = list(task.covers or [])
+        if not covers:
+            return None
+        return covers[0].file_path
+
+    def _resolve_direct_publish_copywriting_text(self, task: Task) -> str:
+        copywritings = list(task.copywritings or [])
+        if not copywritings:
+            return ""
+        return copywritings[0].content
+
+    def _resolve_direct_publish_duration_seconds(
+        self,
+        *,
+        creative: CreativeItem,
+        task: Task,
+    ) -> int | None:
+        if task.final_video_duration is not None:
+            return task.final_video_duration
+        videos = list(task.videos or [])
+        if len(videos) == 1 and videos[0].duration is not None:
+            return videos[0].duration
+        return creative.target_duration_seconds
 
     async def _build_submit_response(
         self,

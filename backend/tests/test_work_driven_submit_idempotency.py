@@ -1,9 +1,20 @@
+import json
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import Account, PublishExecutionSnapshot, PublishPoolItem, PublishProfile, Task, Video
+from models import (
+    Account,
+    CreativeVersion,
+    PackageRecord,
+    PublishExecutionSnapshot,
+    PublishPoolItem,
+    PublishProfile,
+    Task,
+    Video,
+)
 from services.composition_service import CompositionService
 from services.creative_review_service import CreativeReviewService
 from services.publish_planner_service import PublishPlannerService
@@ -45,7 +56,9 @@ async def _create_creative(
         json={
             "title": title,
             "profile_id": profile_id,
-            "video_ids": [video_id],
+            "input_items": [
+                {"material_type": "video", "material_id": video_id},
+            ],
         },
     )
     assert response.status_code == 201
@@ -241,6 +254,19 @@ async def test_direct_publish_submit_creates_ready_task_and_publish_planner_uses
     assert repeated_payload["task_id"] == payload["task_id"]
     assert repeated_payload["current_version_id"] == payload["current_version_id"]
 
+    version = await db_session.get(CreativeVersion, payload["current_version_id"])
+    assert version is not None
+    package = (
+        await db_session.execute(
+            select(PackageRecord).where(PackageRecord.creative_version_id == version.id)
+        )
+    ).scalar_one()
+    assert version.final_video_path == f"data/videos/video-direct-publish.mp4"
+    assert version.actual_duration_seconds is None
+    assert package.publish_profile_id == profile.id
+    assert package.frozen_video_path == f"data/videos/video-direct-publish.mp4"
+    assert package.frozen_copywriting_text == ""
+
     account = Account(
         account_id="publish-source-account",
         account_name="Publish Source Account",
@@ -274,3 +300,6 @@ async def test_direct_publish_submit_creates_ready_task_and_publish_planner_uses
     assert planning.source_task_id == payload["task_id"]
     assert snapshot is not None
     assert snapshot.source_task_id == payload["task_id"]
+    payload_json = json.loads(snapshot.snapshot_json)
+    assert payload_json["publish_package"]["frozen_video_path"] == f"data/videos/video-direct-publish.mp4"
+    assert payload_json["execution_view_source"] == "freeze_truth"

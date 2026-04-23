@@ -94,7 +94,7 @@ def test_validate_task_resource_inputs_allows_single_copywriting_and_cover_for_d
 
 
 @pytest.mark.asyncio
-async def test_clone_as_publish_task_preserves_collection_resource_contract(
+async def test_clone_as_publish_task_projects_publish_shell_from_freeze_truth(
     db_session: AsyncSession,
     active_remote_auth_session,
 ) -> None:
@@ -141,6 +141,9 @@ async def test_clone_as_publish_task_preserves_collection_resource_contract(
         creative_item_id=creative.id,
         creative_version_id=version.id,
         profile_id=profile.id,
+        account_id=account.id,
+        frozen_video_path="final/frozen_clone_publish.mp4",
+        frozen_duration_seconds=33,
         batch_id="publish-pool:test",
     )
 
@@ -149,8 +152,9 @@ async def test_clone_as_publish_task_preserves_collection_resource_contract(
     assert cloned_task.profile_id == profile.id
     assert cloned_task.creative_item_id == creative.id
     assert cloned_task.creative_version_id == version.id
-    assert cloned_task.final_video_path == source_task.final_video_path
-    assert [item.id for item in cloned_task.videos] == [video.id]
-    assert [item.id for item in cloned_task.copywritings] == [copywriting.id]
-    assert [item.id for item in cloned_task.covers] == [cover.id]
-    assert [item.id for item in cloned_task.topics] == [topic.id]
+    assert cloned_task.final_video_path == "final/frozen_clone_publish.mp4"
+    assert cloned_task.final_video_duration == 33
+    assert [item.id for item in cloned_task.videos] == []
+    assert [item.id for item in cloned_task.copywritings] == []
+    assert [item.id for item in cloned_task.covers] == []
+    assert [item.id for item in cloned_task.topics] == []

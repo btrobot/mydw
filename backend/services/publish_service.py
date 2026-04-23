@@ -25,6 +25,7 @@ from services.task_service import TaskService
 from services.task_execution_semantics import (
     PublishabilityError,
     resolve_publish_execution_view,
+    resolve_publish_execution_view_from_snapshot_payload,
 )
 
 
@@ -374,6 +375,8 @@ class PublishService:
             if not task:
                 return False, "任务不存在"
 
+            snapshot = await self._get_publish_snapshot(task.id)
+
             config = await self._get_schedule_config()
             daily_limit = config.max_per_account_per_day if config is not None else None
             account, account_error = await self._resolve_publish_account(
@@ -389,7 +392,12 @@ class PublishService:
                 return False, message
 
             try:
-                execution_view = resolve_publish_execution_view(task)
+                if snapshot is not None:
+                    execution_view = resolve_publish_execution_view_from_snapshot_payload(
+                        snapshot.snapshot_json
+                    )
+                else:
+                    execution_view = resolve_publish_execution_view(task)
             except PublishabilityError as exc:
                 message = str(exc)
                 await task_svc.mark_task_failed(task.id, message)
@@ -488,6 +496,12 @@ class PublishService:
             task.task_kind if task is not None else None,
             "pool" if snapshot is not None else "task",
         )
+
+    async def _get_publish_snapshot(self, task_id: int) -> PublishExecutionSnapshot | None:
+        result = await self.db.execute(
+            select(PublishExecutionSnapshot).where(PublishExecutionSnapshot.task_id == task_id)
+        )
+        return result.scalar_one_or_none()
 
     async def _release_pool_lock(self, task_id: int, *, reason: str) -> None:
         from services.publish_planner_service import PublishPlannerService

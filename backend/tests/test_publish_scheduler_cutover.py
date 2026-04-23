@@ -123,7 +123,8 @@ async def _seed_pool_candidate(
     db.add_all([profile, creative])
     await db.flush()
 
-    version = await CreativeVersionService(db).create_initial_version(
+    version_service = CreativeVersionService(db)
+    version = await version_service.create_initial_version(
         creative,
         title=f"Cutover {suffix} V1",
         package_status="ready",
@@ -142,6 +143,20 @@ async def _seed_pool_candidate(
         task_kind="composition",
         profile_id=profile.id,
         final_video_path=f"final/cutover_{suffix}.mp4",
+    )
+    await version_service.sync_version_result(
+        version,
+        final_video_path=source_task.final_video_path,
+        final_product_name=creative.subject_product_name_snapshot,
+        final_copywriting_text=f"文案 pool_source_{suffix}",
+    )
+    await version_service.sync_publish_package(
+        version,
+        publish_profile_id=profile.id,
+        frozen_video_path=source_task.final_video_path,
+        frozen_cover_path=f"covers/cover_pool_source_{suffix}.jpg",
+        frozen_product_name=creative.subject_product_name_snapshot,
+        frozen_copywriting_text=f"文案 pool_source_{suffix}",
     )
     await CreativeReviewService(db).approve(
         creative.id,

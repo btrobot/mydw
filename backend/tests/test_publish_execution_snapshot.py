@@ -124,7 +124,8 @@ async def _seed_publishable_pool_candidate(
     db_session.add_all([account, profile, video, copywriting, cover, topic, creative])
     await db_session.flush()
 
-    version = await CreativeVersionService(db_session).create_initial_version(
+    version_service = CreativeVersionService(db_session)
+    version = await version_service.create_initial_version(
         creative,
         title=f"Creative {suffix} V1",
         package_status="ready",
@@ -150,6 +151,20 @@ async def _seed_publishable_pool_candidate(
             TaskCover(task_id=source_task.id, cover_id=cover.id, sort_order=0),
             TaskTopic(task_id=source_task.id, topic_id=topic.id),
         ]
+    )
+    await version_service.sync_version_result(
+        version,
+        final_video_path=source_task.final_video_path,
+        final_product_name=creative.subject_product_name_snapshot,
+        final_copywriting_text=copywriting.content,
+    )
+    await version_service.sync_publish_package(
+        version,
+        publish_profile_id=profile.id,
+        frozen_video_path=source_task.final_video_path,
+        frozen_cover_path=cover.file_path,
+        frozen_product_name=creative.subject_product_name_snapshot,
+        frozen_copywriting_text=copywriting.content,
     )
     await db_session.commit()
 
@@ -179,7 +194,7 @@ async def test_plan_publish_task_creates_snapshot_and_binds_publish_task(
     result = await PublishPlannerService(db_session).plan_publish_task(pool_item.id)
 
     snapshot = await db_session.get(PublishExecutionSnapshot, result.snapshot_id)
-    planned_task = await TaskService(db_session).get_task(result.task_id)
+    planned_task = await TaskService(db_session)._load_task_with_resources(result.task_id)
     refreshed_pool_item = await db_session.get(PublishPoolItem, pool_item.id)
     await db_session.refresh(refreshed_pool_item)
 
@@ -198,14 +213,25 @@ async def test_plan_publish_task_creates_snapshot_and_binds_publish_task(
     assert planned_task.status == "ready"
     assert planned_task.final_video_path == source_task.final_video_path
     assert planned_task.batch_id == f"publish-pool:{pool_item.id}"
+    assert [item.id for item in planned_task.videos] == []
+    assert [item.id for item in planned_task.copywritings] == []
+    assert [item.id for item in planned_task.covers] == []
+    assert [item.id for item in planned_task.topics] == []
 
     payload = json.loads(snapshot.snapshot_json)
     assert payload["creative_item"]["id"] == creative.id
     assert payload["creative_version"]["id"] == pool_item.creative_version_id
+    assert payload["creative_version"]["final_video_path"] == source_task.final_video_path
     assert payload["account"]["id"] == account.id
     assert payload["profile"]["id"] == profile.id
+    assert payload["publish_package"]["frozen_video_path"] == source_task.final_video_path
+    assert payload["publish_package"]["frozen_cover_path"] == "covers/cover-bind.jpg"
+    assert payload["publish_package"]["frozen_copywriting_text"] == "文案 bind"
     assert payload["execution_view"]["video_path"] == source_task.final_video_path
+    assert payload["execution_view"]["content"] == "文案 bind"
+    assert payload["execution_view_source"] == "freeze_truth"
     assert payload["source_task"]["id"] == source_task.id
+    assert "video_ids" not in payload["source_task"]
 
     assert refreshed_pool_item is not None
     assert refreshed_pool_item.locked_at is not None

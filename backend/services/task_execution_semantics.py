@@ -7,8 +7,9 @@ Phase 2 / PR2:
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 from models import Task
 from utils.local_ffmpeg_contract import validate_local_ffmpeg_task_inputs
@@ -30,6 +31,48 @@ class PublishExecutionView:
     content: str
     cover_path: Optional[str]
     topic: Optional[str]
+
+
+def build_publish_execution_view(
+    *,
+    video_path: Optional[str],
+    content: Optional[str] = None,
+    cover_path: Optional[str] = None,
+    topic: Optional[str] = None,
+) -> PublishExecutionView:
+    """Build a publish execution view from already-frozen truth."""
+    if not video_path:
+        raise PublishabilityError("任务缺少可发布视频")
+
+    normalized_topic = topic.strip() if isinstance(topic, str) else topic
+    return PublishExecutionView(
+        video_path=video_path,
+        content=content or "",
+        cover_path=cover_path,
+        topic=normalized_topic or None,
+    )
+
+
+def resolve_publish_execution_view_from_snapshot_payload(
+    snapshot_payload: Mapping[str, Any] | str,
+) -> PublishExecutionView:
+    """Resolve runtime publish inputs from a frozen publish snapshot payload."""
+    payload: Mapping[str, Any]
+    if isinstance(snapshot_payload, str):
+        payload = json.loads(snapshot_payload)
+    else:
+        payload = snapshot_payload
+
+    execution_view = payload.get("execution_view")
+    if not isinstance(execution_view, Mapping):
+        raise PublishabilityError("发布快照缺少 execution_view")
+
+    return build_publish_execution_view(
+        video_path=execution_view.get("video_path"),
+        content=execution_view.get("content"),
+        cover_path=execution_view.get("cover_path"),
+        topic=execution_view.get("topic"),
+    )
 
 
 def validate_task_resource_inputs(
@@ -133,10 +176,7 @@ def resolve_publish_execution_view(task: Task) -> PublishExecutionView:
             raise PublishabilityError("直接发布不支持独立音频输入，请先走合成流程")
         video_path = videos[0].file_path
 
-    if not video_path:
-        raise PublishabilityError("任务缺少可发布视频")
-
-    return PublishExecutionView(
+    return build_publish_execution_view(
         video_path=video_path,
         content=copywritings[0].content if copywritings else "",
         cover_path=covers[0].file_path if covers else None,

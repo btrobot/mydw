@@ -143,22 +143,29 @@ class TaskService:
         creative_item_id: int,
         creative_version_id: int,
         profile_id: int | None,
+        account_id: int | None = None,
+        frozen_video_path: str | None = None,
+        frozen_duration_seconds: int | None = None,
         batch_id: str | None = None,
     ) -> Task:
-        """Clone a source task into a publish-task shell while preserving collection truth."""
+        """Clone a source task into a publish-task shell projected from freeze truth."""
         await self._require_active()
         hydrated_source = await self._load_task_with_resources(source_task.id)
 
         cloned_task = Task(
-            account_id=hydrated_source.account_id,
+            account_id=account_id if account_id is not None else hydrated_source.account_id,
             status="ready",
             priority=hydrated_source.priority,
             name=hydrated_source.name,
             composition_template=hydrated_source.composition_template,
             composition_params=hydrated_source.composition_params,
-            final_video_path=hydrated_source.final_video_path,
-            final_video_duration=hydrated_source.final_video_duration,
-            final_video_size=hydrated_source.final_video_size,
+            final_video_path=frozen_video_path if frozen_video_path is not None else hydrated_source.final_video_path,
+            final_video_duration=(
+                frozen_duration_seconds
+                if frozen_duration_seconds is not None
+                else hydrated_source.final_video_duration
+            ),
+            final_video_size=None,
             scheduled_time=hydrated_source.scheduled_time,
             profile_id=profile_id,
             batch_id=batch_id,
@@ -167,19 +174,6 @@ class TaskService:
             task_kind="publish",
         )
         self.db.add(cloned_task)
-        await self.db.flush()
-
-        for order, video in enumerate(hydrated_source.videos or []):
-            self.db.add(TaskVideo(task_id=cloned_task.id, video_id=video.id, sort_order=order))
-        for order, copywriting in enumerate(hydrated_source.copywritings or []):
-            self.db.add(TaskCopywriting(task_id=cloned_task.id, copywriting_id=copywriting.id, sort_order=order))
-        for order, cover in enumerate(hydrated_source.covers or []):
-            self.db.add(TaskCover(task_id=cloned_task.id, cover_id=cover.id, sort_order=order))
-        for order, audio in enumerate(hydrated_source.audios or []):
-            self.db.add(TaskAudio(task_id=cloned_task.id, audio_id=audio.id, sort_order=order))
-        for topic in hydrated_source.topics or []:
-            self.db.add(TaskTopic(task_id=cloned_task.id, topic_id=topic.id))
-
         await self.db.flush()
         logger.info(
             "created publish task: source_task_id={}, task_id={}, creative_item_id={}, creative_version_id={}",
