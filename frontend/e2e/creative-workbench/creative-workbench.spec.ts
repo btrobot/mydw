@@ -704,18 +704,6 @@ test.describe('Creative workbench baseline', () => {
     await expect(page.getByTestId('creative-workbench-diagnostics-drawer')).toHaveCount(0)
   })
 
-  test('shows an explicit service-side retrieval notice for the workbench', async ({ page }) => {
-    await page.goto(`/#/creative/workbench`)
-
-    await expect(page.getByTestId('creative-workbench-main-entry-banner')).toBeVisible()
-    const guardrail = page.getByTestId('creative-workbench-server-search')
-
-    await expect(guardrail).toBeVisible({ timeout: 10000 })
-    await expect(guardrail).toContainText('已升级为服务端检索')
-    await expect(guardrail).toContainText('不再受前端最近 200 条窗口限制')
-    await expect(guardrail).toContainText('当前总量为 4 条')
-  })
-
   test('supports search and filtering before entering detail', async ({ page }) => {
     await page.goto(`/#/creative/workbench`)
 

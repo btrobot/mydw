@@ -319,13 +319,6 @@ export default function CreativeWorkbench() {
     }),
     [items],
   )
-  const serviceSearchMessage = '当前 Workbench 已升级为服务端检索'
-  const serviceSearchDescription = [
-    '搜索、筛选、排序与 preset 视图现在都基于服务端结果，不再受前端最近 200 条窗口限制。',
-    `当前总量为 ${summary.all_count} 条；本页显示的是符合当前条件的 ${total} 条结果。`,
-    '若后续出现性能瓶颈，再继续推进索引或更深层的服务端优化；本次先完成检索边界升级。',
-  ].join(' ')
-
   const workbenchPresetCounts = useMemo(
     () => ({
       all: summary.all_count,
@@ -708,14 +701,6 @@ export default function CreativeWorkbench() {
           </Card>
         ) : (
           <>
-            <Alert
-              type="success"
-              showIcon
-              message={serviceSearchMessage}
-              description={serviceSearchDescription}
-              data-testid="creative-workbench-server-search"
-            />
-
             <ProTable<WorkbenchTableRow, WorkbenchFormValues>
               actionRef={actionRef}
               formRef={formRef}
