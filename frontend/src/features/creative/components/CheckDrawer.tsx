@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
-import { App, Button, Drawer, Form, Grid, Input, Radio, Select, Space, Typography } from 'antd'
+import { DrawerForm } from '@ant-design/pro-components'
+import { App, Form, Grid, Input, Radio, Select, Space, Typography } from 'antd'
+import type { DrawerProps } from 'antd'
 
 import type {
   CreativeApproveRequest,
@@ -59,6 +61,12 @@ export default function CheckDrawer({
   const submitting = approveMutation.isPending || reworkMutation.isPending || rejectMutation.isPending
   const action = Form.useWatch('action', form) ?? 'APPROVED'
   const drawerWidth = screens.md ? 420 : '100vw'
+  const drawerProps = {
+    styles: { body: { padding: screens.md ? 24 : 16 } },
+    destroyOnClose: true,
+    onClose,
+    'data-testid': 'creative-check-drawer',
+  } as DrawerProps & { 'data-testid': string }
 
   useEffect(() => {
     if (open) {
@@ -72,13 +80,11 @@ export default function CheckDrawer({
     }
   }, [form, open, version?.id])
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (values: CheckDrawerFormValues) => {
     try {
       if (!creativeId || !version) {
-        return
+        return false
       }
-
-      const values = await form.validateFields()
 
       if (values.action === 'APPROVED') {
         const payload: CreativeApproveRequest = {
@@ -105,41 +111,36 @@ export default function CheckDrawer({
       }
 
       onClose()
+      return true
     } catch (error) {
-      if (
-        typeof error === 'object'
-        && error !== null
-        && 'errorFields' in error
-      ) {
-        return
-      }
-
       handleApiError(error, '提交审核失败')
+      return false
     }
   }
 
   return (
-    <Drawer
+    <DrawerForm<CheckDrawerFormValues>
       title="作品审核"
       width={drawerWidth}
-      styles={{ body: { padding: screens.md ? 24 : 16 } }}
       open={open}
-      onClose={onClose}
-      destroyOnClose
-      data-testid="creative-check-drawer"
-      extra={(
-        <Space>
-          <Button onClick={onClose}>取消</Button>
-          <Button
-            type="primary"
-            loading={submitting}
-            data-testid="creative-review-submit"
-            onClick={() => void handleSubmit()}
-          >
-            提交审核
-          </Button>
-        </Space>
-      )}
+      form={form}
+      layout="vertical"
+      initialValues={{ action: 'APPROVED' satisfies ReviewAction }}
+      onFinish={handleSubmit}
+      drawerProps={drawerProps}
+      submitter={{
+        searchConfig: {
+          resetText: '取消',
+          submitText: '提交审核',
+        },
+        submitButtonProps: {
+          loading: submitting,
+          'data-testid': 'creative-review-submit',
+        },
+        resetButtonProps: {
+          'data-testid': 'creative-review-cancel',
+        },
+      }}
     >
       {version ? (
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -154,11 +155,7 @@ export default function CheckDrawer({
             审核结论会直接更新当前版本状态，历史审核记录会保留在版本时间线中。
           </Paragraph>
 
-          <Form
-            form={form}
-            layout="vertical"
-            initialValues={{ action: 'APPROVED' satisfies ReviewAction }}
-          >
+          <>
             <Form.Item
               name="action"
               label="审核动作"
@@ -199,9 +196,9 @@ export default function CheckDrawer({
                 showCount
               />
             </Form.Item>
-          </Form>
+          </>
         </Space>
       ) : null}
-    </Drawer>
+    </DrawerForm>
   )
 }
