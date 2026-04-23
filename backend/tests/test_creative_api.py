@@ -121,6 +121,10 @@ async def test_create_creative_allows_work_item_without_current_version(
     assert payload["versions"] == []
     assert payload["status"] == "PENDING_INPUT"
     assert payload["eligibility_status"] == "PENDING_INPUT"
+    assert payload["input_orchestration"]["profile_id"] is None
+    assert payload["input_orchestration"]["item_count"] == 0
+    assert payload["input_orchestration"]["enabled_item_count"] == 0
+    assert len(payload["input_orchestration"]["orchestration_hash"]) == 64
     assert payload["input_snapshot"]["video_ids"] == []
     assert payload["input_snapshot"]["profile_id"] is None
     assert payload["input_snapshot"]["snapshot_hash"] is not None
@@ -152,6 +156,11 @@ async def test_create_creative_can_project_ready_to_compose_from_input_items(
     assert payload["status"] == "READY_TO_COMPOSE"
     assert payload["eligibility_status"] == "READY_TO_COMPOSE"
     assert payload["eligibility_reasons"] == []
+    assert payload["input_orchestration"]["profile_id"] == profile.id
+    assert payload["input_orchestration"]["item_count"] == 2
+    assert payload["input_orchestration"]["enabled_item_count"] == 2
+    assert payload["input_orchestration"]["material_counts"]["video"] == 1
+    assert payload["input_orchestration"]["material_counts"]["topic"] == 1
     assert payload["input_snapshot"]["profile_id"] == profile.id
     assert payload["input_snapshot"]["video_ids"] == [video.id]
     assert payload["input_snapshot"]["topic_ids"] == [topic.id]
@@ -204,6 +213,11 @@ async def test_create_creative_dual_writes_authoritative_input_items_and_legacy_
     assert [item["material_id"] for item in payload["input_items"][:2]] == [video.id, video.id]
     assert [item["instance_no"] for item in payload["input_items"][:2]] == [1, 2]
     assert [item["role"] for item in payload["input_items"][:2]] == ["opening", "ending"]
+    assert payload["input_orchestration"]["profile_id"] == profile.id
+    assert payload["input_orchestration"]["item_count"] == 6
+    assert payload["input_orchestration"]["enabled_item_count"] == 6
+    assert payload["input_orchestration"]["material_counts"]["video"] == 2
+    assert payload["input_orchestration"]["enabled_material_counts"]["audio"] == 1
     assert payload["input_snapshot"]["profile_id"] == profile.id
     assert payload["input_snapshot"]["video_ids"] == [video.id, video.id]
     assert payload["input_snapshot"]["copywriting_ids"] == [copywriting.id]
@@ -368,6 +382,8 @@ async def test_creative_update_can_change_snapshot_hash_and_mark_invalid_combo(
     payload = patch_response.json()
     assert payload["eligibility_status"] == "INVALID"
     assert payload["status"] == "PENDING_INPUT"
+    assert payload["input_orchestration"]["material_counts"]["audio"] == 1
+    assert payload["input_orchestration"]["orchestration_hash"] != created["input_orchestration"]["orchestration_hash"]
     assert payload["input_snapshot"]["audio_ids"] == [audio.id]
     assert payload["input_snapshot"]["snapshot_hash"] != created["input_snapshot"]["snapshot_hash"]
     assert any("独立音频输入" in reason for reason in payload["eligibility_reasons"])

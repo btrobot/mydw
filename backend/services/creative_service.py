@@ -39,6 +39,8 @@ from schemas import (
     CreativeDetailResponse,
     CreativeEligibilityStatus,
     CreativeInputItemResponse,
+    CreativeInputMaterialCountsResponse,
+    CreativeInputOrchestrationResponse,
     CreativeInputSnapshotResponse,
     CreativeItemResponse,
     CreativeLatestTaskSummaryResponse,
@@ -506,6 +508,7 @@ class CreativeService:
             main_copywriting_text=creative.main_copywriting_text,
             target_duration_seconds=creative.target_duration_seconds,
             input_items=projection["input_items"],
+            input_orchestration=projection["input_orchestration"],
             input_snapshot=projection["input_snapshot"],
             generation_error_msg=creative.generation_error_msg,
             generation_failed_at=creative.generation_failed_at,
@@ -558,6 +561,7 @@ class CreativeService:
             main_copywriting_text=creative.main_copywriting_text,
             target_duration_seconds=creative.target_duration_seconds,
             input_items=projection["input_items"],
+            input_orchestration=projection["input_orchestration"],
             generation_error_msg=creative.generation_error_msg,
             generation_failed_at=creative.generation_failed_at,
             input_snapshot=projection["input_snapshot"],
@@ -571,6 +575,10 @@ class CreativeService:
     async def _build_projection(self, creative: CreativeItem) -> dict[str, Any]:
         input_items = self._build_input_items_response(creative)
         input_snapshot = self._build_input_snapshot_response(creative)
+        input_orchestration = self._build_input_orchestration_response(
+            profile_id=input_snapshot.profile_id,
+            input_items=input_items,
+        )
         eligibility_status, eligibility_reasons = await self._build_eligibility_projection(
             creative,
             input_snapshot=input_snapshot,
@@ -583,6 +591,7 @@ class CreativeService:
         return {
             "status": status,
             "input_items": input_items,
+            "input_orchestration": input_orchestration,
             "input_snapshot": input_snapshot,
             "eligibility_status": eligibility_status,
             "eligibility_reasons": eligibility_reasons,
@@ -740,6 +749,47 @@ class CreativeService:
             )
             for item in authoritative_input_items
         ]
+
+    def _build_input_orchestration_response(
+        self,
+        *,
+        profile_id: Optional[int],
+        input_items: list[CreativeInputItemResponse],
+    ) -> CreativeInputOrchestrationResponse:
+        material_counts = self._empty_material_counts()
+        enabled_material_counts = self._empty_material_counts()
+        canonical_items: list[dict[str, Any]] = []
+
+        for item in input_items:
+            material_type = item.material_type.value
+            material_counts[material_type] += 1
+            if item.enabled:
+                enabled_material_counts[material_type] += 1
+            canonical_items.append(
+                {
+                    "material_type": material_type,
+                    "material_id": item.material_id,
+                    "role": item.role,
+                    "sequence": item.sequence,
+                    "instance_no": item.instance_no,
+                    "trim_in": item.trim_in,
+                    "trim_out": item.trim_out,
+                    "slot_duration_seconds": item.slot_duration_seconds,
+                    "enabled": item.enabled,
+                }
+            )
+
+        return CreativeInputOrchestrationResponse(
+            profile_id=profile_id,
+            orchestration_hash=self._build_orchestration_hash(
+                profile_id=profile_id,
+                input_items=canonical_items,
+            ),
+            item_count=len(canonical_items),
+            enabled_item_count=sum(1 for item in canonical_items if item["enabled"]),
+            material_counts=CreativeInputMaterialCountsResponse(**material_counts),
+            enabled_material_counts=CreativeInputMaterialCountsResponse(**enabled_material_counts),
+        )
 
     async def _resolve_subject_product_name_snapshot(
         self,
@@ -937,6 +987,47 @@ class CreativeService:
             topic_ids=snapshot["topic_ids"],
         )
         return snapshot
+
+    def _build_orchestration_hash(
+        self,
+        *,
+        profile_id: Optional[int],
+        input_items: list[dict[str, Any]],
+    ) -> str:
+        canonical_payload = {
+            "profile_id": profile_id,
+            "input_items": [
+                {
+                    "material_type": item["material_type"],
+                    "material_id": int(item["material_id"]),
+                    "role": item.get("role"),
+                    "sequence": int(item["sequence"]),
+                    "instance_no": int(item["instance_no"]),
+                    "trim_in": item.get("trim_in"),
+                    "trim_out": item.get("trim_out"),
+                    "slot_duration_seconds": item.get("slot_duration_seconds"),
+                    "enabled": bool(item.get("enabled", True)),
+                }
+                for item in input_items
+            ],
+        }
+        return hashlib.sha256(
+            json.dumps(
+                canonical_payload,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            ).encode("utf-8")
+        ).hexdigest()
+
+    def _empty_material_counts(self) -> dict[str, int]:
+        return {
+            "video": 0,
+            "copywriting": 0,
+            "cover": 0,
+            "audio": 0,
+            "topic": 0,
+        }
 
     def _read_input_item_value(self, item: Any, key: str, default: Any = None) -> Any:
         if isinstance(item, dict):
@@ -1319,6 +1410,10 @@ class CreativeService:
         """
         input_snapshot = self._build_input_snapshot_response(creative)
         input_items = self._build_input_items_response(creative)
+        input_orchestration = self._build_input_orchestration_response(
+            profile_id=input_snapshot.profile_id,
+            input_items=input_items,
+        )
         return CreativeItemResponse(
             id=creative.id,
             creative_no=creative.creative_no,
@@ -1331,6 +1426,7 @@ class CreativeService:
             main_copywriting_text=creative.main_copywriting_text,
             target_duration_seconds=creative.target_duration_seconds,
             input_items=input_items,
+            input_orchestration=input_orchestration,
             generation_error_msg=creative.generation_error_msg,
             generation_failed_at=creative.generation_failed_at,
             input_snapshot=input_snapshot,

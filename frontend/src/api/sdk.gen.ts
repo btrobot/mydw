@@ -1392,14 +1392,14 @@ export const setDefaultProfileApiProfilesProfileIdSetDefaultPut = <ThrowOnError 
 /**
  * List Creatives
  *
- * Return the Creative workbench list with Phase 2 semantic-source projections.
+ * Return the Creative workbench list with Phase 4 canonical orchestration metadata plus deprecated compatibility snapshot projections.
  */
 export const listCreativesApiCreativesGet = <ThrowOnError extends boolean = false>(options?: Options<ListCreativesApiCreativesGetData, ThrowOnError>) => (options?.client ?? client).get<ListCreativesApiCreativesGetResponses, ListCreativesApiCreativesGetErrors, ThrowOnError>({ url: '/api/creatives', ...options });
 
 /**
  * Create Creative
  *
- * Create a creative using Phase 2 brief-plus-input-items semantics.
+ * Create a creative using canonical input_items orchestration semantics while keeping legacy list carriers deprecated and write-blocked.
  */
 export const createCreativeApiCreativesPost = <ThrowOnError extends boolean = false>(options: Options<CreateCreativeApiCreativesPostData, ThrowOnError>) => (options.client ?? client).post<CreateCreativeApiCreativesPostResponses, CreateCreativeApiCreativesPostErrors, ThrowOnError>({
     url: '/api/creatives',
@@ -1413,14 +1413,14 @@ export const createCreativeApiCreativesPost = <ThrowOnError extends boolean = fa
 /**
  * Get Creative
  *
- * Return the Creative detail projection with Phase 2 canonical/compatibility fields.
+ * Return the Creative detail projection with canonical input_items/input_orchestration plus deprecated compatibility snapshot fields.
  */
 export const getCreativeApiCreativesCreativeIdGet = <ThrowOnError extends boolean = false>(options: Options<GetCreativeApiCreativesCreativeIdGetData, ThrowOnError>) => (options.client ?? client).get<GetCreativeApiCreativesCreativeIdGetResponses, GetCreativeApiCreativesCreativeIdGetErrors, ThrowOnError>({ url: '/api/creatives/{creative_id}', ...options });
 
 /**
  * Update Creative
  *
- * Update a creative using Phase 2 brief-plus-input-items semantics.
+ * Update a creative using canonical input_items orchestration semantics while legacy list carriers remain deprecated compatibility-only projection.
  */
 export const updateCreativeApiCreativesCreativeIdPatch = <ThrowOnError extends boolean = false>(options: Options<UpdateCreativeApiCreativesCreativeIdPatchData, ThrowOnError>) => (options.client ?? client).patch<UpdateCreativeApiCreativesCreativeIdPatchResponses, UpdateCreativeApiCreativesCreativeIdPatchErrors, ThrowOnError>({
     url: '/api/creatives/{creative_id}',

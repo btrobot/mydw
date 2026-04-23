@@ -24,7 +24,7 @@ async def list_creatives(
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
 ) -> CreativeWorkbenchListResponse:
-    """Return the Creative workbench list with Phase 2 semantic-source projections."""
+    """Return the Creative workbench list with Phase 4 canonical orchestration metadata plus deprecated compatibility snapshot projections."""
     service = CreativeService(db)
     return await service.list_creatives(skip=skip, limit=limit)
 
@@ -34,7 +34,7 @@ async def create_creative(
     payload: CreativeCreateRequest,
     db: AsyncSession = Depends(get_db),
 ) -> CreativeDetailResponse:
-    """Create a creative using Phase 2 brief-plus-input-items semantics."""
+    """Create a creative using canonical input_items orchestration semantics while keeping legacy list carriers deprecated and write-blocked."""
     service = CreativeService(db)
     try:
         return await service.create_creative(payload)
@@ -47,7 +47,7 @@ async def get_creative(
     creative_id: int,
     db: AsyncSession = Depends(get_db),
 ) -> CreativeDetailResponse:
-    """Return the Creative detail projection with Phase 2 canonical/compatibility fields."""
+    """Return the Creative detail projection with canonical input_items/input_orchestration plus deprecated compatibility snapshot fields."""
     service = CreativeService(db)
     creative = await service.get_creative_detail(creative_id)
     if creative is None:
@@ -61,7 +61,7 @@ async def update_creative(
     payload: CreativeUpdateRequest,
     db: AsyncSession = Depends(get_db),
 ) -> CreativeDetailResponse:
-    """Update a creative using Phase 2 brief-plus-input-items semantics."""
+    """Update a creative using canonical input_items orchestration semantics while legacy list carriers remain deprecated compatibility-only projection."""
     service = CreativeService(db)
     creative = await service.update_creative(creative_id, payload)
     if creative is None:

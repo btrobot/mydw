@@ -417,12 +417,18 @@ def test_work_driven_creative_write_contracts_expose_phase2_canonical_inputs_and
     with pytest.raises(ValidationError):
         CreativeUpdateRequest(video_ids=[100])
 
+    assert "input_orchestration" in CreativeItemResponse.model_fields
+    assert CreativeItemResponse.model_fields["input_snapshot"].json_schema_extra == {"deprecated": True}
+    assert "Deprecated compatibility-only snapshot hash" in CreativeItemResponse.model_fields["input_snapshot"].annotation.model_fields["snapshot_hash"].description
+
     request = CreativeCreateRequest(
         profile_id=1,
         input_items=[{"material_type": "video", "material_id": 100}],
     )
     assert request.profile_id == 1
     assert len(request.input_items) == 1
+    assert "Phase 4 canonical" in CreativeCreateRequest.model_fields["input_items"].description
+    assert "Phase 4 canonical" in CreativeUpdateRequest.model_fields["input_items"].description
 
 
 def test_phase_a_response_contracts_are_instantiable() -> None:

@@ -1354,7 +1354,7 @@ export type CreativeCreateRequest = {
     /**
      * Input Items
      *
-     * Phase 2 canonical creative input orchestration surface; legacy input_snapshot/list carriers remain compatibility-only projection.
+     * Phase 4 canonical creative input orchestration surface; use together with input_orchestration, while legacy input_snapshot/list carriers remain compatibility-only projection.
      */
     input_items?: Array<CreativeInputItemWrite>;
 };
@@ -1457,9 +1457,13 @@ export type CreativeDetailResponse = {
     /**
      * Input Items
      *
-     * Phase 2 canonical source for creative input orchestration.
+     * Phase 4 canonical creative input orchestration surface.
      */
     input_items?: Array<CreativeInputItemResponse>;
+    /**
+     * Phase 4 canonical orchestration metadata/hash paired with input_items.
+     */
+    input_orchestration?: CreativeInputOrchestrationResponse;
     /**
      * Generation Error Msg
      */
@@ -1469,7 +1473,9 @@ export type CreativeDetailResponse = {
      */
     generation_failed_at?: string | null;
     /**
-     * Phase 2 compatibility projection derived from the canonical creative inputs when available.
+     * Deprecated compatibility-only projection derived from canonical input_items/input_orchestration when available.
+     *
+     * @deprecated
      */
     input_snapshot?: CreativeInputSnapshotResponse;
     eligibility_status?: CreativeEligibilityStatus;
@@ -1581,9 +1587,73 @@ export type CreativeInputItemWrite = {
 };
 
 /**
+ * CreativeInputMaterialCountsResponse
+ */
+export type CreativeInputMaterialCountsResponse = {
+    /**
+     * Video
+     */
+    video?: number;
+    /**
+     * Copywriting
+     */
+    copywriting?: number;
+    /**
+     * Cover
+     */
+    cover?: number;
+    /**
+     * Audio
+     */
+    audio?: number;
+    /**
+     * Topic
+     */
+    topic?: number;
+};
+
+/**
  * CreativeInputMaterialType
  */
 export type CreativeInputMaterialType = 'video' | 'copywriting' | 'cover' | 'audio' | 'topic';
+
+/**
+ * CreativeInputOrchestrationResponse
+ */
+export type CreativeInputOrchestrationResponse = {
+    /**
+     * Profile Id
+     *
+     * Canonical orchestration profile reference paired with input_items.
+     */
+    profile_id?: number | null;
+    /**
+     * Orchestration Hash
+     *
+     * Canonical hash derived from profile_id plus the ordered input_items orchestration.
+     */
+    orchestration_hash: string;
+    /**
+     * Item Count
+     *
+     * Total number of canonical input_items, including disabled entries.
+     */
+    item_count?: number;
+    /**
+     * Enabled Item Count
+     *
+     * Number of enabled canonical input_items currently projected into compatibility surfaces.
+     */
+    enabled_item_count?: number;
+    /**
+     * Per-material counts across all canonical input_items.
+     */
+    material_counts?: CreativeInputMaterialCountsResponse;
+    /**
+     * Per-material counts across enabled canonical input_items.
+     */
+    enabled_material_counts?: CreativeInputMaterialCountsResponse;
+};
 
 /**
  * CreativeInputSnapshotResponse
@@ -1595,26 +1665,50 @@ export type CreativeInputSnapshotResponse = {
     profile_id?: number | null;
     /**
      * Video Ids
+     *
+     * Deprecated compatibility-only projected video ids. Canonical authoring source is input_items.
+     *
+     * @deprecated
      */
     video_ids?: Array<number>;
     /**
      * Copywriting Ids
+     *
+     * Deprecated compatibility-only projected copywriting ids. Canonical authoring source is input_items.
+     *
+     * @deprecated
      */
     copywriting_ids?: Array<number>;
     /**
      * Cover Ids
+     *
+     * Deprecated compatibility-only projected cover ids. Canonical authoring source is input_items.
+     *
+     * @deprecated
      */
     cover_ids?: Array<number>;
     /**
      * Audio Ids
+     *
+     * Deprecated compatibility-only projected audio ids. Canonical authoring source is input_items.
+     *
+     * @deprecated
      */
     audio_ids?: Array<number>;
     /**
      * Topic Ids
+     *
+     * Deprecated compatibility-only projected topic ids. Canonical authoring source is input_items.
+     *
+     * @deprecated
      */
     topic_ids?: Array<number>;
     /**
      * Snapshot Hash
+     *
+     * Deprecated compatibility-only snapshot hash. Use input_orchestration.orchestration_hash as the canonical creative-input hash.
+     *
+     * @deprecated
      */
     snapshot_hash?: string | null;
 };
@@ -1789,7 +1883,7 @@ export type CreativeUpdateRequest = {
     /**
      * Input Items
      *
-     * When present, input_items is the canonical Phase 2 source and legacy carrier fields are projected for compatibility only.
+     * When present, input_items is the Phase 4 canonical creative input orchestration source and legacy carrier fields remain compatibility-only projection.
      */
     input_items?: Array<CreativeInputItemWrite> | null;
 };
@@ -1901,8 +1995,19 @@ export type CreativeWorkbenchItemResponse = {
     target_duration_seconds?: number | null;
     /**
      * Input Items
+     *
+     * Phase 4 canonical creative input orchestration surface.
      */
     input_items?: Array<CreativeInputItemResponse>;
+    /**
+     * Phase 4 canonical orchestration metadata/hash paired with input_items.
+     */
+    input_orchestration?: CreativeInputOrchestrationResponse;
+    /**
+     * Deprecated compatibility-only projection derived from canonical input_items/input_orchestration when available.
+     *
+     * @deprecated
+     */
     input_snapshot?: CreativeInputSnapshotResponse;
     /**
      * Generation Error Msg
