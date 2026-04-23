@@ -995,3 +995,54 @@ $ralph "执行已批准的 Slice E：升级 diagnostics 为行动建议型面板
 ```bash
 $team 3:executor "执行已批准的 Slice E：升级 diagnostics 为行动建议型面板"
 ```
+
+---
+
+## Roadmap 总收口状态（2026-04-23）
+
+本 roadmap 已按 A/B/C/D/E 五个 slice 完成阶段性收口。对应总收口文档见：
+
+- `discss/workbench-detail-refactor-plan-closeout-2026-04-23.md`
+
+### PR / commit 与计划映射
+
+| Slice | 计划文件 | commit / PR 语义 | 收口状态 |
+| --- | --- | --- | --- |
+| Slice A：测试补强 | `.omx/plans/prd-workbench-slice-ab-2026-04-23.md` | `5babe1e` 锁定 Workbench query / preset / route 行为 | 已完成 |
+| Slice B：Workbench 状态源收敛 | `.omx/plans/prd-workbench-slice-ab-2026-04-23.md` | `f02889d` URL canonical query state | 已完成 |
+| Slice C：Workbench 页面结构拆分 | `.omx/plans/prd-workbench-slice-c-2026-04-23.md` | `65d119a` 拆 SummaryCard / PresetBar / WorkbenchTable / DiagnosticsDrawer | 已完成 |
+| Slice D：CreativeDetail view-model 拆分 | `.omx/plans/prd-creative-detail-slice-d-2026-04-23.md` | `71cd132` 拆 authoring / version-review / publish-diagnostics / navigation state | 已完成 |
+| Slice E：diagnostics 行动面板 | `.omx/plans/prd-creative-diagnostics-action-panel-2026-04-23.md` | `fe0d052` 增加 Workbench / Detail 推荐行动面板 | 已完成 |
+
+### 总结论
+
+这个 roadmap 的主目标已经达成：
+
+- Workbench 状态源已收敛到 URL canonical query state。
+- 高频 preset / filter / sort / pagination / detail return / diagnostics route chrome 已由 E2E 锁定。
+- Workbench 已完成第一轮结构拆分，父页面仍是唯一 canonical query state owner。
+- CreativeDetail 已完成第一轮 view-model 拆分，核心行为归属清晰。
+- Diagnostics 已从解释型文案升级为“推荐行动 + 原始证据”的信息架构。
+- Workbench `diagnostics=runtime` 与 Detail `diagnostics=advanced` 语义保持不变。
+- Diagnostics drawer 不触发 submit composition。
+
+### 关闭边界
+
+本 roadmap 到此关闭，不继续在本计划内扩展：
+
+- 不做 CreativeDetail tab/subroute。
+- 不在 diagnostics drawer 内增加 submit / publish 等强业务 mutation。
+- 不新增后端 diagnostics API。
+- 不新增状态管理依赖。
+- 不继续重写 Workbench table 技术栈。
+
+这些如后续确有必要，应作为新计划单独评估。
+
+### 后续方向
+
+下一阶段应回到业务能力闭环，而不是继续结构重构：
+
+1. 发布链路 / 发布池真实能力补齐。
+2. CreativeDetail 主创作区体验优化。
+3. AIClip 与作品版本链路进一步闭环。
+4. 仅当单页结构再次出现明确维护或使用痛点时，再评估 tab/subroute。

@@ -1,7 +1,7 @@
 ﻿# 短视频作品自动生成与发布系统（新版 PRD）
 
-> 版本：Draft v0.5  
-> 更新时间：2026-04-16  
+> 版本：Draft v0.6
+> 更新时间：2026-04-23
 > 文档定位：基于当前 MVP 现状梳理的新 PRD  
 > 视角：业务流程设计师 / 产品经理 / 后台架构协作稿
 
@@ -626,6 +626,16 @@ Task 不再作为前台唯一主角，而是：
 - 驳回
 - 立即发布
 
+### 当前实现收口（2026-04-23）
+
+Workbench / CreativeDetail 重构计划已完成 A/B/C/D/E 五个 slice 的阶段性收口，产品结论如下：
+
+- **作品工作台已经是作品中心主入口**：搜索、筛选、排序、分页与高频 preset 均应视为服务端检索语义，不再退回前端窗口过滤模型。
+- **URL 是工作台页面状态 truth**：`keyword/status/poolState/preset/sort/page/pageSize/diagnostics` 是可刷新、可返回、可分享的 canonical state。
+- **高频视角是运营队列**：待审核、需返工、最近失败、版本未对齐等 preset 是明确业务视角，不是临时过滤按钮。
+- **运行诊断是 route chrome**：Workbench 使用 `diagnostics=runtime`，打开/关闭诊断不应污染业务查询状态，也不应提升未提交 draft filter。
+- **任务页退为执行诊断面**：工作台承接业务操作，task list / task detail 承接执行进度、失败重试、日志与排障。
+
 ## 9.2 页面二：任务创建页（升级）
 
 当前 TaskCreate 是“素材篮 + 多账号分发”模式，建议升级为：
@@ -676,6 +686,23 @@ Task 不再作为前台唯一主角，而是：
 - 合成记录
 - 任务日志
 - 发布日志
+
+### 当前实现收口（2026-04-23）
+
+CreativeDetail 当前保持单页信息架构，但已经完成第一层职责拆分：
+
+- `useCreativeAuthoringModel`：创作定义、素材编排、保存与提交合成。
+- `useCreativeVersionReviewModel`：版本结果、审核抽屉与审核动作。
+- `useCreativePublishDiagnosticsModel`：发布状态、发布池、cutover 对账与诊断证据。
+- `useCreativeNavigationState`：`returnTo/taskId/diagnostics/tool` 等 URL 与抽屉导航状态。
+
+当前产品边界：
+
+- Detail 仍是作品定义与证据聚合页，不立即拆成 tab/subroute。
+- 高级诊断使用 `diagnostics=advanced`，只作为诊断抽屉 URL 语义。
+- 诊断区顶部展示推荐行动，但底层任务、发布池、cutover、运行状态等原始证据必须保留。
+- 诊断推荐行动只能使用既有安全动作：retry diagnostics、open task diagnostics、open task list。
+- 诊断抽屉不得触发 submit composition；提交合成仍只属于主创作区。
 
 ## 9.4 页面四：配置档管理页（增强）
 

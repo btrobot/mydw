@@ -1,9 +1,9 @@
 # Creative Domain Model Realignment PRD（作品域重整 PRD）
 
-> Version: 2.2.0  
+> Version: 2.3.0
 > Updated: 2026-04-23  
 > Owner: Product / Domain Design / Codex  
-> Status: Master PRD / Phase 0-4 integrated closeout artifact
+> Status: Master PRD / Phase 0-4 + Workbench/Detail IA stabilization closeout artifact
 
 > 本文档最初用于冻结 **Phase 0 PR1 的正式 PRD**；现已吸收 **Phase 1-4 的实施结果与 Phase 4 收口结论**，作为 creative-domain 主线的总 PRD / 当前真相文档。  
 > 它回答：**为什么要调整 Creative 域、当前推荐并已落地的领域边界是什么、迁移是如何分阶段完成的、以及本轮主线已经收口到什么状态。**
@@ -13,6 +13,7 @@
 > - Keeps the frozen domain boundary and migration rationale
 > - Now also records the implemented end-state through Phase 4
 > - Future follow-up PRs should still cite this master PRD and the master test spec
+> - 2026-04-23 additionally absorbs the Workbench / CreativeDetail IA stabilization closeout from `discss/workbench-detail-refactor-plan-closeout-2026-04-23.md`
 
 ## 0. 在启动包中的角色
 
@@ -74,6 +75,22 @@
 1. schema / OpenAPI 已标记 deprecated
 2. 写入路径已被 validator 拒绝
 3. 若后续要做 strict API hard-removal，应作为单独 follow-up，而不是回滚本轮主线
+
+### 2.5 Workbench / Detail IA 收口真相（截至 2026-04-23）
+
+在领域模型 Phase 0-4 收口之后，Workbench / CreativeDetail 又完成了一轮信息架构与页面结构稳定化：
+
+- **Workbench 主入口定位已稳定**：作品工作台继续作为 Creative 主入口，Task 继续下沉为执行 / 诊断视图。
+- **Workbench 查询状态已收敛**：`keyword/status/poolState/preset/sort/page/pageSize/diagnostics` 由 URL canonical state 统一驱动。
+- **Workbench 检索已服务端化**：搜索、筛选、排序、分页与高频 preset 均基于服务端结果，而不是前端窗口过滤。
+- **CreativeDetail 已拆第一层 view-model**：authoring、version-review、publish-diagnostics、navigation state 各自拥有清晰归属。
+- **Diagnostics 已行动化**：Workbench runtime diagnostics 与 Detail advanced diagnostics 均先展示推荐行动，再保留原始证据。
+- **Mutation 边界已锁定**：diagnostics drawer 只能触发 retry / navigation / preset，不触发 submit composition。
+
+本轮收口对应 roadmap：
+
+- `discss/workbench-refactor-roadmap-2026-04-23.md`
+- `discss/workbench-detail-refactor-plan-closeout-2026-04-23.md`
 
 ## 3. 问题陈述
 
@@ -401,6 +418,13 @@
 ### Phase 4 之后的主线结论
 
 截至本轮收口，creative-domain 主线已经实现从“集合快照叙事”到“作品 / 输入编排 / 版本 / 发布冻结”模型的完整切换。
+
+随后完成的 Workbench / CreativeDetail IA stabilization 不改变领域模型边界，而是把该模型在主要页面中的使用方式收口为：
+
+- Workbench 是作品队列与运营处理入口。
+- CreativeDetail 是作品定义、版本证据、审核结论、发布诊断的聚合页。
+- Task 是执行与诊断承载面，不再反向定义作品。
+- Diagnostics 是行动建议 + 原始证据，不是新的业务 mutation 面。
 
 剩余 follow-up 不再属于本次主线收口阻塞项，主要包括：
 
