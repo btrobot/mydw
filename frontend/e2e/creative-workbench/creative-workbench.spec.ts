@@ -819,6 +819,7 @@ test.describe('Creative workbench baseline', () => {
 
     await expect(page).toHaveURL(/diagnostics=runtime/)
     await expect(page.getByTestId('creative-workbench-diagnostics-drawer')).toBeVisible()
+    await expect(page.getByTestId('creative-workbench-diagnostics-actions')).toBeVisible()
     await expect(page.getByTestId('creative-workbench-effective-mode')).toContainText('Task')
     await expect(page.getByTestId('creative-workbench-runtime-status')).toContainText('空闲')
 
@@ -846,8 +847,10 @@ test.describe('Creative workbench baseline', () => {
     await page.getByTestId('creative-open-advanced-diagnostics').click()
     await expect(page).toHaveURL(/diagnostics=advanced/)
     await expect(page.getByTestId('creative-detail-diagnostics-drawer')).toBeVisible()
+    await expect(page.getByTestId('creative-detail-diagnostics-actions')).toBeVisible()
     await expect(page.getByTestId('creative-task-diagnostics-card')).toBeVisible()
     await expect(page.getByTestId('creative-publish-diagnostics')).toBeVisible()
+    await expect(page.getByTestId('creative-detail-diagnostics-drawer').getByTestId('creative-submit-composition')).toHaveCount(0)
 
     await page.getByTestId('creative-open-task-diagnostics').click()
     await page.waitForURL(/#\/task\/901\?returnTo=/)
@@ -1124,6 +1127,44 @@ test.describe('Creative workbench baseline', () => {
     await expect(page).toHaveURL(/pageSize=2/)
     await expect(page).not.toHaveURL(/diagnostics=runtime/)
     await expect.poll(() => requests.length).toBe(requestCount)
+  })
+
+  test('keeps runtime diagnostics open when recommendation CTAs switch preset views', async ({ page }) => {
+    const requests = await captureCreativeListRequests(page)
+
+    await page.goto(`/#/creative/workbench?sort=updated_desc&page=2&pageSize=2`)
+
+    await expectLatestCreativeRequest(requests, {
+      sort: 'updated_desc',
+      skip: '2',
+      limit: '2',
+    })
+
+    await page.getByTestId('creative-workbench-open-diagnostics').click()
+    await expect(page).toHaveURL(/diagnostics=runtime/)
+    await expect(page.getByTestId('creative-workbench-diagnostics-actions')).toBeVisible()
+
+    await page.getByTestId('creative-workbench-diagnostics-action-recent-failures').click()
+
+    await expect(page).toHaveURL(/preset=recent_failures/)
+    await expect(page).toHaveURL(/sort=failed_desc/)
+    await expect(page).toHaveURL(/page=1/)
+    await expect(page).toHaveURL(/pageSize=2/)
+    await expect(page).toHaveURL(/diagnostics=runtime/)
+    await expectLatestCreativeRequest(requests, {
+      sort: 'failed_desc',
+      recentFailuresOnly: 'true',
+      skip: '0',
+      limit: '2',
+    })
+    await expect(page.getByTestId('creative-workbench-effective-mode')).toBeVisible()
+    await expect(page.getByTestId('creative-workbench-runtime-status')).toBeVisible()
+
+    await page.locator('.ant-drawer-close').click()
+
+    await expect(page).toHaveURL(/preset=recent_failures/)
+    await expect(page).toHaveURL(/sort=failed_desc/)
+    await expect(page).not.toHaveURL(/diagnostics=runtime/)
   })
 
   test('does not promote unapplied draft filters when opening diagnostics or changing sort', async ({ page }) => {

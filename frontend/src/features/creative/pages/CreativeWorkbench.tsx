@@ -14,6 +14,7 @@ import {
 } from 'antd'
 
 import CreativeEmptyState from '../components/CreativeEmptyState'
+import type { DiagnosticsRecommendation } from '../components/diagnostics/DiagnosticsActionPanel'
 import WorkbenchDiagnosticsDrawer from '../components/workbench/WorkbenchDiagnosticsDrawer'
 import WorkbenchPresetBar from '../components/workbench/WorkbenchPresetBar'
 import WorkbenchSummaryCard from '../components/workbench/WorkbenchSummaryCard'
@@ -457,6 +458,95 @@ export default function CreativeWorkbench() {
         ? '开启'
         : '关闭'
 
+  const workbenchActionRecommendations = useMemo<DiagnosticsRecommendation[]>(() => {
+    const recommendations: DiagnosticsRecommendation[] = []
+    const hasDiagnosticsError = publishStatusQuery.isError || scheduleConfigQuery.isError
+
+    if (hasDiagnosticsError) {
+      recommendations.push({
+        key: 'retry-runtime-diagnostics',
+        title: '运行诊断暂不可用，先重试诊断数据',
+        severity: 'warning',
+        evidence: [
+          `调度模式：${schedulerModeLabel}`,
+          `运行状态：${runtimeStatusLabel}`,
+        ],
+        actionLabel: '重试诊断',
+        onAction: handleRetryAuxiliary,
+        testId: 'creative-workbench-diagnostics-action-retry',
+      })
+    }
+
+    if (summary.recent_failures_count > 0) {
+      recommendations.push({
+        key: 'recent-failures',
+        title: '优先处理最近失败作品',
+        severity: 'warning',
+        evidence: [`最近失败：${summary.recent_failures_count} 条`],
+        actionLabel: '查看最近失败',
+        onAction: () => handlePresetChange('recent_failures'),
+        testId: 'creative-workbench-diagnostics-action-recent-failures',
+      })
+    }
+
+    if (summary.needs_rework_count > 0) {
+      recommendations.push({
+        key: 'needs-rework',
+        title: '进入需返工队列复核改稿项',
+        severity: 'warning',
+        evidence: [`需返工：${summary.needs_rework_count} 条`],
+        actionLabel: '查看需返工',
+        onAction: () => handlePresetChange('needs_rework'),
+        testId: 'creative-workbench-diagnostics-action-needs-rework',
+      })
+    }
+
+    if (summary.waiting_review_count > 0) {
+      recommendations.push({
+        key: 'waiting-review',
+        title: '进入待审核队列推进审核',
+        severity: 'info',
+        evidence: [`待审核：${summary.waiting_review_count} 条`],
+        actionLabel: '查看待审核',
+        onAction: () => handlePresetChange('waiting_review'),
+        testId: 'creative-workbench-diagnostics-action-waiting-review',
+      })
+    }
+
+    if (summary.version_mismatch_count > 0) {
+      recommendations.push({
+        key: 'version-mismatch',
+        title: '检查发布池版本未对齐作品',
+        severity: 'info',
+        evidence: [`版本未对齐：${summary.version_mismatch_count} 条`],
+        actionLabel: '查看版本未对齐',
+        onAction: () => handlePresetChange('version_mismatch'),
+        testId: 'creative-workbench-diagnostics-action-version-mismatch',
+      })
+    }
+
+    return recommendations.length > 0
+      ? recommendations
+      : [{
+        key: 'runtime-stable',
+        title: '当前没有高优先级处理建议',
+        severity: 'success',
+        evidence: [
+          `运行状态：${runtimeStatusLabel}`,
+          `已进发布池：${summary.active_pool_count} 条`,
+          `池版本已对齐：${summary.aligned_pool_count} 条`,
+        ],
+      }]
+  }, [
+    handlePresetChange,
+    handleRetryAuxiliary,
+    publishStatusQuery.isError,
+    runtimeStatusLabel,
+    scheduleConfigQuery.isError,
+    schedulerModeLabel,
+    summary,
+  ])
+
   if (creativesQuery.isLoading && !creativesQuery.data) {
     return (
       <Flex justify="center" style={{ padding: 48 }} data-testid="creative-workbench-loading">
@@ -542,6 +632,7 @@ export default function CreativeWorkbench() {
       </Space>
 
       <WorkbenchDiagnosticsDrawer
+        actionRecommendations={workbenchActionRecommendations}
         open={diagnosticsOpen}
         onClose={handleCloseDiagnostics}
         hasDiagnosticsError={publishStatusQuery.isError || scheduleConfigQuery.isError}

@@ -1,7 +1,10 @@
 import { ReloadOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Descriptions, Drawer, Space, Tag, Typography } from 'antd'
 
+import DiagnosticsActionPanel, { type DiagnosticsRecommendation } from '../diagnostics/DiagnosticsActionPanel'
+
 type WorkbenchDiagnosticsDrawerProps = {
+  actionRecommendations: DiagnosticsRecommendation[]
   creativeFlowDescription: string
   creativeFlowLabel: string
   creativeFlowShadowCompare: boolean
@@ -21,6 +24,7 @@ type WorkbenchDiagnosticsDrawerProps = {
 const { Paragraph } = Typography
 
 export default function WorkbenchDiagnosticsDrawer({
+  actionRecommendations,
   creativeFlowDescription,
   creativeFlowLabel,
   creativeFlowShadowCompare,
@@ -59,6 +63,12 @@ export default function WorkbenchDiagnosticsDrawer({
             data-testid="creative-workbench-runtime-warning"
           />
         )}
+
+        <DiagnosticsActionPanel
+          title="推荐行动"
+          recommendations={actionRecommendations}
+          testId="creative-workbench-diagnostics-actions"
+        />
 
         <Card size="small" title="运行态摘要">
           <Descriptions bordered size="small" column={1}>

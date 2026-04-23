@@ -6,6 +6,7 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons'
 import { PageContainer } from '@ant-design/pro-components'
+import { useMemo } from 'react'
 import {
   Alert,
   App,
@@ -31,6 +32,7 @@ import {
 
 import AIClipWorkflowPanel from '../components/AIClipWorkflowPanel'
 import CheckDrawer from '../components/CheckDrawer'
+import DiagnosticsActionPanel, { type DiagnosticsRecommendation } from '../components/diagnostics/DiagnosticsActionPanel'
 import VersionPanel from '../components/VersionPanel'
 import {
   creativeInputMaterialMeta,
@@ -184,6 +186,113 @@ export default function CreativeDetail() {
       : creative?.eligibility_status === 'INVALID'
         ? '输入无效'
         : '待补输入'
+
+  const detailActionRecommendations = useMemo<DiagnosticsRecommendation[]>(() => {
+    const recommendations: DiagnosticsRecommendation[] = []
+
+    if (diagnosticsUnavailable) {
+      recommendations.push({
+        key: 'retry-detail-diagnostics',
+        title: '高级诊断暂不可用，先重试诊断数据',
+        severity: 'warning',
+        evidence: [
+          `调度模式：${schedulerModeLabel}`,
+          `运行状态：${runtimeStatusLabel}`,
+        ],
+        actionLabel: '重试诊断',
+        onAction: retryDiagnostics,
+        testId: 'creative-detail-diagnostics-action-retry',
+      })
+    }
+
+    if (shadowDiffDiffers) {
+      recommendations.push({
+        key: 'cutover-diff',
+        title: 'Cutover 对账存在差异，先阅读下方对账证据',
+        severity: 'warning',
+        evidence: shadowDiffReasons.length > 0
+          ? shadowDiffReasons
+          : ['Shadow diff 返回存在差异，但未提供明确原因。'],
+      })
+    }
+
+    if (primaryTaskId) {
+      recommendations.push({
+        key: 'primary-task',
+        title: '存在主执行任务，优先进入任务诊断',
+        severity: 'info',
+        evidence: [`主执行任务：#${primaryTaskId}`],
+        actionLabel: '查看主执行诊断',
+        onAction: () => openTaskDiagnostics(primaryTaskId),
+        testId: 'creative-detail-diagnostics-action-primary-task',
+      })
+    } else if (diagnosticTaskIds.length > 0) {
+      recommendations.push({
+        key: 'task-list',
+        title: '存在执行记录，可进入任务管理继续排查',
+        severity: 'info',
+        evidence: [`关联执行记录：${diagnosticTaskIds.length} 条`],
+        actionLabel: '打开任务管理',
+        onAction: openTaskList,
+        testId: 'creative-detail-diagnostics-action-task-list',
+      })
+    } else if (creative?.eligibility_status === 'READY_TO_COMPOSE') {
+      recommendations.push({
+        key: 'ready-to-compose',
+        title: '作品已满足合成条件，请回到主创作区提交',
+        severity: 'success',
+        evidence: ['诊断抽屉不触发提交合成；提交动作仅保留在主创作区。'],
+      })
+    } else {
+      recommendations.push({
+        key: 'complete-authoring',
+        title: '当前作品仍需先补齐创作定义',
+        severity: creative?.eligibility_status === 'INVALID' ? 'warning' : 'info',
+        evidence: eligibilityReasons.length > 0
+          ? eligibilityReasons
+          : [`合成准备状态：${eligibilityLabel}`],
+      })
+    }
+
+    if (!currentPoolItem) {
+      recommendations.push({
+        key: 'missing-pool-item',
+        title: '当前版本尚未形成发布侧候选项',
+        severity: activePoolQuery.isError ? 'warning' : 'info',
+        evidence: [activePoolQuery.isError ? '发布池候选项获取失败。' : '下方发布池证据中暂无当前候选项。'],
+      })
+    } else if (!isPoolVersionAligned(currentPoolItem)) {
+      recommendations.push({
+        key: 'unaligned-pool-item',
+        title: '发布侧候选项版本未对齐',
+        severity: 'warning',
+        evidence: [
+          `候选项：#${currentPoolItem.id}`,
+          `候选版本：#${currentPoolItem.creative_version_id}`,
+          `当前版本：#${creative?.current_version_id ?? '-'}`,
+        ],
+      })
+    }
+
+    return recommendations
+  }, [
+    activePoolQuery.isError,
+    creative?.eligibility_status,
+    creative?.current_version_id,
+    currentPoolItem,
+    diagnosticTaskIds.length,
+    diagnosticsUnavailable,
+    eligibilityLabel,
+    eligibilityReasons,
+    openTaskDiagnostics,
+    openTaskList,
+    primaryTaskId,
+    retryDiagnostics,
+    runtimeStatusLabel,
+    schedulerModeLabel,
+    shadowDiffDiffers,
+    shadowDiffReasons,
+  ])
 
   if (creativeQuery.isLoading && !creative) {
     return (
@@ -670,6 +779,12 @@ export default function CreativeDetail() {
         destroyOnClose
       >
         <Space direction="vertical" size={16} style={{ width: '100%' }} data-testid="creative-detail-diagnostics-drawer">
+          <DiagnosticsActionPanel
+            title="当前作品建议"
+            recommendations={detailActionRecommendations}
+            testId="creative-detail-diagnostics-actions"
+          />
+
           <Card title="执行任务诊断" size="small" data-testid="creative-task-diagnostics-card">
             {diagnosticTaskIds.length > 0 ? (
               <Space direction="vertical" size={12} style={{ width: '100%' }}>

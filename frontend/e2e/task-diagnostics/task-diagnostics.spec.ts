@@ -139,10 +139,12 @@ test.describe('Task diagnostics positioning', () => {
     await page.getByTestId('creative-open-advanced-diagnostics').click()
     await expect(page).toHaveURL(/diagnostics=advanced/)
     await expect(page.getByTestId('creative-detail-diagnostics-drawer')).toBeVisible()
+    await expect(page.getByTestId('creative-detail-diagnostics-actions')).toBeVisible()
     await expect(page.getByTestId('creative-task-diagnostics-note')).toContainText('不回写作品定义、版本结果或发布包冻结值')
     await expect(page.getByTestId('creative-open-task-diagnostics')).toBeVisible()
+    await expect(page.getByTestId('creative-detail-diagnostics-drawer').getByTestId('creative-submit-composition')).toHaveCount(0)
 
-    await page.getByTestId('creative-open-task-diagnostics').click()
+    await page.getByTestId('creative-detail-diagnostics-action-primary-task').click()
     await expect(page).toHaveURL(/#\/task\/901\?returnTo=%2Ftask%2Flist%3Fstatus%3Ddraft%26task_kind%3Dpublish%26page%3D1%26pageSize%3D50$/)
 
     await page.getByTestId('task-detail-back-to-list').click()
