@@ -653,6 +653,12 @@ async function expectWorkbenchOrder(page: Page, creativeIds: number[]) {
   }
 }
 
+async function goToWorkbenchPage(page: Page, nextPage: number) {
+  const nextPageButton = page.locator(`.ant-pagination-item-${nextPage}`)
+  await expect(nextPageButton).toBeVisible()
+  await nextPageButton.click()
+}
+
 test.describe('Creative workbench baseline', () => {
   test.beforeEach(async ({ page }) => {
     await mockCreativeApis(page)
@@ -831,6 +837,56 @@ test.describe('Creative workbench baseline', () => {
       limit: '2',
     })
     await expectWorkbenchOrder(page, [101, 103])
+  })
+
+  test('updates URL, request params, and visible rows when moving to the next page from the paginator', async ({ page }) => {
+    const requests = await captureCreativeListRequests(page)
+
+    await page.goto(`/#/creative/workbench?sort=attention_desc&page=1&pageSize=2`)
+
+    await expectLatestCreativeRequest(requests, {
+      sort: 'attention_desc',
+      skip: '0',
+      limit: '2',
+    })
+    await expectWorkbenchOrder(page, [102, 104])
+
+    await goToWorkbenchPage(page, 2)
+
+    await expect(page).toHaveURL(/sort=attention_desc/)
+    await expect(page).toHaveURL(/page=2/)
+    await expect(page).toHaveURL(/pageSize=2/)
+    await expectLatestCreativeRequest(requests, {
+      sort: 'attention_desc',
+      skip: '2',
+      limit: '2',
+    })
+    await expectWorkbenchOrder(page, [101, 103])
+  })
+
+  test('resets to page 1 and requests skip 0 when sort changes from page 2', async ({ page }) => {
+    const requests = await captureCreativeListRequests(page)
+
+    await page.goto(`/#/creative/workbench?sort=attention_desc&page=2&pageSize=2`)
+
+    await expectLatestCreativeRequest(requests, {
+      sort: 'attention_desc',
+      skip: '2',
+      limit: '2',
+    })
+    await expectWorkbenchOrder(page, [101, 103])
+
+    await chooseWorkbenchSort(page, '最早更新优先')
+
+    await expect(page).toHaveURL(/sort=updated_asc/)
+    await expect(page).toHaveURL(/page=1/)
+    await expect(page).toHaveURL(/pageSize=2/)
+    await expectLatestCreativeRequest(requests, {
+      sort: 'updated_asc',
+      skip: '0',
+      limit: '2',
+    })
+    await expectWorkbenchOrder(page, [103, 101])
   })
 
   test('returns to the filtered workbench state after entering detail', async ({ page }) => {

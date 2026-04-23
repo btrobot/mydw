@@ -1,6 +1,6 @@
 import { ArrowRightOutlined, ReloadOutlined } from '@ant-design/icons'
 import { PageContainer, ProTable } from '@ant-design/pro-components'
-import type { ActionType, ProColumns, ProFormInstance } from '@ant-design/pro-components'
+import type { ProColumns, ProFormInstance } from '@ant-design/pro-components'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import {
@@ -53,6 +53,19 @@ const DEFAULT_WORKBENCH_PAGE_SIZE = 10
 type WorkbenchSortKind = 'updated_desc' | 'updated_asc' | 'attention_desc' | 'failed_desc'
 type WorkbenchPresetKey = 'all' | 'waiting_review' | 'needs_rework' | 'recent_failures' | 'version_mismatch'
 type WorkbenchDiagnosticsView = 'runtime'
+type WorkbenchQueryState = {
+  keyword?: string
+  status?: keyof typeof creativeStatusMeta
+  poolState?: CreativeWorkbenchPoolState
+  preset?: WorkbenchPresetKey
+  sort: WorkbenchSortKind
+  page: number
+  pageSize: number
+}
+type WorkbenchRouteState = {
+  queryState: WorkbenchQueryState
+  diagnostics?: WorkbenchDiagnosticsView
+}
 
 type WorkbenchTableRow = CreativeWorkbenchItem & {
   poolState: CreativeWorkbenchPoolState
@@ -187,23 +200,23 @@ const isPresetCompatible = (
 const getPresetState = (
   preset: WorkbenchPresetKey,
   pageSize: number,
-): { keyword?: string; status?: keyof typeof creativeStatusMeta; poolState?: CreativeWorkbenchPoolState; sort: WorkbenchSortKind; current: number; pageSize: number; preset: WorkbenchPresetKey } => {
+): WorkbenchQueryState => {
   switch (preset) {
     case 'waiting_review':
-      return { preset, status: 'WAITING_REVIEW', sort: 'updated_desc', current: 1, pageSize }
+      return { preset, status: 'WAITING_REVIEW', sort: 'updated_desc', page: 1, pageSize }
     case 'needs_rework':
-      return { preset, status: 'REWORK_REQUIRED', sort: 'updated_desc', current: 1, pageSize }
+      return { preset, status: 'REWORK_REQUIRED', sort: 'updated_desc', page: 1, pageSize }
     case 'recent_failures':
-      return { preset, sort: 'failed_desc', current: 1, pageSize }
+      return { preset, sort: 'failed_desc', page: 1, pageSize }
     case 'version_mismatch':
-      return { preset, poolState: 'version_mismatch', sort: 'attention_desc', current: 1, pageSize }
+      return { preset, poolState: 'version_mismatch', sort: 'attention_desc', page: 1, pageSize }
     case 'all':
     default:
-      return { preset: 'all', sort: 'updated_desc', current: 1, pageSize }
+      return { preset: 'all', sort: 'updated_desc', page: 1, pageSize }
   }
 }
 
-const parseWorkbenchStateFromSearchParams = (searchParams: URLSearchParams) => {
+const parseWorkbenchStateFromSearchParams = (searchParams: URLSearchParams): WorkbenchRouteState => {
   const keyword = searchParams.get('keyword')?.trim() || undefined
   const statusValue = searchParams.get('status')
   const poolStateValue = searchParams.get('poolState')
@@ -218,49 +231,47 @@ const parseWorkbenchStateFromSearchParams = (searchParams: URLSearchParams) => {
     : undefined
 
   return {
-    formValues: {
+    queryState: {
       keyword,
       status,
       poolState,
       preset,
-    } satisfies WorkbenchFormValues,
-    current: parsePositiveInteger(searchParams.get('page'), 1),
-    pageSize: parsePositiveInteger(searchParams.get('pageSize'), DEFAULT_WORKBENCH_PAGE_SIZE),
+      sort: parseWorkbenchSortKind(searchParams.get('sort')),
+      page: parsePositiveInteger(searchParams.get('page'), 1),
+      pageSize: parsePositiveInteger(searchParams.get('pageSize'), DEFAULT_WORKBENCH_PAGE_SIZE),
+    },
     diagnostics,
-    preset,
-    sort: parseWorkbenchSortKind(searchParams.get('sort')),
   }
 }
 
 const buildWorkbenchSearchParams = (
-  params: WorkbenchFormValues,
-  sort: WorkbenchSortKind,
+  queryState: WorkbenchQueryState,
   diagnostics?: WorkbenchDiagnosticsView,
 ): URLSearchParams => {
   const nextSearchParams = new URLSearchParams()
-  const keyword = params.keyword?.trim()
+  const keyword = queryState.keyword?.trim()
 
   if (keyword) {
     nextSearchParams.set('keyword', keyword)
   }
 
-  if (params.status) {
-    nextSearchParams.set('status', params.status)
+  if (queryState.status) {
+    nextSearchParams.set('status', queryState.status)
   }
 
-  if (params.poolState) {
-    nextSearchParams.set('poolState', params.poolState)
+  if (queryState.poolState) {
+    nextSearchParams.set('poolState', queryState.poolState)
   }
 
-  const preset = isPresetCompatible(params.preset, params, sort) ? params.preset : undefined
+  const preset = isPresetCompatible(queryState.preset, queryState, queryState.sort) ? queryState.preset : undefined
 
   if (preset) {
     nextSearchParams.set('preset', preset)
   }
 
-  nextSearchParams.set('sort', sort)
-  nextSearchParams.set('page', String(params.current ?? 1))
-  nextSearchParams.set('pageSize', String(params.pageSize ?? DEFAULT_WORKBENCH_PAGE_SIZE))
+  nextSearchParams.set('sort', queryState.sort)
+  nextSearchParams.set('page', String(queryState.page))
+  nextSearchParams.set('pageSize', String(queryState.pageSize))
 
   if (diagnostics) {
     nextSearchParams.set('diagnostics', diagnostics)
@@ -269,25 +280,50 @@ const buildWorkbenchSearchParams = (
   return nextSearchParams
 }
 
+const getWorkbenchFormValues = (queryState: WorkbenchQueryState): WorkbenchFormValues => ({
+  keyword: queryState.keyword ?? '',
+  status: queryState.status ?? null,
+  poolState: queryState.poolState ?? null,
+  preset: queryState.preset,
+})
+
+const getAppliedWorkbenchFilters = (
+  values: Pick<WorkbenchFormValues, 'keyword' | 'status' | 'poolState' | 'preset'>,
+): Pick<WorkbenchQueryState, 'keyword' | 'status' | 'poolState' | 'preset'> => ({
+  keyword: values.keyword?.trim() || undefined,
+  status: values.status ?? undefined,
+  poolState: values.poolState ?? undefined,
+  preset: values.preset,
+})
+
 export default function CreativeWorkbench() {
   const location = useLocation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { message } = App.useApp()
-  const actionRef = useRef<ActionType>()
   const formRef = useRef<ProFormInstance<WorkbenchFormValues>>()
-  const initialRouteState = useMemo(
+  const routeState = useMemo(
     () => parseWorkbenchStateFromSearchParams(searchParams),
     [searchParams],
   )
+  const appliedQueryState = routeState.queryState
+  const appliedFormValues = useMemo(
+    () => getWorkbenchFormValues(appliedQueryState),
+    [
+      appliedQueryState.keyword,
+      appliedQueryState.status,
+      appliedQueryState.poolState,
+      appliedQueryState.preset,
+    ],
+  )
   const creativesQuery = useCreatives({
-    skip: (initialRouteState.current - 1) * initialRouteState.pageSize,
-    limit: initialRouteState.pageSize,
-    keyword: initialRouteState.formValues.keyword,
-    status: initialRouteState.formValues.status,
-    poolState: initialRouteState.formValues.poolState,
-    sort: initialRouteState.sort,
-    recentFailuresOnly: initialRouteState.preset === 'recent_failures',
+    skip: (appliedQueryState.page - 1) * appliedQueryState.pageSize,
+    limit: appliedQueryState.pageSize,
+    keyword: appliedQueryState.keyword,
+    status: appliedQueryState.status,
+    poolState: appliedQueryState.poolState,
+    sort: appliedQueryState.sort,
+    recentFailuresOnly: appliedQueryState.preset === 'recent_failures',
   })
   const createCreative = useCreateCreative()
   const publishStatusQuery = usePublishStatus()
@@ -297,7 +333,7 @@ export default function CreativeWorkbench() {
   const items = creativesQuery.data?.items ?? []
   const total = creativesQuery.data?.total ?? 0
   const summary = creativesQuery.data?.summary ?? defaultWorkbenchSummary
-  const diagnosticsOpen = initialRouteState.diagnostics === 'runtime'
+  const diagnosticsOpen = routeState.diagnostics === 'runtime'
 
   const schedulerMode = publishStatusQuery.data?.scheduler_mode ?? scheduleConfigQuery.data?.publish_scheduler_mode
   const effectiveSchedulerMode = publishStatusQuery.data?.effective_scheduler_mode ?? schedulerMode
@@ -331,10 +367,8 @@ export default function CreativeWorkbench() {
   )
 
   useEffect(() => {
-    if (!creativesQuery.isLoading) {
-      actionRef.current?.reload()
-    }
-  }, [creativesQuery.isLoading, rows])
+    formRef.current?.setFieldsValue(appliedFormValues)
+  }, [appliedFormValues])
 
   const handleRetryPrimary = useCallback(() => {
     void creativesQuery.refetch()
@@ -380,66 +414,42 @@ export default function CreativeWorkbench() {
     navigate(`/creative/${creativeId}?${nextSearchParams.toString()}`)
   }, [navigate, workbenchReturnTo])
 
+  const replaceWorkbenchSearchParams = useCallback((nextSearchParams: URLSearchParams) => {
+    if (nextSearchParams.toString() !== searchParams.toString()) {
+      setSearchParams(nextSearchParams, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
+
+  const updateRouteState = useCallback((
+    nextQueryState: WorkbenchQueryState,
+    diagnostics = routeState.diagnostics,
+  ) => {
+    const nextSearchParams = buildWorkbenchSearchParams(nextQueryState, diagnostics)
+    replaceWorkbenchSearchParams(nextSearchParams)
+  }, [replaceWorkbenchSearchParams, routeState.diagnostics])
+
   const handlePresetChange = useCallback((preset: WorkbenchPresetKey) => {
-    const nextPresetState = getPresetState(preset, initialRouteState.pageSize)
-    const nextSearchParams = buildWorkbenchSearchParams(
-      nextPresetState,
-      nextPresetState.sort,
-      initialRouteState.diagnostics,
-    )
-    formRef.current?.setFieldsValue({
-      keyword: nextPresetState.keyword ?? '',
-      status: nextPresetState.status ?? null,
-      poolState: nextPresetState.poolState ?? null,
-      preset: nextPresetState.preset,
-    })
-    setSearchParams(nextSearchParams, { replace: true })
-    actionRef.current?.setPageInfo?.({ current: 1, pageSize: nextPresetState.pageSize })
-    actionRef.current?.reload()
-  }, [initialRouteState.diagnostics, initialRouteState.pageSize, setSearchParams])
+    updateRouteState(getPresetState(preset, appliedQueryState.pageSize))
+  }, [appliedQueryState.pageSize, updateRouteState])
 
   const handleSortChange = useCallback((sort: WorkbenchSortKind) => {
-    const nextSearchParams = buildWorkbenchSearchParams(
-      {
-        keyword: initialRouteState.formValues.keyword,
-        status: initialRouteState.formValues.status,
-        poolState: initialRouteState.formValues.poolState,
-        preset: initialRouteState.formValues.preset,
-        current: 1,
-        pageSize: initialRouteState.pageSize,
-      },
+    updateRouteState({
+      ...appliedQueryState,
       sort,
-      initialRouteState.diagnostics,
-    )
-    setSearchParams(nextSearchParams, { replace: true })
-    actionRef.current?.setPageInfo?.({ current: 1, pageSize: initialRouteState.pageSize })
-    actionRef.current?.reload()
-  }, [initialRouteState.diagnostics, initialRouteState.formValues.keyword, initialRouteState.formValues.poolState, initialRouteState.formValues.preset, initialRouteState.formValues.status, initialRouteState.pageSize, setSearchParams])
+      page: 1,
+    })
+  }, [appliedQueryState, updateRouteState])
 
   const setDiagnosticsView = useCallback((diagnostics?: WorkbenchDiagnosticsView) => {
-    const nextSearchParams = buildWorkbenchSearchParams(
-      {
-        keyword: initialRouteState.formValues.keyword,
-        status: initialRouteState.formValues.status,
-        poolState: initialRouteState.formValues.poolState,
-        preset: initialRouteState.formValues.preset,
-        current: initialRouteState.current,
-        pageSize: initialRouteState.pageSize,
-      },
-      initialRouteState.sort,
-      diagnostics,
-    )
-    setSearchParams(nextSearchParams, { replace: true })
-  }, [
-    initialRouteState.current,
-    initialRouteState.pageSize,
-    initialRouteState.formValues.keyword,
-    initialRouteState.formValues.poolState,
-    initialRouteState.formValues.preset,
-    initialRouteState.formValues.status,
-    initialRouteState.sort,
-    setSearchParams,
-  ])
+    const nextSearchParams = new URLSearchParams(searchParams)
+
+    if (diagnostics) {
+      nextSearchParams.set('diagnostics', diagnostics)
+    } else {
+      nextSearchParams.delete('diagnostics')
+    }
+    replaceWorkbenchSearchParams(nextSearchParams)
+  }, [replaceWorkbenchSearchParams, searchParams])
 
   const handleOpenDiagnostics = useCallback(() => {
     setDiagnosticsView('runtime')
@@ -448,6 +458,32 @@ export default function CreativeWorkbench() {
   const handleCloseDiagnostics = useCallback(() => {
     setDiagnosticsView(undefined)
   }, [setDiagnosticsView])
+
+  const handleApplyFilters = useCallback((values: WorkbenchFormValues) => {
+    updateRouteState({
+      ...getAppliedWorkbenchFilters({
+        keyword: values.keyword,
+        status: values.status,
+        poolState: values.poolState,
+        preset: appliedQueryState.preset,
+      }),
+      sort: appliedQueryState.sort,
+      page: 1,
+      pageSize: appliedQueryState.pageSize,
+    })
+  }, [appliedQueryState.pageSize, appliedQueryState.preset, appliedQueryState.sort, updateRouteState])
+
+  const handleResetFilters = useCallback(() => {
+    updateRouteState(getPresetState('all', appliedQueryState.pageSize))
+  }, [appliedQueryState.pageSize, updateRouteState])
+
+  const handlePaginationChange = useCallback((page: number, pageSize: number) => {
+    updateRouteState({
+      ...appliedQueryState,
+      page,
+      pageSize,
+    })
+  }, [appliedQueryState, updateRouteState])
 
   const columns = useMemo<ProColumns<WorkbenchTableRow>[]>(
     () => [
@@ -703,55 +739,24 @@ export default function CreativeWorkbench() {
         ) : (
           <>
             <ProTable<WorkbenchTableRow, WorkbenchFormValues>
-              key={searchParams.toString()}
-              actionRef={actionRef}
               formRef={formRef}
               rowKey="id"
               columns={columns}
               cardBordered
               headerTitle="待处理作品"
               options={{ density: false, setting: false }}
-              request={async (params, sort) => {
-                const status = params.status ?? undefined
-                const poolState = (params.poolState ?? undefined) as CreativeWorkbenchPoolState | undefined
-                const currentFormValues = formRef.current?.getFieldsValue?.() ?? {}
-                const sortKind = sort.updated_at === 'ascend'
-                  ? 'updated_asc'
-                  : sort.updated_at === 'descend'
-                    ? 'updated_desc'
-                    : initialRouteState.sort
-                const nextSearchParams = buildWorkbenchSearchParams(
-                  {
-                    keyword: params.keyword,
-                    status,
-                    poolState,
-                    preset: params.preset ?? currentFormValues.preset,
-                    current: params.current,
-                    pageSize: params.pageSize,
-                  },
-                  sortKind,
-                  initialRouteState.diagnostics,
-                )
-
-                if (nextSearchParams.toString() !== searchParams.toString()) {
-                  setSearchParams(nextSearchParams, { replace: true })
-                }
-
-                return {
-                  data: rows,
-                  success: true,
-                  total,
-                }
-              }}
+              dataSource={rows}
               loading={creativesQuery.isLoading}
               pagination={{
-                current: initialRouteState.current,
-                pageSize: initialRouteState.pageSize,
+                current: appliedQueryState.page,
+                pageSize: appliedQueryState.pageSize,
+                total,
                 showSizeChanger: true,
                 showTotal: (count) => `共 ${count} 条作品`,
+                onChange: handlePaginationChange,
               }}
               form={{
-                initialValues: initialRouteState.formValues,
+                initialValues: appliedFormValues,
               }}
               search={{
                 labelWidth: 'auto',
@@ -759,6 +764,8 @@ export default function CreativeWorkbench() {
                 searchText: '应用筛选',
                 resetText: '重置筛选',
               }}
+              onSubmit={handleApplyFilters}
+              onReset={handleResetFilters}
               tableExtraRender={() => (
                 <Space direction="vertical" style={{ width: '100%' }} size={12}>
                   <Space wrap>
@@ -767,7 +774,7 @@ export default function CreativeWorkbench() {
                       <Button
                         key={preset}
                         size="small"
-                        type={initialRouteState.preset === preset || (!initialRouteState.preset && preset === 'all') ? 'primary' : 'default'}
+                        type={appliedQueryState.preset === preset || (!appliedQueryState.preset && preset === 'all') ? 'primary' : 'default'}
                         onClick={() => handlePresetChange(preset)}
                         data-testid={`creative-workbench-preset-${preset}`}
                       >
@@ -790,7 +797,7 @@ export default function CreativeWorkbench() {
               toolBarRender={() => [
                 <div key="sort" data-testid="creative-workbench-sort-select">
                   <Select
-                    value={initialRouteState.sort}
+                    value={appliedQueryState.sort}
                     options={workbenchSortOptions}
                     style={{ width: 180 }}
                     onChange={(value) => handleSortChange(value)}
