@@ -74,7 +74,13 @@ test.describe('ADP shell parity gate', () => {
     await page.goto('/#/creative/workbench')
 
     await expect(page.getByTestId('app-shell')).toBeVisible()
-    await expect(page.getByTestId('app-shell-header')).toBeVisible()
+    const header = page.getByTestId('app-shell-header')
+    await expect(header).toBeVisible()
+    await expect(header).toContainText('得物创作控制台')
+    await expect.poll(async () => {
+      const box = await header.boundingBox()
+      return box ? Math.round(box.height) : 0
+    }).toBeGreaterThanOrEqual(48)
     await expect(page.getByTestId('auth-session-status-tag')).toBeVisible()
     await expectSelected(page, 'app-shell-menu-creative-workbench')
 

@@ -214,6 +214,8 @@ export default function LayoutComponent() {
         title={false}
         logo={false}
         menuHeaderRender={false}
+        // ProLayout does not render a desktop header for `layout="side"`,
+        // so the shell header above remains the canonical app header.
         headerRender={false}
         breakpoint="lg"
         collapsed={collapsed}
