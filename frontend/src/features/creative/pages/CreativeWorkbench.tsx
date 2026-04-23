@@ -1,27 +1,33 @@
-import { ArrowRightOutlined, ReloadOutlined } from '@ant-design/icons'
-import { PageContainer, ProTable } from '@ant-design/pro-components'
-import type { ProColumns, ProFormInstance } from '@ant-design/pro-components'
+import { ReloadOutlined } from '@ant-design/icons'
+import { PageContainer } from '@ant-design/pro-components'
+import type { ProFormInstance } from '@ant-design/pro-components'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  Alert,
   App,
   Button,
   Card,
-  Descriptions,
-  Drawer,
   Flex,
   Result,
-  Select,
   Space,
   Spin,
-  Statistic,
-  Tag,
-  Typography,
 } from 'antd'
 
 import CreativeEmptyState from '../components/CreativeEmptyState'
-import { countEnabledCreativeInputItems, formatCreativeDuration } from '../creativeAuthoring'
+import WorkbenchDiagnosticsDrawer from '../components/workbench/WorkbenchDiagnosticsDrawer'
+import WorkbenchPresetBar from '../components/workbench/WorkbenchPresetBar'
+import WorkbenchSummaryCard from '../components/workbench/WorkbenchSummaryCard'
+import type {
+  WorkbenchDiagnosticsView,
+  WorkbenchFormValues,
+  WorkbenchPresetKey,
+  WorkbenchQueryState,
+  WorkbenchRouteState,
+  WorkbenchSortKind,
+  WorkbenchTableRow,
+} from '../components/workbench/shared'
+import { defaultWorkbenchSummary } from '../components/workbench/shared'
+import WorkbenchTable from '../components/workbench/WorkbenchTable'
 import {
   creativeFlowModeMeta,
   resolveCreativeFlowMode,
@@ -41,81 +47,18 @@ import type {
 import {
   creativeStatusMeta,
   creativeWorkbenchPoolStateMeta,
-  formatCreativeTimestamp,
   formatModeLabel,
   formatRuntimeStatusLabel,
 } from '../types/creative'
 
-const { Paragraph, Text } = Typography
-
 const DEFAULT_WORKBENCH_PAGE_SIZE = 10
-
-type WorkbenchSortKind = 'updated_desc' | 'updated_asc' | 'attention_desc' | 'failed_desc'
-type WorkbenchPresetKey = 'all' | 'waiting_review' | 'needs_rework' | 'recent_failures' | 'version_mismatch'
-type WorkbenchDiagnosticsView = 'runtime'
-type WorkbenchQueryState = {
-  keyword?: string
-  status?: keyof typeof creativeStatusMeta
-  poolState?: CreativeWorkbenchPoolState
-  preset?: WorkbenchPresetKey
-  sort: WorkbenchSortKind
-  page: number
-  pageSize: number
-}
-type WorkbenchRouteState = {
-  queryState: WorkbenchQueryState
-  diagnostics?: WorkbenchDiagnosticsView
-}
-
-type WorkbenchTableRow = CreativeWorkbenchItem & {
-  poolState: CreativeWorkbenchPoolState
-  poolAligned: boolean
-  hasRecentFailure: boolean
-  attentionScore: number
-}
-
-type WorkbenchFormValues = {
-  keyword?: string | null
-  status?: keyof typeof creativeStatusMeta | null
-  poolState?: CreativeWorkbenchPoolState | null
-  preset?: WorkbenchPresetKey
-  current?: number
-  pageSize?: number
-}
-
-const creativeStatusValueEnum = Object.fromEntries(
-  Object.entries(creativeStatusMeta).map(([key, value]) => [key, { text: value.label }]),
-)
-
-const creativePoolValueEnum = Object.fromEntries(
-  Object.entries(creativeWorkbenchPoolStateMeta).map(([key, value]) => [key, { text: value.label }]),
-) as Record<CreativeWorkbenchPoolState, { text: string }>
-
-const workbenchSortOptions: Array<{ label: string; value: WorkbenchSortKind }> = [
-  { label: '最近更新优先', value: 'updated_desc' },
-  { label: '最早更新优先', value: 'updated_asc' },
-  { label: '待处理优先', value: 'attention_desc' },
-  { label: '最近失败优先', value: 'failed_desc' },
+const workbenchPresetKeys: WorkbenchPresetKey[] = [
+  'all',
+  'waiting_review',
+  'needs_rework',
+  'recent_failures',
+  'version_mismatch',
 ]
-
-const workbenchPresetMeta: Record<WorkbenchPresetKey, { label: string }> = {
-  all: { label: '全部' },
-  waiting_review: { label: '待审核' },
-  needs_rework: { label: '需返工' },
-  recent_failures: { label: '最近失败' },
-  version_mismatch: { label: '版本未对齐' },
-}
-
-const defaultWorkbenchSummary = {
-  all_count: 0,
-  waiting_review_count: 0,
-  pending_input_count: 0,
-  needs_rework_count: 0,
-  recent_failures_count: 0,
-  active_pool_count: 0,
-  aligned_pool_count: 0,
-  version_mismatch_count: 0,
-}
 
 const getAttentionScore = (item: CreativeWorkbenchItem, poolState: CreativeWorkbenchPoolState): number => {
   let score = 0
@@ -165,7 +108,7 @@ const parseWorkbenchSortKind = (value: string | null): WorkbenchSortKind => {
 }
 
 const parseWorkbenchPreset = (value: string | null): WorkbenchPresetKey | undefined =>
-  value && value in workbenchPresetMeta ? value as WorkbenchPresetKey : undefined
+  value && workbenchPresetKeys.includes(value as WorkbenchPresetKey) ? value as WorkbenchPresetKey : undefined
 
 const parseWorkbenchDiagnosticsView = (value: string | null): WorkbenchDiagnosticsView | undefined =>
   value === 'runtime' ? value : undefined
@@ -332,7 +275,13 @@ export default function CreativeWorkbench() {
 
   const items = creativesQuery.data?.items ?? []
   const total = creativesQuery.data?.total ?? 0
-  const summary = creativesQuery.data?.summary ?? defaultWorkbenchSummary
+  const summary = useMemo(
+    () => ({
+      ...defaultWorkbenchSummary,
+      ...(creativesQuery.data?.summary ?? {}),
+    }),
+    [creativesQuery.data?.summary],
+  )
   const diagnosticsOpen = routeState.diagnostics === 'runtime'
 
   const schedulerMode = publishStatusQuery.data?.scheduler_mode ?? scheduleConfigQuery.data?.publish_scheduler_mode
@@ -485,150 +434,6 @@ export default function CreativeWorkbench() {
     })
   }, [appliedQueryState, updateRouteState])
 
-  const columns = useMemo<ProColumns<WorkbenchTableRow>[]>(
-    () => [
-      {
-        title: '作品检索',
-        dataIndex: 'keyword',
-        hideInTable: true,
-        fieldProps: {
-          placeholder: '按标题或作品编号搜索',
-          allowClear: true,
-          'data-testid': 'creative-workbench-search-input',
-        },
-      },
-      {
-        title: '作品编号',
-        dataIndex: 'creative_no',
-        width: 160,
-        hideInSearch: true,
-        render: (_, record) => (
-          <Space direction="vertical" size={2}>
-            <Text strong>{record.creative_no}</Text>
-            <Text type="secondary">#{record.id}</Text>
-          </Space>
-        ),
-      },
-      {
-        title: '作品 / 创作定义',
-        dataIndex: 'title',
-        ellipsis: true,
-        hideInSearch: true,
-        render: (_, record) => (
-          <Space direction="vertical" size={4}>
-            <Text strong>{record.title?.trim() || record.creative_no}</Text>
-            <Text type="secondary">
-              {[
-                record.subject_product_name_snapshot || undefined,
-                formatCreativeDuration(record.target_duration_seconds),
-                `${countEnabledCreativeInputItems(record.input_items)} 个编排项`,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-            </Text>
-            {record.main_copywriting_text?.trim() ? (
-              <Text type="secondary" ellipsis={{ tooltip: record.main_copywriting_text }}>
-                主文案：{record.main_copywriting_text}
-              </Text>
-            ) : null}
-            {record.generation_error_msg ? (
-              <Text type="warning">最近一次生成回填失败</Text>
-            ) : (
-              <Text type="secondary">当前版本 #{record.current_version_id ?? '-'}</Text>
-            )}
-          </Space>
-        ),
-      },
-      {
-        title: '作品状态',
-        dataIndex: 'status',
-        width: 140,
-        valueType: 'select',
-        valueEnum: creativeStatusValueEnum,
-        fieldProps: {
-          placeholder: '按作品状态筛选',
-          allowClear: true,
-          'data-testid': 'creative-workbench-status-filter',
-        },
-        render: (_, record) => {
-          const statusMeta = creativeStatusMeta[record.status]
-          return <Tag color={statusMeta.color}>{statusMeta.label}</Tag>
-        },
-      },
-      {
-        title: '发布准备',
-        dataIndex: 'poolState',
-        width: 220,
-        valueType: 'select',
-        valueEnum: creativePoolValueEnum,
-        fieldProps: {
-          placeholder: '按发布准备筛选',
-          allowClear: true,
-          'data-testid': 'creative-workbench-pool-filter',
-        },
-        render: (_, record) => (
-          <Space direction="vertical" size={4} data-testid={`creative-workbench-pool-state-${record.id}`}>
-            <Space wrap size={[4, 4]}>
-              <Tag color={creativeWorkbenchPoolStateMeta[record.poolState].color}>
-                {creativeWorkbenchPoolStateMeta[record.poolState].label}
-              </Tag>
-              {record.active_pool_version_id ? (
-                <Tag color={record.poolAligned ? 'success' : 'warning'}>
-                  池版本 #{record.active_pool_version_id}
-                </Tag>
-              ) : null}
-            </Space>
-            <Text type="secondary">
-              {record.active_pool_item_id ? `发布池记录 #${record.active_pool_item_id}` : '当前版本尚未进入发布池'}
-            </Text>
-          </Space>
-        ),
-      },
-      {
-        title: '更新时间',
-        dataIndex: 'updated_at',
-        width: 180,
-        hideInSearch: true,
-        render: (_, record) => formatCreativeTimestamp(record.updated_at),
-      },
-      {
-        title: '操作',
-        key: 'actions',
-        width: 220,
-        hideInSearch: true,
-        render: (_, record) => (
-          <Space size={0} wrap>
-            <Button
-              type="link"
-              onClick={() => openCreativeDetail(record.id)}
-              data-testid={`creative-workbench-open-detail-${record.id}`}
-            >
-              查看作品
-            </Button>
-            <Button
-              type="link"
-              onClick={() => openCreativeDetail(record.id)}
-              disabled={!record.current_version_id}
-              data-testid={`creative-workbench-open-review-${record.id}`}
-            >
-              审核当前版本
-            </Button>
-            <Button
-              type="link"
-              icon={<ArrowRightOutlined />}
-              onClick={() => openCreativeDetail(record.id, { tool: 'ai-clip' })}
-              disabled={!record.current_version_id}
-              data-testid={`creative-workbench-ai-clip-${record.id}`}
-            >
-              进入 AIClip
-            </Button>
-          </Space>
-        ),
-      },
-    ],
-    [openCreativeDetail],
-  )
-
   const schedulerModeLabel =
     publishStatusQuery.isError && scheduleConfigQuery.isError
       ? '获取失败'
@@ -694,40 +499,12 @@ export default function CreativeWorkbench() {
       subTitle="集中处理作品创建、创作 brief、素材编排、审核与 AIClip 主流程。"
     >
       <Space direction="vertical" size={16} style={{ display: 'flex' }}>
-        <Card data-testid="creative-workbench-publish-summary">
-          <Flex justify="space-between" align="start" gap={16} wrap="wrap">
-            <Space direction="vertical" size={4}>
-              <Text type="secondary" data-testid="creative-workbench-main-entry-banner">
-                入口模式：{creativeFlowMeta.label}
-              </Text>
-              <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                默认先处理作品 brief、素材编排、审核与 AIClip；运行侧信息请从“查看运行诊断”进入。
-              </Paragraph>
-            </Space>
-            <Button onClick={handleOpenDiagnostics} data-testid="creative-workbench-open-diagnostics">
-              查看运行诊断
-            </Button>
-          </Flex>
-
-          {(publishStatusQuery.isError || scheduleConfigQuery.isError) && (
-            <Alert
-              type="warning"
-              showIcon
-              message="部分运行诊断暂不可用，可通过“查看运行诊断”重试。"
-              description="当前不影响作品主流程，可稍后进入诊断抽屉重试。"
-              style={{ marginTop: 16 }}
-              data-testid="creative-workbench-diagnostics-notice"
-            />
-          )}
-
-          <Flex wrap gap={24}>
-            <Statistic title="作品数" value={summary.all_count} />
-            <Statistic title="待审核" value={summary.waiting_review_count} />
-            <Statistic title="待补充" value={summary.pending_input_count} />
-            <Statistic title="已进发布池" value={summary.active_pool_count} />
-            <Statistic title="池版本已对齐" value={summary.aligned_pool_count} />
-          </Flex>
-        </Card>
+        <WorkbenchSummaryCard
+          creativeFlowLabel={creativeFlowMeta.label}
+          showDiagnosticsNotice={publishStatusQuery.isError || scheduleConfigQuery.isError}
+          summary={summary}
+          onOpenDiagnostics={handleOpenDiagnostics}
+        />
 
         {summary.all_count === 0 ? (
           <Card data-testid="creative-workbench-empty">
@@ -737,161 +514,49 @@ export default function CreativeWorkbench() {
             />
           </Card>
         ) : (
-          <>
-            <ProTable<WorkbenchTableRow, WorkbenchFormValues>
-              formRef={formRef}
-              rowKey="id"
-              columns={columns}
-              cardBordered
-              headerTitle="待处理作品"
-              options={{ density: false, setting: false }}
-              dataSource={rows}
-              loading={creativesQuery.isLoading}
-              pagination={{
-                current: appliedQueryState.page,
-                pageSize: appliedQueryState.pageSize,
-                total,
-                showSizeChanger: true,
-                showTotal: (count) => `共 ${count} 条作品`,
-                onChange: handlePaginationChange,
-              }}
-              form={{
-                initialValues: appliedFormValues,
-              }}
-              search={{
-                labelWidth: 'auto',
-                defaultCollapsed: false,
-                searchText: '应用筛选',
-                resetText: '重置筛选',
-              }}
-              onSubmit={handleApplyFilters}
-              onReset={handleResetFilters}
-              tableExtraRender={() => (
-                <Space direction="vertical" style={{ width: '100%' }} size={12}>
-                  <Space wrap>
-                    <Text type="secondary">高频视角：</Text>
-                    {(Object.keys(workbenchPresetMeta) as WorkbenchPresetKey[]).map((preset) => (
-                      <Button
-                        key={preset}
-                        size="small"
-                        type={appliedQueryState.preset === preset || (!appliedQueryState.preset && preset === 'all') ? 'primary' : 'default'}
-                        onClick={() => handlePresetChange(preset)}
-                        data-testid={`creative-workbench-preset-${preset}`}
-                      >
-                        {workbenchPresetMeta[preset].label}（{workbenchPresetCounts[preset]}）
-                      </Button>
-                    ))}
-                  </Space>
-                </Space>
-              )}
-              locale={{
-                emptyText: summary.all_count === 0
-                  ? (
-                    <CreativeEmptyState
-                      mode={creativeFlowMode}
-                      onCreateCreative={() => void handleCreateCreative()}
-                    />
-                  )
-                  : '当前筛选条件下暂无结果',
-              }}
-              toolBarRender={() => [
-                <div key="sort" data-testid="creative-workbench-sort-select">
-                  <Select
-                    value={appliedQueryState.sort}
-                    options={workbenchSortOptions}
-                    style={{ width: 180 }}
-                    onChange={(value) => handleSortChange(value)}
-                  />
-                </div>,
-                <Button
-                  key="create"
-                  type="primary"
-                  loading={createCreative.isPending}
-                  onClick={() => void handleCreateCreative()}
-                  data-testid="creative-workbench-create"
-                >
-                  新建作品
-                </Button>,
-                <Button
-                  key="dashboard"
-                  onClick={() => navigate('/dashboard')}
-                  data-testid="creative-workbench-open-dashboard"
-                >
-                  运行总览
-                </Button>,
-              ]}
-            />
-          </>
+          <WorkbenchTable
+            formRef={formRef}
+            appliedFormValues={appliedFormValues}
+            appliedQueryState={appliedQueryState}
+            dataSource={rows}
+            loading={creativesQuery.isLoading}
+            total={total}
+            presetBar={(
+              <WorkbenchPresetBar
+                appliedPreset={appliedQueryState.preset}
+                counts={workbenchPresetCounts}
+                onPresetChange={handlePresetChange}
+              />
+            )}
+            emptyState="当前筛选条件下暂无结果"
+            createPending={createCreative.isPending}
+            onApplyFilters={handleApplyFilters}
+            onResetFilters={handleResetFilters}
+            onPaginationChange={handlePaginationChange}
+            onSortChange={handleSortChange}
+            onCreateCreative={() => void handleCreateCreative()}
+            onOpenDashboard={() => navigate('/dashboard')}
+            onOpenCreativeDetail={openCreativeDetail}
+          />
         )}
       </Space>
 
-      <Drawer
-        title="运行诊断"
+      <WorkbenchDiagnosticsDrawer
         open={diagnosticsOpen}
         onClose={handleCloseDiagnostics}
-        destroyOnClose
-        width={520}
-      >
-        <Space direction="vertical" size={16} style={{ width: '100%' }} data-testid="creative-workbench-diagnostics-drawer">
-          {(publishStatusQuery.isError || scheduleConfigQuery.isError) && (
-            <Alert
-              type="warning"
-              showIcon
-              message="发布运行诊断暂时不可用"
-              description="发布状态或调度配置加载失败，当前不能把失败伪装成空闲状态。"
-              action={(
-                <Button size="small" icon={<ReloadOutlined />} onClick={handleRetryAuxiliary}>
-                  重试
-                </Button>
-              )}
-              data-testid="creative-workbench-runtime-warning"
-            />
-          )}
-
-          <Card size="small" title="运行态摘要">
-            <Descriptions bordered size="small" column={1}>
-              <Descriptions.Item label="入口模式">
-                <Space wrap>
-                  <Tag data-testid="creative-workbench-main-entry-diagnostics">{creativeFlowMeta.label}</Tag>
-                  <Tag data-testid="creative-workbench-shadow-compare">
-                    Shadow Compare：{creativeFlowShadowCompare ? '开启' : '关闭'}
-                  </Tag>
-                </Space>
-              </Descriptions.Item>
-              <Descriptions.Item label="配置模式">
-                <Tag data-testid="creative-workbench-scheduler-mode">{schedulerModeLabel}</Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="生效模式">
-                <Tag data-testid="creative-workbench-effective-mode">{effectiveSchedulerModeLabel}</Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="运行状态">
-                <Tag data-testid="creative-workbench-runtime-status">{runtimeStatusLabel}</Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="Shadow Read">
-                <Tag data-testid="creative-workbench-shadow-read">{shadowReadLabel}</Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="Kill Switch">
-                <Tag data-testid="creative-workbench-kill-switch">{killSwitchLabel}</Tag>
-              </Descriptions.Item>
-            </Descriptions>
-          </Card>
-
-          <Card size="small" title="发布池诊断">
-            <Descriptions bordered size="small" column={1}>
-              <Descriptions.Item label="已进发布池">
-                {summary.active_pool_count}
-              </Descriptions.Item>
-              <Descriptions.Item label="池版本已对齐">
-                {summary.aligned_pool_count}
-              </Descriptions.Item>
-            </Descriptions>
-          </Card>
-
-          <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            {creativeFlowMeta.description} 这里仅保留运行排障与发布池观察信息。
-          </Paragraph>
-        </Space>
-      </Drawer>
+        hasDiagnosticsError={publishStatusQuery.isError || scheduleConfigQuery.isError}
+        onRetryAuxiliary={handleRetryAuxiliary}
+        creativeFlowDescription={creativeFlowMeta.description}
+        creativeFlowLabel={creativeFlowMeta.label}
+        creativeFlowShadowCompare={creativeFlowShadowCompare}
+        schedulerModeLabel={schedulerModeLabel}
+        effectiveSchedulerModeLabel={effectiveSchedulerModeLabel}
+        runtimeStatusLabel={runtimeStatusLabel}
+        shadowReadLabel={shadowReadLabel}
+        killSwitchLabel={killSwitchLabel}
+        activePoolCount={summary.active_pool_count}
+        alignedPoolCount={summary.aligned_pool_count}
+      />
     </PageContainer>
   )
 }
