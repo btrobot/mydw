@@ -5,14 +5,13 @@ import {
   PlusOutlined,
   ReloadOutlined,
 } from '@ant-design/icons'
-import { PageContainer } from '@ant-design/pro-components'
+import { PageContainer, ProDescriptions } from '@ant-design/pro-components'
 import { useMemo } from 'react'
 import {
   Alert,
   App,
   Button,
   Card,
-  Descriptions,
   Drawer,
   Empty,
   Flex,
@@ -377,13 +376,13 @@ export default function CreativeDetail() {
         ) : null}
 
         <Card title="业务概览">
-          <Descriptions bordered size="small" column={screens.md ? 2 : 1}>
-            <Descriptions.Item label="作品编号">{creative.creative_no}</Descriptions.Item>
-            <Descriptions.Item label="状态"><Tag color={statusMeta.color}>{statusMeta.label}</Tag></Descriptions.Item>
-            <Descriptions.Item label="合成准备"><Tag color={eligibilityColor}>{eligibilityLabel}</Tag></Descriptions.Item>
-            <Descriptions.Item label="当前版本 ID">{creative.current_version_id ?? '-'}</Descriptions.Item>
-            <Descriptions.Item label="最近更新时间">{formatCreativeTimestamp(creative.updated_at)}</Descriptions.Item>
-          </Descriptions>
+          <ProDescriptions bordered size="small" column={screens.md ? 2 : 1}>
+            <ProDescriptions.Item label="作品编号">{creative.creative_no}</ProDescriptions.Item>
+            <ProDescriptions.Item label="状态"><Tag color={statusMeta.color}>{statusMeta.label}</Tag></ProDescriptions.Item>
+            <ProDescriptions.Item label="合成准备"><Tag color={eligibilityColor}>{eligibilityLabel}</Tag></ProDescriptions.Item>
+            <ProDescriptions.Item label="当前版本 ID">{creative.current_version_id ?? '-'}</ProDescriptions.Item>
+            <ProDescriptions.Item label="最近更新时间">{formatCreativeTimestamp(creative.updated_at)}</ProDescriptions.Item>
+          </ProDescriptions>
           <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
             默认先处理作品输入、版本与审核；任务与发布侧信息请从“查看高级诊断”进入。
           </Paragraph>
@@ -418,18 +417,18 @@ export default function CreativeDetail() {
               这里维护作品级业务定义：商品、主文案、目标时长，以及 input_items 编排顺序。旧版列表字段仅保留为兼容投影与快照。
             </Paragraph>
 
-            <Descriptions bordered size="small" column={screens.lg ? 4 : screens.md ? 2 : 1}>
-              <Descriptions.Item label="主体商品">
+            <ProDescriptions bordered size="small" column={screens.lg ? 4 : screens.md ? 2 : 1}>
+              <ProDescriptions.Item label="主体商品">
                 {watchedSubjectProductName || creative.subject_product_name_snapshot || '待补充'}
-              </Descriptions.Item>
-              <Descriptions.Item label="目标时长">
+              </ProDescriptions.Item>
+              <ProDescriptions.Item label="目标时长">
                 {formatCreativeDuration(watchedTargetDuration ?? creative.target_duration_seconds)}
-              </Descriptions.Item>
-              <Descriptions.Item label="启用编排项">{activeInputItemCount}</Descriptions.Item>
-              <Descriptions.Item label="合成配置">
+              </ProDescriptions.Item>
+              <ProDescriptions.Item label="启用编排项">{activeInputItemCount}</ProDescriptions.Item>
+              <ProDescriptions.Item label="合成配置">
                 {activeProfile?.name ?? (canonicalProfileId ? `配置 #${canonicalProfileId}` : '待选择')}
-              </Descriptions.Item>
-            </Descriptions>
+              </ProDescriptions.Item>
+            </ProDescriptions>
 
             <Form form={form} layout="vertical">
               <Flex gap={16} wrap="wrap" align="start">
@@ -659,25 +658,25 @@ export default function CreativeDetail() {
           <Card title="当前版本结果" style={{ flex: 1, minWidth: detailCardMinWidth }}>
             {currentVersionResult ? (
               <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                <Descriptions bordered size="small" column={screens.md ? 2 : 1}>
-                  <Descriptions.Item label="版本 ID">{currentVersionResult.id}</Descriptions.Item>
-                  <Descriptions.Item label="版本号">{getVersionLabel(currentVersionResult.version_no)}</Descriptions.Item>
-                  <Descriptions.Item label="版本标题" span={2}>{currentVersionResult.title ?? '未命名版本'}</Descriptions.Item>
-                  <Descriptions.Item label="父版本 ID">{currentVersionResult.parent_version_id ?? '-'}</Descriptions.Item>
-                  <Descriptions.Item label="发布侧 PackageRecord">{currentVersionResult.package_record_id ?? '-'}</Descriptions.Item>
-                  <Descriptions.Item label="结果时长">
+                <ProDescriptions bordered size="small" column={screens.md ? 2 : 1}>
+                  <ProDescriptions.Item label="版本 ID">{currentVersionResult.id}</ProDescriptions.Item>
+                  <ProDescriptions.Item label="版本号">{getVersionLabel(currentVersionResult.version_no)}</ProDescriptions.Item>
+                  <ProDescriptions.Item label="版本标题" span={2}>{currentVersionResult.title ?? '未命名版本'}</ProDescriptions.Item>
+                  <ProDescriptions.Item label="父版本 ID">{currentVersionResult.parent_version_id ?? '-'}</ProDescriptions.Item>
+                  <ProDescriptions.Item label="发布侧 PackageRecord">{currentVersionResult.package_record_id ?? '-'}</ProDescriptions.Item>
+                  <ProDescriptions.Item label="结果时长">
                     {formatCreativeDurationSeconds(currentVersionResult.actual_duration_seconds)}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="成片路径">
+                  </ProDescriptions.Item>
+                  <ProDescriptions.Item label="成片路径">
                     {formatCreativeText(currentVersionResult.final_video_path)}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="最终商品名">
+                  </ProDescriptions.Item>
+                  <ProDescriptions.Item label="最终商品名">
                     {formatCreativeText(currentVersionResult.final_product_name)}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="最终文案" span={2}>
+                  </ProDescriptions.Item>
+                  <ProDescriptions.Item label="最终文案" span={2}>
                     {formatCreativeText(currentVersionResult.final_copywriting_text)}
-                  </Descriptions.Item>
-                </Descriptions>
+                  </ProDescriptions.Item>
+                </ProDescriptions>
                 <Paragraph type="secondary" style={{ marginBottom: 0 }} data-testid="creative-current-version-semantics">
                   版本结果承接当前作品 brief 与素材编排，并沉淀 adopted truth；发布包冻结值承接发布四件套，执行任务只在高级诊断中作为运行载体出现。
                 </Paragraph>
@@ -694,23 +693,23 @@ export default function CreativeDetail() {
                         {currentPackageRecord.publish_profile_id ? ` / 发布档案 #${currentPackageRecord.publish_profile_id}` : ''}
                       </Text>
                       {hasPackageFrozenTruth(currentPackageRecord) ? (
-                        <Descriptions size="small" column={1}>
-                          <Descriptions.Item label="冻结视频">
+                        <ProDescriptions size="small" column={1}>
+                          <ProDescriptions.Item label="冻结视频">
                             {formatCreativeText(currentPackageRecord.frozen_video_path)}
-                          </Descriptions.Item>
-                          <Descriptions.Item label="冻结封面">
+                          </ProDescriptions.Item>
+                          <ProDescriptions.Item label="冻结封面">
                             {formatCreativeText(currentPackageRecord.frozen_cover_path)}
-                          </Descriptions.Item>
-                          <Descriptions.Item label="冻结时长">
+                          </ProDescriptions.Item>
+                          <ProDescriptions.Item label="冻结时长">
                             {formatCreativeDurationSeconds(currentPackageRecord.frozen_duration_seconds)}
-                          </Descriptions.Item>
-                          <Descriptions.Item label="冻结商品名">
+                          </ProDescriptions.Item>
+                          <ProDescriptions.Item label="冻结商品名">
                             {formatCreativeText(currentPackageRecord.frozen_product_name)}
-                          </Descriptions.Item>
-                          <Descriptions.Item label="冻结文案">
+                          </ProDescriptions.Item>
+                          <ProDescriptions.Item label="冻结文案">
                             {formatCreativeText(currentPackageRecord.frozen_copywriting_text)}
-                          </Descriptions.Item>
-                        </Descriptions>
+                          </ProDescriptions.Item>
+                        </ProDescriptions>
                       ) : (
                         <Alert
                           type="info"
@@ -837,38 +836,38 @@ export default function CreativeDetail() {
             <Paragraph type="secondary" style={{ marginBottom: 16 }} data-testid="creative-publish-semantics">
               这里查看发布包冻结值、发布侧候选项、调度模式与 cutover 对账；如果当前作品定义暂不能直达发布，表示当前执行引擎能力尚未覆盖，并不代表作品定义无效。
             </Paragraph>
-            <Descriptions bordered size="small" column={screens.md ? 2 : 1}>
-              <Descriptions.Item label="入口模式">
+            <ProDescriptions bordered size="small" column={screens.md ? 2 : 1}>
+              <ProDescriptions.Item label="入口模式">
                 <Space wrap>
                   <Tag>{creativeFlowMeta.label}</Tag>
                   <Tag>{creativeFlowShadowCompare ? 'Shadow Compare：开启' : 'Shadow Compare：关闭'}</Tag>
                 </Space>
-              </Descriptions.Item>
-              <Descriptions.Item label="调度模式">
+              </ProDescriptions.Item>
+              <ProDescriptions.Item label="调度模式">
                 <Tag color={publishStatusQuery.isError && scheduleConfigQuery.isError ? 'warning' : schedulerMode ? publishSchedulerModeMeta[schedulerMode].color : 'default'}>
                   {schedulerModeLabel}
                 </Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="当前生效模式">
+              </ProDescriptions.Item>
+              <ProDescriptions.Item label="当前生效模式">
                 <Tag color={publishStatusQuery.isError ? 'warning' : effectiveSchedulerMode ? publishSchedulerModeMeta[effectiveSchedulerMode].color : 'default'}>
                   {effectiveSchedulerModeLabel}
                 </Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="运行状态">
+              </ProDescriptions.Item>
+              <ProDescriptions.Item label="运行状态">
                 <Tag color={publishStatusQuery.isError ? 'warning' : publishStatus?.status ? publishRuntimeStatusMeta[publishStatus.status].color : 'default'}>
                   {runtimeStatusLabel}
                 </Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="当前发布执行任务">
+              </ProDescriptions.Item>
+              <ProDescriptions.Item label="当前发布执行任务">
                 {currentPublishTaskId !== null ? (
                   <Button type="link" onClick={() => openTaskDiagnostics(currentPublishTaskId)}>
                     任务 #{currentPublishTaskId}
                   </Button>
                 ) : publishStatusQuery.isError ? '获取失败' : '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Shadow Read">{shadowReadLabel}</Descriptions.Item>
-              <Descriptions.Item label="Kill Switch">{killSwitchLabel}</Descriptions.Item>
-              <Descriptions.Item label="当前发布侧候选项">
+              </ProDescriptions.Item>
+              <ProDescriptions.Item label="Shadow Read">{shadowReadLabel}</ProDescriptions.Item>
+              <ProDescriptions.Item label="Kill Switch">{killSwitchLabel}</ProDescriptions.Item>
+              <ProDescriptions.Item label="当前发布侧候选项">
                 {currentPoolItem ? (
                   <Space wrap>
                     <Tag color={publishPoolStatusMeta[currentPoolItem.status].color}>{publishPoolStatusMeta[currentPoolItem.status].label}</Tag>
@@ -876,11 +875,11 @@ export default function CreativeDetail() {
                     {currentPoolPackageRecord ? <Tag>Package #{currentPoolPackageRecord.id}</Tag> : null}
                   </Space>
                 ) : activePoolQuery.isError ? '获取失败' : '当前版本尚未生成发布侧候选项'}
-              </Descriptions.Item>
-              <Descriptions.Item label="候选项 ID">
+              </ProDescriptions.Item>
+              <ProDescriptions.Item label="候选项 ID">
                 {currentPoolItem ? `#${currentPoolItem.id}` : activePoolQuery.isError ? '获取失败' : '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label="当前发布包冻结值" span={2}>
+              </ProDescriptions.Item>
+              <ProDescriptions.Item label="当前发布包冻结值" span={2}>
                 {currentPoolPackageRecord ? (
                   <Space direction="vertical" size={4} data-testid="creative-current-publish-package-summary">
                     <Text>Package #{currentPoolPackageRecord.id}</Text>
@@ -891,8 +890,8 @@ export default function CreativeDetail() {
                     <Text type="secondary">冻结封面：{formatCreativeText(currentPoolPackageRecord.frozen_cover_path)}</Text>
                   </Space>
                 ) : activePoolQuery.isError ? '获取失败' : '当前候选项尚未返回发布包冻结值'}
-              </Descriptions.Item>
-              <Descriptions.Item label="当前 package / task 关系" span={2}>
+              </ProDescriptions.Item>
+              <ProDescriptions.Item label="当前 package / task 关系" span={2}>
                 {currentPoolPackageRecord ? (
                   <Space wrap>
                     <Tag>Package #{currentPoolPackageRecord.id}</Tag>
@@ -900,8 +899,8 @@ export default function CreativeDetail() {
                     <Tag>{currentPublishTaskId !== null ? `任务 #${currentPublishTaskId}` : '暂无发布执行任务'}</Tag>
                   </Space>
                 ) : activePoolQuery.isError ? '获取失败' : '当前暂无 package / task 关系可展示'}
-              </Descriptions.Item>
-              <Descriptions.Item label="最近候选失效记录" span={2}>
+              </ProDescriptions.Item>
+              <ProDescriptions.Item label="最近候选失效记录" span={2}>
                 {latestInvalidatedPoolItem ? (
                   <Space direction="vertical" size={4}>
                     <Text>Pool #{latestInvalidatedPoolItem.id} / 版本 #{latestInvalidatedPoolItem.creative_version_id}</Text>
@@ -912,8 +911,8 @@ export default function CreativeDetail() {
                     <Text type="secondary">原因：{latestInvalidatedPoolItem.invalidation_reason ?? '未记录'}</Text>
                   </Space>
                 ) : invalidatedPoolQuery.isError ? '获取失败' : '暂无失效记录'}
-              </Descriptions.Item>
-            </Descriptions>
+              </ProDescriptions.Item>
+            </ProDescriptions>
           </Card>
 
           <Card title="发布侧候选记录" size="small" data-testid="creative-publish-pool-card">
