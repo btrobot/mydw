@@ -744,6 +744,74 @@ test.describe('Creative workbench baseline', () => {
     await expect(page.locator('body')).toContainText('45 秒')
   })
 
+  test('writes taskId to detail URL only after submit composition succeeds', async ({ page }) => {
+    let updatePayload: Record<string, unknown> | undefined
+    let submitRequestCount = 0
+    let urlBeforeSubmitFulfill: string | undefined
+    let detailState: Record<string, unknown> = {
+      ...JSON.parse(JSON.stringify(creativeDetailPayload)),
+      eligibility_status: 'READY_TO_COMPOSE',
+      eligibility_reasons: [],
+    }
+
+    await page.unroute('**/api/creatives/101')
+    await page.route('**/api/creatives/101', async (route) => {
+      if (route.request().method() === 'PATCH') {
+        updatePayload = route.request().postDataJSON() as Record<string, unknown>
+        detailState = {
+          ...detailState,
+          ...updatePayload,
+          updated_at: '2026-04-18T08:00:00Z',
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(detailState),
+        })
+        return
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(detailState),
+      })
+    })
+
+    await page.route('**/api/creatives/101/submit-composition', async (route) => {
+      submitRequestCount += 1
+      urlBeforeSubmitFulfill = page.url()
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          creative_id: 101,
+          task_id: 991,
+          task_status: 'draft',
+          creative_status: 'WAITING_REVIEW',
+          current_version_id: 201,
+          composition_mode: 'none',
+          composition_job_id: null,
+          composition_job_status: null,
+          submission_action: 'created_ready_task',
+          reused_existing_task: false,
+          created_new_task: true,
+        }),
+      })
+    })
+
+    await page.goto('/#/creative/101?returnTo=%2Fcreative%2Fworkbench%3Fpreset%3Dwaiting_review')
+
+    await expect(page).not.toHaveURL(/taskId=991/)
+    await page.getByTestId('creative-submit-composition').click()
+
+    await expect.poll(() => updatePayload).toBeTruthy()
+    await expect.poll(() => submitRequestCount).toBe(1)
+    expect(urlBeforeSubmitFulfill).not.toContain('taskId=991')
+    await expect(page).toHaveURL(/taskId=991/)
+    await expect(page).toHaveURL(/returnTo=%2Fcreative%2Fworkbench%3Fpreset%3Dwaiting_review/)
+  })
+
   test('opens diagnostics through an explicit secondary entry', async ({ page }) => {
     await page.goto(`/#/creative/workbench`)
 

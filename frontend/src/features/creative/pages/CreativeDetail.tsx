@@ -6,8 +6,6 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons'
 import { PageContainer } from '@ant-design/pro-components'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Alert,
   App,
@@ -34,44 +32,19 @@ import {
 import AIClipWorkflowPanel from '../components/AIClipWorkflowPanel'
 import CheckDrawer from '../components/CheckDrawer'
 import VersionPanel from '../components/VersionPanel'
-import { creativeFlowModeMeta, resolveCreativeFlowMode, resolveCreativeFlowShadowCompare } from '../creativeFlow'
 import {
-  buildCreativeAuthoringPayload,
-  countEnabledCreativeInputItems,
   creativeInputMaterialMeta,
   formatCreativeDuration,
-  toCreativeAuthoringFormValues,
-  type CreativeAuthoringFormValues,
   type CreativeInputMaterialType,
 } from '../creativeAuthoring'
-import {
-  useCreative,
-  usePublishPoolItems,
-  usePublishStatus,
-  useScheduleConfig,
-  useSubmitCreativeComposition,
-  useUpdateCreative,
-} from '../hooks/useCreatives'
-import { useProducts } from '@/hooks/useProduct'
-import { useSystemConfig } from '@/hooks/useSystem'
-import { useProfiles } from '@/hooks/useProfile'
-import { useVideos } from '@/hooks/useVideo'
-import { useCopywritings } from '@/hooks/useCopywriting'
-import { useCovers } from '@/hooks/useCover'
-import { useAudios } from '@/hooks/useAudio'
-import { useTopics } from '@/hooks/useTopic'
+import { useCreative } from '../hooks/useCreatives'
 import {
   creativeStatusMeta,
-  creativeReviewConclusionMeta,
   formatCheckConclusion,
   formatCreativeDurationSeconds,
   formatCreativeText,
   formatCreativeTimestamp,
-  formatModeLabel,
-  formatRuntimeStatusLabel,
   formatShadowDiffJson,
-  formatShadowDiffReasons,
-  getShadowDiffFlag,
   getVersionLabel,
   hasPackageFrozenTruth,
   isPoolVersionAligned,
@@ -79,384 +52,126 @@ import {
   publishRuntimeStatusMeta,
   publishSchedulerModeMeta,
 } from '../types/creative'
+import { useCreativeAuthoringModel } from '../view-models/useCreativeAuthoringModel'
+import { useCreativeNavigationState } from '../view-models/useCreativeNavigationState'
+import { useCreativePublishDiagnosticsModel } from '../view-models/useCreativePublishDiagnosticsModel'
+import { useCreativeVersionReviewModel } from '../view-models/useCreativeVersionReviewModel'
 
 const { Paragraph, Text } = Typography
 const { useBreakpoint } = Grid
 
-type CreativeDetailDiagnosticsView = 'advanced'
-
 export default function CreativeDetail() {
-  const location = useLocation()
-  const navigate = useNavigate()
   const { message } = App.useApp()
   const screens = useBreakpoint()
-  const { id } = useParams<{ id: string }>()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [form] = Form.useForm<CreativeAuthoringFormValues>()
-  const creativeId = id ? Number.parseInt(id, 10) : undefined
-  const requestedTaskId = Number.parseInt(searchParams.get('taskId') ?? '', 10)
-  const prioritizedTaskId = Number.isFinite(requestedTaskId) ? requestedTaskId : undefined
-  const detailCurrentRoute = useMemo(() => {
-    const currentPath = `${location.pathname}${location.search}`
-    return currentPath || (creativeId ? `/creative/${creativeId}` : '/creative/workbench')
-  }, [creativeId, location.pathname, location.search])
-  const detailReturnTo = searchParams.get('returnTo') || '/creative/workbench'
-  const taskReturnTo = searchParams.get('returnTo') || detailCurrentRoute
+  const {
+    creativeId,
+    prioritizedTaskId,
+    detailDiagnosticsOpen,
+    aiClipRequested,
+    openAiClipWorkflow,
+    closeAiClipWorkflow,
+    handleOpenDiagnostics,
+    handleCloseDiagnostics,
+    openTaskDiagnostics,
+    openTaskList,
+    navigateToDetailReturn,
+    onCompositionSubmitted,
+  } = useCreativeNavigationState()
   const creativeQuery = useCreative(creativeId)
-  const updateCreative = useUpdateCreative(creativeId)
-  const submitCreativeComposition = useSubmitCreativeComposition(creativeId)
-  const publishStatusQuery = usePublishStatus()
-  const scheduleConfigQuery = useScheduleConfig()
-  const systemConfigQuery = useSystemConfig()
-  const productsQuery = useProducts()
-  const { data: profilesData } = useProfiles()
-  const videosQuery = useVideos()
-  const copywritingsQuery = useCopywritings()
-  const coversQuery = useCovers()
-  const audiosQuery = useAudios()
-  const topicsQuery = useTopics()
-  const activePoolQuery = usePublishPoolItems({
-    creativeId,
-    status: 'active',
-    limit: 50,
-    enabled: creativeId !== undefined,
-  })
-  const invalidatedPoolQuery = usePublishPoolItems({
-    creativeId,
-    status: 'invalidated',
-    limit: 50,
-    enabled: creativeId !== undefined,
-  })
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const selectedProfileId = Form.useWatch('profile_id', form)
-  const watchedSubjectProductName = Form.useWatch('subject_product_name_snapshot', form)
-  const watchedTargetDuration = Form.useWatch('target_duration_seconds', form)
-  const authoredInputItems = Form.useWatch('input_items', form) ?? []
-  const detailDiagnosticsOpen = searchParams.get('diagnostics') === 'advanced'
-
   const creative = creativeQuery.data
-  const publishStatus = publishStatusQuery.data
-  const scheduleConfig = scheduleConfigQuery.data
-  const systemConfig = systemConfigQuery.data
-  const creativeFlowMode = resolveCreativeFlowMode(systemConfig)
-  const creativeFlowShadowCompare = resolveCreativeFlowShadowCompare(systemConfig)
-  const creativeFlowMeta = creativeFlowModeMeta[creativeFlowMode]
-  const profiles = profilesData?.items ?? []
-  const products = productsQuery.data ?? []
-  const videos = videosQuery.data ?? []
-  const copywritings = copywritingsQuery.data ?? []
-  const covers = coversQuery.data ?? []
-  const audios = audiosQuery.data ?? []
-  const topics = topicsQuery.data ?? []
+
+  const {
+    currentVersion,
+    currentVersionResult,
+    versionById,
+    currentPackageRecord,
+    effectiveCheck,
+    effectiveCheckMeta,
+    reviewDrawerOpen,
+    openReviewDrawer,
+    closeReviewDrawer,
+    handleOpenAiClipVersion,
+    handleReviewVersion,
+  } = useCreativeVersionReviewModel({ creative, openAiClipWorkflow })
+
+  const {
+    publishStatusQuery,
+    scheduleConfigQuery,
+    activePoolQuery,
+    invalidatedPoolQuery,
+    publishStatus,
+    creativeFlowMeta,
+    creativeFlowShadowCompare,
+    activePoolItems,
+    invalidatedPoolItems,
+    currentPoolItem,
+    latestInvalidatedPoolItem,
+    currentPoolPackageRecord,
+    latestInvalidatedPoolVersion,
+    publishPoolRecords,
+    diagnosticTaskIds,
+    primaryTaskId,
+    schedulerMode,
+    effectiveSchedulerMode,
+    shadowDiff,
+    currentPublishTaskId,
+    shadowDiffReasons,
+    shadowDiffDiffers,
+    diagnosticsUnavailable,
+    refetchDiagnostics,
+    retryDiagnostics,
+    schedulerModeLabel,
+    effectiveSchedulerModeLabel,
+    runtimeStatusLabel,
+    shadowReadLabel,
+    killSwitchLabel,
+  } = useCreativePublishDiagnosticsModel({
+    creativeId,
+    creative,
+    prioritizedTaskId,
+    versionById,
+    currentPackageRecord,
+  })
+
+  const {
+    form,
+    updateCreative,
+    submitCreativeComposition,
+    productsQuery,
+    watchedSubjectProductName,
+    watchedTargetDuration,
+    profileOptions,
+    productOptions,
+    materialTypeOptions,
+    materialOptionsByType,
+    materialLoadingByType,
+    canonicalProfileId,
+    activeProfile,
+    activeInputItemCount,
+    handleSubjectProductChange,
+    handleSaveInput,
+    handleSubmitComposition,
+    submitButtonLabel,
+  } = useCreativeAuthoringModel({
+    creativeId,
+    creative,
+    hasCurrentVersion: Boolean(currentVersion),
+    messageApi: message,
+    refreshCreative: creativeQuery.refetch,
+    refreshDiagnostics: refetchDiagnostics,
+    onCompositionSubmitted,
+  })
+
   const eligibilityReasons = creative?.eligibility_reasons ?? []
-  const currentVersion = creative?.versions?.find((version) => version.is_current) ?? null
-  const currentVersionResult = creative?.current_version ?? null
-  const versionById = useMemo(
-    () => new Map((creative?.versions ?? []).map((version) => [version.id, version])),
-    [creative?.versions],
-  )
-  const currentPackageRecord = currentVersionResult?.package_record ?? currentVersion?.package_record ?? null
-  const aiClipOpen = searchParams.get('tool') === 'ai-clip' && Boolean(currentVersion)
+  const statusMeta = creative ? creativeStatusMeta[creative.status] : null
+  const aiClipOpen = aiClipRequested && Boolean(currentVersion)
   const detailCardMinWidth = screens.md ? 320 : '100%'
   const aiClipDrawerWidth = screens.xl ? 720 : screens.lg ? 640 : screens.md ? 560 : '100vw'
 
-  const openAiClipWorkflow = () => {
-    const nextParams = new URLSearchParams(searchParams)
-    nextParams.set('tool', 'ai-clip')
-    setSearchParams(nextParams, { replace: true })
-  }
-
-  const closeAiClipWorkflow = () => {
-    const nextParams = new URLSearchParams(searchParams)
-    nextParams.delete('tool')
-    setSearchParams(nextParams, { replace: true })
-  }
-
-  const setDiagnosticsView = useCallback((diagnostics?: CreativeDetailDiagnosticsView) => {
-    const nextParams = new URLSearchParams(searchParams)
-    if (diagnostics) {
-      nextParams.set('diagnostics', diagnostics)
-    } else {
-      nextParams.delete('diagnostics')
-    }
-    setSearchParams(nextParams, { replace: true })
-  }, [searchParams, setSearchParams])
-
-  const handleOpenDiagnostics = useCallback(() => {
-    setDiagnosticsView('advanced')
-  }, [setDiagnosticsView])
-
-  const handleCloseDiagnostics = useCallback(() => {
-    setDiagnosticsView(undefined)
-  }, [setDiagnosticsView])
-
-  const activePoolItems = activePoolQuery.data?.items ?? []
-  const invalidatedPoolItems = useMemo(
-    () => [...(invalidatedPoolQuery.data?.items ?? [])].sort((left, right) => right.updated_at.localeCompare(left.updated_at)),
-    [invalidatedPoolQuery.data?.items],
-  )
-
-  const currentPoolItem = useMemo(() => {
-    if (!creative?.current_version_id) {
-      return activePoolItems[0] ?? null
-    }
-
-    return (
-      activePoolItems.find((item) => item.creative_version_id === creative.current_version_id)
-      ?? activePoolItems[0]
-      ?? null
-    )
-  }, [activePoolItems, creative?.current_version_id])
-
-  const latestInvalidatedPoolItem = invalidatedPoolItems[0] ?? null
-  const currentPoolVersion = currentPoolItem ? versionById.get(currentPoolItem.creative_version_id) ?? null : null
-  const currentPoolPackageRecord = currentPoolVersion?.package_record ?? currentPackageRecord
-  const latestInvalidatedPoolVersion = latestInvalidatedPoolItem
-    ? versionById.get(latestInvalidatedPoolItem.creative_version_id) ?? null
-    : null
-
-  const diagnosticTaskIds = useMemo(() => {
-    const ids = new Set<number>()
-    if (prioritizedTaskId) {
-      ids.add(prioritizedTaskId)
-    }
-    for (const taskId of creative?.linked_task_ids ?? []) {
-      ids.add(taskId)
-    }
-    if (publishStatus?.current_task_id) {
-      ids.add(publishStatus.current_task_id)
-    }
-    return Array.from(ids)
-  }, [creative?.linked_task_ids, prioritizedTaskId, publishStatus?.current_task_id])
-
-  const primaryTaskId = diagnosticTaskIds[0]
-
-  const statusMeta = creative ? creativeStatusMeta[creative.status] : null
-  const effectiveCheck = creative?.review_summary?.current_check
-  const effectiveCheckMeta = effectiveCheck ? creativeReviewConclusionMeta[effectiveCheck.conclusion] : null
-
-  const schedulerMode = publishStatus?.scheduler_mode ?? scheduleConfig?.publish_scheduler_mode
-  const effectiveSchedulerMode = publishStatus?.effective_scheduler_mode ?? schedulerMode
-  const shadowDiff = publishStatus?.scheduler_shadow_diff
-  const currentPublishTaskId = publishStatus?.current_task_id ?? null
-  const shadowDiffReasons = formatShadowDiffReasons(shadowDiff)
-  const shadowDiffDiffers = getShadowDiffFlag(shadowDiff)
-  const diagnosticsUnavailable =
-    publishStatusQuery.isError
-    || scheduleConfigQuery.isError
-    || activePoolQuery.isError
-    || invalidatedPoolQuery.isError
-
-  const retryCreative = useCallback(() => {
+  const retryCreative = () => {
     void creativeQuery.refetch()
-  }, [creativeQuery])
+  }
 
-  const retryDiagnostics = useCallback(() => {
-    void Promise.all([
-      publishStatusQuery.refetch(),
-      scheduleConfigQuery.refetch(),
-      systemConfigQuery.refetch(),
-      activePoolQuery.refetch(),
-      invalidatedPoolQuery.refetch(),
-    ])
-  }, [activePoolQuery, invalidatedPoolQuery, publishStatusQuery, scheduleConfigQuery, systemConfigQuery])
-
-  const openTaskDiagnostics = useCallback((taskId: number) => {
-    const params = new URLSearchParams({ returnTo: taskReturnTo })
-    navigate(`/task/${taskId}?${params.toString()}`)
-  }, [navigate, taskReturnTo])
-
-  useEffect(() => {
-    if (!creative) {
-      return
-    }
-    form.setFieldsValue(toCreativeAuthoringFormValues(creative))
-  }, [creative, form])
-
-  const persistCreativeInput = useCallback(async (successMessage?: string) => {
-    try {
-      const values = await form.validateFields()
-      await updateCreative.mutateAsync(buildCreativeAuthoringPayload(values))
-      if (successMessage) {
-        message.success(successMessage)
-      }
-      void Promise.all([
-        creativeQuery.refetch(),
-        activePoolQuery.refetch(),
-        invalidatedPoolQuery.refetch(),
-      ])
-      return true
-    } catch (error: unknown) {
-      if (error !== null && typeof error === 'object' && 'errorFields' in error) {
-        return false
-      }
-      if (error instanceof Error) {
-        message.error(error.message)
-      } else {
-        message.error('保存作品输入失败')
-      }
-      return false
-    }
-  }, [activePoolQuery, creativeQuery, form, invalidatedPoolQuery, message, updateCreative])
-
-  const handleSaveInput = useCallback(async () => {
-    await persistCreativeInput('作品输入已保存')
-  }, [persistCreativeInput])
-
-  const handleSubmitComposition = useCallback(async () => {
-    const saved = await persistCreativeInput()
-    if (!saved) {
-      return
-    }
-
-    try {
-      const result = await submitCreativeComposition.mutateAsync()
-      const nextParams = new URLSearchParams(searchParams)
-      nextParams.set('taskId', String(result.task_id))
-      nextParams.set('returnTo', taskReturnTo)
-      setSearchParams(nextParams, { replace: true })
-
-      const actionMessages: Record<string, string> = {
-        created_and_submitted: `已提交合成任务 #${result.task_id}，当前作品会持续同步执行进度`,
-        reused_draft_and_submitted: `已复用草稿任务 #${result.task_id} 并提交合成`,
-        reused_composing: `已有进行中的合成任务 #${result.task_id}，已直接复用`,
-        created_ready_task: `已生成直发版本，作品进入待审核（执行记录 #${result.task_id}）`,
-        reused_ready_task: `已复用现有直发结果（执行记录 #${result.task_id}）`,
-      }
-      message.success(actionMessages[result.submission_action] ?? `操作成功（任务 #${result.task_id}）`)
-      void Promise.all([
-        creativeQuery.refetch(),
-        activePoolQuery.refetch(),
-        invalidatedPoolQuery.refetch(),
-      ])
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        message.error(error.message)
-      } else {
-        message.error('提交作品合成失败')
-      }
-    }
-  }, [
-    activePoolQuery,
-    creativeQuery,
-    invalidatedPoolQuery,
-    message,
-    persistCreativeInput,
-    searchParams,
-    setSearchParams,
-    submitCreativeComposition,
-    taskReturnTo,
-  ])
-
-  const profileOptions = useMemo(
-    () => profiles.map((profile) => ({
-      value: profile.id,
-      label: profile.is_default ? `${profile.name}（默认）` : profile.name,
-    })),
-    [profiles],
-  )
-  const productOptions = useMemo(
-    () => products.map((product) => ({ value: product.id, label: product.name })),
-    [products],
-  )
-  const productNameById = useMemo(
-    () => new Map(products.map((product) => [product.id, product.name])),
-    [products],
-  )
-  const videoOptions = useMemo(
-    () => videos.map((item) => ({ value: item.id, label: item.name || `视频 #${item.id}` })),
-    [videos],
-  )
-  const copywritingOptions = useMemo(
-    () => copywritings.map((item) => ({ value: item.id, label: item.name || `文案 #${item.id}` })),
-    [copywritings],
-  )
-  const coverOptions = useMemo(
-    () => covers.map((item) => ({ value: item.id, label: item.name || `封面 #${item.id}` })),
-    [covers],
-  )
-  const audioOptions = useMemo(
-    () => audios.map((item) => ({ value: item.id, label: item.name || `音频 #${item.id}` })),
-    [audios],
-  )
-  const topicOptions = useMemo(
-    () => topics.map((item) => ({ value: item.id, label: item.name || `话题 #${item.id}` })),
-    [topics],
-  )
-  const materialTypeOptions = useMemo(
-    () => Object.entries(creativeInputMaterialMeta).map(([value, meta]) => ({
-      value,
-      label: meta.label,
-    })),
-    [],
-  )
-  const materialOptionsByType = useMemo<Record<CreativeInputMaterialType, Array<{ value: number; label: string }>>>(
-    () => ({
-      video: videoOptions,
-      copywriting: copywritingOptions,
-      cover: coverOptions,
-      audio: audioOptions,
-      topic: topicOptions,
-    }),
-    [audioOptions, copywritingOptions, coverOptions, topicOptions, videoOptions],
-  )
-  const materialLoadingByType = useMemo<Record<CreativeInputMaterialType, boolean>>(
-    () => ({
-      video: videosQuery.isLoading,
-      copywriting: copywritingsQuery.isLoading,
-      cover: coversQuery.isLoading,
-      audio: audiosQuery.isLoading,
-      topic: topicsQuery.isLoading,
-    }),
-    [
-      audiosQuery.isLoading,
-      copywritingsQuery.isLoading,
-      coversQuery.isLoading,
-      topicsQuery.isLoading,
-      videosQuery.isLoading,
-    ],
-  )
-  const canonicalProfileId = selectedProfileId ?? creative?.input_orchestration?.profile_id ?? undefined
-  const activeProfile = useMemo(
-    () => profiles.find((profile) => profile.id === canonicalProfileId),
-    [canonicalProfileId, profiles],
-  )
-  const activeInputItemCount = countEnabledCreativeInputItems(authoredInputItems)
-  const handleSubjectProductChange = useCallback((productId?: number) => {
-    if (!productId) {
-      return
-    }
-    const nextName = productNameById.get(productId)
-    if (nextName) {
-      form.setFieldValue('subject_product_name_snapshot', nextName)
-    }
-  }, [form, productNameById])
-  const submitButtonLabel = activeProfile?.composition_mode === 'none'
-    ? '提交直发准备'
-    : (currentVersion ? '重新提交合成' : '提交合成')
-
-  const schedulerModeLabel =
-    publishStatusQuery.isError && scheduleConfigQuery.isError
-      ? '获取失败'
-      : formatModeLabel(schedulerMode)
-  const effectiveSchedulerModeLabel = publishStatusQuery.isError
-    ? '获取失败'
-    : formatModeLabel(effectiveSchedulerMode)
-  const runtimeStatusLabel = publishStatusQuery.isError
-    ? '获取失败'
-    : formatRuntimeStatusLabel(publishStatus?.status)
-  const shadowReadLabel =
-    publishStatusQuery.isError && scheduleConfigQuery.isError
-      ? '获取失败'
-      : (publishStatus?.publish_pool_shadow_read ?? scheduleConfig?.publish_pool_shadow_read)
-        ? '开启'
-        : '关闭'
-  const killSwitchLabel =
-    publishStatusQuery.isError && scheduleConfigQuery.isError
-      ? '获取失败'
-      : (publishStatus?.publish_pool_kill_switch ?? scheduleConfig?.publish_pool_kill_switch)
-        ? '开启'
-        : '关闭'
   const eligibilityColor =
     creative?.eligibility_status === 'READY_TO_COMPOSE'
       ? 'processing'
@@ -480,7 +195,7 @@ export default function CreativeDetail() {
 
   if (creativeQuery.isError) {
     return (
-      <PageContainer title="作品详情" onBack={() => navigate(detailReturnTo)}>
+      <PageContainer title="作品详情" onBack={navigateToDetailReturn}>
         <div data-testid="creative-detail-error">
           <Result
             status="error"
@@ -490,7 +205,7 @@ export default function CreativeDetail() {
               <Button key="retry" type="primary" icon={<ReloadOutlined />} onClick={retryCreative}>
                 重试加载
               </Button>,
-              <Button key="back" onClick={() => navigate(detailReturnTo)}>
+              <Button key="back" onClick={navigateToDetailReturn}>
                 返回工作台
               </Button>,
             ]}
@@ -502,7 +217,7 @@ export default function CreativeDetail() {
 
   if (!creative || !statusMeta) {
     return (
-      <PageContainer title="作品详情" onBack={() => navigate(detailReturnTo)}>
+      <PageContainer title="作品详情" onBack={navigateToDetailReturn}>
         <Empty
           description="作品不存在，或你没有权限查看这条记录。"
           image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -516,7 +231,7 @@ export default function CreativeDetail() {
     <PageContainer
       title={creative.title ?? creative.creative_no}
       subTitle={creative.creative_no}
-      onBack={() => navigate(detailReturnTo)}
+      onBack={navigateToDetailReturn}
       extra={[
         <Button key="advanced-diagnostics" onClick={handleOpenDiagnostics} data-testid="creative-open-advanced-diagnostics">
           查看高级诊断
@@ -527,7 +242,7 @@ export default function CreativeDetail() {
           </Button>
         ) : null,
         currentVersion ? (
-          <Button key="review" type="primary" data-testid="creative-open-review" onClick={() => setDrawerOpen(true)}>
+          <Button key="review" type="primary" data-testid="creative-open-review" onClick={openReviewDrawer}>
             审核当前版本
           </Button>
         ) : null,
@@ -941,16 +656,8 @@ export default function CreativeDetail() {
         <VersionPanel
           versions={creative.versions ?? []}
           reviewSummary={creative.review_summary}
-          onOpenAiClipWorkflow={(version) => {
-            if (version.is_current) {
-              openAiClipWorkflow()
-            }
-          }}
-          onReviewVersion={(version) => {
-            if (version.is_current) {
-              setDrawerOpen(true)
-            }
-          }}
+          onOpenAiClipWorkflow={handleOpenAiClipVersion}
+          onReviewVersion={handleReviewVersion}
         />
 
       </Space>
@@ -984,7 +691,7 @@ export default function CreativeDetail() {
                       执行诊断 #{taskId}
                     </Button>
                   ))}
-                  <Button onClick={() => navigate('/task/list')}>打开任务管理</Button>
+                  <Button onClick={openTaskList}>打开任务管理</Button>
                 </Space>
               </Space>
             ) : (
@@ -992,7 +699,7 @@ export default function CreativeDetail() {
                 <Paragraph type="secondary" style={{ marginBottom: 0 }}>
                   这条作品还没有关联执行记录；如需排查执行侧信息，可从这里进入任务管理。
                 </Paragraph>
-                <Button onClick={() => navigate('/task/list')}>打开任务管理</Button>
+                <Button onClick={openTaskList}>打开任务管理</Button>
               </Space>
             )}
           </Card>
@@ -1114,11 +821,8 @@ export default function CreativeDetail() {
               <Empty description="当前没有发布侧候选记录" />
             ) : (
               <List
-                dataSource={[...activePoolItems, ...invalidatedPoolItems]}
-                renderItem={(item) => {
-                  const aligned = isPoolVersionAligned(item)
-                  const poolVersion = versionById.get(item.creative_version_id) ?? null
-                  const packageRecord = poolVersion?.package_record ?? null
+                dataSource={publishPoolRecords}
+                renderItem={({ item, aligned, packageRecord }) => {
                   return (
                     <List.Item key={`${item.status}-${item.id}`} data-testid={`creative-pool-item-${item.id}`}>
                       <Space direction="vertical" size={6} style={{ width: '100%' }}>
@@ -1172,7 +876,7 @@ export default function CreativeDetail() {
         </Space>
       </Drawer>
 
-      <CheckDrawer creativeId={creativeId} open={drawerOpen} version={currentVersion} onClose={() => setDrawerOpen(false)} />
+      <CheckDrawer creativeId={creativeId} open={reviewDrawerOpen} version={currentVersion} onClose={closeReviewDrawer} />
 
       <Drawer title="AIClip" open={aiClipOpen} width={aiClipDrawerWidth} onClose={closeAiClipWorkflow} destroyOnClose styles={{ body: { padding: screens.md ? 24 : 16 } }}>
         <div data-testid="creative-ai-clip-drawer">
