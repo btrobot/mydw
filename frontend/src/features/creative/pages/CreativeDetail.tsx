@@ -148,15 +148,6 @@ export default function CreativeDetail() {
   const covers = coversQuery.data ?? []
   const audios = audiosQuery.data ?? []
   const topics = topicsQuery.data ?? []
-  const inputSnapshot = creative?.input_snapshot ?? {
-    profile_id: undefined,
-    video_ids: [],
-    copywriting_ids: [],
-    cover_ids: [],
-    audio_ids: [],
-    topic_ids: [],
-    snapshot_hash: undefined,
-  }
   const eligibilityReasons = creative?.eligibility_reasons ?? []
   const currentVersion = creative?.versions?.find((version) => version.is_current) ?? null
   const currentVersionResult = creative?.current_version ?? null
@@ -425,9 +416,10 @@ export default function CreativeDetail() {
       videosQuery.isLoading,
     ],
   )
+  const canonicalProfileId = selectedProfileId ?? creative?.input_orchestration?.profile_id ?? undefined
   const activeProfile = useMemo(
-    () => profiles.find((profile) => profile.id === (selectedProfileId ?? inputSnapshot.profile_id)),
-    [inputSnapshot.profile_id, profiles, selectedProfileId],
+    () => profiles.find((profile) => profile.id === canonicalProfileId),
+    [canonicalProfileId, profiles],
   )
   const activeInputItemCount = countEnabledCreativeInputItems(authoredInputItems)
   const handleSubjectProductChange = useCallback((productId?: number) => {
@@ -578,7 +570,6 @@ export default function CreativeDetail() {
           extra={(
             <Space wrap>
               <Text type="secondary">编排项：{activeInputItemCount}</Text>
-              <Text type="secondary">兼容 Snapshot Hash：{inputSnapshot.snapshot_hash ?? '-'}</Text>
               <Button
                 loading={updateCreative.isPending}
                 onClick={() => void handleSaveInput()}
@@ -612,7 +603,7 @@ export default function CreativeDetail() {
               </Descriptions.Item>
               <Descriptions.Item label="启用编排项">{activeInputItemCount}</Descriptions.Item>
               <Descriptions.Item label="合成配置">
-                {activeProfile?.name ?? (inputSnapshot.profile_id ? `配置 #${inputSnapshot.profile_id}` : '待选择')}
+                {activeProfile?.name ?? (canonicalProfileId ? `配置 #${canonicalProfileId}` : '待选择')}
               </Descriptions.Item>
             </Descriptions>
 

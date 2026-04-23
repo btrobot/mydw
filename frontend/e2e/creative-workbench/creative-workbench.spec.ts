@@ -111,6 +111,14 @@ const creativeDetailPayload = {
       enabled: true,
     },
   ],
+  input_orchestration: {
+    profile_id: 1,
+    orchestration_hash: 'orchestration-101',
+    item_count: 1,
+    enabled_item_count: 1,
+    material_counts: { video: 1, copywriting: 0, cover: 0, audio: 0, topic: 0 },
+    enabled_material_counts: { video: 1, copywriting: 0, cover: 0, audio: 0, topic: 0 },
+  },
   input_snapshot: {
     profile_id: 1,
     video_ids: [11],
@@ -488,7 +496,10 @@ test.describe('Creative workbench baseline', () => {
 
   test('saves creative brief and input_items without legacy list write fields', async ({ page }) => {
     let updatePayload: Record<string, unknown> | undefined
-    let detailState = JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload
+    let detailState = {
+      ...(JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload),
+      input_snapshot: undefined,
+    }
 
     await page.unroute('**/api/creatives/101')
     await page.route('**/api/creatives/101', async (route) => {
@@ -516,6 +527,8 @@ test.describe('Creative workbench baseline', () => {
 
     await page.goto(`/#/creative/101`)
 
+    await expect(page.locator('body')).toContainText('Default Profile')
+    await expect(page.locator('body')).not.toContainText('Snapshot Hash')
     await expect(page.locator('body')).toContainText('创作 brief 与素材编排')
     await expect(page.getByTestId('creative-detail-product-snapshot')).toHaveValue('Classic Hoodie')
     await page.getByTestId('creative-detail-product-snapshot').fill('Runner Pro')
@@ -525,6 +538,7 @@ test.describe('Creative workbench baseline', () => {
 
     await expect.poll(() => updatePayload).toBeTruthy()
     expect(updatePayload).toMatchObject({
+      profile_id: 1,
       subject_product_name_snapshot: 'Runner Pro',
       main_copywriting_text: '主推轻盈舒适与全天候穿着体验。',
       target_duration_seconds: 45,

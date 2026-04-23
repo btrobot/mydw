@@ -2,7 +2,6 @@ import type {
   CreativeDetailResponse,
   CreativeInputItemResponse,
   CreativeInputItemWrite,
-  CreativeWorkbenchItemResponse,
 } from '@/api'
 
 export const creativeInputMaterialMeta = {
@@ -35,17 +34,6 @@ export type CreativeAuthoringFormValues = {
   input_items: CreativeAuthoringInputItemFormValue[]
 }
 
-const snapshotFieldOrder: Array<{
-  fieldName: 'video_ids' | 'copywriting_ids' | 'cover_ids' | 'audio_ids' | 'topic_ids'
-  materialType: CreativeInputMaterialType
-}> = [
-  { fieldName: 'video_ids', materialType: 'video' },
-  { fieldName: 'copywriting_ids', materialType: 'copywriting' },
-  { fieldName: 'cover_ids', materialType: 'cover' },
-  { fieldName: 'audio_ids', materialType: 'audio' },
-  { fieldName: 'topic_ids', materialType: 'topic' },
-]
-
 const normalizeInputItem = (
   item: CreativeInputItemResponse | Record<string, unknown>,
 ): CreativeAuthoringInputItemFormValue => ({
@@ -66,45 +54,27 @@ const normalizeInputItem = (
   enabled: item.enabled === undefined ? true : Boolean(item.enabled),
 })
 
-export const synthesizeInputItemsFromSnapshot = (
-  snapshot: CreativeDetailResponse['input_snapshot'] | CreativeWorkbenchItemResponse['input_snapshot'] | undefined,
-): CreativeAuthoringInputItemFormValue[] => {
-  if (!snapshot) {
-    return []
-  }
-
-  return snapshotFieldOrder.flatMap(({ fieldName, materialType }) =>
-    (snapshot[fieldName] ?? []).map((materialId) => ({
-      material_type: materialType,
-      material_id: Number(materialId),
-      enabled: true,
-    })),
-  )
-}
-
 export const getCreativeAuthoringInputItems = (
-  creative: Pick<CreativeDetailResponse, 'input_items' | 'input_snapshot'>,
+  creative: Pick<CreativeDetailResponse, 'input_items'>,
 ): CreativeAuthoringInputItemFormValue[] => {
-  if ((creative.input_items?.length ?? 0) > 0) {
-    return [...creative.input_items!]
-      .sort((left, right) => {
-        const sequenceDelta = (left.sequence ?? 0) - (right.sequence ?? 0)
-        if (sequenceDelta !== 0) {
-          return sequenceDelta
-        }
-        return (left.instance_no ?? 0) - (right.instance_no ?? 0)
-      })
-      .map(normalizeInputItem)
-  }
+  const inputItems = creative.input_items ?? []
 
-  return synthesizeInputItemsFromSnapshot(creative.input_snapshot)
+  return [...inputItems]
+    .sort((left, right) => {
+      const sequenceDelta = (left.sequence ?? 0) - (right.sequence ?? 0)
+      if (sequenceDelta !== 0) {
+        return sequenceDelta
+      }
+      return (left.instance_no ?? 0) - (right.instance_no ?? 0)
+    })
+    .map(normalizeInputItem)
 }
 
 export const toCreativeAuthoringFormValues = (
   creative: CreativeDetailResponse,
 ): CreativeAuthoringFormValues => ({
   title: creative.title ?? undefined,
-  profile_id: creative.input_snapshot?.profile_id ?? undefined,
+  profile_id: creative.input_orchestration?.profile_id ?? undefined,
   subject_product_id: creative.subject_product_id ?? undefined,
   subject_product_name_snapshot: creative.subject_product_name_snapshot ?? undefined,
   main_copywriting_text: creative.main_copywriting_text ?? undefined,
