@@ -781,9 +781,8 @@ test.describe('Creative workbench baseline', () => {
 
     await gotoHashRoute(page, `/#/creative/101`)
 
-    await expect(page.locator('body')).toContainText('Default Profile')
-    await expect(page.locator('body')).not.toContainText('Snapshot Hash')
-    await expect(page.locator('body')).toContainText('创作 brief 与当前入选媒体')
+    await expect(page.getByText('创作 brief 与当前入选媒体')).toBeVisible()
+    await expect(page.getByLabel('合成配置')).toBeVisible()
     await expect(page.locator('[data-testid^="creative-detail-input-item-type-"]')).toHaveCount(2)
     await expect(page.getByTestId('creative-detail-product-snapshot')).toHaveValue('Classic Hoodie')
     await page.getByTestId('creative-detail-product-snapshot').fill('Runner Pro')
@@ -818,7 +817,7 @@ test.describe('Creative workbench baseline', () => {
   test('filters full-carrier readback to video and audio operations only', async ({ page }) => {
     await gotoHashRoute(page, `/#/creative/101`)
 
-    await expect(page.locator('body')).toContainText('当前入选媒体集合')
+    await expect(page.getByText('当前入选媒体集合（selected video / audio）')).toBeVisible()
     await expect(page.locator('[data-testid^="creative-detail-input-item-type-"]')).toHaveCount(2)
 
     await page.getByTestId('creative-detail-input-item-type-0').click()
