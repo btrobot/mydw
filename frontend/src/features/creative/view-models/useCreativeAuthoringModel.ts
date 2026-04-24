@@ -244,6 +244,11 @@ export function useCreativeAuthoringModel({
       ((form.getFieldValue('candidate_items') as CreativeAuthoringFormValues['candidate_items'] | undefined) ?? []),
     [form],
   )
+  const getFormInputItems = useCallback(
+    (): CreativeAuthoringFormValues['input_items'] =>
+      ((form.getFieldValue('input_items') as CreativeAuthoringFormValues['input_items'] | undefined) ?? []),
+    [form],
+  )
   const clearCandidateAdoptionStatus = useCallback((candidateType: CreativeAuthoringCandidateType) => {
     const candidateItems = [...getFormCandidateItems()]
     const nextCandidateItems = candidateItems.map((item) => (
@@ -456,7 +461,7 @@ export function useCreativeAuthoringModel({
     }
   }, [clearCandidateAdoptionStatus, form])
   const handleSetCurrentAudio = useCallback((assetId?: number) => {
-    const existingItems = [...(((form.getFieldValue('input_items') as CreativeAuthoringFormValues['input_items'] | undefined) ?? []))]
+    const existingItems = [...getFormInputItems()]
     const nonAudioItems = existingItems.filter((item) => item.material_type !== 'audio')
     const nextItems = assetId
       ? [
@@ -469,9 +474,9 @@ export function useCreativeAuthoringModel({
       ]
       : nonAudioItems
     form.setFieldValue('input_items', nextItems)
-  }, [form])
+  }, [form, getFormInputItems])
   const handleToggleSelectedVideo = useCallback((assetId: number) => {
-    const existingItems = [...(((form.getFieldValue('input_items') as CreativeAuthoringFormValues['input_items'] | undefined) ?? []))]
+    const existingItems = [...getFormInputItems()]
     const hasSelectedVideo = existingItems.some((item) => (
       item.material_type === 'video' && item.material_id === assetId && item.enabled !== false
     ))
@@ -486,17 +491,58 @@ export function useCreativeAuthoringModel({
         },
       ]
     form.setFieldValue('input_items', nextItems)
-  }, [form])
+  }, [form, getFormInputItems])
   const handleRemoveSelectedVideo = useCallback((assetId?: number) => {
     if (!assetId) {
       return
     }
-    const existingItems = [...(((form.getFieldValue('input_items') as CreativeAuthoringFormValues['input_items'] | undefined) ?? []))]
+    const existingItems = [...getFormInputItems()]
     form.setFieldValue(
       'input_items',
       existingItems.filter((item) => !(item.material_type === 'video' && item.material_id === assetId)),
     )
-  }, [form])
+  }, [form, getFormInputItems])
+  const handleMoveSelectedVideo = useCallback((videoIndex: number, direction: 'up' | 'down') => {
+    const existingItems = [...getFormInputItems()]
+    const videoSlotIndexes = existingItems
+      .map((item, index) => (item.material_type === 'video' ? index : -1))
+      .filter((index) => index >= 0)
+
+    const targetIndex = direction === 'up' ? videoIndex - 1 : videoIndex + 1
+    if (
+      videoIndex < 0
+      || videoIndex >= videoSlotIndexes.length
+      || targetIndex < 0
+      || targetIndex >= videoSlotIndexes.length
+    ) {
+      return
+    }
+
+    const nextItems = [...existingItems]
+    const currentSlot = videoSlotIndexes[videoIndex]
+    const targetSlot = videoSlotIndexes[targetIndex]
+    const currentVideo = nextItems[currentSlot]
+    nextItems[currentSlot] = nextItems[targetSlot]
+    nextItems[targetSlot] = currentVideo
+    form.setFieldValue('input_items', nextItems)
+  }, [form, getFormInputItems])
+  const handleUpdateSelectedVideoRole = useCallback((videoIndex: number, role: string) => {
+    const existingItems = [...getFormInputItems()]
+    const videoSlotIndexes = existingItems
+      .map((item, index) => (item.material_type === 'video' ? index : -1))
+      .filter((index) => index >= 0)
+    const targetSlot = videoSlotIndexes[videoIndex]
+    if (targetSlot === undefined) {
+      return
+    }
+
+    const nextItems = [...existingItems]
+    nextItems[targetSlot] = {
+      ...nextItems[targetSlot],
+      role,
+    }
+    form.setFieldValue('input_items', nextItems)
+  }, [form, getFormInputItems])
   const submitButtonLabel = activeProfile?.composition_mode === 'none'
     ? '提交直发准备'
     : (hasCurrentVersion ? '重新提交合成' : '提交合成')
@@ -533,6 +579,8 @@ export function useCreativeAuthoringModel({
     handleSetCurrentAudio,
     handleToggleSelectedVideo,
     handleRemoveSelectedVideo,
+    handleMoveSelectedVideo,
+    handleUpdateSelectedVideoRole,
     handleSaveInput,
     handleSubmitComposition,
     submitButtonLabel,

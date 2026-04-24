@@ -209,6 +209,7 @@ type CreativeCurrentSelectionSectionProps = {
   copywritingActions?: ReactNode
   audioActions?: ReactNode
   renderVideoActions?: (video: CreativeCurrentSelectionFieldResponse, index: number) => ReactNode
+  renderVideoFooter?: (video: CreativeCurrentSelectionFieldResponse, index: number) => ReactNode
 }
 
 const getSelectionStatus = (field?: CreativeCurrentSelectionFieldResponse) =>
@@ -278,6 +279,7 @@ export function CreativeCurrentSelectionSection({
   copywritingActions,
   audioActions,
   renderVideoActions,
+  renderVideoFooter,
 }: CreativeCurrentSelectionSectionProps) {
   const videos = projection.currentSelection.videos ?? []
 
@@ -325,13 +327,13 @@ export function CreativeCurrentSelectionSection({
           {videos.length > 0 ? (
             <List
               dataSource={videos}
-              renderItem={(video) => {
+              renderItem={(video, index) => {
                 const status = getSelectionStatus(video)
 
                 return (
                   <List.Item
                     key={`${video.asset_id ?? 'video'}-${video.sequence ?? video.instance_no ?? 0}`}
-                    actions={renderVideoActions ? [renderVideoActions(video, Number(video.sequence ?? 0))] : undefined}
+                    actions={renderVideoActions ? [renderVideoActions(video, index)] : undefined}
                   >
                     <Space direction="vertical" size={6} style={{ width: '100%' }}>
                       <Space wrap>
@@ -346,6 +348,7 @@ export function CreativeCurrentSelectionSection({
                       {video.duration_seconds ? (
                         <Text type="secondary">时长：{formatCreativeDurationSeconds(video.duration_seconds)}</Text>
                       ) : null}
+                      {renderVideoFooter ? renderVideoFooter(video, index) : null}
                     </Space>
                   </List.Item>
                 )

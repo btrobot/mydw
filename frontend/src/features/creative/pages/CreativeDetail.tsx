@@ -174,6 +174,8 @@ export default function CreativeDetail() {
     handleSetCurrentAudio,
     handleToggleSelectedVideo,
     handleRemoveSelectedVideo,
+    handleMoveSelectedVideo,
+    handleUpdateSelectedVideoRole,
     handleSaveInput,
     handleSubmitComposition,
     submitButtonLabel,
@@ -561,14 +563,45 @@ export default function CreativeDetail() {
                   清空音频
                 </Button>
               )}
-              renderVideoActions={(video) => (
-                <Button
-                  size="small"
-                  onClick={() => handleRemoveSelectedVideo(video.asset_id ?? undefined)}
-                  data-testid={`creative-current-selection-remove-video-${video.asset_id ?? 'unknown'}`}
-                >
-                  移出入选
-                </Button>
+              renderVideoActions={(video, index) => (
+                <Space wrap>
+                  <Button
+                    size="small"
+                    icon={<ArrowUpOutlined />}
+                    disabled={index <= 0}
+                    onClick={() => handleMoveSelectedVideo(index, 'up')}
+                    data-testid={`creative-current-selection-move-video-up-${video.asset_id ?? 'unknown'}-${index}`}
+                  >
+                    上移
+                  </Button>
+                  <Button
+                    size="small"
+                    icon={<ArrowDownOutlined />}
+                    disabled={index >= ((projectionModel.currentSelection.videos?.length ?? 0) - 1)}
+                    onClick={() => handleMoveSelectedVideo(index, 'down')}
+                    data-testid={`creative-current-selection-move-video-down-${video.asset_id ?? 'unknown'}-${index}`}
+                  >
+                    下移
+                  </Button>
+                  <Button
+                    size="small"
+                    onClick={() => handleRemoveSelectedVideo(video.asset_id ?? undefined)}
+                    data-testid={`creative-current-selection-remove-video-${video.asset_id ?? 'unknown'}`}
+                  >
+                    移出入选
+                  </Button>
+                </Space>
+              )}
+              renderVideoFooter={(video, index) => (
+                <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                  <Text type="secondary">用途 / 角色</Text>
+                  <Input
+                    value={video.asset_excerpt ?? ''}
+                    placeholder="例如 开场 / 主镜头 / 转场 / CTA"
+                    onChange={(event) => handleUpdateSelectedVideoRole(index, event.target.value)}
+                    data-testid={`creative-current-selection-video-role-input-${video.asset_id ?? 'unknown'}-${index}`}
+                  />
+                </Space>
               )}
             />
 

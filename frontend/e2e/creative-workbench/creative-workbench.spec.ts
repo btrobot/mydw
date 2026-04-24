@@ -1162,6 +1162,56 @@ test.describe('Creative workbench baseline', () => {
     })
   })
 
+  test('supports in-zone video ordering and role editing inside current selection', async ({ page }) => {
+    let updatePayload: Record<string, unknown> | undefined
+    let detailState = JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload
+
+    await page.unroute('**/api/creatives/101')
+    await page.route('**/api/creatives/101', async (route) => {
+      if (route.request().method() === 'PATCH') {
+        updatePayload = route.request().postDataJSON() as Record<string, unknown>
+        detailState = {
+          ...detailState,
+          ...updatePayload,
+          updated_at: '2026-04-18T08:00:00Z',
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(detailState),
+        })
+        return
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(detailState),
+      })
+    })
+
+    await gotoHashRoute(page, `/#/creative/101`)
+
+    await page.getByTestId('creative-free-zone-video-toggle-12').click()
+    await page.getByTestId('creative-current-selection-video-role-input-11-0').fill('开场镜头')
+    await page.getByTestId('creative-current-selection-video-role-input-12-1').fill('结尾 CTA')
+    await page.getByTestId('creative-current-selection-move-video-up-12-1').click()
+
+    await expect(page.getByTestId('creative-current-selection-video-role-input-12-0')).toHaveValue('结尾 CTA')
+    await expect(page.getByTestId('creative-current-selection-video-role-input-11-1')).toHaveValue('开场镜头')
+
+    await page.getByTestId('creative-detail-hero-save').click()
+
+    await expect.poll(() => updatePayload).toBeTruthy()
+    expect(updatePayload).toMatchObject({
+      input_items: [
+        { material_type: 'video', material_id: 12, role: '结尾 CTA', sequence: 1 },
+        { material_type: 'audio', material_id: 41, role: '配乐', sequence: 2 },
+        { material_type: 'video', material_id: 11, role: '开场镜头', sequence: 3 },
+      ],
+    })
+  })
+
   test('filters full-carrier readback to video and audio operations only', async ({ page }) => {
     await gotoHashRoute(page, `/#/creative/101`)
 
