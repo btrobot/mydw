@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import type {
   CreativeCurrentSelectionFieldResponse,
   CreativeReadinessState,
@@ -210,6 +210,8 @@ type CreativeCurrentSelectionSectionProps = {
   audioActions?: ReactNode
   renderVideoActions?: (video: CreativeCurrentSelectionFieldResponse, index: number) => ReactNode
   renderVideoFooter?: (video: CreativeCurrentSelectionFieldResponse, index: number) => ReactNode
+  getVideoWarnings?: (video: CreativeCurrentSelectionFieldResponse, index: number) => ReactNode
+  onVideoDrop?: (fromIndex: number, toIndex: number) => void
 }
 
 const getSelectionStatus = (field?: CreativeCurrentSelectionFieldResponse) =>
@@ -280,8 +282,11 @@ export function CreativeCurrentSelectionSection({
   audioActions,
   renderVideoActions,
   renderVideoFooter,
+  getVideoWarnings,
+  onVideoDrop,
 }: CreativeCurrentSelectionSectionProps) {
   const videos = projection.currentSelection.videos ?? []
+  const [draggingVideoIndex, setDraggingVideoIndex] = useState<number | null>(null)
 
   return (
     <Card
@@ -335,21 +340,61 @@ export function CreativeCurrentSelectionSection({
                     key={`${video.asset_id ?? 'video'}-${video.sequence ?? video.instance_no ?? 0}`}
                     actions={renderVideoActions ? [renderVideoActions(video, index)] : undefined}
                   >
-                    <Space direction="vertical" size={6} style={{ width: '100%' }}>
-                      <Space wrap>
-                        <Tag color={status.color}>{status.label}</Tag>
-                        {video.sequence ? <Tag>序号 {video.sequence}</Tag> : null}
-                        {video.source_label ? <Tag>{video.source_label}</Tag> : null}
+                    <div
+                      draggable={Boolean(onVideoDrop)}
+                      onDragStart={(event) => {
+                        setDraggingVideoIndex(index)
+                        event.dataTransfer.effectAllowed = 'move'
+                        event.dataTransfer.setData('text/plain', String(index))
+                      }}
+                      onDragEnd={() => setDraggingVideoIndex(null)}
+                      onDragOver={(event) => {
+                        if (!onVideoDrop) {
+                          return
+                        }
+                        event.preventDefault()
+                      }}
+                      onDrop={(event) => {
+                        if (!onVideoDrop) {
+                          return
+                        }
+                        event.preventDefault()
+                        const droppedIndexText = event.dataTransfer.getData('text/plain')
+                        const droppedIndex = droppedIndexText ? Number(droppedIndexText) : draggingVideoIndex
+                        if (droppedIndex === null || Number.isNaN(droppedIndex)) {
+                          return
+                        }
+                        onVideoDrop(droppedIndex, index)
+                        setDraggingVideoIndex(null)
+                      }}
+                      data-testid={`creative-current-selection-video-card-${video.asset_id ?? 'unknown'}-${index}`}
+                      style={{
+                        width: '100%',
+                        borderRadius: 8,
+                        padding: 8,
+                        border: draggingVideoIndex === index ? '1px dashed #1677ff' : '1px dashed transparent',
+                        background: draggingVideoIndex === index ? '#f0f5ff' : 'transparent',
+                        cursor: onVideoDrop ? 'grab' : 'default',
+                      }}
+                    >
+                      <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                        <Space wrap>
+                          <Tag color={status.color}>{status.label}</Tag>
+                          {video.sequence ? <Tag>序号 {video.sequence}</Tag> : null}
+                          {video.source_label ? <Tag>{video.source_label}</Tag> : null}
+                          {onVideoDrop ? <Tag color="blue">可拖拽排序</Tag> : null}
+                        </Space>
+                        <Text strong>{formatCreativeText(video.asset_name)}</Text>
+                        {formatCreativeText(video.asset_excerpt) !== '-' ? (
+                          <Text type="secondary">{formatCreativeText(video.asset_excerpt)}</Text>
+                        ) : null}
+                        {video.duration_seconds ? (
+                          <Text type="secondary">时长：{formatCreativeDurationSeconds(video.duration_seconds)}</Text>
+                        ) : null}
+                        {getVideoWarnings ? getVideoWarnings(video, index) : null}
+                        {renderVideoFooter ? renderVideoFooter(video, index) : null}
                       </Space>
-                      <Text strong>{formatCreativeText(video.asset_name)}</Text>
-                      {formatCreativeText(video.asset_excerpt) !== '-' ? (
-                        <Text type="secondary">{formatCreativeText(video.asset_excerpt)}</Text>
-                      ) : null}
-                      {video.duration_seconds ? (
-                        <Text type="secondary">时长：{formatCreativeDurationSeconds(video.duration_seconds)}</Text>
-                      ) : null}
-                      {renderVideoFooter ? renderVideoFooter(video, index) : null}
-                    </Space>
+                    </div>
                   </List.Item>
                 )
               }}

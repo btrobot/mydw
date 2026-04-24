@@ -6,6 +6,7 @@ import {
   creativeCandidateMeta,
   countEnabledCreativeInputItems,
   creativeSelectedMediaMeta,
+  getCreativeSelectedVideoTimingIssues,
   getPrimaryCreativeProductId,
   toCreativeAuthoringFormValues,
   type CreativeAuthoringFormValues,
@@ -90,6 +91,11 @@ export function useCreativeAuthoringModel({
   const persistCreativeInput = useCallback(async (successMessage?: string) => {
     try {
       const values = await form.validateFields()
+      const timingIssues = getCreativeSelectedVideoTimingIssues(values.input_items)
+      if (timingIssues.length > 0) {
+        messageApi.error(timingIssues[0]?.message ?? '当前入选区存在 timing 非法项，请先修正')
+        return false
+      }
       await updateCreative.mutateAsync(buildCreativeAuthoringPayload(values))
       if (successMessage) {
         messageApi.success(successMessage)
@@ -502,30 +508,37 @@ export function useCreativeAuthoringModel({
       existingItems.filter((item) => !(item.material_type === 'video' && item.material_id === assetId)),
     )
   }, [form, getFormInputItems])
-  const handleMoveSelectedVideo = useCallback((videoIndex: number, direction: 'up' | 'down') => {
+  const handleReorderSelectedVideo = useCallback((fromVideoIndex: number, toVideoIndex: number) => {
     const existingItems = [...getFormInputItems()]
     const videoSlotIndexes = existingItems
       .map((item, index) => (item.material_type === 'video' ? index : -1))
       .filter((index) => index >= 0)
 
-    const targetIndex = direction === 'up' ? videoIndex - 1 : videoIndex + 1
     if (
-      videoIndex < 0
-      || videoIndex >= videoSlotIndexes.length
-      || targetIndex < 0
-      || targetIndex >= videoSlotIndexes.length
+      fromVideoIndex < 0
+      || fromVideoIndex >= videoSlotIndexes.length
+      || toVideoIndex < 0
+      || toVideoIndex >= videoSlotIndexes.length
+      || fromVideoIndex === toVideoIndex
     ) {
       return
     }
 
     const nextItems = [...existingItems]
-    const currentSlot = videoSlotIndexes[videoIndex]
-    const targetSlot = videoSlotIndexes[targetIndex]
+    const currentSlot = videoSlotIndexes[fromVideoIndex]
+    const targetSlot = videoSlotIndexes[toVideoIndex]
     const currentVideo = nextItems[currentSlot]
     nextItems[currentSlot] = nextItems[targetSlot]
     nextItems[targetSlot] = currentVideo
     form.setFieldValue('input_items', nextItems)
   }, [form, getFormInputItems])
+  const handleMoveSelectedVideo = useCallback((videoIndex: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? videoIndex - 1 : videoIndex + 1
+    if (targetIndex < 0) {
+      return
+    }
+    return handleReorderSelectedVideo(videoIndex, targetIndex)
+  }, [handleReorderSelectedVideo])
   const handleUpdateSelectedVideoRole = useCallback((videoIndex: number, role: string) => {
     const existingItems = [...getFormInputItems()]
     const videoSlotIndexes = existingItems
@@ -601,6 +614,7 @@ export function useCreativeAuthoringModel({
     handleToggleSelectedVideo,
     handleRemoveSelectedVideo,
     handleMoveSelectedVideo,
+    handleReorderSelectedVideo,
     handleUpdateSelectedVideoRole,
     handleUpdateSelectedVideoTiming,
     handleSaveInput,

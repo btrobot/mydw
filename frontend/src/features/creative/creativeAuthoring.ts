@@ -88,6 +88,12 @@ export type CreativeAuthoringCandidateItemFormValue = {
   asset_excerpt?: string
 }
 
+export type CreativeSelectedVideoTimingIssue = {
+  videoIndex: number
+  field: 'trim_in' | 'trim_out' | 'slot_duration_seconds'
+  message: string
+}
+
 const normalizeInputItem = (
   item: CreativeInputItemResponse | Record<string, unknown>,
 ): CreativeAuthoringInputItemFormValue => ({
@@ -343,6 +349,50 @@ export const buildCreativeAuthoringPayload = (
         enabled: item.enabled ?? true,
       })),
   }
+}
+
+export const getCreativeSelectedVideoTimingIssues = (
+  items: CreativeAuthoringInputItemFormValue[] | undefined,
+): CreativeSelectedVideoTimingIssue[] => {
+  const selectedVideos = (items ?? []).filter((item) => item.material_type === 'video' && item.enabled !== false)
+  const issues: CreativeSelectedVideoTimingIssue[] = []
+
+  selectedVideos.forEach((item, videoIndex) => {
+    if (item.slot_duration_seconds !== undefined && item.slot_duration_seconds !== null && item.slot_duration_seconds <= 0) {
+      issues.push({
+        videoIndex,
+        field: 'slot_duration_seconds',
+        message: `视频 #${videoIndex + 1} 的槽位时长必须大于 0 秒`,
+      })
+    }
+    if (item.trim_in !== undefined && item.trim_in !== null && item.trim_in < 0) {
+      issues.push({
+        videoIndex,
+        field: 'trim_in',
+        message: `视频 #${videoIndex + 1} 的裁切起点不能小于 0`,
+      })
+    }
+    if (item.trim_out !== undefined && item.trim_out !== null && item.trim_out < 0) {
+      issues.push({
+        videoIndex,
+        field: 'trim_out',
+        message: `视频 #${videoIndex + 1} 的裁切终点不能小于 0`,
+      })
+    }
+    if (
+      item.trim_in !== undefined && item.trim_in !== null
+      && item.trim_out !== undefined && item.trim_out !== null
+      && item.trim_out <= item.trim_in
+    ) {
+      issues.push({
+        videoIndex,
+        field: 'trim_out',
+        message: `视频 #${videoIndex + 1} 的裁切终点必须大于裁切起点`,
+      })
+    }
+  })
+
+  return issues
 }
 
 export const countEnabledCreativeInputItems = (

@@ -43,6 +43,7 @@ import {
   creativeCandidateMeta,
   creativeSelectedMediaMeta,
   formatCreativeDuration,
+  getCreativeSelectedVideoTimingIssues,
   type CreativeAuthoringCandidateType,
   type CreativeSelectedMediaType,
 } from '../creativeAuthoring'
@@ -175,6 +176,7 @@ export default function CreativeDetail() {
     handleToggleSelectedVideo,
     handleRemoveSelectedVideo,
     handleMoveSelectedVideo,
+    handleReorderSelectedVideo,
     handleUpdateSelectedVideoRole,
     handleUpdateSelectedVideoTiming,
     handleSaveInput,
@@ -203,6 +205,15 @@ export default function CreativeDetail() {
     () => watchedInputItems.filter((item) => item.material_type === 'video' && item.enabled !== false),
     [watchedInputItems],
   )
+  const selectedVideoTimingWarnings = useMemo(() => {
+    const warnings = new Map<number, string[]>()
+    getCreativeSelectedVideoTimingIssues(selectedVideoDraftItems).forEach((issue) => {
+      const currentMessages = warnings.get(issue.videoIndex) ?? []
+      currentMessages.push(issue.message)
+      warnings.set(issue.videoIndex, currentMessages)
+    })
+    return warnings
+  }, [selectedVideoDraftItems])
 
   const eligibilityReasons = creative?.eligibility_reasons ?? []
   const statusMeta = creative ? creativeStatusMeta[creative.status] : null
@@ -643,6 +654,26 @@ export default function CreativeDetail() {
                   </Flex>
                 </Space>
               )}
+              getVideoWarnings={(_, index) => {
+                const warnings = selectedVideoTimingWarnings.get(index) ?? []
+                if (warnings.length === 0) {
+                  return null
+                }
+                return (
+                  <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                    {warnings.map((warning) => (
+                      <Text
+                        key={`${index}-${warning}`}
+                        type="warning"
+                        data-testid={`creative-current-selection-video-warning-${index}`}
+                      >
+                        {warning}
+                      </Text>
+                    ))}
+                  </Space>
+                )
+              }}
+              onVideoDrop={(fromIndex, toIndex) => handleReorderSelectedVideo(fromIndex, toIndex)}
             />
 
             <Flex gap={16} wrap="wrap" align="stretch">

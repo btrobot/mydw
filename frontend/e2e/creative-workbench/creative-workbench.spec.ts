@@ -885,6 +885,13 @@ async function chooseAntSelectOption(page: Page, testId: string, optionText: str
   await option.click()
 }
 
+async function dragByTestId(page: Page, sourceTestId: string, targetTestId: string) {
+  const dataTransfer = await page.evaluateHandle(() => new DataTransfer())
+  await page.getByTestId(sourceTestId).dispatchEvent('dragstart', { dataTransfer })
+  await page.getByTestId(targetTestId).dispatchEvent('dragover', { dataTransfer })
+  await page.getByTestId(targetTestId).dispatchEvent('drop', { dataTransfer })
+}
+
 async function chooseWorkbenchSort(page: Page, optionText: string) {
   await page.getByTestId('creative-workbench-sort-select').click()
   const option = page
@@ -1270,6 +1277,97 @@ test.describe('Creative workbench baseline', () => {
           role: '配乐',
           sequence: 2,
         },
+      ],
+    })
+  })
+
+  test('blocks save when current selection video timing is invalid', async ({ page }) => {
+    let patchCount = 0
+    let detailState = JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload
+
+    await page.unroute('**/api/creatives/101')
+    await page.route('**/api/creatives/101', async (route) => {
+      if (route.request().method() === 'PATCH') {
+        patchCount += 1
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(detailState),
+        })
+        return
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(detailState),
+      })
+    })
+
+    await gotoHashRoute(page, `/#/creative/101`)
+
+    await page.getByTestId('creative-current-selection-video-trim-in-11-0').locator('input').fill('10')
+    await page.getByTestId('creative-current-selection-video-trim-out-11-0').locator('input').fill('5')
+
+    await expect(page.getByTestId('creative-current-selection-video-warning-0')).toContainText('视频 #1 的裁切终点必须大于裁切起点')
+
+    await page.getByTestId('creative-detail-hero-save').click()
+
+    await expect(page.locator('body')).toContainText('视频 #1 的裁切终点必须大于裁切起点')
+    expect(patchCount).toBe(0)
+  })
+
+  test('supports drag sorting inside current selection videos', async ({ page }) => {
+    let updatePayload: Record<string, unknown> | undefined
+    let detailState = JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload
+
+    await page.unroute('**/api/creatives/101')
+    await page.route('**/api/creatives/101', async (route) => {
+      if (route.request().method() === 'PATCH') {
+        updatePayload = route.request().postDataJSON() as Record<string, unknown>
+        detailState = {
+          ...detailState,
+          ...updatePayload,
+          updated_at: '2026-04-18T08:00:00Z',
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(detailState),
+        })
+        return
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(detailState),
+      })
+    })
+
+    await gotoHashRoute(page, `/#/creative/101`)
+
+    await page.getByTestId('creative-free-zone-video-toggle-12').click()
+    await page.getByTestId('creative-current-selection-video-role-input-11-0').fill('开场镜头')
+    await page.getByTestId('creative-current-selection-video-role-input-12-1').fill('结尾 CTA')
+
+    await dragByTestId(
+      page,
+      'creative-current-selection-video-card-12-1',
+      'creative-current-selection-video-card-11-0',
+    )
+
+    await expect(page.getByTestId('creative-current-selection-video-role-input-12-0')).toHaveValue('结尾 CTA')
+    await expect(page.getByTestId('creative-current-selection-video-role-input-11-1')).toHaveValue('开场镜头')
+
+    await page.getByTestId('creative-detail-hero-save').click()
+
+    await expect.poll(() => updatePayload).toBeTruthy()
+    expect(updatePayload).toMatchObject({
+      input_items: [
+        { material_type: 'video', material_id: 12, role: '结尾 CTA', sequence: 1 },
+        { material_type: 'audio', material_id: 41, role: '配乐', sequence: 2 },
+        { material_type: 'video', material_id: 11, role: '开场镜头', sequence: 3 },
       ],
     })
   })
