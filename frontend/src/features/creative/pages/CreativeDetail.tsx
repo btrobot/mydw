@@ -35,10 +35,10 @@ import DiagnosticsActionPanel, { type DiagnosticsRecommendation } from '../compo
 import VersionPanel from '../components/VersionPanel'
 import {
   creativeCandidateMeta,
-  creativeInputMaterialMeta,
+  creativeSelectedMediaMeta,
   formatCreativeDuration,
   type CreativeAuthoringCandidateType,
-  type CreativeInputMaterialType,
+  type CreativeSelectedMediaType,
 } from '../creativeAuthoring'
 import { useCreative } from '../hooks/useCreatives'
 import {
@@ -403,10 +403,10 @@ export default function CreativeDetail() {
         </Card>
 
         <Card
-          title="创作 brief 与素材编排"
+          title="创作 brief 与当前入选媒体"
           extra={(
             <Space wrap>
-              <Text type="secondary">编排项：{activeInputItemCount}</Text>
+              <Text type="secondary">入选媒体：{activeInputItemCount}</Text>
               <Button
                 loading={updateCreative.isPending}
                 onClick={() => void handleSaveInput()}
@@ -428,7 +428,7 @@ export default function CreativeDetail() {
         >
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-              这里维护作品级业务定义：商品、主文案、目标时长，以及 input_items 编排顺序。旧版列表字段仅保留为兼容投影与快照。
+              这里维护作品级业务定义：商品、主文案、目标时长，以及当前入选媒体集合。detail.input_items 仍是兼容读回 carrier，当前界面只投影其中的视频 / 音频条目。
             </Paragraph>
 
             <ProDescriptions bordered size="small" column={screens.lg ? 4 : screens.md ? 2 : 1}>
@@ -438,7 +438,7 @@ export default function CreativeDetail() {
               <ProDescriptions.Item label="目标时长">
                 {formatCreativeDuration(watchedTargetDuration ?? creative.target_duration_seconds)}
               </ProDescriptions.Item>
-              <ProDescriptions.Item label="启用编排项">{activeInputItemCount}</ProDescriptions.Item>
+              <ProDescriptions.Item label="启用入选媒体">{activeInputItemCount}</ProDescriptions.Item>
               <ProDescriptions.Item label="合成配置">
                 {activeProfile?.name ?? (canonicalProfileId ? `配置 #${canonicalProfileId}` : '待选择')}
               </ProDescriptions.Item>
@@ -633,7 +633,7 @@ export default function CreativeDetail() {
                       description={`这里维护作品级候选池；当前商品名：${watchedCurrentProductName || '未设定'}。当前封面：${(() => {
                         const coverId = form.getFieldValue('current_cover_asset_id') as number | undefined
                         return coverId ? (coverNameById.get(coverId) ?? `封面 #${coverId}`) : '未采用候选'
-                      })()}。视频 / 音频候选在本 Slice 只进入候选池，不会自动进入当前编排。`}
+                      })()}。视频 / 音频候选在本 Slice 只进入候选池，不会自动进入当前入选媒体集合。`}
                     />
 
                     {candidateTypes.map((sectionType) => {
@@ -644,8 +644,8 @@ export default function CreativeDetail() {
                         return candidateType === sectionType
                       })
                       const sectionLabel = creativeCandidateMeta[sectionType].label
-                      const sectionOptions = materialOptionsByType[sectionType as CreativeInputMaterialType] ?? []
-                      const sectionLoading = materialLoadingByType[sectionType as CreativeInputMaterialType] ?? false
+                      const sectionOptions = materialOptionsByType[sectionType] ?? []
+                      const sectionLoading = materialLoadingByType[sectionType] ?? false
 
                       return (
                         <Card
@@ -686,8 +686,8 @@ export default function CreativeDetail() {
                                   ?? 'candidate'
                                 const assetId = form.getFieldValue(['candidate_items', field.name, 'asset_id']) as number | undefined
                                 const candidateMeta = creativeCandidateMeta[candidateType]
-                                const candidateOptions = materialOptionsByType[candidateType as CreativeInputMaterialType] ?? sectionOptions
-                                const candidateLoading = materialLoadingByType[candidateType as CreativeInputMaterialType] ?? sectionLoading
+                                const candidateOptions = materialOptionsByType[candidateType] ?? sectionOptions
+                                const candidateLoading = materialLoadingByType[candidateType] ?? sectionLoading
 
                                 return (
                                   <Card
@@ -811,8 +811,8 @@ export default function CreativeDetail() {
                   <Space direction="vertical" size={12} style={{ width: '100%' }}>
                     <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
                       <Space direction="vertical" size={0}>
-                        <Text strong>素材编排（input_items）</Text>
-                        <Text type="secondary">支持显式排序、重复添加同一素材，以及为单项补充角色 / 时长 / 裁切信息。</Text>
+                        <Text strong>当前入选媒体集合（selected video / audio）</Text>
+                        <Text type="secondary">基于 detail.input_items 的 full-carrier 读回，仅展示并维护其中的视频 / 音频条目；封面 / 文案 / 话题不再从这里写回。</Text>
                       </Space>
                       <Button
                         type="dashed"
@@ -820,7 +820,7 @@ export default function CreativeDetail() {
                         onClick={() => add({ material_type: 'video', enabled: true })}
                         data-testid="creative-detail-add-input-item"
                       >
-                        添加编排项
+                        添加入选媒体
                       </Button>
                     </Flex>
 
@@ -828,14 +828,14 @@ export default function CreativeDetail() {
                       <Alert
                         type="info"
                         showIcon
-                        message="当前还没有编排项"
-                        description="请至少添加 1 条素材编排；如果需要重复使用同一条素材，可以重复添加。"
+                        message="当前还没有入选媒体"
+                        description="请至少添加 1 条视频或音频；如需重复使用同一素材，可重复加入当前入选媒体集合。"
                       />
                     ) : null}
 
                     {fields.map((field, index) => {
                       const materialType =
-                        (form.getFieldValue(['input_items', field.name, 'material_type']) as CreativeInputMaterialType | undefined)
+                        (form.getFieldValue(['input_items', field.name, 'material_type']) as CreativeSelectedMediaType | undefined)
                         ?? 'video'
                       const materialOptions = materialOptionsByType[materialType] ?? []
 
@@ -844,7 +844,7 @@ export default function CreativeDetail() {
                           key={field.key}
                           type="inner"
                           size="small"
-                          title={`编排项 ${index + 1}`}
+                          title={`入选媒体 ${index + 1}`}
                           extra={(
                             <Space>
                               <Button
@@ -877,8 +877,8 @@ export default function CreativeDetail() {
                           <Flex gap={16} wrap="wrap" align="start">
                             <Form.Item
                               name={[field.name, 'material_type']}
-                              label="素材类型"
-                              rules={[{ required: true, message: '请选择素材类型' }]}
+                              label="媒体类型"
+                              rules={[{ required: true, message: '请选择媒体类型' }]}
                               style={{ minWidth: 160, flex: 1 }}
                             >
                               <Select
@@ -889,15 +889,15 @@ export default function CreativeDetail() {
 
                             <Form.Item
                               name={[field.name, 'material_id']}
-                              label={creativeInputMaterialMeta[materialType].label}
-                              rules={[{ required: true, message: '请选择素材' }]}
+                              label={creativeSelectedMediaMeta[materialType].label}
+                              rules={[{ required: true, message: '请选择媒体素材' }]}
                               style={{ minWidth: 220, flex: 1.4 }}
                             >
                               <Select
                                 allowClear
                                 showSearch
                                 optionFilterProp="label"
-                                placeholder={`选择${creativeInputMaterialMeta[materialType].label}`}
+                                placeholder={`选择${creativeSelectedMediaMeta[materialType].label}`}
                                 options={materialOptions}
                                 loading={materialLoadingByType[materialType]}
                                 data-testid={`creative-detail-input-item-material-${index}`}

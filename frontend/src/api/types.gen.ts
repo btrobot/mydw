@@ -1485,7 +1485,7 @@ export type CreativeCreateRequest = {
     /**
      * Input Items
      *
-     * Phase 4 canonical creative input orchestration surface.
+     * Slice 4 selected-media projection write surface. During migration input_items still targets the creative_input_items carrier/runtime compatibility surface, but authoritative writes only accept video/audio; copywriting/cover are read-only compatibility carriers and topic is prompt/runtime reference only.
      */
     input_items?: Array<CreativeInputItemWrite>;
 };
@@ -1621,7 +1621,7 @@ export type CreativeDetailResponse = {
     /**
      * Input Items
      *
-     * Phase 4 canonical creative input orchestration surface.
+     * Slice 4 full-carrier compatibility readback surface. detail/workbench input_items may include legacy copywriting/cover/topic carrier rows; selected-media semantics are projected by filtering enabled video/audio from this list, not by introducing a new response field.
      */
     input_items?: Array<CreativeInputItemResponse>;
     /**
@@ -1670,6 +1670,9 @@ export type CreativeInputItemResponse = {
      * Id
      */
     id?: number | null;
+    /**
+     * Full-carrier readback material type. May include legacy copywriting/cover/topic rows.
+     */
     material_type: CreativeInputMaterialType;
     /**
      * Material Id
@@ -1709,7 +1712,10 @@ export type CreativeInputItemResponse = {
  * CreativeInputItemWrite
  */
 export type CreativeInputItemWrite = {
-    material_type: CreativeInputMaterialType;
+    /**
+     * Selected-media authoritative write type. Only video/audio are accepted.
+     */
+    material_type: CreativeSelectedMediaWriteMaterialType;
     /**
      * Material Id
      */
@@ -1972,6 +1978,11 @@ export type CreativeReworkRequest = {
 };
 
 /**
+ * CreativeSelectedMediaWriteMaterialType
+ */
+export type CreativeSelectedMediaWriteMaterialType = 'video' | 'audio';
+
+/**
  * CreativeStatus
  */
 export type CreativeStatus = 'PENDING_INPUT' | 'READY_TO_COMPOSE' | 'COMPOSING' | 'WAITING_REVIEW' | 'APPROVED' | 'REWORK_REQUIRED' | 'REJECTED' | 'IN_PUBLISH_POOL' | 'PUBLISHING' | 'PUBLISHED' | 'FAILED';
@@ -2079,7 +2090,7 @@ export type CreativeUpdateRequest = {
     /**
      * Input Items
      *
-     * When present, input_items is the Phase 4 canonical creative input orchestration source.
+     * When present, Slice 4 selected-media projection write surface. During migration input_items still targets the creative_input_items carrier/runtime compatibility surface, but authoritative writes only accept video/audio; copywriting/cover are read-only compatibility carriers and topic is prompt/runtime reference only.
      */
     input_items?: Array<CreativeInputItemWrite> | null;
 };
@@ -2212,7 +2223,7 @@ export type CreativeWorkbenchItemResponse = {
     /**
      * Input Items
      *
-     * Phase 4 canonical creative input orchestration surface.
+     * Slice 4 full-carrier compatibility readback surface. detail/workbench input_items may include legacy copywriting/cover/topic carrier rows; selected-media semantics are projected by filtering enabled video/audio from this list, not by introducing a new response field.
      */
     input_items?: Array<CreativeInputItemResponse>;
     /**

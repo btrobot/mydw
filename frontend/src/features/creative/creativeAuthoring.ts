@@ -25,6 +25,12 @@ export const creativeInputMaterialMeta = {
 } as const
 
 export type CreativeInputMaterialType = keyof typeof creativeInputMaterialMeta
+export const creativeSelectedMediaMeta = {
+  video: creativeInputMaterialMeta.video,
+  audio: creativeInputMaterialMeta.audio,
+} as const
+
+export type CreativeSelectedMediaType = keyof typeof creativeSelectedMediaMeta
 export type CreativeAuthoringCandidateType = Exclude<CreativeCandidateType, never>
 
 export const creativeCandidateMeta: Record<CreativeAuthoringCandidateType, { label: string; adoptLabel?: string }> = {
@@ -35,7 +41,7 @@ export const creativeCandidateMeta: Record<CreativeAuthoringCandidateType, { lab
 }
 
 export type CreativeAuthoringInputItemFormValue = {
-  material_type: CreativeInputMaterialType
+  material_type: CreativeSelectedMediaType
   material_id?: number
   role?: string
   trim_in?: number | null
@@ -85,7 +91,7 @@ export type CreativeAuthoringCandidateItemFormValue = {
 const normalizeInputItem = (
   item: CreativeInputItemResponse | Record<string, unknown>,
 ): CreativeAuthoringInputItemFormValue => ({
-  material_type: String(item.material_type) as CreativeInputMaterialType,
+  material_type: String(item.material_type) as CreativeSelectedMediaType,
   material_id:
     item.material_id === undefined || item.material_id === null
       ? undefined
@@ -102,6 +108,9 @@ const normalizeInputItem = (
   enabled: item.enabled === undefined ? true : Boolean(item.enabled),
 })
 
+export const isCreativeSelectedMediaType = (value: unknown): value is CreativeSelectedMediaType =>
+  value === 'video' || value === 'audio'
+
 export const getCreativeAuthoringInputItems = (
   creative: Pick<CreativeDetailResponse, 'input_items'>,
 ): CreativeAuthoringInputItemFormValue[] => {
@@ -115,6 +124,7 @@ export const getCreativeAuthoringInputItems = (
       }
       return (left.instance_no ?? 0) - (right.instance_no ?? 0)
     })
+    .filter((item) => isCreativeSelectedMediaType(item.material_type))
     .map(normalizeInputItem)
 }
 
@@ -316,7 +326,12 @@ export const buildCreativeAuthoringPayload = (
     copywriting_mode: copywritingMode,
     target_duration_seconds: values.target_duration_seconds ?? null,
     input_items: (values.input_items ?? [])
-      .filter((item) => item.material_type && item.material_id !== undefined && item.material_id !== null)
+      .filter(
+        (item): item is CreativeAuthoringInputItemFormValue & { material_id: number } =>
+          isCreativeSelectedMediaType(item.material_type)
+          && item.material_id !== undefined
+          && item.material_id !== null,
+      )
       .map((item, index) => ({
         material_type: item.material_type,
         material_id: Number(item.material_id),

@@ -206,14 +206,46 @@ const creativeDetailPayload = {
       instance_no: 1,
       enabled: true,
     },
+    {
+      material_type: 'copywriting',
+      material_id: 21,
+      role: '口播参考',
+      sequence: 2,
+      instance_no: 1,
+      enabled: true,
+    },
+    {
+      material_type: 'audio',
+      material_id: 41,
+      role: '配乐',
+      sequence: 3,
+      instance_no: 1,
+      enabled: true,
+    },
+    {
+      material_type: 'cover',
+      material_id: 31,
+      role: '封面参考',
+      sequence: 4,
+      instance_no: 1,
+      enabled: true,
+    },
+    {
+      material_type: 'topic',
+      material_id: 51,
+      role: '话题参考',
+      sequence: 5,
+      instance_no: 1,
+      enabled: true,
+    },
   ],
   input_orchestration: {
     profile_id: 1,
     orchestration_hash: 'orchestration-101',
-    item_count: 1,
-    enabled_item_count: 1,
-    material_counts: { video: 1, copywriting: 0, cover: 0, audio: 0, topic: 0 },
-    enabled_material_counts: { video: 1, copywriting: 0, cover: 0, audio: 0, topic: 0 },
+    item_count: 5,
+    enabled_item_count: 5,
+    material_counts: { video: 1, copywriting: 1, cover: 1, audio: 1, topic: 1 },
+    enabled_material_counts: { video: 1, copywriting: 1, cover: 1, audio: 1, topic: 1 },
   },
 }
 
@@ -751,7 +783,8 @@ test.describe('Creative workbench baseline', () => {
 
     await expect(page.locator('body')).toContainText('Default Profile')
     await expect(page.locator('body')).not.toContainText('Snapshot Hash')
-    await expect(page.locator('body')).toContainText('创作 brief 与素材编排')
+    await expect(page.locator('body')).toContainText('创作 brief 与当前入选媒体')
+    await expect(page.locator('[data-testid^="creative-detail-input-item-type-"]')).toHaveCount(2)
     await expect(page.getByTestId('creative-detail-product-snapshot')).toHaveValue('Classic Hoodie')
     await page.getByTestId('creative-detail-product-snapshot').fill('Runner Pro')
     await page.getByTestId('creative-detail-main-copywriting').fill('主推轻盈舒适与全天候穿着体验。')
@@ -771,6 +804,7 @@ test.describe('Creative workbench baseline', () => {
       candidate_items: [],
       input_items: [
         { material_type: 'video', material_id: 11, sequence: 1 },
+        { material_type: 'audio', material_id: 41, sequence: 2 },
       ],
     })
     expect(updatePayload).not.toHaveProperty('video_ids')
@@ -779,6 +813,22 @@ test.describe('Creative workbench baseline', () => {
     expect(updatePayload).not.toHaveProperty('audio_ids')
     expect(updatePayload).not.toHaveProperty('topic_ids')
     await expect(page.locator('body')).toContainText('45 秒')
+  })
+
+  test('filters full-carrier readback to video and audio operations only', async ({ page }) => {
+    await gotoHashRoute(page, `/#/creative/101`)
+
+    await expect(page.locator('body')).toContainText('当前入选媒体集合')
+    await expect(page.locator('[data-testid^="creative-detail-input-item-type-"]')).toHaveCount(2)
+
+    await page.getByTestId('creative-detail-input-item-type-0').click()
+    const visibleDropdown = page.locator('.ant-select-dropdown:visible').last()
+    await expect(visibleDropdown).toContainText('视频素材')
+    await expect(visibleDropdown).toContainText('音频素材')
+    await expect(visibleDropdown).not.toContainText('文案素材')
+    await expect(visibleDropdown).not.toContainText('封面素材')
+    await expect(visibleDropdown).not.toContainText('话题素材')
+    await page.keyboard.press('Escape')
   })
 
   test('persists candidate pool adoption separately from selected media state', async ({ page }) => {
@@ -853,6 +903,7 @@ test.describe('Creative workbench baseline', () => {
       ],
       input_items: [
         { material_type: 'video', material_id: 11, sequence: 1 },
+        { material_type: 'audio', material_id: 41, sequence: 2 },
       ],
     })
   })

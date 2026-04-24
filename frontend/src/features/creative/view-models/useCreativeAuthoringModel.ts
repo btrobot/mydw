@@ -5,12 +5,12 @@ import {
   buildCreativeAuthoringPayload,
   creativeCandidateMeta,
   countEnabledCreativeInputItems,
-  creativeInputMaterialMeta,
+  creativeSelectedMediaMeta,
   getPrimaryCreativeProductId,
   toCreativeAuthoringFormValues,
   type CreativeAuthoringFormValues,
   type CreativeAuthoringCandidateType,
-  type CreativeInputMaterialType,
+  type CreativeSelectedMediaType,
 } from '../creativeAuthoring'
 import {
   useSubmitCreativeComposition,
@@ -22,7 +22,6 @@ import { useCopywritings } from '@/hooks/useCopywriting'
 import { useCovers } from '@/hooks/useCover'
 import { useProducts } from '@/hooks/useProduct'
 import { useProfiles } from '@/hooks/useProfile'
-import { useTopics } from '@/hooks/useTopic'
 import { useVideos } from '@/hooks/useVideo'
 
 type MessageApi = {
@@ -60,7 +59,6 @@ export function useCreativeAuthoringModel({
   const copywritingsQuery = useCopywritings()
   const coversQuery = useCovers()
   const audiosQuery = useAudios()
-  const topicsQuery = useTopics()
 
   const selectedProfileId = Form.useWatch('profile_id', form)
   const selectedProductLinks = Form.useWatch('product_links', form) ?? []
@@ -74,7 +72,6 @@ export function useCreativeAuthoringModel({
   const copywritings = copywritingsQuery.data ?? []
   const covers = coversQuery.data ?? []
   const audios = audiosQuery.data ?? []
-  const topics = topicsQuery.data ?? []
 
   useEffect(() => {
     if (!creative) {
@@ -189,12 +186,8 @@ export function useCreativeAuthoringModel({
     () => audios.map((item) => ({ value: item.id, label: item.name || `音频 #${item.id}` })),
     [audios],
   )
-  const topicOptions = useMemo(
-    () => topics.map((item) => ({ value: item.id, label: item.name || `话题 #${item.id}` })),
-    [topics],
-  )
   const materialTypeOptions = useMemo(
-    () => Object.entries(creativeInputMaterialMeta).map(([value, meta]) => ({
+    () => Object.entries(creativeSelectedMediaMeta).map(([value, meta]) => ({
       value,
       label: meta.label,
     })),
@@ -208,29 +201,28 @@ export function useCreativeAuthoringModel({
       })),
     [],
   )
-  const materialOptionsByType = useMemo<Record<CreativeInputMaterialType, Array<{ value: number; label: string }>>>(
+  const materialOptionsByType = useMemo<
+    Record<CreativeAuthoringCandidateType | CreativeSelectedMediaType, Array<{ value: number; label: string }>>
+  >(
     () => ({
       video: videoOptions,
       copywriting: copywritingOptions,
       cover: coverOptions,
       audio: audioOptions,
-      topic: topicOptions,
     }),
-    [audioOptions, copywritingOptions, coverOptions, topicOptions, videoOptions],
+    [audioOptions, copywritingOptions, coverOptions, videoOptions],
   )
-  const materialLoadingByType = useMemo<Record<CreativeInputMaterialType, boolean>>(
+  const materialLoadingByType = useMemo<Record<CreativeAuthoringCandidateType | CreativeSelectedMediaType, boolean>>(
     () => ({
       video: videosQuery.isLoading,
       copywriting: copywritingsQuery.isLoading,
       cover: coversQuery.isLoading,
       audio: audiosQuery.isLoading,
-      topic: topicsQuery.isLoading,
     }),
     [
       audiosQuery.isLoading,
       copywritingsQuery.isLoading,
       coversQuery.isLoading,
-      topicsQuery.isLoading,
       videosQuery.isLoading,
     ],
   )
