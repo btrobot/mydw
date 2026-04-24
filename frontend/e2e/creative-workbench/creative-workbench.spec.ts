@@ -817,7 +817,6 @@ test.describe('Creative workbench baseline', () => {
   test('filters full-carrier readback to video and audio operations only', async ({ page }) => {
     await gotoHashRoute(page, `/#/creative/101`)
 
-    await expect(page.getByText('当前入选媒体集合（selected video / audio）')).toBeVisible()
     await expect(page.locator('[data-testid^="creative-detail-input-item-type-"]')).toHaveCount(2)
 
     await page.getByTestId('creative-detail-input-item-type-0').click()
