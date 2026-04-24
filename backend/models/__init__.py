@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, func, UniqueConstraint, CheckConstraint
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, func, UniqueConstraint, CheckConstraint, Index, text
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -145,6 +145,13 @@ class CreativeItem(Base):
     current_cover = relationship("Cover", foreign_keys=[current_cover_asset_id])
     current_copywriting = relationship("Copywriting", foreign_keys=[current_copywriting_id])
     input_profile = relationship("PublishProfile", foreign_keys=[input_profile_id])
+    product_links = relationship(
+        "CreativeProductLink",
+        back_populates="creative_item",
+        foreign_keys="CreativeProductLink.creative_item_id",
+        order_by="CreativeProductLink.sort_order",
+        cascade="all, delete-orphan",
+    )
     input_items = relationship(
         "CreativeInputItem",
         back_populates="creative_item",
@@ -208,6 +215,38 @@ class CreativeItem(Base):
         if self.copywriting_mode:
             return self.copywriting_mode
         return "manual"
+
+
+class CreativeProductLink(Base):
+    """Ordered creative-product association with a single primary product authority."""
+    __tablename__ = "creative_product_links"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    creative_item_id = Column(Integer, ForeignKey("creative_items.id"), nullable=False, index=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False, index=True)
+    sort_order = Column(Integer, nullable=False, default=1)
+    is_primary = Column(Boolean, nullable=False, default=False)
+    enabled = Column(Boolean, nullable=False, default=True)
+    source_mode = Column(String(32), nullable=False, default="manual_add")
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
+
+    __table_args__ = (
+        UniqueConstraint("creative_item_id", "product_id", name="uq_creative_product_links_creative_product"),
+        Index(
+            "uq_creative_product_links_primary_per_creative",
+            "creative_item_id",
+            unique=True,
+            sqlite_where=text("is_primary = 1"),
+        ),
+    )
+
+    creative_item = relationship(
+        "CreativeItem",
+        back_populates="product_links",
+        foreign_keys=[creative_item_id],
+    )
+    product = relationship("Product", foreign_keys=[product_id])
 
 
 class CreativeInputItem(Base):
@@ -903,6 +942,8 @@ async def init_db():
     await migration_035.run_migration(engine)
     migration_036 = importlib.import_module("migrations.036_creative_current_truth_explicitization")
     await migration_036.run_migration(engine)
+    migration_037 = importlib.import_module("migrations.037_creative_product_links")
+    await migration_037.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

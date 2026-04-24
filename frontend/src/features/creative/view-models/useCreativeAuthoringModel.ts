@@ -5,6 +5,7 @@ import {
   buildCreativeAuthoringPayload,
   countEnabledCreativeInputItems,
   creativeInputMaterialMeta,
+  getPrimaryCreativeProductId,
   toCreativeAuthoringFormValues,
   type CreativeAuthoringFormValues,
   type CreativeInputMaterialType,
@@ -60,7 +61,7 @@ export function useCreativeAuthoringModel({
   const topicsQuery = useTopics()
 
   const selectedProfileId = Form.useWatch('profile_id', form)
-  const selectedSubjectProductId = Form.useWatch('subject_product_id', form)
+  const selectedProductLinks = Form.useWatch('product_links', form) ?? []
   const watchedCurrentProductName = Form.useWatch('current_product_name', form)
   const watchedTargetDuration = Form.useWatch('target_duration_seconds', form)
   const authoredInputItems = Form.useWatch('input_items', form) ?? []
@@ -221,7 +222,18 @@ export function useCreativeAuthoringModel({
     [canonicalProfileId, profiles],
   )
   const activeInputItemCount = countEnabledCreativeInputItems(authoredInputItems)
-  const handleSubjectProductChange = useCallback((productId?: number) => {
+  const selectedSubjectProductId = getPrimaryCreativeProductId(selectedProductLinks)
+
+  const getFormProductLinks = useCallback(
+    (): CreativeAuthoringFormValues['product_links'] =>
+      ((form.getFieldValue('product_links') as CreativeAuthoringFormValues['product_links'] | undefined) ?? []),
+    [form],
+  )
+  const syncCurrentProductNameFromPrimary = useCallback((productId?: number) => {
+    const currentMode = form.getFieldValue('product_name_mode') as string | undefined
+    if (currentMode === 'manual') {
+      return
+    }
     if (!productId) {
       form.setFieldValue(
         'product_name_mode',
@@ -235,6 +247,41 @@ export function useCreativeAuthoringModel({
       form.setFieldValue('product_name_mode', 'follow_primary_product')
     }
   }, [form, productNameById])
+  const handleMakePrimaryProductLink = useCallback((index: number) => {
+    const productLinks = [...getFormProductLinks()]
+    if (!productLinks[index]) {
+      return
+    }
+    const nextProductLinks = productLinks.map((item, currentIndex) => ({
+      ...item,
+      is_primary: currentIndex === index,
+    }))
+    form.setFieldValue('product_links', nextProductLinks)
+    syncCurrentProductNameFromPrimary(nextProductLinks[index]?.product_id)
+  }, [form, getFormProductLinks, syncCurrentProductNameFromPrimary])
+  const handleProductLinkProductChange = useCallback((index: number, productId?: number) => {
+    const productLinks = [...getFormProductLinks()]
+    const currentLink = productLinks[index]
+    if (!currentLink) {
+      return
+    }
+    const isPrimary = Boolean(currentLink.is_primary)
+      || !productLinks.some((item, currentIndex) => currentIndex !== index && item.is_primary)
+    const nextProductLinks = productLinks.map((item, currentIndex) => ({
+      ...item,
+      is_primary: currentIndex === index ? isPrimary : (isPrimary ? false : Boolean(item.is_primary)),
+    }))
+    nextProductLinks[index] = {
+      ...nextProductLinks[index],
+      product_id: productId,
+      enabled: nextProductLinks[index]?.enabled ?? true,
+      source_mode: nextProductLinks[index]?.source_mode ?? 'manual_add',
+    }
+    form.setFieldValue('product_links', nextProductLinks)
+    if (isPrimary) {
+      syncCurrentProductNameFromPrimary(productId)
+    }
+  }, [form, getFormProductLinks, syncCurrentProductNameFromPrimary])
   const handleCurrentProductNameChange = useCallback((value: string) => {
     const selectedProductName = selectedSubjectProductId ? productNameById.get(selectedSubjectProductId) : undefined
     if (selectedProductName && value.trim() === selectedProductName) {
@@ -266,7 +313,8 @@ export function useCreativeAuthoringModel({
     canonicalProfileId,
     activeProfile,
     activeInputItemCount,
-    handleSubjectProductChange,
+    handleMakePrimaryProductLink,
+    handleProductLinkProductChange,
     handleCurrentProductNameChange,
     handleCurrentCopywritingTextChange,
     handleSaveInput,

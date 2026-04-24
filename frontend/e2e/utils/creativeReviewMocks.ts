@@ -90,6 +90,7 @@ interface CreativeScenarioState {
     }
     linked_task_ids: number[]
     updated_at: string
+    product_links?: Array<Record<string, unknown>>
     subject_product_id?: number | null
     subject_product_name_snapshot?: string | null
     main_copywriting_text?: string | null
@@ -151,6 +152,17 @@ function createCreativeBriefFields(overrides: Record<string, unknown> = {}) {
     },
   ]
   return {
+    product_links: [
+      {
+        id: 1,
+        product_id: 301,
+        product_name: 'Classic Hoodie',
+        sort_order: 1,
+        is_primary: true,
+        enabled: true,
+        source_mode: 'import_bootstrap',
+      },
+    ],
     subject_product_id: 301,
     subject_product_name_snapshot: 'Classic Hoodie',
     main_copywriting_text: '轻盈春装，上身即走。',
@@ -531,12 +543,23 @@ export async function mockCreativeReviewApis(
         : (state.detail.input_items ?? [])
       const nextProfileId =
         payload.profile_id === undefined ? (state.detail.input_orchestration?.profile_id as number | null | undefined) : payload.profile_id as number | null
+      const nextProductLinks = Array.isArray(payload.product_links)
+        ? payload.product_links.map((item, index) => ({
+          sort_order: index + 1,
+          enabled: true,
+          ...(item as Record<string, unknown>),
+        }))
+        : (state.detail.product_links ?? [])
+      const primaryProductLink = nextProductLinks.find((item) => item.is_primary)
 
       state.detail = {
         ...state.detail,
         title: payload.title === undefined ? state.detail.title : String(payload.title ?? ''),
+        product_links: nextProductLinks,
         subject_product_id:
-          payload.subject_product_id === undefined ? state.detail.subject_product_id ?? null : Number(payload.subject_product_id ?? 0) || null,
+          primaryProductLink?.product_id === undefined
+            ? (payload.subject_product_id === undefined ? state.detail.subject_product_id ?? null : Number(payload.subject_product_id ?? 0) || null)
+            : Number(primaryProductLink.product_id ?? 0) || null,
         subject_product_name_snapshot:
           payload.subject_product_name_snapshot === undefined
             ? state.detail.subject_product_name_snapshot ?? null

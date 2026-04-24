@@ -149,7 +149,8 @@ export default function CreativeDetail() {
     canonicalProfileId,
     activeProfile,
     activeInputItemCount,
-    handleSubjectProductChange,
+    handleMakePrimaryProductLink,
+    handleProductLinkProductChange,
     handleCurrentProductNameChange,
     handleCurrentCopywritingTextChange,
     handleSaveInput,
@@ -455,20 +456,125 @@ export default function CreativeDetail() {
                 </Form.Item>
               </Flex>
 
-              <Flex gap={16} wrap="wrap" align="start">
-                <Form.Item name="subject_product_id" label="主体商品" style={{ flex: 1, minWidth: 220 }}>
-                  <Select
-                    allowClear
-                    showSearch
-                    optionFilterProp="label"
-                    placeholder="选择主体商品"
-                    options={productOptions}
-                    loading={productsQuery.isLoading}
-                    onChange={(value) => handleSubjectProductChange(value)}
-                    data-testid="creative-detail-subject-product"
-                  />
-                </Form.Item>
+              <Form.List name="product_links">
+                {(fields, { add, move, remove }) => (
+                  <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                    <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
+                      <Space direction="vertical" size={0}>
+                        <Text strong>关联商品（product_links）</Text>
+                        <Text type="secondary">一个作品可关联多个商品；主题商品唯一，并驱动默认商品名 / 封面来源。</Text>
+                      </Space>
+                      <Button
+                        type="dashed"
+                        icon={<PlusOutlined />}
+                        onClick={() => add({ enabled: true, is_primary: fields.length === 0, source_mode: 'manual_add' })}
+                        data-testid="creative-detail-add-product-link"
+                      >
+                        添加关联商品
+                      </Button>
+                    </Flex>
 
+                    {fields.length === 0 ? (
+                      <Alert
+                        type="info"
+                        showIcon
+                        message="当前还没有关联商品"
+                        description="请至少添加 1 个商品；第一个有效商品会自动成为主题商品。"
+                      />
+                    ) : null}
+
+                    {fields.map((field, index) => {
+                      const isPrimary = Boolean(form.getFieldValue(['product_links', field.name, 'is_primary']))
+                      const selectedProductId = form.getFieldValue(['product_links', field.name, 'product_id']) as number | undefined
+                      return (
+                        <Card
+                          key={field.key}
+                          type="inner"
+                          size="small"
+                          title={`关联商品 ${index + 1}`}
+                          extra={(
+                            <Space wrap>
+                              <Tag color={isPrimary ? 'processing' : 'default'}>
+                                {isPrimary ? '主题商品' : '关联商品'}
+                              </Tag>
+                              <Button
+                                size="small"
+                                disabled={index === 0}
+                                icon={<ArrowUpOutlined />}
+                                onClick={() => move(index, index - 1)}
+                                data-testid={`creative-detail-product-link-up-${index}`}
+                              >
+                                上移
+                              </Button>
+                              <Button
+                                size="small"
+                                disabled={index === fields.length - 1}
+                                icon={<ArrowDownOutlined />}
+                                onClick={() => move(index, index + 1)}
+                                data-testid={`creative-detail-product-link-down-${index}`}
+                              >
+                                下移
+                              </Button>
+                              <Button
+                                size="small"
+                                type={isPrimary ? 'primary' : 'default'}
+                                disabled={isPrimary || !selectedProductId}
+                                onClick={() => handleMakePrimaryProductLink(index)}
+                                data-testid={`creative-detail-product-link-primary-${index}`}
+                              >
+                                {isPrimary ? '当前主题商品' : '设为主题商品'}
+                              </Button>
+                              <Button
+                                size="small"
+                                danger
+                                disabled={isPrimary}
+                                icon={<DeleteOutlined />}
+                                onClick={() => remove(index)}
+                                data-testid={`creative-detail-product-link-remove-${index}`}
+                              >
+                                移除
+                              </Button>
+                            </Space>
+                          )}
+                        >
+                          <Form.Item name={[field.name, 'is_primary']} hidden valuePropName="checked"><Switch /></Form.Item>
+                          <Form.Item name={[field.name, 'source_mode']} hidden><Input /></Form.Item>
+                          <Flex gap={16} wrap="wrap" align="start">
+                            <Form.Item
+                              {...field}
+                              name={[field.name, 'product_id']}
+                              label="关联商品"
+                              rules={[{ required: true, message: '请选择关联商品' }]}
+                              style={{ flex: 1, minWidth: 260 }}
+                            >
+                              <Select
+                                allowClear
+                                showSearch
+                                optionFilterProp="label"
+                                placeholder="选择关联商品"
+                                options={productOptions}
+                                loading={productsQuery.isLoading}
+                                onChange={(value) => handleProductLinkProductChange(index, value)}
+                                data-testid={`creative-detail-product-link-select-${index}`}
+                              />
+                            </Form.Item>
+                            <Form.Item
+                              name={[field.name, 'enabled']}
+                              label="启用"
+                              valuePropName="checked"
+                              style={{ width: screens.md ? 120 : '100%' }}
+                            >
+                              <Switch checkedChildren="启用" unCheckedChildren="停用" />
+                            </Form.Item>
+                          </Flex>
+                        </Card>
+                      )
+                    })}
+                  </Space>
+                )}
+              </Form.List>
+
+              <Flex gap={16} wrap="wrap" align="start" style={{ marginTop: 16 }}>
                 <Form.Item
                   name="current_product_name"
                   label="商品名称快照"

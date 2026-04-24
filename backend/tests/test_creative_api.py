@@ -296,6 +296,192 @@ async def test_create_creative_accepts_explicit_current_truth_fields_and_project
     assert payload["current_copywriting_text"] == "Manual truth copy"
     assert payload["copywriting_mode"] == "manual"
     assert payload["main_copywriting_text"] == "Manual truth copy"
+    assert payload["product_links"] == [
+        {
+            "id": payload["product_links"][0]["id"],
+            "product_id": product.id,
+            "product_name": product.name,
+            "sort_order": 1,
+            "is_primary": True,
+            "enabled": True,
+            "source_mode": "import_bootstrap",
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_create_creative_supports_multiple_product_links_and_switching_primary_updates_follow_truth(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    profile, product_a, video, _, _, _, _ = await _seed_domain_inputs(
+        db_session,
+        composition_mode="none",
+    )
+    product_b = Product(name="creative-phase1-product-alt")
+    db_session.add(product_b)
+    await db_session.flush()
+    product_a_cover = Cover(
+        product_id=product_a.id,
+        name="primary-a-cover",
+        file_path="data/covers/primary-a-cover.png",
+    )
+    product_b_cover = Cover(
+        product_id=product_b.id,
+        name="primary-b-cover",
+        file_path="data/covers/primary-b-cover.png",
+    )
+    db_session.add_all([product_a_cover, product_b_cover])
+    await db_session.commit()
+    await db_session.refresh(product_b)
+    await db_session.refresh(product_a_cover)
+    await db_session.refresh(product_b_cover)
+
+    create_response = await client.post(
+        "/api/creatives",
+        json={
+            "title": "Creative Product Links",
+            "profile_id": profile.id,
+            "product_links": [
+                {"product_id": product_a.id, "is_primary": True},
+                {"product_id": product_b.id},
+            ],
+            "input_items": [{"material_type": "video", "material_id": video.id}],
+        },
+    )
+
+    assert create_response.status_code == 201
+    created = create_response.json()
+    assert created["subject_product_id"] == product_a.id
+    assert created["current_product_name"] == product_a.name
+    assert created["product_name_mode"] == "follow_primary_product"
+    assert created["current_cover_asset_id"] == product_a_cover.id
+    assert created["cover_mode"] == "default_from_primary_product"
+    assert [link["product_id"] for link in created["product_links"]] == [product_a.id, product_b.id]
+    assert [link["is_primary"] for link in created["product_links"]] == [True, False]
+
+    patch_response = await client.patch(
+        f"/api/creatives/{created['id']}",
+        json={
+            "product_links": [
+                {"product_id": product_b.id, "is_primary": True},
+                {"product_id": product_a.id},
+            ]
+        },
+    )
+
+    assert patch_response.status_code == 200
+    payload = patch_response.json()
+    assert payload["subject_product_id"] == product_b.id
+    assert payload["current_product_name"] == product_b.name
+    assert payload["product_name_mode"] == "follow_primary_product"
+    assert payload["current_cover_asset_id"] == product_b_cover.id
+    assert payload["cover_mode"] == "default_from_primary_product"
+    assert [link["product_id"] for link in payload["product_links"]] == [product_b.id, product_a.id]
+    assert [link["sort_order"] for link in payload["product_links"]] == [1, 2]
+    assert [link["is_primary"] for link in payload["product_links"]] == [True, False]
+
+
+@pytest.mark.asyncio
+async def test_creative_patch_keeps_manual_product_name_and_cover_when_primary_switches_via_product_links(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    profile, product_a, video, _, _, _, _ = await _seed_domain_inputs(
+        db_session,
+        composition_mode="none",
+    )
+    product_b = Product(name="creative-phase1-product-manual-alt")
+    manual_cover = Cover(
+        name="manual-slice2-cover",
+        file_path="data/covers/manual-slice2-cover.png",
+    )
+    db_session.add_all([product_b, manual_cover])
+    await db_session.commit()
+    await db_session.refresh(product_b)
+    await db_session.refresh(manual_cover)
+
+    create_response = await client.post(
+        "/api/creatives",
+        json={
+            "title": "Manual Slice 2 Creative",
+            "profile_id": profile.id,
+            "product_links": [
+                {"product_id": product_a.id, "is_primary": True},
+                {"product_id": product_b.id},
+            ],
+            "current_product_name": "Manual Product Name",
+            "product_name_mode": "manual",
+            "current_cover_asset_id": manual_cover.id,
+            "cover_mode": "manual",
+            "input_items": [{"material_type": "video", "material_id": video.id}],
+        },
+    )
+    assert create_response.status_code == 201
+    created = create_response.json()
+
+    patch_response = await client.patch(
+        f"/api/creatives/{created['id']}",
+        json={
+            "product_links": [
+                {"product_id": product_b.id, "is_primary": True},
+                {"product_id": product_a.id},
+            ]
+        },
+    )
+
+    assert patch_response.status_code == 200
+    payload = patch_response.json()
+    assert payload["subject_product_id"] == product_b.id
+    assert payload["current_product_name"] == "Manual Product Name"
+    assert payload["product_name_mode"] == "manual"
+    assert payload["current_cover_asset_id"] == manual_cover.id
+    assert payload["cover_mode"] == "manual"
+
+
+@pytest.mark.asyncio
+async def test_creative_patch_can_remove_non_primary_product_link(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    profile, product_a, video, _, _, _, _ = await _seed_domain_inputs(
+        db_session,
+        composition_mode="none",
+    )
+    product_b = Product(name="creative-phase1-product-removable")
+    db_session.add(product_b)
+    await db_session.commit()
+    await db_session.refresh(product_b)
+
+    create_response = await client.post(
+        "/api/creatives",
+        json={
+            "title": "Remove Product Link Creative",
+            "profile_id": profile.id,
+            "product_links": [
+                {"product_id": product_a.id, "is_primary": True},
+                {"product_id": product_b.id},
+            ],
+            "input_items": [{"material_type": "video", "material_id": video.id}],
+        },
+    )
+    assert create_response.status_code == 201
+    created = create_response.json()
+
+    patch_response = await client.patch(
+        f"/api/creatives/{created['id']}",
+        json={
+            "product_links": [
+                {"product_id": product_a.id, "is_primary": True},
+            ]
+        },
+    )
+
+    assert patch_response.status_code == 200
+    payload = patch_response.json()
+    assert payload["subject_product_id"] == product_a.id
+    assert [link["product_id"] for link in payload["product_links"]] == [product_a.id]
+    assert payload["current_product_name"] == product_a.name
 
 
 @pytest.mark.asyncio

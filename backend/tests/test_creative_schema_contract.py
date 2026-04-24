@@ -5,7 +5,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from models import CreativeInputItem, CreativeItem, Product
+from models import CreativeInputItem, CreativeItem, CreativeProductLink, Product
 from schemas import (
     CreativeCoverMode,
     CreativeCreateRequest,
@@ -13,6 +13,7 @@ from schemas import (
     CreativeCurrentCoverAssetType,
     CreativeEligibilityStatus,
     CreativeItemResponse,
+    CreativeProductLinkSourceMode,
     CreativeProductNameMode,
     CreativeStatus,
     CreativeUpdateRequest,
@@ -451,6 +452,80 @@ async def test_migration_036_backfills_current_truth_fields_additively() -> None
 
 
 @pytest.mark.asyncio
+async def test_migration_037_backfills_creative_product_links_additively() -> None:
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+    try:
+        async with engine.begin() as conn:
+            await conn.exec_driver_sql(
+                """
+                CREATE TABLE products (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name VARCHAR(256) NOT NULL
+                )
+                """
+            )
+            await conn.exec_driver_sql(
+                """
+                CREATE TABLE creative_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    creative_no VARCHAR(64) NOT NULL,
+                    title VARCHAR(256),
+                    subject_product_id INTEGER,
+                    created_at DATETIME,
+                    updated_at DATETIME
+                )
+                """
+            )
+            await conn.exec_driver_sql("INSERT INTO products (id, name) VALUES (1, 'Primary Product')")
+            await conn.exec_driver_sql("INSERT INTO products (id, name) VALUES (2, 'Secondary Product')")
+            await conn.exec_driver_sql(
+                """
+                INSERT INTO creative_items (id, creative_no, title, subject_product_id)
+                VALUES (1, 'CR-037-0001', 'legacy creative', 2)
+                """
+            )
+
+        migration_037 = importlib.import_module("migrations.037_creative_product_links")
+        await migration_037.run_migration(engine)
+        await migration_037.run_migration(engine)
+
+        async with engine.begin() as conn:
+            tables = {
+                row[0]
+                for row in (
+                    await conn.exec_driver_sql(
+                        "SELECT name FROM sqlite_master WHERE type='table'"
+                    )
+                ).fetchall()
+            }
+            indexes = {
+                row[1]
+                for row in (
+                    await conn.exec_driver_sql("PRAGMA index_list('creative_product_links')")
+                ).fetchall()
+            }
+            product_links = (
+                await conn.exec_driver_sql(
+                    """
+                    SELECT creative_item_id, product_id, sort_order, is_primary, enabled, source_mode
+                    FROM creative_product_links
+                    ORDER BY creative_item_id, sort_order, id
+                    """
+                )
+            ).fetchall()
+
+        assert "creative_product_links" in tables
+        assert "ix_creative_product_links_creative_item_id" in indexes
+        assert "ix_creative_product_links_product_id" in indexes
+        assert "uq_creative_product_links_primary_per_creative" in indexes
+        assert product_links == [
+            (1, 2, 1, 1, 1, "import_bootstrap"),
+        ]
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
 async def test_creative_input_items_preserve_duplicate_order_and_trim(db_session) -> None:
     product = Product(name="creative_phase1_contract_product")
     creative = CreativeItem(
@@ -513,6 +588,76 @@ async def test_creative_input_items_preserve_duplicate_order_and_trim(db_session
     assert [item.sequence for item in input_items] == [1, 2]
     assert [item.role for item in input_items] == ["primary", "ending"]
     assert [(item.trim_in, item.trim_out) for item in input_items] == [(0, 15), (20, 35)]
+
+
+def test_creative_product_link_write_rejects_duplicate_products() -> None:
+    with pytest.raises(ValidationError):
+        CreativeCreateRequest(
+            title="duplicate products",
+            product_links=[
+                {"product_id": 1, "is_primary": True},
+                {"product_id": 1, "is_primary": False},
+            ],
+        )
+
+
+def test_creative_product_link_write_rejects_multiple_primaries() -> None:
+    with pytest.raises(ValidationError):
+        CreativeUpdateRequest(
+            product_links=[
+                {"product_id": 1, "is_primary": True},
+                {"product_id": 2, "is_primary": True},
+            ],
+        )
+
+
+@pytest.mark.asyncio
+async def test_creative_product_links_model_supports_single_primary_and_order(db_session) -> None:
+    product_a = Product(name="creative-product-a")
+    product_b = Product(name="creative-product-b")
+    creative = CreativeItem(
+        creative_no="CR-SLICE2-0001",
+        title="Slice 2 creative",
+        status=CreativeStatus.PENDING_INPUT.value,
+        latest_version_no=0,
+    )
+    db_session.add_all([product_a, product_b, creative])
+    await db_session.flush()
+
+    db_session.add_all(
+        [
+            CreativeProductLink(
+                creative_item_id=creative.id,
+                product_id=product_a.id,
+                sort_order=1,
+                is_primary=False,
+                enabled=True,
+                source_mode=CreativeProductLinkSourceMode.MANUAL_ADD.value,
+            ),
+            CreativeProductLink(
+                creative_item_id=creative.id,
+                product_id=product_b.id,
+                sort_order=2,
+                is_primary=True,
+                enabled=True,
+                source_mode=CreativeProductLinkSourceMode.IMPORT_BOOTSTRAP.value,
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    reloaded_links = (
+        await db_session.execute(
+            select(CreativeProductLink)
+            .where(CreativeProductLink.creative_item_id == creative.id)
+            .order_by(CreativeProductLink.sort_order.asc(), CreativeProductLink.id.asc())
+        )
+    ).scalars().all()
+
+    assert [(link.product_id, link.sort_order, link.is_primary) for link in reloaded_links] == [
+        (product_a.id, 1, False),
+        (product_b.id, 2, True),
+    ]
 
 
 def test_phase_a_task_write_contracts_do_not_expose_task_kind() -> None:

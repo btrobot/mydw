@@ -1342,6 +1342,12 @@ export type CreativeCreateRequest = {
      */
     profile_id?: number | null;
     /**
+     * Product Links
+     *
+     * Slice 2 canonical creative-product association surface.
+     */
+    product_links?: Array<CreativeProductLinkWrite>;
+    /**
      * Video Ids
      *
      * Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.
@@ -1473,6 +1479,10 @@ export type CreativeDetailResponse = {
      * Linked Task Ids
      */
     linked_task_ids?: Array<number>;
+    /**
+     * Product Links
+     */
+    product_links?: Array<CreativeProductLinkResponse>;
     /**
      * Subject Product Id
      */
@@ -1729,6 +1739,65 @@ export type CreativeLatestTaskSummaryResponse = {
 };
 
 /**
+ * CreativeProductLinkResponse
+ */
+export type CreativeProductLinkResponse = {
+    /**
+     * Id
+     */
+    id?: number | null;
+    /**
+     * Product Id
+     */
+    product_id: number;
+    /**
+     * Product Name
+     */
+    product_name?: string | null;
+    /**
+     * Sort Order
+     */
+    sort_order: number;
+    /**
+     * Is Primary
+     */
+    is_primary?: boolean;
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    source_mode?: CreativeProductLinkSourceMode;
+};
+
+/**
+ * CreativeProductLinkSourceMode
+ */
+export type CreativeProductLinkSourceMode = 'manual_add' | 'import_bootstrap';
+
+/**
+ * CreativeProductLinkWrite
+ */
+export type CreativeProductLinkWrite = {
+    /**
+     * Product Id
+     */
+    product_id: number;
+    /**
+     * Sort Order
+     */
+    sort_order?: number | null;
+    /**
+     * Is Primary
+     */
+    is_primary?: boolean;
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    source_mode?: CreativeProductLinkSourceMode | null;
+};
+
+/**
  * CreativeProductNameMode
  */
 export type CreativeProductNameMode = 'follow_primary_product' | 'adopted_candidate' | 'manual';
@@ -1856,6 +1925,12 @@ export type CreativeUpdateRequest = {
      * Profile Id
      */
     profile_id?: number | null;
+    /**
+     * Product Links
+     *
+     * When present, product_links is the Slice 2 canonical creative-product association source.
+     */
+    product_links?: Array<CreativeProductLinkWrite> | null;
     /**
      * Video Ids
      *

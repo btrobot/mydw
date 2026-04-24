@@ -111,6 +111,11 @@ class CreativeCopywritingMode(str, Enum):
     MANUAL = "manual"
 
 
+class CreativeProductLinkSourceMode(str, Enum):
+    MANUAL_ADD = "manual_add"
+    IMPORT_BOOTSTRAP = "import_bootstrap"
+
+
 class CreativeReviewConclusion(str, Enum):
     APPROVED = "APPROVED"
     REWORK_REQUIRED = "REWORK_REQUIRED"
@@ -662,6 +667,19 @@ def _default_creative_input_orchestration_response() -> CreativeInputOrchestrati
     return CreativeInputOrchestrationResponse(orchestration_hash="0" * 64)
 
 
+def _validate_creative_product_link_writes(
+    product_links: Optional[List["CreativeProductLinkWrite"]],
+) -> None:
+    if product_links is None:
+        return
+    product_ids = [item.product_id for item in product_links]
+    if len(product_ids) != len(set(product_ids)):
+        raise ValueError("product_links 不允许重复商品")
+    primary_count = sum(1 for item in product_links if item.is_primary)
+    if primary_count > 1:
+        raise ValueError("product_links 最多只能有 1 个主题商品")
+
+
 class CreativeInputMaterialType(str, Enum):
     VIDEO = "video"
     COPYWRITING = "copywriting"
@@ -707,6 +725,26 @@ class CreativeInputItemResponse(BaseModel):
     enabled: bool = True
 
 
+class CreativeProductLinkWrite(BaseModel):
+    product_id: int = Field(..., ge=1)
+    sort_order: Optional[int] = Field(None, ge=1)
+    is_primary: bool = False
+    enabled: bool = True
+    source_mode: Optional[CreativeProductLinkSourceMode] = None
+
+
+class CreativeProductLinkResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: Optional[int] = None
+    product_id: int
+    product_name: Optional[str] = None
+    sort_order: int
+    is_primary: bool = False
+    enabled: bool = True
+    source_mode: CreativeProductLinkSourceMode = CreativeProductLinkSourceMode.MANUAL_ADD
+
+
 class CreativeLatestTaskSummaryResponse(BaseModel):
     task_id: int
     task_kind: Optional[TaskKind] = None
@@ -732,6 +770,10 @@ class CreativeCreateRequest(BaseModel):
     copywriting_mode: Optional[CreativeCopywritingMode] = None
     target_duration_seconds: Optional[int] = Field(None, ge=1)
     profile_id: Optional[int] = None
+    product_links: List[CreativeProductLinkWrite] = Field(
+        default_factory=list,
+        description="Slice 2 canonical creative-product association surface.",
+    )
     video_ids: List[int] = Field(
         default_factory=list,
         description="Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.",
@@ -784,6 +826,11 @@ class CreativeCreateRequest(BaseModel):
             self.current_cover_asset_type = CreativeCurrentCoverAssetType.COVER
         return self
 
+    @model_validator(mode="after")
+    def validate_product_links_contract(self) -> "CreativeCreateRequest":
+        _validate_creative_product_link_writes(self.product_links)
+        return self
+
 
 class CreativeUpdateRequest(BaseModel):
     title: Optional[str] = Field(None, max_length=256)
@@ -800,6 +847,10 @@ class CreativeUpdateRequest(BaseModel):
     copywriting_mode: Optional[CreativeCopywritingMode] = None
     target_duration_seconds: Optional[int] = Field(None, ge=1)
     profile_id: Optional[int] = None
+    product_links: Optional[List[CreativeProductLinkWrite]] = Field(
+        None,
+        description="When present, product_links is the Slice 2 canonical creative-product association source.",
+    )
     video_ids: Optional[List[int]] = Field(
         None,
         description="Deprecated compatibility-only projection field. Phase 2 write requests must use input_items.",
@@ -850,6 +901,11 @@ class CreativeUpdateRequest(BaseModel):
             raise ValueError("current_cover_asset_type currently only supports 'cover'")
         if self.current_cover_asset_id is not None and self.current_cover_asset_type is None:
             self.current_cover_asset_type = CreativeCurrentCoverAssetType.COVER
+        return self
+
+    @model_validator(mode="after")
+    def validate_product_links_contract(self) -> "CreativeUpdateRequest":
+        _validate_creative_product_link_writes(self.product_links)
         return self
 
 
@@ -1031,6 +1087,7 @@ class CreativeDetailResponse(BaseModel):
     versions: List[CreativeVersionSummaryResponse] = Field(default_factory=list)
     review_summary: Optional[CreativeReviewSummaryResponse] = None
     linked_task_ids: List[int] = Field(default_factory=list)
+    product_links: List[CreativeProductLinkResponse] = Field(default_factory=list)
     subject_product_id: Optional[int] = None
     subject_product_name_snapshot: Optional[str] = None
     main_copywriting_text: Optional[str] = None

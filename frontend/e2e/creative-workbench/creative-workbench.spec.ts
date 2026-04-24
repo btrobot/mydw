@@ -173,8 +173,21 @@ const creativeDetailPayload = {
   },
   linked_task_ids: [901],
   updated_at: '2026-04-16T10:00:00Z',
+  product_links: [
+    {
+      id: 1,
+      product_id: 301,
+      product_name: 'Classic Hoodie',
+      sort_order: 1,
+      is_primary: true,
+      enabled: true,
+      source_mode: 'import_bootstrap',
+    },
+  ],
   subject_product_id: 301,
   subject_product_name_snapshot: 'Classic Hoodie',
+  current_product_name: 'Classic Hoodie',
+  product_name_mode: 'follow_primary_product',
   main_copywriting_text: '轻盈春装，上身即走。',
   target_duration_seconds: 30,
   input_items: [
@@ -741,6 +754,10 @@ test.describe('Creative workbench baseline', () => {
     await expect.poll(() => updatePayload).toBeTruthy()
     expect(updatePayload).toMatchObject({
       profile_id: 1,
+      subject_product_id: 301,
+      product_links: [
+        { product_id: 301, sort_order: 1, is_primary: true },
+      ],
       subject_product_name_snapshot: 'Runner Pro',
       main_copywriting_text: '主推轻盈舒适与全天候穿着体验。',
       target_duration_seconds: 45,

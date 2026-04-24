@@ -21,6 +21,7 @@ from models import (
     Cover,
     CreativeInputItem,
     CreativeItem,
+    CreativeProductLink,
     CreativeVersion,
     Product,
     PublishPoolItem,
@@ -43,6 +44,7 @@ from schemas import (
     CreativeInputOrchestrationResponse,
     CreativeItemResponse,
     CreativeLatestTaskSummaryResponse,
+    CreativeProductLinkResponse,
     CreativeComposeSubmitResponse,
     CreativeReviewSummaryResponse,
     CreativeStatus,
@@ -147,8 +149,14 @@ class CreativeService:
         if await self._creative_no_exists(creative_no):
             raise ValueError("作品编号已存在")
 
+        product_links_payload = await self._resolve_authoritative_product_links(
+            existing_links=[],
+            explicit_product_links=payload.product_links if "product_links" in payload.model_fields_set else None,
+            compat_subject_product_id=payload.subject_product_id if "subject_product_id" in payload.model_fields_set else _UNSET,
+        )
+        primary_product_id = self._extract_primary_product_id(product_links_payload)
         product_truth = await self._resolve_current_product_truth(
-            subject_product_id=payload.subject_product_id,
+            subject_product_id=primary_product_id,
             explicit_current_product_name=payload.current_product_name if "current_product_name" in payload.model_fields_set else _UNSET,
             explicit_product_name_mode=payload.product_name_mode.value if "product_name_mode" in payload.model_fields_set and payload.product_name_mode is not None else (None if "product_name_mode" in payload.model_fields_set else _UNSET),
             explicit_legacy_snapshot=payload.subject_product_name_snapshot if "subject_product_name_snapshot" in payload.model_fields_set else _UNSET,
@@ -167,7 +175,7 @@ class CreativeService:
             existing_legacy_text=None,
         )
         cover_truth = await self._resolve_current_cover_truth(
-            subject_product_id=payload.subject_product_id,
+            subject_product_id=primary_product_id,
             explicit_current_cover_asset_type=payload.current_cover_asset_type.value if "current_cover_asset_type" in payload.model_fields_set and payload.current_cover_asset_type is not None else (None if "current_cover_asset_type" in payload.model_fields_set else _UNSET),
             explicit_current_cover_asset_id=payload.current_cover_asset_id if "current_cover_asset_id" in payload.model_fields_set else _UNSET,
             explicit_cover_mode=payload.cover_mode.value if "cover_mode" in payload.model_fields_set and payload.cover_mode is not None else (None if "cover_mode" in payload.model_fields_set else _UNSET),
@@ -180,7 +188,7 @@ class CreativeService:
             title=payload.title,
             status=CreativeStatus.PENDING_INPUT.value,
             latest_version_no=0,
-            subject_product_id=payload.subject_product_id,
+            subject_product_id=primary_product_id,
             subject_product_name_snapshot=product_truth["compat_snapshot"],
             main_copywriting_text=copywriting_truth["compat_text"],
             current_product_name=product_truth["current_product_name"],
@@ -195,6 +203,7 @@ class CreativeService:
         )
         self.db.add(creative)
         await self.db.flush()
+        self._apply_product_links(creative, product_links_payload)
 
         input_profile_id, authoritative_input_items = self._resolve_authoritative_input_state(
             profile_id=payload.profile_id,
@@ -245,11 +254,12 @@ class CreativeService:
         if "target_duration_seconds" in payload.model_fields_set:
             creative.target_duration_seconds = payload.target_duration_seconds
 
-        next_subject_product_id = (
-            payload.subject_product_id
-            if "subject_product_id" in payload.model_fields_set
-            else creative.subject_product_id
+        next_product_links = await self._resolve_authoritative_product_links(
+            existing_links=creative.product_links,
+            explicit_product_links=payload.product_links if "product_links" in payload.model_fields_set else None,
+            compat_subject_product_id=payload.subject_product_id if "subject_product_id" in payload.model_fields_set else _UNSET,
         )
+        next_subject_product_id = self._extract_primary_product_id(next_product_links)
         if self._payload_updates_product_truth(payload.model_fields_set):
             product_truth = await self._resolve_current_product_truth(
                 subject_product_id=next_subject_product_id,
@@ -264,12 +274,12 @@ class CreativeService:
             creative.current_product_name = product_truth["current_product_name"]
             creative.product_name_mode = product_truth["product_name_mode"]
             creative.subject_product_name_snapshot = product_truth["compat_snapshot"]
-        elif "subject_product_id" in payload.model_fields_set:
+        elif self._payload_updates_product_links(payload.model_fields_set):
             creative.subject_product_id = next_subject_product_id
 
         if self._payload_updates_cover_truth(payload.model_fields_set):
             cover_truth = await self._resolve_current_cover_truth(
-                subject_product_id=creative.subject_product_id,
+                subject_product_id=next_subject_product_id,
                 explicit_current_cover_asset_type=payload.current_cover_asset_type.value if "current_cover_asset_type" in payload.model_fields_set and payload.current_cover_asset_type is not None else (None if "current_cover_asset_type" in payload.model_fields_set else _UNSET),
                 explicit_current_cover_asset_id=payload.current_cover_asset_id if "current_cover_asset_id" in payload.model_fields_set else _UNSET,
                 explicit_cover_mode=payload.cover_mode.value if "cover_mode" in payload.model_fields_set and payload.cover_mode is not None else (None if "cover_mode" in payload.model_fields_set else _UNSET),
@@ -280,6 +290,9 @@ class CreativeService:
             creative.current_cover_asset_type = cover_truth["current_cover_asset_type"]
             creative.current_cover_asset_id = cover_truth["current_cover_asset_id"]
             creative.cover_mode = cover_truth["cover_mode"]
+
+        if self._payload_updates_product_links(payload.model_fields_set):
+            self._apply_product_links(creative, next_product_links)
 
         if self._payload_updates_copywriting_truth(payload.model_fields_set):
             copywriting_truth = await self._resolve_current_copywriting_truth(
@@ -554,6 +567,7 @@ class CreativeService:
             .options(
                 selectinload(CreativeItem.input_items),
                 selectinload(CreativeItem.input_profile),
+                selectinload(CreativeItem.product_links).selectinload(CreativeProductLink.product),
                 selectinload(CreativeItem.current_version).selectinload(CreativeVersion.package_records),
                 selectinload(CreativeItem.current_version).selectinload(CreativeVersion.check_records),
                 selectinload(CreativeItem.versions).selectinload(CreativeVersion.package_records),
@@ -650,6 +664,7 @@ class CreativeService:
             versions=versions,
             review_summary=review_summary,
             linked_task_ids=linked_task_ids,
+            product_links=self._build_product_links_response(creative),
             subject_product_id=creative.subject_product_id,
             subject_product_name_snapshot=creative.resolved_current_product_name(),
             main_copywriting_text=creative.resolved_current_copywriting_text(),
@@ -1012,17 +1027,196 @@ class CreativeService:
             enabled_material_counts=CreativeInputMaterialCountsResponse(**enabled_material_counts),
         )
 
+    def _build_product_links_response(
+        self,
+        creative: CreativeItem,
+    ) -> list[CreativeProductLinkResponse]:
+        return [
+            CreativeProductLinkResponse(
+                id=link.id,
+                product_id=link.product_id,
+                product_name=link.product.name if link.product is not None else None,
+                sort_order=link.sort_order,
+                is_primary=link.is_primary,
+                enabled=link.enabled,
+                source_mode=link.source_mode,
+            )
+            for link in sorted(creative.product_links, key=lambda item: (item.sort_order, item.id or 0))
+        ]
+
+    async def _resolve_authoritative_product_links(
+        self,
+        *,
+        existing_links: list[CreativeProductLink],
+        explicit_product_links: Optional[list[Any]],
+        compat_subject_product_id: Any,
+    ) -> list[dict[str, Any]]:
+        if explicit_product_links is not None:
+            normalized_links = self._serialize_product_link_payloads(explicit_product_links)
+        elif compat_subject_product_id is not _UNSET:
+            normalized_links = self._normalize_product_links_from_compat_subject(
+                existing_links=existing_links,
+                compat_subject_product_id=compat_subject_product_id,
+            )
+        else:
+            normalized_links = self._serialize_existing_product_links(existing_links)
+
+        if normalized_links:
+            primary_count = sum(1 for link in normalized_links if link["is_primary"])
+            if primary_count == 0:
+                normalized_links[0]["is_primary"] = True
+            elif primary_count > 1:
+                raise ValueError("product_links ????? 1 ?????")
+
+        product_ids = [link["product_id"] for link in normalized_links]
+        if len(product_ids) != len(set(product_ids)):
+            raise ValueError("product_links ???????")
+
+        await self._assert_products_exist(product_ids)
+        return normalized_links
+
+    def _normalize_product_links_from_compat_subject(
+        self,
+        *,
+        existing_links: list[CreativeProductLink],
+        compat_subject_product_id: Optional[int],
+    ) -> list[dict[str, Any]]:
+        if compat_subject_product_id is None:
+            return []
+
+        normalized_links = self._serialize_existing_product_links(existing_links)
+        for index, link in enumerate(normalized_links, start=1):
+            link["sort_order"] = index
+            link["is_primary"] = int(link["product_id"]) == int(compat_subject_product_id)
+        if any(link["is_primary"] for link in normalized_links):
+            return normalized_links
+        normalized_links.append(
+            {
+                "product_id": int(compat_subject_product_id),
+                "sort_order": len(normalized_links) + 1,
+                "is_primary": True,
+                "enabled": True,
+                "source_mode": "import_bootstrap",
+            }
+        )
+        return normalized_links
+
+    def _serialize_existing_product_links(
+        self,
+        existing_links: list[CreativeProductLink],
+    ) -> list[dict[str, Any]]:
+        return [
+            self._serialize_product_link_payload(
+                product_id=link.product_id,
+                sort_order=link.sort_order,
+                is_primary=link.is_primary,
+                enabled=link.enabled,
+                source_mode=link.source_mode,
+            )
+            for link in sorted(existing_links, key=lambda item: (item.sort_order, item.id or 0))
+        ]
+
+    def _serialize_product_link_payloads(
+        self,
+        product_links: list[Any],
+    ) -> list[dict[str, Any]]:
+        return [
+            self._serialize_product_link_payload(
+                product_id=link.product_id,
+                sort_order=index + 1,
+                is_primary=link.is_primary,
+                enabled=link.enabled,
+                source_mode=link.source_mode,
+            )
+            for index, link in enumerate(product_links)
+        ]
+
+    def _serialize_product_link_payload(
+        self,
+        *,
+        product_id: Any,
+        sort_order: Any,
+        is_primary: Any,
+        enabled: Any,
+        source_mode: Any,
+    ) -> dict[str, Any]:
+        normalized_source_mode = (
+            source_mode.value
+            if getattr(source_mode, "value", None) is not None
+            else str(source_mode or "manual_add")
+        )
+        return {
+            "product_id": int(product_id),
+            "sort_order": int(sort_order),
+            "is_primary": bool(is_primary),
+            "enabled": bool(enabled),
+            "source_mode": normalized_source_mode,
+        }
+
+    async def _assert_products_exist(self, product_ids: list[int]) -> None:
+        if not product_ids:
+            return
+        result = await self.db.execute(select(Product.id).where(Product.id.in_(product_ids)))
+        existing_ids = set(result.scalars().all())
+        if len(existing_ids) != len(set(product_ids)):
+            raise ValueError("???????")
+
+    def _extract_primary_product_id(self, product_links: list[dict[str, Any]]) -> Optional[int]:
+        for link in product_links:
+            if link["is_primary"]:
+                return int(link["product_id"])
+        return None
+
+    def _apply_product_links(
+        self,
+        creative: CreativeItem,
+        product_links: list[dict[str, Any]],
+    ) -> None:
+        if "product_links" not in creative.__dict__:
+            set_committed_value(creative, "product_links", [])
+        existing_links = creative.product_links
+        existing_links_by_product_id = {int(link.product_id): link for link in existing_links}
+        next_product_ids = {int(link["product_id"]) for link in product_links}
+
+        for existing_link in list(existing_links):
+            if int(existing_link.product_id) not in next_product_ids:
+                creative.product_links.remove(existing_link)
+
+        for index, link_payload in enumerate(product_links, start=1):
+            product_id = int(link_payload["product_id"])
+            existing_link = existing_links_by_product_id.get(product_id)
+            if existing_link is None:
+                creative.product_links.append(
+                    CreativeProductLink(
+                        creative_item_id=creative.id,
+                        product_id=product_id,
+                        sort_order=index,
+                        is_primary=bool(link_payload["is_primary"]),
+                        enabled=bool(link_payload["enabled"]),
+                        source_mode=str(link_payload["source_mode"] or "manual_add"),
+                    )
+                )
+                continue
+
+            existing_link.sort_order = index
+            existing_link.is_primary = bool(link_payload["is_primary"])
+            existing_link.enabled = bool(link_payload["enabled"])
+            existing_link.source_mode = str(link_payload["source_mode"] or "manual_add")
+
     def _payload_updates_product_truth(self, model_fields_set: set[str]) -> bool:
         return any(
             field_name in model_fields_set
-            for field_name in ("subject_product_id", "subject_product_name_snapshot", "current_product_name", "product_name_mode")
+            for field_name in ("product_links", "subject_product_id", "subject_product_name_snapshot", "current_product_name", "product_name_mode")
         )
 
     def _payload_updates_cover_truth(self, model_fields_set: set[str]) -> bool:
         return any(
             field_name in model_fields_set
-            for field_name in ("subject_product_id", "current_cover_asset_type", "current_cover_asset_id", "cover_mode")
+            for field_name in ("product_links", "subject_product_id", "current_cover_asset_type", "current_cover_asset_id", "cover_mode")
         )
+
+    def _payload_updates_product_links(self, model_fields_set: set[str]) -> bool:
+        return any(field_name in model_fields_set for field_name in ("product_links", "subject_product_id"))
 
     def _payload_updates_copywriting_truth(self, model_fields_set: set[str]) -> bool:
         return any(

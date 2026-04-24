@@ -5,6 +5,9 @@ import type {
   CreativeDetailResponse,
   CreativeInputItemResponse,
   CreativeInputItemWrite,
+  CreativeProductLinkResponse,
+  CreativeProductLinkSourceMode,
+  CreativeProductLinkWrite,
   CreativeProductNameMode,
 } from '@/api'
 
@@ -31,7 +34,6 @@ export type CreativeAuthoringInputItemFormValue = {
 export type CreativeAuthoringFormValues = {
   title?: string
   profile_id?: number
-  subject_product_id?: number
   subject_product_name_snapshot?: string
   main_copywriting_text?: string
   current_product_name?: string
@@ -43,7 +45,15 @@ export type CreativeAuthoringFormValues = {
   current_copywriting_text?: string
   copywriting_mode?: CreativeCopywritingMode
   target_duration_seconds?: number
+  product_links: CreativeAuthoringProductLinkFormValue[]
   input_items: CreativeAuthoringInputItemFormValue[]
+}
+
+export type CreativeAuthoringProductLinkFormValue = {
+  product_id?: number
+  is_primary?: boolean
+  enabled?: boolean
+  source_mode?: CreativeProductLinkSourceMode
 }
 
 const normalizeInputItem = (
@@ -82,12 +92,69 @@ export const getCreativeAuthoringInputItems = (
     .map(normalizeInputItem)
 }
 
+const normalizeProductLink = (
+  item: CreativeProductLinkResponse | Record<string, unknown>,
+): CreativeAuthoringProductLinkFormValue => ({
+  product_id:
+    item.product_id === undefined || item.product_id === null
+      ? undefined
+      : Number(item.product_id),
+  is_primary: item.is_primary === undefined ? false : Boolean(item.is_primary),
+  enabled: item.enabled === undefined ? true : Boolean(item.enabled),
+  source_mode:
+    typeof item.source_mode === 'string'
+      ? item.source_mode as CreativeProductLinkSourceMode
+      : undefined,
+})
+
+const normalizeAuthoringProductLinks = (
+  productLinks: CreativeAuthoringProductLinkFormValue[] | undefined,
+): Array<CreativeProductLinkWrite> => {
+  const normalizedLinks = (productLinks ?? [])
+    .filter((item) => item.product_id !== undefined && item.product_id !== null)
+    .map((item, index) => ({
+      product_id: Number(item.product_id),
+      sort_order: index + 1,
+      is_primary: Boolean(item.is_primary),
+      enabled: item.enabled ?? true,
+      source_mode: item.source_mode ?? 'manual_add',
+    }))
+
+  if (normalizedLinks.length > 0 && !normalizedLinks.some((item) => item.is_primary)) {
+    normalizedLinks[0].is_primary = true
+  }
+
+  return normalizedLinks
+}
+
+export const getCreativeAuthoringProductLinks = (
+  creative: Pick<CreativeDetailResponse, 'product_links' | 'subject_product_id'>,
+): CreativeAuthoringProductLinkFormValue[] => {
+  const productLinks = creative.product_links ?? []
+  if (productLinks.length > 0) {
+    return [...productLinks]
+      .sort((left, right) => (left.sort_order ?? 0) - (right.sort_order ?? 0))
+      .map(normalizeProductLink)
+  }
+  if (creative.subject_product_id !== undefined && creative.subject_product_id !== null) {
+    return [{ product_id: Number(creative.subject_product_id), is_primary: true, enabled: true, source_mode: 'import_bootstrap' }]
+  }
+  return []
+}
+
+export const getPrimaryCreativeProductId = (
+  productLinks: CreativeAuthoringProductLinkFormValue[] | undefined,
+): number | undefined => {
+  const normalizedLinks = normalizeAuthoringProductLinks(productLinks)
+  const explicitPrimary = normalizedLinks.find((item) => item.is_primary)
+  return explicitPrimary?.product_id
+}
+
 export const toCreativeAuthoringFormValues = (
   creative: CreativeDetailResponse,
 ): CreativeAuthoringFormValues => ({
   title: creative.title ?? undefined,
   profile_id: creative.input_orchestration?.profile_id ?? undefined,
-  subject_product_id: creative.subject_product_id ?? undefined,
   subject_product_name_snapshot: creative.subject_product_name_snapshot ?? undefined,
   main_copywriting_text: creative.main_copywriting_text ?? undefined,
   current_product_name: creative.current_product_name ?? creative.subject_product_name_snapshot ?? undefined,
@@ -99,6 +166,7 @@ export const toCreativeAuthoringFormValues = (
   current_copywriting_text: creative.current_copywriting_text ?? creative.main_copywriting_text ?? undefined,
   copywriting_mode: creative.copywriting_mode ?? undefined,
   target_duration_seconds: creative.target_duration_seconds ?? undefined,
+  product_links: getCreativeAuthoringProductLinks(creative),
   input_items: getCreativeAuthoringInputItems(creative),
 })
 
@@ -108,6 +176,7 @@ export const buildCreativeAuthoringPayload = (
   title?: string
   profile_id: number | null
   subject_product_id: number | null
+  product_links: Array<CreativeProductLinkWrite>
   subject_product_name_snapshot: string | null
   main_copywriting_text: string | null
   current_product_name: string | null
@@ -121,14 +190,16 @@ export const buildCreativeAuthoringPayload = (
   target_duration_seconds: number | null
   input_items: Array<CreativeInputItemWrite>
 } => {
+  const normalizedProductLinks = normalizeAuthoringProductLinks(values.product_links)
+  const primaryProductId = normalizedProductLinks.find((item) => item.is_primary)?.product_id ?? null
   const currentProductName = values.current_product_name?.trim() || null
   const currentCopywritingText = values.current_copywriting_text?.trim() || null
   const productNameMode = values.product_name_mode
-    ?? (values.subject_product_id ? 'follow_primary_product' : (currentProductName ? 'manual' : null))
+    ?? (primaryProductId ? 'follow_primary_product' : (currentProductName ? 'manual' : null))
   const coverMode = values.cover_mode
     ?? (values.current_cover_asset_id !== undefined && values.current_cover_asset_id !== null
       ? 'manual'
-      : (values.subject_product_id ? 'default_from_primary_product' : null))
+      : (primaryProductId ? 'default_from_primary_product' : null))
   const currentCoverAssetId = coverMode === 'default_from_primary_product'
     ? null
     : (values.current_cover_asset_id ?? null)
@@ -142,7 +213,8 @@ export const buildCreativeAuthoringPayload = (
   return {
     title: values.title?.trim() ? values.title.trim() : undefined,
     profile_id: values.profile_id ?? null,
-    subject_product_id: values.subject_product_id ?? null,
+    subject_product_id: primaryProductId,
+    product_links: normalizedProductLinks,
     subject_product_name_snapshot: currentProductName,
     main_copywriting_text: currentCopywritingText,
     current_product_name: currentProductName,
