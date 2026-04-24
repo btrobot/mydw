@@ -467,6 +467,7 @@ class CreativeService:
             )
             await self.version_service.sync_publish_package(
                 creative.current_version,
+                creative_item=creative,
                 publish_profile_id=creative.input_profile_id,
                 frozen_video_path=None,
                 frozen_cover_path=await self._resolve_current_cover_path(creative),
@@ -2326,6 +2327,7 @@ class CreativeService:
         )
         await self.version_service.sync_publish_package(
             version,
+            creative_item=creative,
             package_status="ready",
             publish_profile_id=profile.id,
             frozen_video_path=resolved_video_path,

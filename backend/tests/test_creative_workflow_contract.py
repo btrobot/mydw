@@ -99,8 +99,14 @@ async def test_creative_workflow_submit_api_contract_returns_new_version(
     assert payload["package_record"]["frozen_duration_seconds"] == 10
     assert payload["package_record"]["frozen_product_name"] == "Workflow Product Snapshot"
     assert payload["package_record"]["frozen_copywriting_text"] == "Workflow Copywriting Snapshot"
-    assert manifest["workflow_type"] == "full_pipeline"
-    assert manifest["metadata"] == {"from": "contract-test"}
+    assert manifest["version"] == "v1"
+    assert manifest["creative_item_id"] == creative_id
+    assert manifest["creative_version_id"] == payload["version"]["id"]
+    assert manifest["current_product_name"] == "Workflow Product Snapshot"
+    assert manifest["current_copywriting"]["text"] == "Workflow Copywriting Snapshot"
+    assert manifest["selected_videos"] == []
+    assert manifest["selected_audios"] == []
+    assert manifest["source"] == "package"
 
 
 @pytest.mark.asyncio

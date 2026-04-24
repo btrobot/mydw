@@ -3,8 +3,6 @@ Composition-to-Creative writeback orchestration for Phase B PR-B2.
 """
 from __future__ import annotations
 
-from datetime import datetime
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import CreativeItem, Task
@@ -56,6 +54,7 @@ class CreativeGenerationService:
             package_updates["frozen_video_path"] = task.final_video_path
         if task.final_video_duration is not None:
             package_updates["frozen_duration_seconds"] = task.final_video_duration
+        package_updates["creative_item"] = creative
         await self.version_service.sync_publish_package(version, **package_updates)
         task.creative_version_id = version.id
         if task.task_kind is None:

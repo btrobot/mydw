@@ -113,10 +113,14 @@ async def test_ai_clip_workflow_submit_creates_reviewable_next_version(
     assert persisted_creative.current_version_id == versions[-1].id
     assert len(packages) == 1
     manifest = json.loads(packages[0].manifest_json)
-    assert manifest["workflow_type"] == "smart_clip"
-    assert manifest["source_version_id"] == initial_version.id
-    assert manifest["output"]["stored_path"] == "data/materials/videos/a1b2c3d4.mp4"
-    assert manifest["metadata"] == {"trigger": "test"}
+    assert manifest["version"] == "v1"
+    assert manifest["creative_item_id"] == creative.id
+    assert manifest["creative_version_id"] == versions[-1].id
+    assert manifest["current_product_name"] == ""
+    assert manifest["current_copywriting"]["text"] == ""
+    assert manifest["selected_videos"] == []
+    assert manifest["selected_audios"] == []
+    assert manifest["source"] == "package"
 
 
 @pytest.mark.asyncio

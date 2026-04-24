@@ -6,10 +6,12 @@ from __future__ import annotations
 import json
 from typing import Any, Optional
 
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from models import CheckRecord, CreativeItem, CreativeVersion, PackageRecord
+from models import CheckRecord, Cover, CreativeInputItem, CreativeItem, CreativeVersion, PackageRecord
 from schemas import (
     CheckRecordResponse,
     CreativeCurrentVersionResponse,
@@ -20,6 +22,56 @@ from services.publish_pool_service import PublishPoolService
 from utils.time import utc_now_naive
 
 _UNSET = object()
+
+
+class _CreativeManifestCurrentCover(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    asset_type: str | None = None
+    asset_id: int | None = None
+
+
+class _CreativeManifestCurrentCopywriting(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    copywriting_id: int | None = None
+    text: str = ""
+    mode: str
+
+
+class _CreativeManifestSelectedVideo(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    asset_id: int
+    sort_order: int
+    enabled: bool
+    trim_in: int | None = None
+    trim_out: int | None = None
+    slot_duration_seconds: int | None = None
+
+
+class _CreativeManifestSelectedAudio(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    asset_id: int
+    sort_order: int
+    enabled: bool
+
+
+class _CreativeManifestV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    version: str = "v1"
+    creative_item_id: int
+    creative_version_id: int
+    primary_product_id: int | None = None
+    current_product_name: str = ""
+    current_cover: _CreativeManifestCurrentCover
+    current_copywriting: _CreativeManifestCurrentCopywriting
+    selected_videos: list[_CreativeManifestSelectedVideo]
+    selected_audios: list[_CreativeManifestSelectedAudio]
+    frozen_at: str
+    source: str
 
 
 class CreativeVersionService:
@@ -92,12 +144,18 @@ class CreativeVersionService:
             creative_version=version,
             package_status=package_status,
             publish_profile_id=creative_item.input_profile_id,
-            frozen_duration_seconds=creative_item.target_duration_seconds,
-            frozen_product_name=creative_item.resolved_current_product_name(),
-            frozen_copywriting_text=creative_item.resolved_current_copywriting_text(),
         )
         self.db.add(package_record)
         await self.db.flush()
+        await self.sync_publish_package(
+            version,
+            creative_item=creative_item,
+            package_status=package_status,
+            publish_profile_id=creative_item.input_profile_id,
+            frozen_duration_seconds=creative_item.target_duration_seconds,
+            frozen_product_name=version.final_product_name,
+            frozen_copywriting_text=version.final_copywriting_text,
+        )
 
         creative_item.current_version_id = version.id
         creative_item.latest_version_no = version.version_no
@@ -164,6 +222,7 @@ class CreativeVersionService:
         self,
         version: CreativeVersion,
         *,
+        creative_item: CreativeItem | None = None,
         package_status: Optional[str] | object = _UNSET,
         publish_profile_id: Optional[int] | object = _UNSET,
         frozen_video_path: Optional[str] | object = _UNSET,
@@ -171,10 +230,15 @@ class CreativeVersionService:
         frozen_duration_seconds: Optional[int] | object = _UNSET,
         frozen_product_name: Optional[str] | object = _UNSET,
         frozen_copywriting_text: Optional[str] | object = _UNSET,
-        manifest_payload: Optional[dict[str, Any]] = None,
+        manifest_source: str = "package",
         manifest_json: Optional[str] = None,
     ) -> PackageRecord:
+        frozen_at = utc_now_naive()
         package_record = await self.get_or_create_package_record(version)
+        resolved_creative = await self._resolve_creative_freeze_context(
+            creative_item=creative_item,
+            creative_item_id=version.creative_item_id,
+        )
         if package_status is not _UNSET:
             package_record.package_status = package_status
         if publish_profile_id is not _UNSET:
@@ -189,17 +253,142 @@ class CreativeVersionService:
             package_record.frozen_product_name = frozen_product_name
         if frozen_copywriting_text is not _UNSET:
             package_record.frozen_copywriting_text = frozen_copywriting_text
-        if manifest_payload is not None:
+        if (
+            frozen_cover_path is _UNSET
+            and package_record.frozen_cover_path is None
+        ):
+            package_record.frozen_cover_path = await self._resolve_current_cover_path(resolved_creative)
+
+        if manifest_json is not None:
+            package_record.manifest_json = manifest_json
+        else:
+            manifest_payload = await self._build_manifest_payload(
+                creative_item=resolved_creative,
+                creative_version_id=version.id,
+                source=manifest_source,
+                frozen_at=frozen_at,
+            )
             package_record.manifest_json = json.dumps(
                 manifest_payload,
                 ensure_ascii=False,
-                sort_keys=True,
             )
-        elif manifest_json is not None:
-            package_record.manifest_json = manifest_json
-        package_record.updated_at = utc_now_naive()
+        package_record.updated_at = frozen_at
         await self.db.flush()
         return package_record
+
+    async def _load_creative_freeze_context(self, creative_item_id: int) -> CreativeItem:
+        result = await self.db.execute(
+            select(CreativeItem)
+            .options(
+                selectinload(CreativeItem.input_items),
+                selectinload(CreativeItem.current_cover),
+            )
+            .where(CreativeItem.id == creative_item_id)
+        )
+        creative_item = result.scalar_one()
+        return creative_item
+
+    async def _resolve_creative_freeze_context(
+        self,
+        *,
+        creative_item: CreativeItem | None,
+        creative_item_id: int,
+    ) -> CreativeItem:
+        if creative_item is None:
+            return await self._load_creative_freeze_context(creative_item_id)
+        if "input_items" not in creative_item.__dict__:
+            return await self._load_creative_freeze_context(creative_item.id)
+        if (
+            creative_item.current_cover_asset_id is not None
+            and "current_cover" not in creative_item.__dict__
+        ):
+            return await self._load_creative_freeze_context(creative_item.id)
+        return creative_item
+
+    async def _resolve_current_cover_path(self, creative_item: CreativeItem) -> str | None:
+        cover_id = creative_item.current_cover_asset_id
+        if cover_id is None:
+            return None
+        cover = creative_item.__dict__.get("current_cover")
+        if cover is None:
+            cover = await self.db.get(Cover, cover_id)
+        return cover.file_path if cover is not None else None
+
+    async def _build_manifest_payload(
+        self,
+        *,
+        creative_item: CreativeItem,
+        creative_version_id: int,
+        source: str,
+        frozen_at,
+    ) -> dict[str, Any]:
+        input_items = (
+            await self.db.execute(
+                select(CreativeInputItem)
+                .where(CreativeInputItem.creative_item_id == creative_item.id)
+            )
+        ).scalars().all()
+        selected_videos = self._build_selected_video_entries(input_items)
+        selected_audios = self._build_selected_audio_entries(input_items)
+        manifest = _CreativeManifestV1(
+            creative_item_id=creative_item.id,
+            creative_version_id=creative_version_id,
+            primary_product_id=creative_item.subject_product_id,
+            current_product_name=creative_item.resolved_current_product_name() or "",
+            current_cover=_CreativeManifestCurrentCover(
+                asset_type=creative_item.resolved_current_cover_asset_type(),
+                asset_id=creative_item.current_cover_asset_id,
+            ),
+            current_copywriting=_CreativeManifestCurrentCopywriting(
+                copywriting_id=creative_item.resolved_current_copywriting_id(),
+                text=creative_item.resolved_current_copywriting_text() or "",
+                mode=creative_item.resolved_copywriting_mode(),
+            ),
+            selected_videos=selected_videos,
+            selected_audios=selected_audios,
+            frozen_at=frozen_at.isoformat(),
+            source=source,
+        )
+        return manifest.model_dump(mode="json")
+
+    @staticmethod
+    def _build_selected_video_entries(
+        input_items: list[CreativeInputItem],
+    ) -> list[_CreativeManifestSelectedVideo]:
+        enabled_videos = [
+            item
+            for item in sorted(input_items, key=lambda row: (row.sequence, row.id or 0))
+            if item.material_type == "video" and bool(item.enabled)
+        ]
+        return [
+            _CreativeManifestSelectedVideo(
+                asset_id=int(item.material_id),
+                sort_order=index,
+                enabled=True,
+                trim_in=item.trim_in,
+                trim_out=item.trim_out,
+                slot_duration_seconds=item.slot_duration_seconds,
+            )
+            for index, item in enumerate(enabled_videos, start=1)
+        ]
+
+    @staticmethod
+    def _build_selected_audio_entries(
+        input_items: list[CreativeInputItem],
+    ) -> list[_CreativeManifestSelectedAudio]:
+        enabled_audios = [
+            item
+            for item in sorted(input_items, key=lambda row: (row.sequence, row.id or 0))
+            if item.material_type == "audio" and bool(item.enabled)
+        ]
+        return [
+            _CreativeManifestSelectedAudio(
+                asset_id=int(item.material_id),
+                sort_order=index,
+                enabled=True,
+            )
+            for index, item in enumerate(enabled_audios, start=1)
+        ]
 
     @staticmethod
     def build_check_record_response(record: Optional[CheckRecord]) -> Optional[CheckRecordResponse]:

@@ -3,7 +3,6 @@ AIClip-to-Creative workflow orchestration for Phase D PR-D1.
 """
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
@@ -67,7 +66,7 @@ class AIClipWorkflowService:
         if video_info is None:
             raise CreativeWorkflowError("无法识别 AIClip 输出视频", status_code=400)
 
-        stored_path, file_hash, file_size = await self.media_storage.store_from_path(
+        stored_path, _, _ = await self.media_storage.store_from_path(
             str(resolved_output_path),
             "videos",
         )
@@ -87,32 +86,15 @@ class AIClipWorkflowService:
             final_product_name=creative.resolved_current_product_name(),
             final_copywriting_text=creative.resolved_current_copywriting_text(),
         )
-        manifest_json = self._build_manifest_json(
-            source_version_id=source_version_id,
-            workflow_type=workflow_type,
-            original_output_path=str(resolved_output_path),
-            stored_output_path=stored_path,
-            file_hash=file_hash,
-            file_size=file_size,
-            video_info={
-                "duration": video_info.duration,
-                "width": video_info.width,
-                "height": video_info.height,
-                "fps": video_info.fps,
-                "format": video_info.format,
-                "size": video_info.size,
-            },
-            metadata=metadata or {},
-        )
         package_record = await self.version_service.sync_publish_package(
             version,
+            creative_item=creative,
             package_status="ready",
             publish_profile_id=creative.input_profile_id,
             frozen_video_path=stored_path,
             frozen_duration_seconds=rounded_duration,
             frozen_product_name=creative.resolved_current_product_name(),
             frozen_copywriting_text=creative.resolved_current_copywriting_text(),
-            manifest_json=manifest_json,
         )
         creative.generation_error_msg = None
         creative.generation_failed_at = None
@@ -152,34 +134,4 @@ class AIClipWorkflowService:
                 updated_at=version.updated_at,
             ),
             package_record=PackageRecordResponse.model_validate(package_record),
-        )
-
-    @staticmethod
-    def _build_manifest_json(
-        *,
-        source_version_id: int,
-        workflow_type: str,
-        original_output_path: str,
-        stored_output_path: str,
-        file_hash: str,
-        file_size: int,
-        video_info: dict[str, Any],
-        metadata: dict[str, Any],
-    ) -> str:
-        return json.dumps(
-            {
-                "workflow_type": workflow_type,
-                "source_version_id": source_version_id,
-                "output": {
-                    "original_path": original_output_path,
-                    "stored_path": stored_output_path,
-                    "file_hash": file_hash,
-                    "file_size": file_size,
-                    "video_info": video_info,
-                },
-                "metadata": metadata,
-                "submitted_at": utc_now_naive().isoformat(),
-            },
-            ensure_ascii=False,
-            sort_keys=True,
         )

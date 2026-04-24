@@ -1,4 +1,5 @@
 import importlib
+import json
 
 import pytest
 from sqlalchemy import select
@@ -283,3 +284,6 @@ async def test_update_creative_does_not_mutate_approved_version_freeze_snapshot(
     assert package_record.frozen_product_name == "Approved Product"
     assert package_record.frozen_copywriting_text == "Approved Copy"
     assert package_record.frozen_duration_seconds == 30
+    manifest = json.loads(package_record.manifest_json or "{}")
+    assert manifest["current_product_name"] == "Approved Product"
+    assert manifest["current_copywriting"]["text"] == "Approved Copy"

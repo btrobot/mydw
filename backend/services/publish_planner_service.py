@@ -289,6 +289,7 @@ class PublishPlannerService:
                     "frozen_duration_seconds": package_record.frozen_duration_seconds,
                     "frozen_product_name": package_record.frozen_product_name,
                     "frozen_copywriting_text": package_record.frozen_copywriting_text,
+                    "manifest_json": package_record.manifest_json,
                 }
                 if package_record is not None
                 else None

@@ -227,6 +227,11 @@ async def test_plan_publish_task_creates_snapshot_and_binds_publish_task(
     assert payload["publish_package"]["frozen_video_path"] == source_task.final_video_path
     assert payload["publish_package"]["frozen_cover_path"] == "covers/cover-bind.jpg"
     assert payload["publish_package"]["frozen_copywriting_text"] == "文案 bind"
+    manifest = json.loads(payload["publish_package"]["manifest_json"])
+    assert manifest["version"] == "v1"
+    assert manifest["creative_item_id"] == creative.id
+    assert manifest["creative_version_id"] == pool_item.creative_version_id
+    assert manifest["source"] == "package"
     assert payload["execution_view"]["video_path"] == source_task.final_video_path
     assert payload["execution_view"]["content"] == "文案 bind"
     assert payload["execution_view_source"] == "freeze_truth"
