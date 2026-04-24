@@ -70,6 +70,14 @@ import { useCreativeVersionReviewModel } from '../view-models/useCreativeVersion
 const { Paragraph, Text } = Typography
 const { useBreakpoint } = Grid
 
+const readinessNarrativeMeta = {
+  not_started: '核心输入还没有形成。',
+  partial: '已有部分输入，但距离生成还差关键项。',
+  ready: '当前作品已满足提交生成条件。',
+  result_pending_confirm: '当前已有结果，先确认是否沿用当前版本。',
+  published_followup: '当前重点是版本沿用与发布承接。',
+} as const
+
 export default function CreativeDetail() {
   const { message } = App.useApp()
   const screens = useBreakpoint()
@@ -279,6 +287,9 @@ export default function CreativeDetail() {
     watchedProductLinks,
     watchedProductNameMode,
   ])
+  const readinessDescription = projectionModel?.readiness.state
+    ? readinessNarrativeMeta[projectionModel.readiness.state]
+    : undefined
 
   const retryCreative = () => {
     void creativeQuery.refetch()
@@ -411,6 +422,288 @@ export default function CreativeDetail() {
     form.setFieldValue('current_copywriting_text', value)
     handleCurrentCopywritingTextChange(value)
   }, [form, handleCurrentCopywritingTextChange])
+  const detailInteractionMode = useMemo(() => {
+    switch (creative?.status) {
+      case 'PENDING_INPUT':
+      case 'READY_TO_COMPOSE':
+        return 'authoring' as const
+      case 'COMPOSING':
+        return 'submitting' as const
+      case 'REWORK_REQUIRED':
+        return 'reworking' as const
+      case 'PUBLISHING':
+        return 'publishing' as const
+      case 'PUBLISHED':
+        return 'published_followup' as const
+      case 'FAILED':
+        return 'failed_recovery' as const
+      case 'WAITING_REVIEW':
+      case 'APPROVED':
+      case 'IN_PUBLISH_POOL':
+      case 'REJECTED':
+      default:
+        return 'reviewing' as const
+    }
+  }, [creative?.status])
+  const heroModeMeta = useMemo(() => {
+    switch (detailInteractionMode) {
+      case 'authoring':
+        return { label: '定义作品', color: 'blue' }
+      case 'submitting':
+        return { label: '生成跟进', color: 'gold' }
+      case 'reworking':
+        return { label: '返工修正', color: 'orange' }
+      case 'publishing':
+        return { label: '发布执行', color: 'cyan' }
+      case 'published_followup':
+        return { label: '发布跟进', color: 'green' }
+      case 'failed_recovery':
+        return { label: '失败恢复', color: 'red' }
+      case 'reviewing':
+      default:
+        return { label: '结果确认', color: 'purple' }
+    }
+  }, [detailInteractionMode])
+  const heroSummary = useMemo(() => {
+    switch (detailInteractionMode) {
+      case 'authoring':
+        return {
+          title: 'readiness 摘要',
+          lead: readinessDescription ?? '先补齐作品定义，再进入提交生成。',
+          supportingText: projectionModel?.readiness.next_action_hint ?? '优先完成当前入选区，再回看来源区。',
+        }
+      case 'submitting':
+        return {
+          title: '生成进度摘要',
+          lead: primaryTaskId
+            ? `当前作品已进入执行中，优先查看任务 #${primaryTaskId} 的进度与结果。`
+            : '当前作品已进入执行中，优先关注生成进度与诊断信息。',
+          supportingText: '此时首屏主任务不再是继续编辑定义，而是确认执行是否顺利推进。',
+        }
+      case 'reworking':
+        return {
+          title: '返工摘要',
+          lead: effectiveCheck?.note
+            ? `当前版本需要返工：${effectiveCheck.note}`
+            : '当前版本被要求返工，请按问题提示回到定义区修正后重新提交。',
+          supportingText: '返工态下，先修受影响区域，再重新提交生成。',
+        }
+      case 'publishing':
+        return {
+          title: '发布跟进摘要',
+          lead: currentPublishTaskId !== null
+            ? `当前发布执行任务为 #${currentPublishTaskId}，优先查看发布状态与诊断。`
+            : '当前作品正在发布承接阶段，优先关注发布状态与诊断。',
+          supportingText: '此时 D/E 区更重要，A/B/C 仅作为定义快照参考。',
+        }
+      case 'published_followup':
+        return {
+          title: '发布跟进摘要',
+          lead: '当前版本已发布，首屏优先查看发布记录与后续动作，而不是继续堆叠定义。',
+          supportingText: '如需继续修改，应显式开启下一轮版本，而不是让已发布版本继续承担定义编辑。',
+        }
+      case 'failed_recovery':
+        return {
+          title: '失败恢复摘要',
+          lead: creative?.generation_error_msg
+            ? `最近执行失败：${creative.generation_error_msg}`
+            : '当前链路存在失败记录，请先确认失败点，再决定修复或重新提交。',
+          supportingText: '失败态优先解释问题与恢复路径，不让用户在首屏迷失。',
+        }
+      case 'reviewing':
+      default:
+        return {
+          title: '结果待确认摘要',
+          lead: effectiveCheck
+            ? '当前版本已有审核结论，请先确认是否沿用当前结果与审核状态。'
+            : '当前已有版本结果，首屏主任务应切换为审核/确认当前结果。',
+          supportingText: '这时不应再由 readiness 主导首屏语言，而应由结果状态语言承接下一步动作。',
+        }
+    }
+  }, [
+    creative?.generation_error_msg,
+    detailInteractionMode,
+    effectiveCheck,
+    primaryTaskId,
+    projectionModel?.readiness.next_action_hint,
+    readinessDescription,
+    currentPublishTaskId,
+  ])
+  const heroPrimaryAction = useMemo(() => {
+    switch (detailInteractionMode) {
+      case 'submitting':
+        return {
+          label: primaryTaskId ? '查看任务进度' : '打开任务管理',
+          onClick: () => {
+            if (primaryTaskId) {
+              openTaskDiagnostics(primaryTaskId)
+              return
+            }
+            openTaskList()
+          },
+          disabled: false,
+          loading: false,
+          testId: 'creative-detail-hero-primary-task',
+        }
+      case 'reviewing':
+        return {
+          label: currentVersion ? '审核当前版本' : '查看高级诊断',
+          onClick: () => {
+            if (currentVersion) {
+              openReviewDrawer()
+              return
+            }
+            handleOpenDiagnostics()
+          },
+          disabled: false,
+          loading: false,
+          testId: 'creative-detail-hero-primary-review',
+        }
+      case 'publishing':
+      case 'published_followup':
+        return {
+          label: '查看高级诊断',
+          onClick: handleOpenDiagnostics,
+          disabled: false,
+          loading: false,
+          testId: 'creative-detail-hero-primary-diagnostics',
+        }
+      case 'authoring':
+      case 'reworking':
+      case 'failed_recovery':
+      default:
+        return {
+          label: submitButtonLabel,
+          onClick: () => { void handleSubmitComposition() },
+          disabled: creative?.eligibility_status !== 'READY_TO_COMPOSE' || updateCreative.isPending,
+          loading: submitCreativeComposition.isPending,
+          testId: 'creative-detail-hero-submit',
+        }
+    }
+  }, [
+    creative?.eligibility_status,
+    currentVersion,
+    detailInteractionMode,
+    handleOpenDiagnostics,
+    handleSubmitComposition,
+    openReviewDrawer,
+    openTaskDiagnostics,
+    openTaskList,
+    primaryTaskId,
+    submitButtonLabel,
+    submitCreativeComposition.isPending,
+    updateCreative.isPending,
+  ])
+  const heroSecondaryActions = useMemo(() => {
+    switch (detailInteractionMode) {
+      case 'submitting':
+        return [
+          {
+            key: 'advanced-diagnostics',
+            label: '查看高级诊断',
+            onClick: handleOpenDiagnostics,
+            testId: 'creative-detail-hero-diagnostics',
+          },
+        ]
+      case 'reviewing':
+        return [
+          {
+            key: 'advanced-diagnostics',
+            label: '查看高级诊断',
+            onClick: handleOpenDiagnostics,
+            testId: 'creative-detail-hero-diagnostics',
+          },
+          ...(currentVersion ? [{
+            key: 'open-aiclip',
+            label: '进入 AIClip',
+            onClick: openAiClipWorkflow,
+            testId: 'creative-detail-hero-ai-clip',
+          }] : []),
+        ]
+      case 'publishing':
+      case 'published_followup':
+        return [
+          ...(currentPublishTaskId !== null ? [{
+            key: 'publish-task',
+            label: `查看发布任务 #${currentPublishTaskId}`,
+            onClick: () => openTaskDiagnostics(currentPublishTaskId),
+            testId: 'creative-detail-hero-publish-task',
+          }] : []),
+          {
+            key: 'advanced-diagnostics',
+            label: '查看高级诊断',
+            onClick: handleOpenDiagnostics,
+            testId: 'creative-detail-hero-diagnostics',
+          },
+        ]
+      case 'authoring':
+      case 'reworking':
+      case 'failed_recovery':
+      default:
+        return [
+          {
+            key: 'jump-editor',
+            label: '继续编辑定义',
+            onClick: () => scrollToSection('creative-detail-legacy-editor'),
+            testId: 'creative-detail-hero-edit',
+          },
+          {
+            key: 'save',
+            label: '保存草稿',
+            onClick: () => { void handleSaveInput() },
+            loading: updateCreative.isPending,
+            testId: 'creative-detail-hero-save',
+          },
+          {
+            key: 'advanced-diagnostics',
+            label: '查看高级诊断',
+            onClick: handleOpenDiagnostics,
+            testId: 'creative-detail-hero-diagnostics',
+          },
+        ]
+    }
+  }, [
+    currentPublishTaskId,
+    currentVersion,
+    detailInteractionMode,
+    handleOpenDiagnostics,
+    handleSaveInput,
+    openAiClipWorkflow,
+    openTaskDiagnostics,
+    scrollToSection,
+    updateCreative.isPending,
+  ])
+  const heroModeNotice = useMemo(() => {
+    switch (detailInteractionMode) {
+      case 'submitting':
+        return {
+          type: 'info' as const,
+          message: '当前版本已提交生成，首屏应先关注执行进度。',
+        }
+      case 'reviewing':
+        return {
+          type: 'info' as const,
+          message: '当前已有结果待确认，优先审核当前版本，而不是继续并列展开低频动作。',
+        }
+      case 'publishing':
+        return {
+          type: 'warning' as const,
+          message: '当前进入发布执行阶段，首屏主任务已切换为查看发布状态与诊断。',
+        }
+      case 'published_followup':
+        return {
+          type: 'success' as const,
+          message: '当前版本已发布，首屏优先查看发布记录与后续动作。',
+        }
+      case 'failed_recovery':
+        return {
+          type: 'warning' as const,
+          message: '当前存在失败记录，请先确认失败点与恢复动作。',
+        }
+      default:
+        return null
+    }
+  }, [detailInteractionMode])
 
   if (creativeQuery.isLoading && !creative) {
     return (
@@ -469,7 +762,7 @@ export default function CreativeDetail() {
           </Button>
         ) : null,
         currentVersion ? (
-          <Button key="review" type="primary" data-testid="creative-open-review" onClick={openReviewDrawer}>
+          <Button key="review" data-testid="creative-open-review" onClick={openReviewDrawer}>
             审核当前版本
           </Button>
         ) : null,
@@ -494,21 +787,28 @@ export default function CreativeDetail() {
           />
         ) : null}
 
+        {heroModeNotice ? (
+          <Alert
+            type={heroModeNotice.type}
+            showIcon
+            message={heroModeNotice.message}
+            data-testid="creative-detail-mode-notice"
+          />
+        ) : null}
+
         {projectionModel ? (
           <>
             <CreativeDetailHeroCard
               creative={creative}
               projection={projectionModel}
               statusMeta={statusMeta}
+              modeMeta={heroModeMeta}
               activeInputItemCount={activeInputItemCount}
-              submitButtonLabel={submitButtonLabel}
-              submitDisabled={creative.eligibility_status !== 'READY_TO_COMPOSE' || updateCreative.isPending}
-              submitLoading={submitCreativeComposition.isPending}
-              saveLoading={updateCreative.isPending}
-              onSubmit={() => void handleSubmitComposition()}
-              onSave={() => void handleSaveInput()}
-              onOpenDiagnostics={handleOpenDiagnostics}
-              onJumpToEditor={() => scrollToSection('creative-detail-legacy-editor')}
+              summaryTitle={heroSummary.title}
+              summaryLead={heroSummary.lead}
+              summarySupportingText={heroSummary.supportingText}
+              primaryAction={heroPrimaryAction}
+              secondaryActions={heroSecondaryActions}
             />
 
             <CreativeCurrentSelectionSection

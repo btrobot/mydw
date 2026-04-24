@@ -526,6 +526,31 @@ const publishStatusPayload = {
   scheduler_shadow_diff: null,
 }
 
+function createEditableCreativeDetailState() {
+  return {
+    ...JSON.parse(JSON.stringify(creativeDetailPayload)),
+    status: 'READY_TO_COMPOSE',
+    current_version_id: null,
+    current_version: null,
+    versions: [],
+    review_summary: {
+      current_version_id: null,
+      current_check: null,
+      total_checks: 0,
+    },
+    linked_task_ids: [],
+    readiness: {
+      state: 'ready',
+      missing_fields: [],
+      can_compose: true,
+      next_action_hint: '当前定义已齐，可以直接提交生成。',
+    },
+    page_mode: 'definition',
+    eligibility_status: 'READY_TO_COMPOSE',
+    eligibility_reasons: [],
+  } as typeof creativeDetailPayload & Record<string, unknown>
+}
+
 function hasRecentFailure(item: (typeof creativeListPayload.items)[number]) {
   return Boolean(item.generation_error_msg || item.status === 'FAILED' || item.generation_failed_at)
 }
@@ -1054,6 +1079,9 @@ test.describe('Creative workbench baseline', () => {
     await expect(page.getByTestId('creative-detail-legacy-editor')).toBeVisible({ timeout: 10000 })
     await expect(page.getByTestId('creative-detail-shell-hero')).toBeVisible({ timeout: 10000 })
     await expect(page.getByTestId('creative-detail-shell-hero')).toContainText('结果待确认')
+    await expect(page.getByTestId('creative-detail-shell-hero')).toContainText('当前模式：结果确认')
+    await expect(page.getByTestId('creative-detail-hero-primary-review')).toBeVisible()
+    await expect(page.getByTestId('creative-detail-mode-notice')).toContainText('当前已有结果待确认')
     await expect(page.getByTestId('creative-detail-current-selection')).toContainText('当前真正会进入生成的内容')
     await expect(page.getByTestId('creative-detail-current-selection')).toContainText('Classic Hoodie')
     await expect(page.getByTestId('creative-detail-product-zone')).toContainText('Classic Hoodie')
@@ -1061,9 +1089,29 @@ test.describe('Creative workbench baseline', () => {
     await expect(page.getByTestId('creative-detail-legacy-editor')).toBeVisible({ timeout: 10000 })
   })
 
+  test('switches hero summary and primary CTA back to authoring semantics when detail is editable', async ({ page }) => {
+    const authoringState = createEditableCreativeDetailState()
+
+    await page.unroute('**/api/creatives/101')
+    await page.route('**/api/creatives/101', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(authoringState),
+      })
+    })
+
+    await gotoHashRoute(page, `/#/creative/101`)
+
+    await expect(page.getByTestId('creative-detail-shell-hero')).toContainText('readiness 摘要')
+    await expect(page.getByTestId('creative-detail-shell-hero')).toContainText('当前模式：定义作品')
+    await expect(page.getByTestId('creative-detail-hero-submit')).toBeVisible()
+    await expect(page.getByTestId('creative-detail-mode-notice')).toHaveCount(0)
+  })
+
   test('updates current selection from product and free-material zone actions before save', async ({ page }) => {
     let updatePayload: Record<string, unknown> | undefined
-    let detailState = JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload
+    let detailState = createEditableCreativeDetailState()
 
     await page.unroute('**/api/creatives/101')
     await page.route('**/api/creatives/101', async (route) => {
@@ -1119,7 +1167,7 @@ test.describe('Creative workbench baseline', () => {
 
   test('supports in-zone editing and clearing inside the current selection section', async ({ page }) => {
     let updatePayload: Record<string, unknown> | undefined
-    let detailState = JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload
+    let detailState = createEditableCreativeDetailState()
 
     await page.unroute('**/api/creatives/101')
     await page.route('**/api/creatives/101', async (route) => {
@@ -1171,7 +1219,7 @@ test.describe('Creative workbench baseline', () => {
 
   test('supports in-zone video ordering and role editing inside current selection', async ({ page }) => {
     let updatePayload: Record<string, unknown> | undefined
-    let detailState = JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload
+    let detailState = createEditableCreativeDetailState()
 
     await page.unroute('**/api/creatives/101')
     await page.route('**/api/creatives/101', async (route) => {
@@ -1221,7 +1269,7 @@ test.describe('Creative workbench baseline', () => {
 
   test('supports in-zone video trim and slot duration editing inside current selection', async ({ page }) => {
     let updatePayload: Record<string, unknown> | undefined
-    let detailState = JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload
+    let detailState = createEditableCreativeDetailState()
 
     await page.unroute('**/api/creatives/101')
     await page.route('**/api/creatives/101', async (route) => {
@@ -1283,7 +1331,7 @@ test.describe('Creative workbench baseline', () => {
 
   test('blocks save when current selection video timing is invalid', async ({ page }) => {
     let patchCount = 0
-    let detailState = JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload
+    let detailState = createEditableCreativeDetailState()
 
     await page.unroute('**/api/creatives/101')
     await page.route('**/api/creatives/101', async (route) => {
@@ -1319,7 +1367,7 @@ test.describe('Creative workbench baseline', () => {
 
   test('supports drag sorting inside current selection videos', async ({ page }) => {
     let updatePayload: Record<string, unknown> | undefined
-    let detailState = JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload
+    let detailState = createEditableCreativeDetailState()
 
     await page.unroute('**/api/creatives/101')
     await page.route('**/api/creatives/101', async (route) => {

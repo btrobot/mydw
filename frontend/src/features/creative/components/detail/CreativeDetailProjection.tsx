@@ -92,30 +92,39 @@ type CreativeDetailHeroCardProps = {
   creative: CreativeDetail
   projection: CreativeDetailProjectionModel
   statusMeta: { color: string; label: string }
+  modeMeta: { label: string; color: string }
   activeInputItemCount: number
-  submitButtonLabel: string
-  submitDisabled: boolean
-  submitLoading: boolean
-  saveLoading: boolean
-  onSubmit: () => void
-  onSave: () => void
-  onOpenDiagnostics: () => void
-  onJumpToEditor: () => void
+  summaryTitle: string
+  summaryLead: string
+  summarySupportingText?: string
+  primaryAction: {
+    label: string
+    onClick: () => void
+    disabled?: boolean
+    loading?: boolean
+    testId: string
+  }
+  secondaryActions?: Array<{
+    key: string
+    label: string
+    onClick: () => void
+    disabled?: boolean
+    loading?: boolean
+    testId: string
+  }>
 }
 
 export function CreativeDetailHeroCard({
   creative,
   projection,
   statusMeta,
+  modeMeta,
   activeInputItemCount,
-  submitButtonLabel,
-  submitDisabled,
-  submitLoading,
-  saveLoading,
-  onSubmit,
-  onSave,
-  onOpenDiagnostics,
-  onJumpToEditor,
+  summaryTitle,
+  summaryLead,
+  summarySupportingText,
+  primaryAction,
+  secondaryActions = [],
 }: CreativeDetailHeroCardProps) {
   const pageMode = pageModeMeta[projection.pageMode]
   const readinessState = projection.readiness.state ?? 'not_started'
@@ -144,26 +153,32 @@ export function CreativeDetailHeroCard({
           </Space>
 
           <Space wrap>
-            <Button onClick={onJumpToEditor} data-testid="creative-detail-hero-edit">
-              继续编辑定义
-            </Button>
-            <Button loading={saveLoading} onClick={onSave} data-testid="creative-detail-hero-save">
-              保存草稿
-            </Button>
+            {secondaryActions.map((action) => (
+              <Button
+                key={action.key}
+                loading={action.loading}
+                disabled={action.disabled}
+                onClick={action.onClick}
+                data-testid={action.testId}
+              >
+                {action.label}
+              </Button>
+            ))}
             <Button
               type="primary"
-              loading={submitLoading}
-              disabled={submitDisabled}
-              onClick={onSubmit}
-              data-testid="creative-detail-hero-submit"
+              loading={primaryAction.loading}
+              disabled={primaryAction.disabled}
+              onClick={primaryAction.onClick}
+              data-testid={primaryAction.testId}
             >
-              {submitButtonLabel}
+              {primaryAction.label}
             </Button>
           </Space>
         </Flex>
 
         <Flex wrap gap={12}>
           <Tag color={readiness.color}>当前状态：{readiness.label}</Tag>
+          <Tag color={modeMeta.color}>当前模式：{modeMeta.label}</Tag>
           <Text type="secondary">最近更新：{formatCreativeTimestamp(creative.updated_at)}</Text>
           <Text type="secondary">缺失项：{missingFields.length}</Text>
         </Flex>
@@ -171,17 +186,14 @@ export function CreativeDetailHeroCard({
         <Card
           size="small"
           type="inner"
-          title="readiness 摘要"
-          extra={(
-            <Button type="link" onClick={onOpenDiagnostics} data-testid="creative-detail-hero-diagnostics">
-              查看高级诊断
-            </Button>
-          )}
+          title={summaryTitle}
         >
           <Space direction="vertical" size={8} style={{ width: '100%' }}>
-            <Text>{readiness.description}</Text>
+            <Text>{summaryLead}</Text>
             <Text type="secondary">{pageMode.description}</Text>
-            {projection.readiness.next_action_hint ? (
+            {summarySupportingText ? (
+              <Text type="secondary">{summarySupportingText}</Text>
+            ) : projection.readiness.next_action_hint ? (
               <Text type="secondary">{projection.readiness.next_action_hint}</Text>
             ) : null}
             {missingFields.length > 0 ? (
