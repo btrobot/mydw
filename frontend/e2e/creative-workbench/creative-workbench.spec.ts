@@ -10,6 +10,11 @@ type CreativeListRequestSnapshot = {
   limit: string | null
 }
 
+const gotoHashRoute = async (page: Page, path: string): Promise<void> => {
+  const baseUrl = process.env.E2E_BASE_URL || `http://127.0.0.1:${process.env.E2E_WEB_PORT || '4174'}`
+  await page.goto(new URL(path, baseUrl).toString())
+}
+
 const creativeListPayload = {
   total: 4,
   summary: {
@@ -31,6 +36,11 @@ const creativeListPayload = {
       current_version_id: 201,
       subject_product_id: 301,
       subject_product_name_snapshot: 'Classic Hoodie',
+  current_product_name: 'Classic Hoodie',
+  product_name_mode: 'follow_primary_product',
+  current_cover_asset_type: null,
+  current_cover_asset_id: null,
+  cover_mode: 'manual',
       main_copywriting_text: '??????????',
       target_duration_seconds: 30,
       input_items: [
@@ -60,6 +70,8 @@ const creativeListPayload = {
       current_version_id: 202,
       subject_product_id: 302,
       subject_product_name_snapshot: 'Runner Pro',
+      current_product_name: 'Runner Pro',
+      product_name_mode: 'manual',
       main_copywriting_text: '??????????',
       target_duration_seconds: 45,
       input_items: [
@@ -665,7 +677,7 @@ test.describe('Creative workbench baseline', () => {
   })
 
   test('shows the table-first workbench with business-first actions', async ({ page }) => {
-    await page.goto(`/#/creative/workbench`)
+    await gotoHashRoute(page, `/#/creative/workbench`)
 
     await expect(page.locator('body')).toContainText('集中处理作品创建、创作 brief、素材编排、审核与 AIClip 主流程')
     await expect(page.locator('body')).not.toContainText('兼容入口：新建任务')
@@ -715,7 +727,7 @@ test.describe('Creative workbench baseline', () => {
       })
     })
 
-    await page.goto(`/#/creative/101`)
+    await gotoHashRoute(page, `/#/creative/101`)
 
     await expect(page.locator('body')).toContainText('Default Profile')
     await expect(page.locator('body')).not.toContainText('Snapshot Hash')
@@ -800,7 +812,7 @@ test.describe('Creative workbench baseline', () => {
       })
     })
 
-    await page.goto('/#/creative/101?returnTo=%2Fcreative%2Fworkbench%3Fpreset%3Dwaiting_review')
+    await gotoHashRoute(page, '/#/creative/101?returnTo=%2Fcreative%2Fworkbench%3Fpreset%3Dwaiting_review')
 
     await expect(page).not.toHaveURL(/taskId=991/)
     await page.getByTestId('creative-submit-composition').click()
@@ -813,7 +825,7 @@ test.describe('Creative workbench baseline', () => {
   })
 
   test('opens diagnostics through an explicit secondary entry', async ({ page }) => {
-    await page.goto(`/#/creative/workbench`)
+    await gotoHashRoute(page, `/#/creative/workbench`)
 
     await page.getByTestId('creative-workbench-open-diagnostics').click()
 
@@ -829,7 +841,7 @@ test.describe('Creative workbench baseline', () => {
   })
 
   test('supports search and filtering before entering detail', async ({ page }) => {
-    await page.goto(`/#/creative/workbench`)
+    await gotoHashRoute(page, `/#/creative/workbench`)
 
     await page.getByTestId('creative-workbench-search-input').fill('Spring')
     await page.getByRole('button', { name: '应用筛选' }).click()
@@ -859,7 +871,7 @@ test.describe('Creative workbench baseline', () => {
   })
 
   test('persists applied workbench state after refresh', async ({ page }) => {
-    await page.goto(`/#/creative/workbench`)
+    await gotoHashRoute(page, `/#/creative/workbench`)
 
     await page.getByTestId('creative-workbench-search-input').fill('Spring')
     await chooseAntSelectOption(page, 'creative-workbench-status-filter', '待审核')
@@ -885,7 +897,7 @@ test.describe('Creative workbench baseline', () => {
   test('preserves sort and pagination state across refresh with matching skip/limit requests', async ({ page }) => {
     const requests = await captureCreativeListRequests(page)
 
-    await page.goto(`/#/creative/workbench?sort=attention_desc&page=2&pageSize=2`)
+    await gotoHashRoute(page, `/#/creative/workbench?sort=attention_desc&page=2&pageSize=2`)
 
     await expect(page).toHaveURL(/sort=attention_desc/)
     await expect(page).toHaveURL(/page=2/)
@@ -913,7 +925,7 @@ test.describe('Creative workbench baseline', () => {
   test('updates URL, request params, and visible rows when moving to the next page from the paginator', async ({ page }) => {
     const requests = await captureCreativeListRequests(page)
 
-    await page.goto(`/#/creative/workbench?sort=attention_desc&page=1&pageSize=2`)
+    await gotoHashRoute(page, `/#/creative/workbench?sort=attention_desc&page=1&pageSize=2`)
 
     await expectLatestCreativeRequest(requests, {
       sort: 'attention_desc',
@@ -938,7 +950,7 @@ test.describe('Creative workbench baseline', () => {
   test('resets to page 1 and requests skip 0 when sort changes from page 2', async ({ page }) => {
     const requests = await captureCreativeListRequests(page)
 
-    await page.goto(`/#/creative/workbench?sort=attention_desc&page=2&pageSize=2`)
+    await gotoHashRoute(page, `/#/creative/workbench?sort=attention_desc&page=2&pageSize=2`)
 
     await expectLatestCreativeRequest(requests, {
       sort: 'attention_desc',
@@ -961,7 +973,8 @@ test.describe('Creative workbench baseline', () => {
   })
 
   test('returns to the filtered workbench state after entering detail', async ({ page }) => {
-    await page.goto(
+    await gotoHashRoute(
+      page,
       `/#/creative/workbench?keyword=Spring&status=WAITING_REVIEW&poolState=in_pool&sort=updated_desc&page=1&pageSize=10`,
     )
 
@@ -979,7 +992,7 @@ test.describe('Creative workbench baseline', () => {
   })
 
   test('returns to the original workbench URL after the detail -> task diagnostics round-trip', async ({ page }) => {
-    await page.goto(`/#/creative/workbench?sort=attention_desc&page=2&pageSize=2`)
+    await gotoHashRoute(page, `/#/creative/workbench?sort=attention_desc&page=2&pageSize=2`)
 
     await expectWorkbenchOrder(page, [101, 103])
 
@@ -999,7 +1012,7 @@ test.describe('Creative workbench baseline', () => {
   })
 
   test('supports preset views for high-frequency queues', async ({ page }) => {
-    await page.goto(`/#/creative/workbench`)
+    await gotoHashRoute(page, `/#/creative/workbench`)
 
     await page.getByTestId('creative-workbench-preset-waiting_review').click()
 
@@ -1033,7 +1046,7 @@ test.describe('Creative workbench baseline', () => {
   test('maps the recent failures preset to recent_failures_only request semantics', async ({ page }) => {
     const requests = await captureCreativeListRequests(page)
 
-    await page.goto(`/#/creative/workbench`)
+    await gotoHashRoute(page, `/#/creative/workbench`)
 
     await page.getByTestId('creative-workbench-preset-recent_failures').click()
 
@@ -1051,7 +1064,7 @@ test.describe('Creative workbench baseline', () => {
   test('preserves preset state when only pageSize differs in the canonical URL', async ({ page }) => {
     const requests = await captureCreativeListRequests(page)
 
-    await page.goto(`/#/creative/workbench?preset=waiting_review&status=WAITING_REVIEW&sort=updated_desc&page=1&pageSize=2`)
+    await gotoHashRoute(page, `/#/creative/workbench?preset=waiting_review&status=WAITING_REVIEW&sort=updated_desc&page=1&pageSize=2`)
 
     await expect(page).toHaveURL(/preset=waiting_review/)
     await expect(page).toHaveURL(/pageSize=2/)
@@ -1077,7 +1090,7 @@ test.describe('Creative workbench baseline', () => {
   })
 
   test('clears preset when a manual sort makes the current preset incompatible', async ({ page }) => {
-    await page.goto(`/#/creative/workbench`)
+    await gotoHashRoute(page, `/#/creative/workbench`)
 
     await page.getByTestId('creative-workbench-preset-waiting_review').click()
     await expect(page).toHaveURL(/preset=waiting_review/)
@@ -1093,7 +1106,7 @@ test.describe('Creative workbench baseline', () => {
   test('keeps diagnostics as route chrome and does not rewrite business query state', async ({ page }) => {
     const requests = await captureCreativeListRequests(page)
 
-    await page.goto(`/#/creative/workbench?keyword=Spring&status=WAITING_REVIEW&poolState=in_pool&sort=updated_desc&page=1&pageSize=2`)
+    await gotoHashRoute(page, `/#/creative/workbench?keyword=Spring&status=WAITING_REVIEW&poolState=in_pool&sort=updated_desc&page=1&pageSize=2`)
 
     await expectLatestCreativeRequest(requests, {
       keyword: 'Spring',
@@ -1132,7 +1145,7 @@ test.describe('Creative workbench baseline', () => {
   test('keeps runtime diagnostics open when recommendation CTAs switch preset views', async ({ page }) => {
     const requests = await captureCreativeListRequests(page)
 
-    await page.goto(`/#/creative/workbench?sort=updated_desc&page=2&pageSize=2`)
+    await gotoHashRoute(page, `/#/creative/workbench?sort=updated_desc&page=2&pageSize=2`)
 
     await expectLatestCreativeRequest(requests, {
       sort: 'updated_desc',
@@ -1170,7 +1183,7 @@ test.describe('Creative workbench baseline', () => {
   test('does not promote unapplied draft filters when opening diagnostics or changing sort', async ({ page }) => {
     const requests = await captureCreativeListRequests(page)
 
-    await page.goto(`/#/creative/workbench?status=WAITING_REVIEW&sort=updated_desc&page=1&pageSize=2`)
+    await gotoHashRoute(page, `/#/creative/workbench?status=WAITING_REVIEW&sort=updated_desc&page=1&pageSize=2`)
 
     await expectLatestCreativeRequest(requests, {
       status: 'WAITING_REVIEW',
@@ -1212,7 +1225,7 @@ test.describe('Creative workbench baseline', () => {
   })
 
   test('restores the full list after cycling preset buttons back to all', async ({ page }) => {
-    await page.goto(`/#/creative/workbench`)
+    await gotoHashRoute(page, `/#/creative/workbench`)
 
     await page.getByTestId('creative-workbench-preset-waiting_review').click()
     await expectWorkbenchOrder(page, [101])
@@ -1248,7 +1261,7 @@ test.describe('Creative workbench baseline', () => {
   })
 
   test('supports explicit workbench sort views', async ({ page }) => {
-    await page.goto(`/#/creative/workbench`)
+    await gotoHashRoute(page, `/#/creative/workbench`)
 
     await chooseWorkbenchSort(page, '待处理优先')
 
@@ -1266,7 +1279,7 @@ test.describe('Creative workbench baseline', () => {
       })
     })
 
-    await page.goto(`/#/creative/workbench`)
+    await gotoHashRoute(page, `/#/creative/workbench`)
 
     await expect(page.getByTestId('creative-workbench-error')).toBeVisible()
     await expect(page.locator('body')).toContainText('作品列表暂时不可用')
@@ -1282,7 +1295,7 @@ test.describe('Creative workbench baseline', () => {
       })
     })
 
-    await page.goto(`/#/creative/101`)
+    await gotoHashRoute(page, `/#/creative/101`)
 
     await expect(page.getByTestId('creative-detail-error')).toBeVisible()
     await expect(page.locator('body')).toContainText('作品详情暂时无法加载')
