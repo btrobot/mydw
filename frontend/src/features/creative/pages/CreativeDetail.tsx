@@ -6,7 +6,7 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons'
 import { PageContainer, ProDescriptions } from '@ant-design/pro-components'
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import {
   Alert,
   App,
@@ -31,6 +31,12 @@ import {
 
 import AIClipWorkflowPanel from '../components/AIClipWorkflowPanel'
 import CheckDrawer from '../components/CheckDrawer'
+import {
+  CreativeCurrentSelectionSection,
+  CreativeDetailHeroCard,
+  CreativeSourceZoneSection,
+} from '../components/detail/CreativeDetailProjection'
+import { buildCreativeDetailProjectionModel } from '../components/detail/projection'
 import DiagnosticsActionPanel, { type DiagnosticsRecommendation } from '../components/diagnostics/DiagnosticsActionPanel'
 import VersionPanel from '../components/VersionPanel'
 import {
@@ -172,6 +178,16 @@ export default function CreativeDetail() {
     refreshDiagnostics: refetchDiagnostics,
     onCompositionSubmitted,
   })
+  const watchedProductLinks = Form.useWatch('product_links', form) ?? []
+  const watchedCandidateItems = Form.useWatch('candidate_items', form) ?? []
+  const watchedInputItems = Form.useWatch('input_items', form) ?? []
+  const watchedCurrentCopywritingId = Form.useWatch('current_copywriting_id', form)
+  const watchedCurrentCopywritingText = Form.useWatch('current_copywriting_text', form)
+  const watchedCurrentCoverAssetId = Form.useWatch('current_cover_asset_id', form)
+  const watchedCurrentCoverAssetType = Form.useWatch('current_cover_asset_type', form)
+  const watchedProductNameMode = Form.useWatch('product_name_mode', form)
+  const watchedCoverMode = Form.useWatch('cover_mode', form)
+  const watchedCopywritingMode = Form.useWatch('copywriting_mode', form)
 
   const eligibilityReasons = creative?.eligibility_reasons ?? []
   const statusMeta = creative ? creativeStatusMeta[creative.status] : null
@@ -182,17 +198,66 @@ export default function CreativeDetail() {
     () => Object.keys(creativeCandidateMeta) as CreativeAuthoringCandidateType[],
     [],
   )
+  const materialNameByType = useMemo(() => ({
+    video: new Map((materialOptionsByType.video ?? []).map((item) => [Number(item.value), item.label])),
+    audio: new Map((materialOptionsByType.audio ?? []).map((item) => [Number(item.value), item.label])),
+    cover: new Map((materialOptionsByType.cover ?? []).map((item) => [Number(item.value), item.label])),
+    copywriting: new Map((materialOptionsByType.copywriting ?? []).map((item) => [Number(item.value), item.label])),
+  }), [materialOptionsByType])
+  const resolveMaterialLabel = useCallback((
+    materialType: 'video' | 'audio' | 'copywriting' | 'cover',
+    assetId?: number | null,
+  ) => {
+    if (assetId === undefined || assetId === null) {
+      return undefined
+    }
+    if (materialType === 'cover') {
+      return coverNameById.get(assetId) ?? materialNameByType.cover.get(assetId)
+    }
+    return materialNameByType[materialType].get(assetId)
+  }, [coverNameById, materialNameByType])
+  const projectionModel = useMemo(() => {
+    if (!creative) {
+      return null
+    }
+
+    return buildCreativeDetailProjectionModel({
+      creative,
+      draft: {
+        currentProductName: watchedCurrentProductName,
+        currentCopywritingId: watchedCurrentCopywritingId,
+        currentCopywritingText: watchedCurrentCopywritingText,
+        currentCoverAssetId: watchedCurrentCoverAssetId,
+        currentCoverAssetType: watchedCurrentCoverAssetType,
+        productNameMode: watchedProductNameMode,
+        coverMode: watchedCoverMode,
+        copywritingMode: watchedCopywritingMode,
+        productLinks: watchedProductLinks,
+        candidateItems: watchedCandidateItems,
+        inputItems: watchedInputItems,
+      },
+      resolveMaterialLabel,
+    })
+  }, [
+    creative,
+    resolveMaterialLabel,
+    watchedCandidateItems,
+    watchedCopywritingMode,
+    watchedCoverMode,
+    watchedCurrentCopywritingId,
+    watchedCurrentCopywritingText,
+    watchedCurrentCoverAssetId,
+    watchedCurrentCoverAssetType,
+    watchedCurrentProductName,
+    watchedInputItems,
+    watchedProductLinks,
+    watchedProductNameMode,
+  ])
 
   const retryCreative = () => {
     void creativeQuery.refetch()
   }
 
-  const eligibilityColor =
-    creative?.eligibility_status === 'READY_TO_COMPOSE'
-      ? 'processing'
-      : creative?.eligibility_status === 'INVALID'
-        ? 'error'
-        : 'default'
   const eligibilityLabel =
     creative?.eligibility_status === 'READY_TO_COMPOSE'
       ? '待提交合成'
@@ -306,6 +371,12 @@ export default function CreativeDetail() {
     shadowDiffDiffers,
     shadowDiffReasons,
   ])
+  const scrollToSection = useCallback((sectionId: string) => {
+    if (typeof document === 'undefined') {
+      return
+    }
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
 
   if (creativeQuery.isLoading && !creative) {
     return (
@@ -389,21 +460,147 @@ export default function CreativeDetail() {
           />
         ) : null}
 
-        <Card title="业务概览">
-          <ProDescriptions bordered size="small" column={screens.md ? 2 : 1}>
-            <ProDescriptions.Item label="作品编号">{creative.creative_no}</ProDescriptions.Item>
-            <ProDescriptions.Item label="状态"><Tag color={statusMeta.color}>{statusMeta.label}</Tag></ProDescriptions.Item>
-            <ProDescriptions.Item label="合成准备"><Tag color={eligibilityColor}>{eligibilityLabel}</Tag></ProDescriptions.Item>
-            <ProDescriptions.Item label="当前版本 ID">{creative.current_version_id ?? '-'}</ProDescriptions.Item>
-            <ProDescriptions.Item label="最近更新时间">{formatCreativeTimestamp(creative.updated_at)}</ProDescriptions.Item>
-          </ProDescriptions>
-          <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
-            默认先处理作品输入、版本与审核；任务与发布侧信息请从“查看高级诊断”进入。
-          </Paragraph>
-        </Card>
+        {projectionModel ? (
+          <>
+            <CreativeDetailHeroCard
+              creative={creative}
+              projection={projectionModel}
+              statusMeta={statusMeta}
+              activeInputItemCount={activeInputItemCount}
+              submitButtonLabel={submitButtonLabel}
+              submitDisabled={creative.eligibility_status !== 'READY_TO_COMPOSE' || updateCreative.isPending}
+              submitLoading={submitCreativeComposition.isPending}
+              saveLoading={updateCreative.isPending}
+              onSubmit={() => void handleSubmitComposition()}
+              onSave={() => void handleSaveInput()}
+              onOpenDiagnostics={handleOpenDiagnostics}
+              onJumpToEditor={() => scrollToSection('creative-detail-legacy-editor')}
+            />
+
+            <CreativeCurrentSelectionSection projection={projectionModel} />
+
+            <Flex gap={16} wrap="wrap" align="stretch">
+              <CreativeSourceZoneSection
+                title="B. 商品区"
+                subtitle="主题商品与默认来源"
+                description="商品区负责承接主题商品、默认商品名称，以及来自商品侧的封面 / 视频 / 文案候选。"
+                action={(
+                  <Button size="small" onClick={() => scrollToSection('creative-detail-product-editor')}>
+                    编辑商品区
+                  </Button>
+                )}
+                summary={projectionModel.productZone.primary_product ? (
+                  <Card size="small" type="inner" title="当前主题商品摘要">
+                    <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                      <Text strong>{projectionModel.productZone.primary_product.name}</Text>
+                      <Space wrap>
+                        <Tag color="processing">主题商品</Tag>
+                        <Tag>商品 ID：{projectionModel.productZone.primary_product.id}</Tag>
+                        <Tag>封面 {projectionModel.productZone.primary_product.cover_count ?? 0}</Tag>
+                        <Tag>视频 {projectionModel.productZone.primary_product.video_count ?? 0}</Tag>
+                        <Tag>文案 {projectionModel.productZone.primary_product.copywriting_count ?? 0}</Tag>
+                      </Space>
+                      {projectionModel.productZone.product_name_candidate ? (
+                        <Text type="secondary">
+                          默认商品名称：{projectionModel.productZone.product_name_candidate.product_name}
+                          {projectionModel.productZone.product_name_candidate.is_detached ? '（当前已脱钩）' : ''}
+                        </Text>
+                      ) : null}
+                      {(projectionModel.productZone.linked_products ?? []).length > 0 ? (
+                        <Space wrap>
+                          {(projectionModel.productZone.linked_products ?? []).map((product) => (
+                            <Tag key={`${product.product_id}-${product.sort_order}`} color={product.is_primary ? 'processing' : 'default'}>
+                              {product.product_name ?? `商品 #${product.product_id}`}
+                            </Tag>
+                          ))}
+                        </Space>
+                      ) : null}
+                    </Space>
+                  </Card>
+                ) : (
+                  <Alert
+                    type="info"
+                    showIcon
+                    message="当前还没有主题商品"
+                    description="先在商品区建立主题商品，页面才能形成更稳定的默认候选。"
+                  />
+                )}
+                candidates={[
+                  {
+                    key: 'product-cover',
+                    label: '封面候选',
+                    items: projectionModel.productZone.cover_candidates ?? [],
+                    emptyDescription: '当前商品区还没有可用封面候选。',
+                  },
+                  {
+                    key: 'product-video',
+                    label: '视频候选',
+                    items: projectionModel.productZone.video_candidates ?? [],
+                    emptyDescription: '当前商品区还没有可用视频候选。',
+                  },
+                  {
+                    key: 'product-copywriting',
+                    label: '文案候选',
+                    items: projectionModel.productZone.copywriting_candidates ?? [],
+                    emptyDescription: '当前商品区还没有可用文案候选。',
+                  },
+                ]}
+                testId="creative-detail-product-zone"
+              />
+
+              <CreativeSourceZoneSection
+                title="C. 自由素材区"
+                subtitle="补充来源区"
+                description="自由素材区负责承接非主题商品来源的补充素材，不抢占首屏主角，但要能清楚表达哪些素材已被当前作品采用。"
+                action={(
+                  <Button size="small" onClick={() => scrollToSection('creative-detail-candidate-editor')}>
+                    管理自由素材
+                  </Button>
+                )}
+                summary={(
+                  <Alert
+                    type="info"
+                    showIcon
+                    message="自由素材区用于补充封面 / 视频 / 音频 / 文案来源"
+                    description="这里的素材可以被勾选到当前作品，但最终生效值仍以“当前入选区”为准。"
+                  />
+                )}
+                candidates={[
+                  {
+                    key: 'free-cover',
+                    label: '封面候选',
+                    items: projectionModel.freeMaterialZone.cover_candidates ?? [],
+                    emptyDescription: '当前还没有自由封面候选。',
+                  },
+                  {
+                    key: 'free-video',
+                    label: '视频候选',
+                    items: projectionModel.freeMaterialZone.video_candidates ?? [],
+                    emptyDescription: '当前还没有自由视频候选。',
+                  },
+                  {
+                    key: 'free-audio',
+                    label: '音频候选',
+                    items: projectionModel.freeMaterialZone.audio_candidates ?? [],
+                    emptyDescription: '当前还没有自由音频候选。',
+                  },
+                  {
+                    key: 'free-copywriting',
+                    label: '文案候选',
+                    items: projectionModel.freeMaterialZone.copywriting_candidates ?? [],
+                    emptyDescription: '当前还没有自由文案候选。',
+                  },
+                ]}
+                testId="creative-detail-free-material-zone"
+              />
+            </Flex>
+          </>
+        ) : null}
 
         <Card
-          title="创作 brief 与当前入选媒体"
+          id="creative-detail-legacy-editor"
+          data-testid="creative-detail-legacy-editor"
+          title="定义编辑区（兼容编辑）"
           extra={(
             <Space wrap>
               <Text type="secondary">入选媒体：{activeInputItemCount}</Text>
@@ -428,7 +625,7 @@ export default function CreativeDetail() {
         >
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-              这里维护作品级业务定义：商品、主文案、目标时长，以及当前入选媒体集合。detail.input_items 仍是兼容读回 carrier，当前界面只投影其中的视频 / 音频条目。
+              P0-2 之后，首屏改由“当前入选区 + 来源区”承接；这里保留兼容编辑能力，用于继续维护作品级商品、候选池与入选媒体。
             </Paragraph>
 
             <ProDescriptions bordered size="small" column={screens.lg ? 4 : screens.md ? 2 : 1}>
@@ -467,9 +664,10 @@ export default function CreativeDetail() {
                 </Form.Item>
               </Flex>
 
-              <Form.List name="product_links">
-                {(fields, { add, move, remove }) => (
-                  <Space direction="vertical" size={12} style={{ width: '100%' }}>
+              <div id="creative-detail-product-editor">
+                <Form.List name="product_links">
+                  {(fields, { add, move, remove }) => (
+                    <Space direction="vertical" size={12} style={{ width: '100%' }}>
                     <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
                       <Space direction="vertical" size={0}>
                         <Text strong>关联商品（product_links）</Text>
@@ -581,9 +779,10 @@ export default function CreativeDetail() {
                         </Card>
                       )
                     })}
-                  </Space>
-                )}
-              </Form.List>
+                    </Space>
+                  )}
+                </Form.List>
+              </div>
 
               <Flex gap={16} wrap="wrap" align="start" style={{ marginTop: 16 }}>
                 <Form.Item
@@ -623,9 +822,10 @@ export default function CreativeDetail() {
                 />
               </Form.Item>
 
-              <Form.List name="candidate_items">
-                {(fields, { add, remove }) => (
-                  <Space direction="vertical" size={12} style={{ width: '100%' }}>
+              <div id="creative-detail-candidate-editor">
+                <Form.List name="candidate_items">
+                  {(fields, { add, remove }) => (
+                    <Space direction="vertical" size={12} style={{ width: '100%' }}>
                     <Alert
                       type="info"
                       showIcon
@@ -802,13 +1002,15 @@ export default function CreativeDetail() {
                         </Card>
                       )
                     })}
-                  </Space>
-                )}
-              </Form.List>
+                    </Space>
+                  )}
+                </Form.List>
+              </div>
 
-              <Form.List name="input_items">
-                {(fields, { add, move, remove }) => (
-                  <Space direction="vertical" size={12} style={{ width: '100%' }}>
+              <div id="creative-detail-selected-media-editor">
+                <Form.List name="input_items">
+                  {(fields, { add, move, remove }) => (
+                    <Space direction="vertical" size={12} style={{ width: '100%' }}>
                     <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
                       <Space direction="vertical" size={0}>
                         <Text strong>当前入选媒体集合（selected video / audio）</Text>
@@ -936,9 +1138,10 @@ export default function CreativeDetail() {
                         </Card>
                       )
                     })}
-                  </Space>
-                )}
-              </Form.List>
+                    </Space>
+                  )}
+                </Form.List>
+              </div>
             </Form>
 
             <Alert

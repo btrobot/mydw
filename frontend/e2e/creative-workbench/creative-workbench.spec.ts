@@ -320,6 +320,159 @@ const creativeDetailPayload = {
     material_counts: { video: 1, copywriting: 1, cover: 1, audio: 1, topic: 1 },
     enabled_material_counts: { video: 1, copywriting: 1, cover: 1, audio: 1, topic: 1 },
   },
+  current_selection: {
+    product_name: {
+      state: 'defined',
+      value_text: 'Classic Hoodie',
+      source_label: '跟随主题商品',
+    },
+    cover: {
+      state: 'missing',
+      source_label: '待从商品区或自由素材区选择封面',
+    },
+    copywriting: {
+      state: 'defined',
+      value_text: 'Lightweight spring styling.',
+      source_label: '手工定义',
+      detached: true,
+    },
+    audio: {
+      state: 'defined',
+      asset_type: 'audio',
+      asset_id: 41,
+      asset_name: 'Studio BGM 01',
+      source_label: '当前入选音频',
+    },
+    videos: [
+      {
+        state: 'defined',
+        asset_type: 'video',
+        asset_id: 11,
+        asset_name: 'Model Walkthrough',
+        asset_excerpt: '主镜头',
+        source_label: '当前入选视频',
+        sequence: 1,
+        instance_no: 1,
+      },
+    ],
+  },
+  product_zone: {
+    primary_product: {
+      id: 301,
+      name: 'Classic Hoodie',
+      link_id: 1,
+      source_mode: 'import_bootstrap',
+      is_primary: true,
+      enabled: true,
+      cover_count: 1,
+      video_count: 2,
+      copywriting_count: 1,
+    },
+    linked_products: [
+      {
+        id: 1,
+        product_id: 301,
+        product_name: 'Classic Hoodie',
+        sort_order: 1,
+        is_primary: true,
+        enabled: true,
+        source_mode: 'import_bootstrap',
+      },
+    ],
+    product_name_candidate: {
+      product_id: 301,
+      product_name: 'Classic Hoodie',
+      is_selected: true,
+      is_detached: false,
+    },
+    cover_candidates: [
+      {
+        candidate_type: 'cover',
+        asset_id: 31,
+        asset_name: '封面首图',
+        source_kind: 'product_derived',
+        source_product_id: 301,
+        source_product_name: 'Classic Hoodie',
+        is_selected: false,
+        is_current_value: false,
+      },
+    ],
+    video_candidates: [
+      {
+        candidate_type: 'video',
+        asset_id: 11,
+        asset_name: 'Model Walkthrough',
+        source_kind: 'product_derived',
+        source_product_id: 301,
+        source_product_name: 'Classic Hoodie',
+        is_selected: true,
+        is_current_value: false,
+      },
+    ],
+    copywriting_candidates: [
+      {
+        candidate_type: 'copywriting',
+        asset_id: 21,
+        asset_name: '卖点短句 A',
+        asset_excerpt: '轻盈春装，上身即走。',
+        source_kind: 'product_derived',
+        source_product_id: 301,
+        source_product_name: 'Classic Hoodie',
+        is_selected: false,
+        is_current_value: false,
+      },
+    ],
+  },
+  free_material_zone: {
+    cover_candidates: [
+      {
+        candidate_type: 'cover',
+        asset_id: 32,
+        asset_name: '街拍封面',
+        source_kind: 'manual_upload',
+        is_selected: false,
+        is_current_value: false,
+      },
+    ],
+    video_candidates: [
+      {
+        candidate_type: 'video',
+        asset_id: 12,
+        asset_name: 'Street Cut',
+        source_kind: 'material_library',
+        is_selected: false,
+        is_current_value: false,
+      },
+    ],
+    audio_candidates: [
+      {
+        candidate_type: 'audio',
+        asset_id: 41,
+        asset_name: 'Studio BGM 01',
+        source_kind: 'material_library',
+        is_selected: true,
+        is_current_value: false,
+      },
+    ],
+    copywriting_candidates: [
+      {
+        candidate_type: 'copywriting',
+        asset_id: 22,
+        asset_name: '卖点短句 B',
+        asset_excerpt: 'Copy Variant B',
+        source_kind: 'llm_generated',
+        is_selected: false,
+        is_current_value: false,
+      },
+    ],
+  },
+  readiness: {
+    state: 'result_pending_confirm',
+    missing_fields: [],
+    can_compose: false,
+    next_action_hint: '当前已有结果，先确认是否沿用当前版本。',
+  },
+  page_mode: 'result_pending_confirm',
 }
 
 const taskDetailPayload = {
@@ -856,6 +1009,7 @@ test.describe('Creative workbench baseline', () => {
 
     await gotoHashRoute(page, `/#/creative/101`)
 
+    await expect(page.getByTestId('creative-detail-legacy-editor')).toBeVisible({ timeout: 10000 })
     await expect(page.locator('[data-testid^="creative-detail-input-item-type-"]')).toHaveCount(2)
     await expect(page.getByTestId('creative-detail-product-snapshot')).toHaveValue('Classic Hoodie')
     await page.getByTestId('creative-detail-product-snapshot').fill('Runner Pro')
@@ -887,9 +1041,23 @@ test.describe('Creative workbench baseline', () => {
     await expect(page.locator('body')).toContainText('45 秒')
   })
 
+  test('renders projection-driven creative detail shell before legacy editor', async ({ page }) => {
+    await gotoHashRoute(page, `/#/creative/101`)
+
+    await expect(page.getByTestId('creative-detail-legacy-editor')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByTestId('creative-detail-shell-hero')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByTestId('creative-detail-shell-hero')).toContainText('结果待确认')
+    await expect(page.getByTestId('creative-detail-current-selection')).toContainText('当前真正会进入生成的内容')
+    await expect(page.getByTestId('creative-detail-current-selection')).toContainText('Classic Hoodie')
+    await expect(page.getByTestId('creative-detail-product-zone')).toContainText('Classic Hoodie')
+    await expect(page.getByTestId('creative-detail-free-material-zone')).toContainText('Studio BGM 01')
+    await expect(page.getByTestId('creative-detail-legacy-editor')).toBeVisible({ timeout: 10000 })
+  })
+
   test('filters full-carrier readback to video and audio operations only', async ({ page }) => {
     await gotoHashRoute(page, `/#/creative/101`)
 
+    await expect(page.getByTestId('creative-detail-legacy-editor')).toBeVisible({ timeout: 10000 })
     await expect(page.locator('[data-testid^="creative-detail-input-item-type-"]')).toHaveCount(2)
 
     await page.getByTestId('creative-detail-input-item-type-0').click()
