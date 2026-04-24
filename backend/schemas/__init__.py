@@ -89,6 +89,26 @@ class CreativeEligibilityStatus(str, Enum):
     INVALID = "INVALID"
 
 
+class CreativeDetailPageMode(str, Enum):
+    DEFINITION = "definition"
+    RESULT_PENDING_CONFIRM = "result_pending_confirm"
+    PUBLISHED_FOLLOWUP = "published_followup"
+
+
+class CreativeReadinessState(str, Enum):
+    NOT_STARTED = "not_started"
+    PARTIAL = "partial"
+    READY = "ready"
+    RESULT_PENDING_CONFIRM = "result_pending_confirm"
+    PUBLISHED_FOLLOWUP = "published_followup"
+
+
+class CreativeSelectionState(str, Enum):
+    MISSING = "missing"
+    DEFINED = "defined"
+    DETACHED = "detached"
+
+
 class CreativeProductNameMode(str, Enum):
     FOLLOW_PRIMARY_PRODUCT = "follow_primary_product"
     ADOPTED_CANDIDATE = "adopted_candidate"
@@ -853,6 +873,109 @@ class CreativeLatestTaskSummaryResponse(BaseModel):
     updated_at: datetime
 
 
+class CreativeSelectionAdoptedFromResponse(BaseModel):
+    zone: str
+    label: str
+    asset_type: Optional[str] = None
+    asset_id: Optional[int] = None
+    product_id: Optional[int] = None
+    product_name: Optional[str] = None
+    source_kind: Optional[CreativeCandidateSourceKind] = None
+    source_ref: Optional[str] = None
+
+
+class CreativeCurrentSelectionFieldResponse(BaseModel):
+    state: CreativeSelectionState = CreativeSelectionState.MISSING
+    value_text: Optional[str] = None
+    asset_type: Optional[str] = None
+    asset_id: Optional[int] = None
+    asset_name: Optional[str] = None
+    asset_excerpt: Optional[str] = None
+    asset_path: Optional[str] = None
+    duration_seconds: Optional[int] = None
+    source_label: Optional[str] = None
+    detached: bool = False
+    selection_count: int = 0
+    sequence: Optional[int] = None
+    instance_no: Optional[int] = None
+    adopted_from: Optional[CreativeSelectionAdoptedFromResponse] = None
+
+
+class CreativeCurrentSelectionResponse(BaseModel):
+    product_name: CreativeCurrentSelectionFieldResponse = Field(
+        default_factory=CreativeCurrentSelectionFieldResponse
+    )
+    cover: CreativeCurrentSelectionFieldResponse = Field(
+        default_factory=CreativeCurrentSelectionFieldResponse
+    )
+    copywriting: CreativeCurrentSelectionFieldResponse = Field(
+        default_factory=CreativeCurrentSelectionFieldResponse
+    )
+    audio: CreativeCurrentSelectionFieldResponse = Field(
+        default_factory=CreativeCurrentSelectionFieldResponse
+    )
+    videos: List[CreativeCurrentSelectionFieldResponse] = Field(default_factory=list)
+
+
+class CreativeZoneMaterialCandidateResponse(BaseModel):
+    candidate_type: CreativeCandidateType
+    asset_id: int
+    asset_name: Optional[str] = None
+    asset_excerpt: Optional[str] = None
+    asset_path: Optional[str] = None
+    duration_seconds: Optional[int] = None
+    source_kind: Optional[CreativeCandidateSourceKind] = None
+    source_product_id: Optional[int] = None
+    source_product_name: Optional[str] = None
+    source_ref: Optional[str] = None
+    enabled: bool = True
+    status: Optional[CreativeCandidateStatus] = None
+    is_selected: bool = False
+    is_current_value: bool = False
+
+
+class CreativeProductNameCandidateResponse(BaseModel):
+    product_id: int
+    product_name: str
+    is_selected: bool = False
+    is_detached: bool = False
+
+
+class CreativePrimaryProductSummaryResponse(BaseModel):
+    id: int
+    name: str
+    link_id: Optional[int] = None
+    source_mode: Optional[CreativeProductLinkSourceMode] = None
+    is_primary: bool = True
+    enabled: bool = True
+    cover_count: int = 0
+    video_count: int = 0
+    copywriting_count: int = 0
+
+
+class CreativeProductZoneResponse(BaseModel):
+    primary_product: Optional[CreativePrimaryProductSummaryResponse] = None
+    linked_products: List[CreativeProductLinkResponse] = Field(default_factory=list)
+    product_name_candidate: Optional[CreativeProductNameCandidateResponse] = None
+    cover_candidates: List[CreativeZoneMaterialCandidateResponse] = Field(default_factory=list)
+    video_candidates: List[CreativeZoneMaterialCandidateResponse] = Field(default_factory=list)
+    copywriting_candidates: List[CreativeZoneMaterialCandidateResponse] = Field(default_factory=list)
+
+
+class CreativeFreeMaterialZoneResponse(BaseModel):
+    cover_candidates: List[CreativeZoneMaterialCandidateResponse] = Field(default_factory=list)
+    video_candidates: List[CreativeZoneMaterialCandidateResponse] = Field(default_factory=list)
+    audio_candidates: List[CreativeZoneMaterialCandidateResponse] = Field(default_factory=list)
+    copywriting_candidates: List[CreativeZoneMaterialCandidateResponse] = Field(default_factory=list)
+
+
+class CreativeReadinessResponse(BaseModel):
+    state: CreativeReadinessState = CreativeReadinessState.NOT_STARTED
+    missing_fields: List[str] = Field(default_factory=list)
+    can_compose: bool = False
+    next_action_hint: Optional[str] = None
+
+
 class CreativeCreateRequest(BaseModel):
     creative_no: Optional[str] = Field(None, min_length=1, max_length=64)
     title: Optional[str] = Field(None, max_length=256)
@@ -1248,6 +1371,15 @@ class CreativeDetailResponse(BaseModel):
     eligibility_status: CreativeEligibilityStatus = CreativeEligibilityStatus.PENDING_INPUT
     eligibility_reasons: List[str] = Field(default_factory=list)
     latest_task_summary: Optional[CreativeLatestTaskSummaryResponse] = None
+    current_selection: CreativeCurrentSelectionResponse = Field(
+        default_factory=CreativeCurrentSelectionResponse
+    )
+    product_zone: CreativeProductZoneResponse = Field(default_factory=CreativeProductZoneResponse)
+    free_material_zone: CreativeFreeMaterialZoneResponse = Field(
+        default_factory=CreativeFreeMaterialZoneResponse
+    )
+    readiness: CreativeReadinessResponse = Field(default_factory=CreativeReadinessResponse)
+    page_mode: CreativeDetailPageMode = CreativeDetailPageMode.DEFINITION
     created_at: datetime
     updated_at: datetime
 

@@ -9,6 +9,7 @@ from models import CreativeCandidateItem, CreativeInputItem, CreativeItem, Creat
 from schemas import (
     CreativeCandidateStatus,
     CreativeCandidateType,
+    CreativeDetailPageMode,
     CreativeCoverMode,
     CreativeCreateRequest,
     CreativeCopywritingMode,
@@ -20,6 +21,7 @@ from schemas import (
     CreativeItemResponse,
     CreativeProductLinkSourceMode,
     CreativeProductNameMode,
+    CreativeReadinessState,
     CreativeStatus,
     CreativeUpdateRequest,
     CreativeVersionSummaryResponse,
@@ -843,6 +845,11 @@ def test_work_driven_creative_write_contracts_expose_canonical_inputs_without_sn
     assert "input_orchestration" in CreativeItemResponse.model_fields
     assert "input_snapshot" not in CreativeItemResponse.model_fields
     assert "candidate_items" in CreativeDetailResponse.model_fields
+    assert "current_selection" in CreativeDetailResponse.model_fields
+    assert "product_zone" in CreativeDetailResponse.model_fields
+    assert "free_material_zone" in CreativeDetailResponse.model_fields
+    assert "readiness" in CreativeDetailResponse.model_fields
+    assert "page_mode" in CreativeDetailResponse.model_fields
 
     request = CreativeCreateRequest(
         profile_id=1,
@@ -938,3 +945,37 @@ def test_phase_a_response_contracts_are_instantiable() -> None:
     assert creative.eligibility_status == CreativeEligibilityStatus.PENDING_INPUT
     assert version.version_no == 1
     assert package.creative_version_id == 20
+    detail = CreativeDetailResponse(
+        id=10,
+        creative_no="CR-0001",
+        title="Creative Title",
+        status=CreativeStatus.PENDING_INPUT,
+        current_version_id=20,
+        current_version=None,
+        versions=[],
+        review_summary=None,
+        linked_task_ids=[],
+        product_links=[],
+        candidate_items=[],
+        subject_product_id=None,
+        subject_product_name_snapshot=None,
+        main_copywriting_text=None,
+        current_product_name=None,
+        current_cover_asset_type=None,
+        current_cover_asset_id=None,
+        current_copywriting_id=None,
+        current_copywriting_text=None,
+        target_duration_seconds=None,
+        input_items=[],
+        generation_error_msg=None,
+        generation_failed_at=None,
+        eligibility_status=CreativeEligibilityStatus.PENDING_INPUT,
+        eligibility_reasons=[],
+        latest_task_summary=None,
+        page_mode=CreativeDetailPageMode.DEFINITION,
+        readiness={"state": CreativeReadinessState.NOT_STARTED},
+        created_at="2026-04-17T00:00:00",
+        updated_at="2026-04-17T00:00:00",
+    )
+    assert detail.page_mode == CreativeDetailPageMode.DEFINITION
+    assert detail.readiness.state == CreativeReadinessState.NOT_STARTED

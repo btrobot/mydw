@@ -1496,6 +1496,76 @@ export type CreativeCreateRequest = {
 export type CreativeCurrentCoverAssetType = 'cover';
 
 /**
+ * CreativeCurrentSelectionFieldResponse
+ */
+export type CreativeCurrentSelectionFieldResponse = {
+    state?: CreativeSelectionState;
+    /**
+     * Value Text
+     */
+    value_text?: string | null;
+    /**
+     * Asset Type
+     */
+    asset_type?: string | null;
+    /**
+     * Asset Id
+     */
+    asset_id?: number | null;
+    /**
+     * Asset Name
+     */
+    asset_name?: string | null;
+    /**
+     * Asset Excerpt
+     */
+    asset_excerpt?: string | null;
+    /**
+     * Asset Path
+     */
+    asset_path?: string | null;
+    /**
+     * Duration Seconds
+     */
+    duration_seconds?: number | null;
+    /**
+     * Source Label
+     */
+    source_label?: string | null;
+    /**
+     * Detached
+     */
+    detached?: boolean;
+    /**
+     * Selection Count
+     */
+    selection_count?: number;
+    /**
+     * Sequence
+     */
+    sequence?: number | null;
+    /**
+     * Instance No
+     */
+    instance_no?: number | null;
+    adopted_from?: CreativeSelectionAdoptedFromResponse | null;
+};
+
+/**
+ * CreativeCurrentSelectionResponse
+ */
+export type CreativeCurrentSelectionResponse = {
+    product_name?: CreativeCurrentSelectionFieldResponse;
+    cover?: CreativeCurrentSelectionFieldResponse;
+    copywriting?: CreativeCurrentSelectionFieldResponse;
+    audio?: CreativeCurrentSelectionFieldResponse;
+    /**
+     * Videos
+     */
+    videos?: Array<CreativeCurrentSelectionFieldResponse>;
+};
+
+/**
  * CreativeCurrentVersionResponse
  *
  * Current-version projection for the Creative detail endpoint.
@@ -1540,6 +1610,11 @@ export type CreativeCurrentVersionResponse = {
     package_record?: PackageRecordResponse | null;
     latest_check?: CheckRecordResponse | null;
 };
+
+/**
+ * CreativeDetailPageMode
+ */
+export type CreativeDetailPageMode = 'definition' | 'result_pending_confirm' | 'published_followup';
 
 /**
  * CreativeDetailResponse
@@ -1642,6 +1717,11 @@ export type CreativeDetailResponse = {
      */
     eligibility_reasons?: Array<string>;
     latest_task_summary?: CreativeLatestTaskSummaryResponse | null;
+    current_selection?: CreativeCurrentSelectionResponse;
+    product_zone?: CreativeProductZoneResponse;
+    free_material_zone?: CreativeFreeMaterialZoneResponse;
+    readiness?: CreativeReadinessResponse;
+    page_mode?: CreativeDetailPageMode;
     /**
      * Created At
      */
@@ -1661,6 +1741,28 @@ export type CreativeEligibilityStatus = 'PENDING_INPUT' | 'READY_TO_COMPOSE' | '
  * CreativeFlowMode
  */
 export type CreativeFlowMode = 'task_first' | 'dual' | 'creative_first';
+
+/**
+ * CreativeFreeMaterialZoneResponse
+ */
+export type CreativeFreeMaterialZoneResponse = {
+    /**
+     * Cover Candidates
+     */
+    cover_candidates?: Array<CreativeZoneMaterialCandidateResponse>;
+    /**
+     * Video Candidates
+     */
+    video_candidates?: Array<CreativeZoneMaterialCandidateResponse>;
+    /**
+     * Audio Candidates
+     */
+    audio_candidates?: Array<CreativeZoneMaterialCandidateResponse>;
+    /**
+     * Copywriting Candidates
+     */
+    copywriting_candidates?: Array<CreativeZoneMaterialCandidateResponse>;
+};
 
 /**
  * CreativeInputItemResponse
@@ -1844,6 +1946,45 @@ export type CreativeLatestTaskSummaryResponse = {
 };
 
 /**
+ * CreativePrimaryProductSummaryResponse
+ */
+export type CreativePrimaryProductSummaryResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Link Id
+     */
+    link_id?: number | null;
+    source_mode?: CreativeProductLinkSourceMode | null;
+    /**
+     * Is Primary
+     */
+    is_primary?: boolean;
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Cover Count
+     */
+    cover_count?: number;
+    /**
+     * Video Count
+     */
+    video_count?: number;
+    /**
+     * Copywriting Count
+     */
+    copywriting_count?: number;
+};
+
+/**
  * CreativeProductLinkResponse
  */
 export type CreativeProductLinkResponse = {
@@ -1903,9 +2044,79 @@ export type CreativeProductLinkWrite = {
 };
 
 /**
+ * CreativeProductNameCandidateResponse
+ */
+export type CreativeProductNameCandidateResponse = {
+    /**
+     * Product Id
+     */
+    product_id: number;
+    /**
+     * Product Name
+     */
+    product_name: string;
+    /**
+     * Is Selected
+     */
+    is_selected?: boolean;
+    /**
+     * Is Detached
+     */
+    is_detached?: boolean;
+};
+
+/**
  * CreativeProductNameMode
  */
 export type CreativeProductNameMode = 'follow_primary_product' | 'adopted_candidate' | 'manual';
+
+/**
+ * CreativeProductZoneResponse
+ */
+export type CreativeProductZoneResponse = {
+    primary_product?: CreativePrimaryProductSummaryResponse | null;
+    /**
+     * Linked Products
+     */
+    linked_products?: Array<CreativeProductLinkResponse>;
+    product_name_candidate?: CreativeProductNameCandidateResponse | null;
+    /**
+     * Cover Candidates
+     */
+    cover_candidates?: Array<CreativeZoneMaterialCandidateResponse>;
+    /**
+     * Video Candidates
+     */
+    video_candidates?: Array<CreativeZoneMaterialCandidateResponse>;
+    /**
+     * Copywriting Candidates
+     */
+    copywriting_candidates?: Array<CreativeZoneMaterialCandidateResponse>;
+};
+
+/**
+ * CreativeReadinessResponse
+ */
+export type CreativeReadinessResponse = {
+    state?: CreativeReadinessState;
+    /**
+     * Missing Fields
+     */
+    missing_fields?: Array<string>;
+    /**
+     * Can Compose
+     */
+    can_compose?: boolean;
+    /**
+     * Next Action Hint
+     */
+    next_action_hint?: string | null;
+};
+
+/**
+ * CreativeReadinessState
+ */
+export type CreativeReadinessState = 'not_started' | 'partial' | 'ready' | 'result_pending_confirm' | 'published_followup';
 
 /**
  * CreativeRejectRequest
@@ -1981,6 +2192,46 @@ export type CreativeReworkRequest = {
  * CreativeSelectedMediaWriteMaterialType
  */
 export type CreativeSelectedMediaWriteMaterialType = 'video' | 'audio';
+
+/**
+ * CreativeSelectionAdoptedFromResponse
+ */
+export type CreativeSelectionAdoptedFromResponse = {
+    /**
+     * Zone
+     */
+    zone: string;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Asset Type
+     */
+    asset_type?: string | null;
+    /**
+     * Asset Id
+     */
+    asset_id?: number | null;
+    /**
+     * Product Id
+     */
+    product_id?: number | null;
+    /**
+     * Product Name
+     */
+    product_name?: string | null;
+    source_kind?: CreativeCandidateSourceKind | null;
+    /**
+     * Source Ref
+     */
+    source_ref?: string | null;
+};
+
+/**
+ * CreativeSelectionState
+ */
+export type CreativeSelectionState = 'missing' | 'defined' | 'detached';
 
 /**
  * CreativeStatus
@@ -2396,6 +2647,59 @@ export type CreativeWorkbenchSummaryResponse = {
      * Composition Ready Count
      */
     composition_ready_count?: number;
+};
+
+/**
+ * CreativeZoneMaterialCandidateResponse
+ */
+export type CreativeZoneMaterialCandidateResponse = {
+    candidate_type: CreativeCandidateType;
+    /**
+     * Asset Id
+     */
+    asset_id: number;
+    /**
+     * Asset Name
+     */
+    asset_name?: string | null;
+    /**
+     * Asset Excerpt
+     */
+    asset_excerpt?: string | null;
+    /**
+     * Asset Path
+     */
+    asset_path?: string | null;
+    /**
+     * Duration Seconds
+     */
+    duration_seconds?: number | null;
+    source_kind?: CreativeCandidateSourceKind | null;
+    /**
+     * Source Product Id
+     */
+    source_product_id?: number | null;
+    /**
+     * Source Product Name
+     */
+    source_product_name?: string | null;
+    /**
+     * Source Ref
+     */
+    source_ref?: string | null;
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    status?: CreativeCandidateStatus | null;
+    /**
+     * Is Selected
+     */
+    is_selected?: boolean;
+    /**
+     * Is Current Value
+     */
+    is_current_value?: boolean;
 };
 
 /**

@@ -49,6 +49,15 @@ PHASE1_CREATIVE_SCHEMA_NAMES = (
     "CreativeInputItemWrite",
     "CreativeInputOrchestrationResponse",
     "CreativeInputMaterialCountsResponse",
+    "CreativeCurrentSelectionResponse",
+    "CreativeCurrentSelectionFieldResponse",
+    "CreativeSelectionAdoptedFromResponse",
+    "CreativeProductZoneResponse",
+    "CreativePrimaryProductSummaryResponse",
+    "CreativeProductNameCandidateResponse",
+    "CreativeZoneMaterialCandidateResponse",
+    "CreativeFreeMaterialZoneResponse",
+    "CreativeReadinessResponse",
 )
 
 PHASE1_CREATIVE_ENUM_SCHEMA_NAMES = (
@@ -56,12 +65,23 @@ PHASE1_CREATIVE_ENUM_SCHEMA_NAMES = (
     "CreativeEligibilityStatus",
     "CreativeWorkbenchPoolState",
     "CreativeWorkbenchSort",
+    "CreativeDetailPageMode",
+    "CreativeReadinessState",
+    "CreativeSelectionState",
 )
 
-PHASE1_CREATIVE_DETAIL_REF_FIELDS = (
+PHASE1_CREATIVE_COMMON_REF_FIELDS = (
     "input_orchestration",
     "eligibility_status",
     "latest_task_summary",
+)
+
+PHASE1_CREATIVE_DETAIL_REF_FIELDS = PHASE1_CREATIVE_COMMON_REF_FIELDS + (
+    "current_selection",
+    "product_zone",
+    "free_material_zone",
+    "readiness",
+    "page_mode",
 )
 
 PHASE2_LEGACY_CREATIVE_WRITE_FIELDS = (
@@ -241,6 +261,11 @@ async def test_creative_openapi_exposes_phase4_workbench_and_detail_contracts(
     assert "input_snapshot" not in schemas["CreativeDetailResponse"]["properties"]
     assert schemas["CreativeDetailResponse"]["properties"]["eligibility_status"]["$ref"].endswith("/CreativeEligibilityStatus")
     assert schemas["CreativeDetailResponse"]["properties"]["latest_task_summary"]["anyOf"][0]["$ref"].endswith("/CreativeLatestTaskSummaryResponse")
+    assert schemas["CreativeDetailResponse"]["properties"]["current_selection"]["$ref"].endswith("/CreativeCurrentSelectionResponse")
+    assert schemas["CreativeDetailResponse"]["properties"]["product_zone"]["$ref"].endswith("/CreativeProductZoneResponse")
+    assert schemas["CreativeDetailResponse"]["properties"]["free_material_zone"]["$ref"].endswith("/CreativeFreeMaterialZoneResponse")
+    assert schemas["CreativeDetailResponse"]["properties"]["readiness"]["$ref"].endswith("/CreativeReadinessResponse")
+    assert schemas["CreativeDetailResponse"]["properties"]["page_mode"]["$ref"].endswith("/CreativeDetailPageMode")
     assert schemas["CreativeWorkbenchItemResponse"]["properties"]["input_items"]["type"] == "array"
     assert "full-carrier compatibility readback" in schemas["CreativeWorkbenchItemResponse"]["properties"]["input_items"]["description"]
     assert schemas["CreativeWorkbenchItemResponse"]["properties"]["input_orchestration"]["$ref"].endswith("/CreativeInputOrchestrationResponse")
@@ -313,11 +338,11 @@ async def test_frontend_exported_openapi_keeps_phase4_creative_contract_in_sync(
     assert _schema_refs(
         exported_spec,
         "CreativeWorkbenchItemResponse",
-        PHASE1_CREATIVE_DETAIL_REF_FIELDS,
+        PHASE1_CREATIVE_COMMON_REF_FIELDS,
     ) == _schema_refs(
         live_spec,
         "CreativeWorkbenchItemResponse",
-        PHASE1_CREATIVE_DETAIL_REF_FIELDS,
+        PHASE1_CREATIVE_COMMON_REF_FIELDS,
     )
 
     for schema_name in ("CreativeCreateRequest", "CreativeUpdateRequest"):

@@ -159,6 +159,12 @@ async def test_create_creative_allows_work_item_without_current_version(
     assert "input_snapshot" not in payload
     assert "请选择合成配置" in payload["eligibility_reasons"]
     assert "至少选择 1 个视频" in payload["eligibility_reasons"]
+    assert payload["page_mode"] == "definition"
+    assert payload["readiness"]["state"] == "not_started"
+    assert payload["readiness"]["can_compose"] is False
+    assert payload["current_selection"]["videos"] == []
+    assert payload["product_zone"]["primary_product"] is None
+    assert payload["free_material_zone"]["video_candidates"] == []
 
 
 @pytest.mark.asyncio
@@ -361,6 +367,118 @@ async def test_create_creative_persists_candidate_pool_and_adopted_cover_copywri
     ]
     assert payload["candidate_items"][0]["source_product_name"] == product.name
     assert payload["candidate_items"][1]["asset_excerpt"] == copywriting.content
+
+
+@pytest.mark.asyncio
+async def test_creative_detail_projects_page_friendly_workspace_zones_and_readiness(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    profile, product, _, _, _, free_audio, _ = await _seed_domain_inputs(
+        db_session,
+        composition_mode="local_ffmpeg",
+    )
+    product_video = Video(
+        product_id=product.id,
+        name="product-video",
+        file_path="data/videos/product-video.mp4",
+        duration=12,
+    )
+    product_copywriting = Copywriting(
+        product_id=product.id,
+        name="product-copy",
+        content="product copy",
+        source_type="manual",
+    )
+    product_cover = Cover(
+        product_id=product.id,
+        name="product-cover",
+        file_path="data/covers/product-cover.png",
+    )
+    free_video = Video(name="free-video", file_path="data/videos/free-video.mp4")
+    free_copywriting = Copywriting(name="free-copy", content="free copy", source_type="manual")
+    db_session.add_all([product_video, product_copywriting, product_cover, free_video, free_copywriting])
+    await db_session.commit()
+    await db_session.refresh(product_video)
+    await db_session.refresh(product_copywriting)
+    await db_session.refresh(product_cover)
+    await db_session.refresh(free_video)
+    await db_session.refresh(free_copywriting)
+
+    create_response = await client.post(
+        "/api/creatives",
+        json={
+            "title": "Creative Workspace Projection",
+            "profile_id": profile.id,
+            "product_links": [
+                {"product_id": product.id, "is_primary": True},
+            ],
+            "candidate_items": [
+                {
+                    "candidate_type": "audio",
+                    "asset_id": free_audio.id,
+                    "source_kind": "manual_upload",
+                    "status": "candidate",
+                },
+                {
+                    "candidate_type": "video",
+                    "asset_id": free_video.id,
+                    "source_kind": "manual_upload",
+                    "status": "candidate",
+                },
+                {
+                    "candidate_type": "copywriting",
+                    "asset_id": free_copywriting.id,
+                    "source_kind": "manual_upload",
+                    "status": "candidate",
+                },
+            ],
+            "current_copywriting_id": product_copywriting.id,
+            "copywriting_mode": "manual",
+            "input_items": [
+                {"material_type": "video", "material_id": product_video.id},
+                {"material_type": "audio", "material_id": free_audio.id},
+            ],
+        },
+    )
+
+    assert create_response.status_code == 201
+    creative = create_response.json()
+
+    detail_response = await client.get(f"/api/creatives/{creative['id']}")
+    assert detail_response.status_code == 200
+    payload = detail_response.json()
+
+    assert payload["page_mode"] == "definition"
+    assert payload["readiness"]["state"] == "ready"
+    assert payload["readiness"]["can_compose"] is True
+    assert payload["current_selection"]["product_name"]["value_text"] == product.name
+    assert payload["current_selection"]["product_name"]["source_label"] == "主题商品"
+    assert payload["current_selection"]["cover"]["asset_id"] == product_cover.id
+    assert payload["current_selection"]["cover"]["source_label"] == "主题商品"
+    assert payload["current_selection"]["copywriting"]["asset_id"] == product_copywriting.id
+    assert payload["current_selection"]["copywriting"]["value_text"] == product_copywriting.content
+    assert payload["current_selection"]["audio"]["asset_id"] == free_audio.id
+    assert payload["current_selection"]["audio"]["source_label"] == "自由素材"
+    assert [item["asset_id"] for item in payload["current_selection"]["videos"]] == [product_video.id]
+    assert payload["product_zone"]["primary_product"]["id"] == product.id
+    assert payload["product_zone"]["product_name_candidate"]["is_selected"] is True
+    assert any(
+        item["asset_id"] == product_cover.id and item["is_selected"] is True
+        for item in payload["product_zone"]["cover_candidates"]
+    )
+    assert any(
+        item["asset_id"] == product_video.id and item["is_selected"] is True
+        for item in payload["product_zone"]["video_candidates"]
+    )
+    assert any(
+        item["asset_id"] == free_audio.id and item["is_selected"] is True
+        for item in payload["free_material_zone"]["audio_candidates"]
+    )
+    assert any(
+        item["asset_id"] == free_video.id and item["is_selected"] is False
+        for item in payload["free_material_zone"]["video_candidates"]
+    )
 
 
 @pytest.mark.asyncio
@@ -1097,6 +1215,42 @@ async def test_creative_detail_projects_composing_from_task_execution_state(
     assert payload["latest_task_summary"]["task_id"] == task.id
     assert payload["latest_task_summary"]["task_kind"] == "composition"
     assert payload["latest_task_summary"]["task_status"] == "composing"
+
+
+@pytest.mark.asyncio
+async def test_creative_detail_projects_page_mode_for_result_and_publish_followup(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    creative_id, _ = await _seed_creative_sample(db_session, creative_no="CR-API-PAGE-MODE-0001")
+    creative = await db_session.get(CreativeItem, creative_id)
+    assert creative is not None
+
+    creative.status = "WAITING_REVIEW"
+    await db_session.commit()
+
+    review_response = await client.get(f"/api/creatives/{creative_id}")
+    assert review_response.status_code == 200
+    review_payload = review_response.json()
+    assert review_payload["page_mode"] == "result_pending_confirm"
+    assert review_payload["readiness"]["state"] == "result_pending_confirm"
+
+    db_session.add(
+        PublishPoolItem(
+            creative_item_id=creative_id,
+            creative_version_id=creative.current_version_id,
+            status="active",
+        )
+    )
+    creative.status = "APPROVED"
+    await db_session.commit()
+
+    publish_response = await client.get(f"/api/creatives/{creative_id}")
+    assert publish_response.status_code == 200
+    publish_payload = publish_response.json()
+    assert publish_payload["status"] == "IN_PUBLISH_POOL"
+    assert publish_payload["page_mode"] == "published_followup"
+    assert publish_payload["readiness"]["state"] == "published_followup"
 
 
 @pytest.mark.asyncio

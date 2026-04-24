@@ -38,17 +38,29 @@ from models import (
 )
 from schemas import (
     CreativeCreateRequest,
+    CreativeCurrentSelectionFieldResponse,
+    CreativeCurrentSelectionResponse,
     CreativeDetailResponse,
+    CreativeDetailPageMode,
     CreativeEligibilityStatus,
     CreativeInputItemResponse,
     CreativeInputMaterialCountsResponse,
     CreativeInputOrchestrationResponse,
     CreativeCandidateItemResponse,
+    CreativeCandidateSourceKind,
     CreativeItemResponse,
     CreativeLatestTaskSummaryResponse,
     CreativeCandidateStatus,
     CreativeCandidateType,
+    CreativeFreeMaterialZoneResponse,
+    CreativePrimaryProductSummaryResponse,
     CreativeProductLinkResponse,
+    CreativeProductNameCandidateResponse,
+    CreativeProductZoneResponse,
+    CreativeReadinessResponse,
+    CreativeReadinessState,
+    CreativeSelectionAdoptedFromResponse,
+    CreativeSelectionState,
     CreativeComposeSubmitResponse,
     CreativeReviewSummaryResponse,
     CreativeStatus,
@@ -58,6 +70,7 @@ from schemas import (
     CreativeWorkbenchPoolState,
     CreativeWorkbenchSort,
     CreativeWorkbenchSummaryResponse,
+    CreativeZoneMaterialCandidateResponse,
     CompositionJobStatus,
     TaskKind,
     TaskStatus,
@@ -794,7 +807,14 @@ class CreativeService:
             current_check=current_check,
             total_checks=total_checks,
         )
-        projection = await self._build_projection(creative)
+        product_links = self._build_product_links_response(creative)
+        candidate_items = await self._build_candidate_items_response(creative)
+        projection = await self._build_projection(
+            creative,
+            include_detail_page_projection=True,
+            product_links_response=product_links,
+            candidate_items_response=candidate_items,
+        )
 
         return CreativeDetailResponse(
             id=creative.id,
@@ -806,8 +826,8 @@ class CreativeService:
             versions=versions,
             review_summary=review_summary,
             linked_task_ids=linked_task_ids,
-            product_links=self._build_product_links_response(creative),
-            candidate_items=await self._build_candidate_items_response(creative),
+            product_links=product_links,
+            candidate_items=candidate_items,
             subject_product_id=creative.subject_product_id,
             subject_product_name_snapshot=creative.resolved_current_product_name(),
             main_copywriting_text=creative.resolved_current_copywriting_text(),
@@ -827,11 +847,23 @@ class CreativeService:
             eligibility_status=projection["eligibility_status"],
             eligibility_reasons=projection["eligibility_reasons"],
             latest_task_summary=projection["latest_task_summary"],
+            current_selection=projection["current_selection"],
+            product_zone=projection["product_zone"],
+            free_material_zone=projection["free_material_zone"],
+            readiness=projection["readiness"],
+            page_mode=projection["page_mode"],
             created_at=creative.created_at,
             updated_at=creative.updated_at,
         )
 
-    async def _build_projection(self, creative: CreativeItem) -> dict[str, Any]:
+    async def _build_projection(
+        self,
+        creative: CreativeItem,
+        *,
+        include_detail_page_projection: bool = False,
+        product_links_response: Optional[list[CreativeProductLinkResponse]] = None,
+        candidate_items_response: Optional[list[CreativeCandidateItemResponse]] = None,
+    ) -> dict[str, Any]:
         runtime_input_state = self._resolve_runtime_input_state(creative)
         input_items = self._build_input_items_response(
             creative,
@@ -850,7 +882,7 @@ class CreativeService:
             creative,
             eligibility_status=eligibility_status,
         )
-        return {
+        projection: dict[str, Any] = {
             "status": status,
             "input_items": input_items,
             "input_orchestration": input_orchestration,
@@ -858,6 +890,39 @@ class CreativeService:
             "eligibility_reasons": eligibility_reasons,
             "latest_task_summary": latest_task_summary,
         }
+        if include_detail_page_projection:
+            product_links_projection = product_links_response or self._build_product_links_response(creative)
+            candidate_items_projection = candidate_items_response or await self._build_candidate_items_response(creative)
+            page_mode = self._build_detail_page_mode(status)
+            projection.update(
+                {
+                    "current_selection": await self._build_current_selection_projection(
+                        creative,
+                        input_items=input_items,
+                        candidate_items_response=candidate_items_projection,
+                    ),
+                    "product_zone": await self._build_product_zone_projection(
+                        creative,
+                        product_links_response=product_links_projection,
+                        candidate_items_response=candidate_items_projection,
+                        input_items=input_items,
+                    ),
+                    "free_material_zone": await self._build_free_material_zone_projection(
+                        creative,
+                        candidate_items_response=candidate_items_projection,
+                        input_items=input_items,
+                    ),
+                    "readiness": self._build_detail_readiness_projection(
+                        creative,
+                        page_mode=page_mode,
+                        input_items=input_items,
+                        input_profile_id=input_orchestration.profile_id,
+                        eligibility_status=eligibility_status,
+                    ),
+                    "page_mode": page_mode,
+                }
+            )
+        return projection
 
     async def _build_workbench_summary_projection(
         self,
@@ -962,6 +1027,649 @@ class CreativeService:
         if len(normalized) <= max_length:
             return normalized
         return f"{normalized[: max_length - 1].rstrip()}…"
+
+    def _build_detail_page_mode(self, status: CreativeStatus) -> CreativeDetailPageMode:
+        if status in {
+            CreativeStatus.WAITING_REVIEW,
+            CreativeStatus.APPROVED,
+            CreativeStatus.REWORK_REQUIRED,
+            CreativeStatus.REJECTED,
+        }:
+            return CreativeDetailPageMode.RESULT_PENDING_CONFIRM
+        if status in {
+            CreativeStatus.IN_PUBLISH_POOL,
+            CreativeStatus.PUBLISHING,
+            CreativeStatus.PUBLISHED,
+        }:
+            return CreativeDetailPageMode.PUBLISHED_FOLLOWUP
+        return CreativeDetailPageMode.DEFINITION
+
+    def _build_detail_readiness_projection(
+        self,
+        creative: CreativeItem,
+        *,
+        page_mode: CreativeDetailPageMode,
+        input_items: list[CreativeInputItemResponse],
+        input_profile_id: Optional[int],
+        eligibility_status: CreativeEligibilityStatus,
+    ) -> CreativeReadinessResponse:
+        selected_media_counts = self._build_selected_media_counts(input_items)
+        missing_fields = self._build_workbench_missing_required_fields(
+            creative,
+            selected_video_count=selected_media_counts["selected_video_count"],
+            input_profile_id=input_profile_id,
+        )
+        state = self._build_detail_readiness_state(
+            page_mode=page_mode,
+            missing_fields=missing_fields,
+            selected_video_count=selected_media_counts["selected_video_count"],
+            creative=creative,
+        )
+        can_compose = (
+            page_mode == CreativeDetailPageMode.DEFINITION
+            and eligibility_status == CreativeEligibilityStatus.READY_TO_COMPOSE
+        )
+        return CreativeReadinessResponse(
+            state=state,
+            missing_fields=missing_fields,
+            can_compose=can_compose,
+            next_action_hint=self._build_detail_next_action_hint(
+                creative,
+                page_mode=page_mode,
+                readiness_state=state,
+                missing_fields=missing_fields,
+            ),
+        )
+
+    def _build_detail_readiness_state(
+        self,
+        *,
+        page_mode: CreativeDetailPageMode,
+        missing_fields: list[str],
+        selected_video_count: int,
+        creative: CreativeItem,
+    ) -> CreativeReadinessState:
+        if page_mode == CreativeDetailPageMode.RESULT_PENDING_CONFIRM:
+            return CreativeReadinessState.RESULT_PENDING_CONFIRM
+        if page_mode == CreativeDetailPageMode.PUBLISHED_FOLLOWUP:
+            return CreativeReadinessState.PUBLISHED_FOLLOWUP
+        if not missing_fields:
+            return CreativeReadinessState.READY
+        has_started_definition = any(
+            [
+                self._has_display_text(creative.resolved_current_product_name()),
+                creative.current_cover_asset_id is not None,
+                self._has_display_text(creative.resolved_current_copywriting_text()),
+                selected_video_count > 0,
+                creative.input_profile_id is not None,
+            ]
+        )
+        return (
+            CreativeReadinessState.PARTIAL
+            if has_started_definition
+            else CreativeReadinessState.NOT_STARTED
+        )
+
+    def _build_detail_next_action_hint(
+        self,
+        creative: CreativeItem,
+        *,
+        page_mode: CreativeDetailPageMode,
+        readiness_state: CreativeReadinessState,
+        missing_fields: list[str],
+    ) -> Optional[str]:
+        if page_mode == CreativeDetailPageMode.RESULT_PENDING_CONFIRM:
+            return "先确认当前结果，或回到编辑继续调整定义。"
+        if page_mode == CreativeDetailPageMode.PUBLISHED_FOLLOWUP:
+            return "查看当前版本发布表现；如需新结果，请回到编辑后重新生成。"
+        if readiness_state == CreativeReadinessState.READY:
+            return "当前作品定义已满足生成条件，可以提交生成新版本。"
+        if "current_product_name" in missing_fields and creative.subject_product_id is None:
+            return "先去商品区选择主题商品，带入默认名称、封面和视频候选。"
+        if "selected_video" in missing_fields:
+            if creative.subject_product_id is not None:
+                return "先去商品区勾选商品视频，或到自由素材区补充视频。"
+            return "先补充至少 1 个视频，再继续定义当前作品。"
+        if "current_cover" in missing_fields:
+            if creative.subject_product_id is not None:
+                return "先去商品区补默认封面，或去自由素材区选择封面。"
+            return "先补齐当前封面。"
+        if "current_copywriting" in missing_fields:
+            return "先补齐当前文案，再进入可生成状态。"
+        if "input_profile" in missing_fields:
+            return "先选择合成配置，明确当前作品的生成方式。"
+        return "继续补齐当前入选区的缺失项。"
+
+    async def _build_current_selection_projection(
+        self,
+        creative: CreativeItem,
+        *,
+        input_items: list[CreativeInputItemResponse],
+        candidate_items_response: list[CreativeCandidateItemResponse],
+    ) -> CreativeCurrentSelectionResponse:
+        material_maps = await self._load_material_detail_maps(
+            cover_ids=[creative.current_cover_asset_id] if creative.current_cover_asset_id is not None else [],
+            copywriting_ids=[
+                creative.current_copywriting_id
+            ] if creative.current_copywriting_id is not None else [],
+            video_ids=[item.material_id for item in input_items if item.material_type == "video"],
+            audio_ids=[item.material_id for item in input_items if item.material_type == "audio"],
+        )
+        selected_videos = [item for item in input_items if item.enabled and item.material_type == "video"]
+        selected_audios = [item for item in input_items if item.enabled and item.material_type == "audio"]
+        primary_product_id = creative.subject_product_id
+        primary_product_name = creative.subject_product_name_snapshot
+
+        product_name_value = creative.resolved_current_product_name()
+        product_name_detached = (
+            creative.resolved_product_name_mode() == "manual"
+            and creative.subject_product_id is not None
+        )
+        product_name_source_label = (
+            "主题商品"
+            if creative.resolved_product_name_mode() == "follow_primary_product"
+            else "手工修改"
+        ) if self._has_display_text(product_name_value) else None
+        product_name_adopted_from = (
+            CreativeSelectionAdoptedFromResponse(
+                zone="product_zone",
+                label="主题商品",
+                product_id=primary_product_id,
+                product_name=primary_product_name,
+            )
+            if creative.resolved_product_name_mode() == "follow_primary_product" and primary_product_id is not None
+            else None
+        )
+
+        cover_detail = material_maps["cover"].get(creative.current_cover_asset_id, {}) if creative.current_cover_asset_id is not None else {}
+        cover_candidate = self._find_candidate_projection(
+            candidate_items_response,
+            candidate_type=CreativeCandidateType.COVER.value,
+            asset_id=creative.current_cover_asset_id,
+        )
+        cover_source_label, cover_adopted_from = self._resolve_selected_asset_source(
+            candidate_item=cover_candidate,
+            asset_type=CreativeCandidateType.COVER.value,
+            asset_id=creative.current_cover_asset_id,
+            asset_detail=cover_detail,
+            primary_product_id=primary_product_id,
+            primary_product_name=primary_product_name,
+            mode=creative.resolved_cover_mode(),
+        )
+
+        copywriting_detail = (
+            material_maps["copywriting"].get(creative.current_copywriting_id, {})
+            if creative.current_copywriting_id is not None
+            else {}
+        )
+        copywriting_candidate = self._find_candidate_projection(
+            candidate_items_response,
+            candidate_type=CreativeCandidateType.COPYWRITING.value,
+            asset_id=creative.current_copywriting_id,
+        )
+        copywriting_source_label, copywriting_adopted_from = self._resolve_selected_asset_source(
+            candidate_item=copywriting_candidate,
+            asset_type=CreativeCandidateType.COPYWRITING.value,
+            asset_id=creative.current_copywriting_id,
+            asset_detail=copywriting_detail,
+            primary_product_id=primary_product_id,
+            primary_product_name=primary_product_name,
+            mode=creative.resolved_copywriting_mode(),
+        )
+        if creative.resolved_copywriting_mode() == "generated":
+            copywriting_source_label = "系统生成"
+            copywriting_adopted_from = CreativeSelectionAdoptedFromResponse(
+                zone="system",
+                label="系统生成",
+            )
+        elif creative.resolved_copywriting_mode() == "manual" and self._has_display_text(
+            creative.resolved_current_copywriting_text()
+        ):
+            copywriting_source_label = copywriting_source_label or "手工修改"
+
+        audio_field = CreativeCurrentSelectionFieldResponse(
+            state=CreativeSelectionState.MISSING,
+            selection_count=len(selected_audios),
+        )
+        if selected_audios:
+            selected_audio = selected_audios[0]
+            audio_detail = material_maps["audio"].get(selected_audio.material_id, {})
+            audio_candidate = self._find_candidate_projection(
+                candidate_items_response,
+                candidate_type=CreativeCandidateType.AUDIO.value,
+                asset_id=selected_audio.material_id,
+            )
+            audio_source_label, audio_adopted_from = self._resolve_selected_asset_source(
+                candidate_item=audio_candidate,
+                asset_type=CreativeCandidateType.AUDIO.value,
+                asset_id=selected_audio.material_id,
+                asset_detail=audio_detail,
+                primary_product_id=primary_product_id,
+                primary_product_name=primary_product_name,
+                mode=None,
+            )
+            audio_field = CreativeCurrentSelectionFieldResponse(
+                state=CreativeSelectionState.DEFINED,
+                asset_type=CreativeCandidateType.AUDIO.value,
+                asset_id=selected_audio.material_id,
+                asset_name=audio_detail.get("name"),
+                asset_excerpt=audio_detail.get("excerpt"),
+                asset_path=audio_detail.get("path"),
+                duration_seconds=audio_detail.get("duration_seconds"),
+                source_label=audio_source_label,
+                selection_count=len(selected_audios),
+                sequence=selected_audio.sequence,
+                instance_no=selected_audio.instance_no,
+                adopted_from=audio_adopted_from,
+            )
+
+        video_fields: list[CreativeCurrentSelectionFieldResponse] = []
+        for selected_video in selected_videos:
+            video_detail = material_maps["video"].get(selected_video.material_id, {})
+            video_candidate = self._find_candidate_projection(
+                candidate_items_response,
+                candidate_type=CreativeCandidateType.VIDEO.value,
+                asset_id=selected_video.material_id,
+            )
+            video_source_label, video_adopted_from = self._resolve_selected_asset_source(
+                candidate_item=video_candidate,
+                asset_type=CreativeCandidateType.VIDEO.value,
+                asset_id=selected_video.material_id,
+                asset_detail=video_detail,
+                primary_product_id=primary_product_id,
+                primary_product_name=primary_product_name,
+                mode=None,
+            )
+            video_fields.append(
+                CreativeCurrentSelectionFieldResponse(
+                    state=CreativeSelectionState.DEFINED,
+                    asset_type=CreativeCandidateType.VIDEO.value,
+                    asset_id=selected_video.material_id,
+                    asset_name=video_detail.get("name"),
+                    asset_excerpt=video_detail.get("excerpt"),
+                    asset_path=video_detail.get("path"),
+                    duration_seconds=video_detail.get("duration_seconds"),
+                    source_label=video_source_label,
+                    selection_count=len(selected_videos),
+                    sequence=selected_video.sequence,
+                    instance_no=selected_video.instance_no,
+                    adopted_from=video_adopted_from,
+                )
+            )
+
+        return CreativeCurrentSelectionResponse(
+            product_name=CreativeCurrentSelectionFieldResponse(
+                state=(
+                    CreativeSelectionState.DETACHED
+                    if product_name_detached and self._has_display_text(product_name_value)
+                    else (
+                        CreativeSelectionState.DEFINED
+                        if self._has_display_text(product_name_value)
+                        else CreativeSelectionState.MISSING
+                    )
+                ),
+                value_text=product_name_value,
+                source_label=product_name_source_label,
+                detached=product_name_detached,
+                adopted_from=product_name_adopted_from,
+            ),
+            cover=CreativeCurrentSelectionFieldResponse(
+                state=(
+                    CreativeSelectionState.DETACHED
+                    if creative.resolved_cover_mode() == "manual" and creative.current_cover_asset_id is not None and creative.subject_product_id is not None
+                    else (
+                        CreativeSelectionState.DEFINED
+                        if creative.current_cover_asset_id is not None
+                        else CreativeSelectionState.MISSING
+                    )
+                ),
+                asset_type=CreativeCandidateType.COVER.value if creative.current_cover_asset_id is not None else None,
+                asset_id=creative.current_cover_asset_id,
+                asset_name=cover_detail.get("name"),
+                asset_excerpt=cover_detail.get("excerpt"),
+                asset_path=cover_detail.get("path"),
+                source_label=cover_source_label,
+                detached=creative.resolved_cover_mode() == "manual" and creative.subject_product_id is not None,
+                selection_count=1 if creative.current_cover_asset_id is not None else 0,
+                adopted_from=cover_adopted_from,
+            ),
+            copywriting=CreativeCurrentSelectionFieldResponse(
+                state=(
+                    CreativeSelectionState.DETACHED
+                    if creative.resolved_copywriting_mode() == "manual"
+                    and self._has_display_text(creative.resolved_current_copywriting_text())
+                    and creative.subject_product_id is not None
+                    else (
+                        CreativeSelectionState.DEFINED
+                        if self._has_display_text(creative.resolved_current_copywriting_text())
+                        else CreativeSelectionState.MISSING
+                    )
+                ),
+                value_text=creative.resolved_current_copywriting_text(),
+                asset_type=(
+                    CreativeCandidateType.COPYWRITING.value
+                    if creative.current_copywriting_id is not None
+                    else None
+                ),
+                asset_id=creative.current_copywriting_id,
+                asset_name=copywriting_detail.get("name"),
+                asset_excerpt=copywriting_detail.get("excerpt"),
+                source_label=copywriting_source_label,
+                detached=creative.resolved_copywriting_mode() == "manual" and creative.subject_product_id is not None,
+                selection_count=1 if self._has_display_text(creative.resolved_current_copywriting_text()) else 0,
+                adopted_from=copywriting_adopted_from,
+            ),
+            audio=audio_field,
+            videos=video_fields,
+        )
+
+    async def _build_product_zone_projection(
+        self,
+        creative: CreativeItem,
+        *,
+        product_links_response: list[CreativeProductLinkResponse],
+        candidate_items_response: list[CreativeCandidateItemResponse],
+        input_items: list[CreativeInputItemResponse],
+    ) -> CreativeProductZoneResponse:
+        primary_link = next((link for link in product_links_response if link.is_primary), None)
+        if primary_link is None:
+            return CreativeProductZoneResponse(linked_products=product_links_response)
+
+        result = await self.db.execute(
+            select(Product)
+            .where(Product.id == primary_link.product_id)
+            .options(
+                selectinload(Product.covers),
+                selectinload(Product.videos),
+                selectinload(Product.copywritings),
+            )
+        )
+        product = result.scalars().first()
+        if product is None:
+            return CreativeProductZoneResponse(linked_products=product_links_response)
+
+        selected_video_ids = {
+            item.material_id
+            for item in input_items
+            if item.enabled and item.material_type == CreativeCandidateType.VIDEO.value
+        }
+        cover_candidate_items = {
+            item.asset_id: item
+            for item in candidate_items_response
+            if item.candidate_type == CreativeCandidateType.COVER
+        }
+        video_candidate_items = {
+            item.asset_id: item
+            for item in candidate_items_response
+            if item.candidate_type == CreativeCandidateType.VIDEO
+        }
+        copywriting_candidate_items = {
+            item.asset_id: item
+            for item in candidate_items_response
+            if item.candidate_type == CreativeCandidateType.COPYWRITING
+        }
+        return CreativeProductZoneResponse(
+            primary_product=CreativePrimaryProductSummaryResponse(
+                id=product.id,
+                name=product.name,
+                link_id=primary_link.id,
+                source_mode=primary_link.source_mode,
+                is_primary=primary_link.is_primary,
+                enabled=primary_link.enabled,
+                cover_count=len(product.covers),
+                video_count=len(product.videos),
+                copywriting_count=len(product.copywritings),
+            ),
+            linked_products=product_links_response,
+            product_name_candidate=CreativeProductNameCandidateResponse(
+                product_id=product.id,
+                product_name=product.name,
+                is_selected=creative.resolved_current_product_name() == product.name,
+                is_detached=creative.resolved_product_name_mode() == "manual",
+            ),
+            cover_candidates=[
+                self._build_zone_candidate_projection(
+                    candidate_type=CreativeCandidateType.COVER,
+                    asset_id=cover.id,
+                    asset_name=cover.name or f"封面 #{cover.id}",
+                    asset_path=cover.file_path,
+                    source_kind=CreativeCandidateSourceKind.PRODUCT_DERIVED,
+                    source_product_id=product.id,
+                    source_product_name=product.name,
+                    status=cover_candidate_items.get(cover.id).status if cover.id in cover_candidate_items else None,
+                    is_selected=creative.current_cover_asset_id == cover.id,
+                    is_current_value=creative.current_cover_asset_id == cover.id,
+                )
+                for cover in sorted(product.covers, key=lambda item: item.id)
+            ],
+            video_candidates=[
+                self._build_zone_candidate_projection(
+                    candidate_type=CreativeCandidateType.VIDEO,
+                    asset_id=video.id,
+                    asset_name=video.name or f"视频 #{video.id}",
+                    asset_path=video.file_path,
+                    duration_seconds=video.duration,
+                    source_kind=CreativeCandidateSourceKind.PRODUCT_DERIVED,
+                    source_product_id=product.id,
+                    source_product_name=product.name,
+                    status=video_candidate_items.get(video.id).status if video.id in video_candidate_items else None,
+                    is_selected=video.id in selected_video_ids,
+                    is_current_value=video.id in selected_video_ids,
+                )
+                for video in sorted(product.videos, key=lambda item: item.id)
+            ],
+            copywriting_candidates=[
+                self._build_zone_candidate_projection(
+                    candidate_type=CreativeCandidateType.COPYWRITING,
+                    asset_id=copy.id,
+                    asset_name=copy.name or f"文案 #{copy.id}",
+                    asset_excerpt=copy.content,
+                    source_kind=CreativeCandidateSourceKind.PRODUCT_DERIVED,
+                    source_product_id=product.id,
+                    source_product_name=product.name,
+                    status=(
+                        copywriting_candidate_items.get(copy.id).status
+                        if copy.id in copywriting_candidate_items
+                        else None
+                    ),
+                    is_selected=creative.current_copywriting_id == copy.id,
+                    is_current_value=creative.current_copywriting_id == copy.id,
+                )
+                for copy in sorted(product.copywritings, key=lambda item: item.id)
+            ],
+        )
+
+    async def _build_free_material_zone_projection(
+        self,
+        creative: CreativeItem,
+        *,
+        candidate_items_response: list[CreativeCandidateItemResponse],
+        input_items: list[CreativeInputItemResponse],
+    ) -> CreativeFreeMaterialZoneResponse:
+        free_candidates = [
+            item
+            for item in candidate_items_response
+            if item.source_product_id is None
+            and item.source_kind != CreativeCandidateSourceKind.PRODUCT_DERIVED
+        ]
+        material_maps = await self._load_material_detail_maps(
+            cover_ids=[item.asset_id for item in free_candidates if item.candidate_type == CreativeCandidateType.COVER],
+            copywriting_ids=[
+                item.asset_id for item in free_candidates if item.candidate_type == CreativeCandidateType.COPYWRITING
+            ],
+            video_ids=[item.asset_id for item in free_candidates if item.candidate_type == CreativeCandidateType.VIDEO],
+            audio_ids=[item.asset_id for item in free_candidates if item.candidate_type == CreativeCandidateType.AUDIO],
+        )
+        selected_video_ids = {
+            item.material_id
+            for item in input_items
+            if item.enabled and item.material_type == CreativeCandidateType.VIDEO.value
+        }
+        selected_audio_ids = {
+            item.material_id
+            for item in input_items
+            if item.enabled and item.material_type == CreativeCandidateType.AUDIO.value
+        }
+        grouped: dict[CreativeCandidateType, list[CreativeZoneMaterialCandidateResponse]] = {
+            CreativeCandidateType.COVER: [],
+            CreativeCandidateType.VIDEO: [],
+            CreativeCandidateType.AUDIO: [],
+            CreativeCandidateType.COPYWRITING: [],
+        }
+        for item in free_candidates:
+            asset_type = item.candidate_type.value
+            asset_detail = material_maps[asset_type].get(item.asset_id, {})
+            is_selected = False
+            if item.candidate_type == CreativeCandidateType.COVER:
+                is_selected = creative.current_cover_asset_id == item.asset_id
+            elif item.candidate_type == CreativeCandidateType.COPYWRITING:
+                is_selected = creative.current_copywriting_id == item.asset_id
+            elif item.candidate_type == CreativeCandidateType.VIDEO:
+                is_selected = item.asset_id in selected_video_ids
+            elif item.candidate_type == CreativeCandidateType.AUDIO:
+                is_selected = item.asset_id in selected_audio_ids
+            grouped[item.candidate_type].append(
+                self._build_zone_candidate_projection(
+                    candidate_type=item.candidate_type,
+                    asset_id=item.asset_id,
+                    asset_name=item.asset_name or asset_detail.get("name"),
+                    asset_excerpt=item.asset_excerpt or asset_detail.get("excerpt"),
+                    asset_path=asset_detail.get("path"),
+                    duration_seconds=asset_detail.get("duration_seconds"),
+                    source_kind=item.source_kind,
+                    source_product_id=item.source_product_id,
+                    source_product_name=item.source_product_name,
+                    source_ref=item.source_ref,
+                    enabled=item.enabled,
+                    status=item.status,
+                    is_selected=is_selected,
+                    is_current_value=is_selected,
+                )
+            )
+        return CreativeFreeMaterialZoneResponse(
+            cover_candidates=grouped[CreativeCandidateType.COVER],
+            video_candidates=grouped[CreativeCandidateType.VIDEO],
+            audio_candidates=grouped[CreativeCandidateType.AUDIO],
+            copywriting_candidates=grouped[CreativeCandidateType.COPYWRITING],
+        )
+
+    def _build_zone_candidate_projection(
+        self,
+        *,
+        candidate_type: CreativeCandidateType,
+        asset_id: int,
+        asset_name: Optional[str],
+        asset_excerpt: Optional[str] = None,
+        asset_path: Optional[str] = None,
+        duration_seconds: Optional[int] = None,
+        source_kind: Optional[CreativeCandidateSourceKind] = None,
+        source_product_id: Optional[int] = None,
+        source_product_name: Optional[str] = None,
+        source_ref: Optional[str] = None,
+        enabled: bool = True,
+        status: Optional[CreativeCandidateStatus] = None,
+        is_selected: bool = False,
+        is_current_value: bool = False,
+    ) -> CreativeZoneMaterialCandidateResponse:
+        return CreativeZoneMaterialCandidateResponse(
+            candidate_type=candidate_type,
+            asset_id=asset_id,
+            asset_name=asset_name,
+            asset_excerpt=asset_excerpt,
+            asset_path=asset_path,
+            duration_seconds=duration_seconds,
+            source_kind=source_kind,
+            source_product_id=source_product_id,
+            source_product_name=source_product_name,
+            source_ref=source_ref,
+            enabled=enabled,
+            status=status,
+            is_selected=is_selected,
+            is_current_value=is_current_value,
+        )
+
+    def _find_candidate_projection(
+        self,
+        candidate_items_response: list[CreativeCandidateItemResponse],
+        *,
+        candidate_type: str,
+        asset_id: Optional[int],
+    ) -> Optional[CreativeCandidateItemResponse]:
+        if asset_id is None:
+            return None
+        return next(
+            (
+                item
+                for item in candidate_items_response
+                if item.candidate_type.value == candidate_type and item.asset_id == asset_id
+            ),
+            None,
+        )
+
+    def _resolve_selected_asset_source(
+        self,
+        *,
+        candidate_item: Optional[CreativeCandidateItemResponse],
+        asset_type: str,
+        asset_id: Optional[int],
+        asset_detail: dict[str, Any],
+        primary_product_id: Optional[int],
+        primary_product_name: Optional[str],
+        mode: Optional[str],
+    ) -> tuple[Optional[str], Optional[CreativeSelectionAdoptedFromResponse]]:
+        if asset_id is None:
+            return None, None
+        if mode == "manual":
+            return "手工修改", None
+        if mode == "generated":
+            return "系统生成", CreativeSelectionAdoptedFromResponse(zone="system", label="系统生成")
+        if mode == "follow_primary_product" or mode == "default_from_primary_product":
+            return "主题商品", CreativeSelectionAdoptedFromResponse(
+                zone="product_zone",
+                label="主题商品",
+                asset_type=asset_type,
+                asset_id=asset_id,
+                product_id=primary_product_id,
+                product_name=primary_product_name,
+            )
+        if candidate_item is not None:
+            if (
+                candidate_item.source_product_id is not None
+                or candidate_item.source_kind == CreativeCandidateSourceKind.PRODUCT_DERIVED
+            ):
+                return "主题商品", CreativeSelectionAdoptedFromResponse(
+                    zone="product_zone",
+                    label="主题商品",
+                    asset_type=asset_type,
+                    asset_id=asset_id,
+                    product_id=candidate_item.source_product_id,
+                    product_name=candidate_item.source_product_name,
+                    source_kind=candidate_item.source_kind,
+                    source_ref=candidate_item.source_ref,
+                )
+            return "自由素材", CreativeSelectionAdoptedFromResponse(
+                zone="free_material_zone",
+                label="自由素材",
+                asset_type=asset_type,
+                asset_id=asset_id,
+                source_kind=candidate_item.source_kind,
+                source_ref=candidate_item.source_ref,
+            )
+        if primary_product_id is not None and asset_detail.get("product_id") == primary_product_id:
+            return "主题商品", CreativeSelectionAdoptedFromResponse(
+                zone="product_zone",
+                label="主题商品",
+                asset_type=asset_type,
+                asset_id=asset_id,
+                product_id=primary_product_id,
+                product_name=primary_product_name,
+            )
+        return "自由素材", CreativeSelectionAdoptedFromResponse(
+            zone="free_material_zone",
+            label="自由素材",
+            asset_type=asset_type,
+            asset_id=asset_id,
+        )
 
     def _has_display_text(self, value: Optional[str]) -> bool:
         return bool(value and value.strip())
@@ -1650,15 +2358,23 @@ class CreativeService:
         }
         if asset_ids_by_type[CreativeCandidateType.COVER.value]:
             rows = await self.db.execute(
-                select(Cover.id, Cover.name).where(Cover.id.in_(asset_ids_by_type[CreativeCandidateType.COVER.value]))
+                select(Cover.id, Cover.name, Cover.file_path, Cover.product_id).where(
+                    Cover.id.in_(asset_ids_by_type[CreativeCandidateType.COVER.value])
+                )
             )
             asset_maps[CreativeCandidateType.COVER.value] = {
-                row[0]: {"name": row[1] or f"封面 #{row[0]}", "excerpt": None}
+                row[0]: {
+                    "name": row[1] or f"封面 #{row[0]}",
+                    "excerpt": None,
+                    "path": row[2],
+                    "product_id": row[3],
+                    "duration_seconds": None,
+                }
                 for row in rows.all()
             }
         if asset_ids_by_type[CreativeCandidateType.COPYWRITING.value]:
             rows = await self.db.execute(
-                select(Copywriting.id, Copywriting.name, Copywriting.content).where(
+                select(Copywriting.id, Copywriting.name, Copywriting.content, Copywriting.product_id).where(
                     Copywriting.id.in_(asset_ids_by_type[CreativeCandidateType.COPYWRITING.value])
                 )
             )
@@ -1666,26 +2382,68 @@ class CreativeService:
                 row[0]: {
                     "name": row[1] or f"文案 #{row[0]}",
                     "excerpt": row[2],
+                    "path": None,
+                    "product_id": row[3],
+                    "duration_seconds": None,
                 }
                 for row in rows.all()
             }
         if asset_ids_by_type[CreativeCandidateType.VIDEO.value]:
             rows = await self.db.execute(
-                select(Video.id, Video.name).where(Video.id.in_(asset_ids_by_type[CreativeCandidateType.VIDEO.value]))
+                select(Video.id, Video.name, Video.file_path, Video.duration, Video.product_id).where(
+                    Video.id.in_(asset_ids_by_type[CreativeCandidateType.VIDEO.value])
+                )
             )
             asset_maps[CreativeCandidateType.VIDEO.value] = {
-                row[0]: {"name": row[1] or f"视频 #{row[0]}", "excerpt": None}
+                row[0]: {
+                    "name": row[1] or f"视频 #{row[0]}",
+                    "excerpt": None,
+                    "path": row[2],
+                    "duration_seconds": row[3],
+                    "product_id": row[4],
+                }
                 for row in rows.all()
             }
         if asset_ids_by_type[CreativeCandidateType.AUDIO.value]:
             rows = await self.db.execute(
-                select(Audio.id, Audio.name).where(Audio.id.in_(asset_ids_by_type[CreativeCandidateType.AUDIO.value]))
+                select(Audio.id, Audio.name, Audio.file_path, Audio.duration).where(
+                    Audio.id.in_(asset_ids_by_type[CreativeCandidateType.AUDIO.value])
+                )
             )
             asset_maps[CreativeCandidateType.AUDIO.value] = {
-                row[0]: {"name": row[1] or f"音频 #{row[0]}", "excerpt": None}
+                row[0]: {
+                    "name": row[1] or f"音频 #{row[0]}",
+                    "excerpt": None,
+                    "path": row[2],
+                    "duration_seconds": row[3],
+                    "product_id": None,
+                }
                 for row in rows.all()
             }
         return asset_maps
+
+    async def _load_material_detail_maps(
+        self,
+        *,
+        cover_ids: list[int],
+        copywriting_ids: list[int],
+        video_ids: list[int],
+        audio_ids: list[int],
+    ) -> dict[str, dict[int, dict[str, Any]]]:
+        candidate_like_items = [
+            CreativeCandidateItem(candidate_type=CreativeCandidateType.COVER.value, asset_id=item_id)
+            for item_id in set(cover_ids)
+        ] + [
+            CreativeCandidateItem(candidate_type=CreativeCandidateType.COPYWRITING.value, asset_id=item_id)
+            for item_id in set(copywriting_ids)
+        ] + [
+            CreativeCandidateItem(candidate_type=CreativeCandidateType.VIDEO.value, asset_id=item_id)
+            for item_id in set(video_ids)
+        ] + [
+            CreativeCandidateItem(candidate_type=CreativeCandidateType.AUDIO.value, asset_id=item_id)
+            for item_id in set(audio_ids)
+        ]
+        return await self._load_candidate_asset_maps(candidate_like_items)
 
     async def _load_product_name_map(
         self,
