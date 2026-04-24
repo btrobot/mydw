@@ -1,7 +1,11 @@
 import type {
+  CreativeCoverMode,
+  CreativeCopywritingMode,
+  CreativeCurrentCoverAssetType,
   CreativeDetailResponse,
   CreativeInputItemResponse,
   CreativeInputItemWrite,
+  CreativeProductNameMode,
 } from '@/api'
 
 export const creativeInputMaterialMeta = {
@@ -30,6 +34,14 @@ export type CreativeAuthoringFormValues = {
   subject_product_id?: number
   subject_product_name_snapshot?: string
   main_copywriting_text?: string
+  current_product_name?: string
+  product_name_mode?: CreativeProductNameMode
+  current_cover_asset_type?: CreativeCurrentCoverAssetType
+  current_cover_asset_id?: number
+  cover_mode?: CreativeCoverMode
+  current_copywriting_id?: number
+  current_copywriting_text?: string
+  copywriting_mode?: CreativeCopywritingMode
   target_duration_seconds?: number
   input_items: CreativeAuthoringInputItemFormValue[]
 }
@@ -78,6 +90,14 @@ export const toCreativeAuthoringFormValues = (
   subject_product_id: creative.subject_product_id ?? undefined,
   subject_product_name_snapshot: creative.subject_product_name_snapshot ?? undefined,
   main_copywriting_text: creative.main_copywriting_text ?? undefined,
+  current_product_name: creative.current_product_name ?? creative.subject_product_name_snapshot ?? undefined,
+  product_name_mode: creative.product_name_mode ?? undefined,
+  current_cover_asset_type: creative.current_cover_asset_type ?? undefined,
+  current_cover_asset_id: creative.current_cover_asset_id ?? undefined,
+  cover_mode: creative.cover_mode ?? undefined,
+  current_copywriting_id: creative.current_copywriting_id ?? undefined,
+  current_copywriting_text: creative.current_copywriting_text ?? creative.main_copywriting_text ?? undefined,
+  copywriting_mode: creative.copywriting_mode ?? undefined,
   target_duration_seconds: creative.target_duration_seconds ?? undefined,
   input_items: getCreativeAuthoringInputItems(creative),
 })
@@ -90,28 +110,64 @@ export const buildCreativeAuthoringPayload = (
   subject_product_id: number | null
   subject_product_name_snapshot: string | null
   main_copywriting_text: string | null
+  current_product_name: string | null
+  product_name_mode: CreativeProductNameMode | null
+  current_cover_asset_type: CreativeCurrentCoverAssetType | null
+  current_cover_asset_id: number | null
+  cover_mode: CreativeCoverMode | null
+  current_copywriting_id: number | null
+  current_copywriting_text: string | null
+  copywriting_mode: CreativeCopywritingMode | null
   target_duration_seconds: number | null
   input_items: Array<CreativeInputItemWrite>
-} => ({
-  title: values.title?.trim() ? values.title.trim() : undefined,
-  profile_id: values.profile_id ?? null,
-  subject_product_id: values.subject_product_id ?? null,
-  subject_product_name_snapshot: values.subject_product_name_snapshot?.trim() || null,
-  main_copywriting_text: values.main_copywriting_text?.trim() || null,
-  target_duration_seconds: values.target_duration_seconds ?? null,
-  input_items: (values.input_items ?? [])
-    .filter((item) => item.material_type && item.material_id !== undefined && item.material_id !== null)
-    .map((item, index) => ({
-      material_type: item.material_type,
-      material_id: Number(item.material_id),
-      role: item.role?.trim() || null,
-      sequence: index + 1,
-      trim_in: item.trim_in ?? null,
-      trim_out: item.trim_out ?? null,
-      slot_duration_seconds: item.slot_duration_seconds ?? null,
-      enabled: item.enabled ?? true,
-    })),
-})
+} => {
+  const currentProductName = values.current_product_name?.trim() || null
+  const currentCopywritingText = values.current_copywriting_text?.trim() || null
+  const productNameMode = values.product_name_mode
+    ?? (values.subject_product_id ? 'follow_primary_product' : (currentProductName ? 'manual' : null))
+  const coverMode = values.cover_mode
+    ?? (values.current_cover_asset_id !== undefined && values.current_cover_asset_id !== null
+      ? 'manual'
+      : (values.subject_product_id ? 'default_from_primary_product' : null))
+  const currentCoverAssetId = coverMode === 'default_from_primary_product'
+    ? null
+    : (values.current_cover_asset_id ?? null)
+  const currentCoverAssetType = currentCoverAssetId === null
+    ? null
+    : (values.current_cover_asset_type ?? 'cover')
+  const currentCopywritingId = values.current_copywriting_id ?? null
+  const copywritingMode = values.copywriting_mode
+    ?? (currentCopywritingId !== null ? 'adopted_candidate' : (currentCopywritingText ? 'manual' : null))
+
+  return {
+    title: values.title?.trim() ? values.title.trim() : undefined,
+    profile_id: values.profile_id ?? null,
+    subject_product_id: values.subject_product_id ?? null,
+    subject_product_name_snapshot: currentProductName,
+    main_copywriting_text: currentCopywritingText,
+    current_product_name: currentProductName,
+    product_name_mode: productNameMode,
+    current_cover_asset_type: currentCoverAssetType,
+    current_cover_asset_id: currentCoverAssetId,
+    cover_mode: coverMode,
+    current_copywriting_id: currentCopywritingId,
+    current_copywriting_text: currentCopywritingText,
+    copywriting_mode: copywritingMode,
+    target_duration_seconds: values.target_duration_seconds ?? null,
+    input_items: (values.input_items ?? [])
+      .filter((item) => item.material_type && item.material_id !== undefined && item.material_id !== null)
+      .map((item, index) => ({
+        material_type: item.material_type,
+        material_id: Number(item.material_id),
+        role: item.role?.trim() || null,
+        sequence: index + 1,
+        trim_in: item.trim_in ?? null,
+        trim_out: item.trim_out ?? null,
+        slot_duration_seconds: item.slot_duration_seconds ?? null,
+        enabled: item.enabled ?? true,
+      })),
+  }
+}
 
 export const countEnabledCreativeInputItems = (
   items: Array<Pick<CreativeInputItemResponse, 'enabled'> | CreativeAuthoringInputItemFormValue> | undefined,

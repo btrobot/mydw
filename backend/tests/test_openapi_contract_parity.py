@@ -72,6 +72,17 @@ PHASE2_LEGACY_CREATIVE_WRITE_FIELDS = (
     "topic_ids",
 )
 
+SLICE1_CURRENT_TRUTH_FIELDS = (
+    "current_product_name",
+    "product_name_mode",
+    "current_cover_asset_type",
+    "current_cover_asset_id",
+    "cover_mode",
+    "current_copywriting_id",
+    "current_copywriting_text",
+    "copywriting_mode",
+)
+
 
 @pytest.mark.asyncio
 async def test_account_list_openapi_includes_status_tag_and_search_filters(
@@ -189,10 +200,19 @@ async def test_creative_openapi_exposes_phase4_workbench_and_detail_contracts(
     assert schemas["CreativeCreateRequest"]["properties"]["subject_product_id"]["anyOf"][0]["type"] == "integer"
     assert schemas["CreativeCreateRequest"]["properties"]["main_copywriting_text"]["anyOf"][0]["type"] == "string"
     assert schemas["CreativeCreateRequest"]["properties"]["target_duration_seconds"]["anyOf"][0]["type"] == "integer"
+    for field_name in SLICE1_CURRENT_TRUTH_FIELDS:
+        assert field_name in schemas["CreativeCreateRequest"]["properties"]
+        assert field_name in schemas["CreativeUpdateRequest"]["properties"]
+        assert field_name in schemas["CreativeDetailResponse"]["properties"]
+        assert field_name in schemas["CreativeWorkbenchItemResponse"]["properties"]
     assert schemas["CreativeCreateRequest"]["properties"]["input_items"]["type"] == "array"
     assert schemas["CreativeUpdateRequest"]["properties"]["input_items"]["anyOf"][0]["type"] == "array"
     assert "Phase 4 canonical" in schemas["CreativeCreateRequest"]["properties"]["input_items"]["description"]
     assert "Phase 4 canonical" in schemas["CreativeUpdateRequest"]["properties"]["input_items"]["description"]
+    assert schemas["CreativeCreateRequest"]["properties"]["product_name_mode"]["anyOf"][0]["$ref"].endswith("/CreativeProductNameMode")
+    assert schemas["CreativeCreateRequest"]["properties"]["current_cover_asset_type"]["anyOf"][0]["$ref"].endswith("/CreativeCurrentCoverAssetType")
+    assert schemas["CreativeCreateRequest"]["properties"]["cover_mode"]["anyOf"][0]["$ref"].endswith("/CreativeCoverMode")
+    assert schemas["CreativeCreateRequest"]["properties"]["copywriting_mode"]["anyOf"][0]["$ref"].endswith("/CreativeCopywritingMode")
     for field_name in PHASE2_LEGACY_CREATIVE_WRITE_FIELDS:
         assert schemas["CreativeCreateRequest"]["properties"][field_name]["deprecated"] is True
         assert schemas["CreativeUpdateRequest"]["properties"][field_name]["deprecated"] is True

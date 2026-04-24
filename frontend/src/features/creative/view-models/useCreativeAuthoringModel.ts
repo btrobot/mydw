@@ -60,7 +60,8 @@ export function useCreativeAuthoringModel({
   const topicsQuery = useTopics()
 
   const selectedProfileId = Form.useWatch('profile_id', form)
-  const watchedSubjectProductName = Form.useWatch('subject_product_name_snapshot', form)
+  const selectedSubjectProductId = Form.useWatch('subject_product_id', form)
+  const watchedCurrentProductName = Form.useWatch('current_product_name', form)
   const watchedTargetDuration = Form.useWatch('target_duration_seconds', form)
   const authoredInputItems = Form.useWatch('input_items', form) ?? []
 
@@ -222,13 +223,30 @@ export function useCreativeAuthoringModel({
   const activeInputItemCount = countEnabledCreativeInputItems(authoredInputItems)
   const handleSubjectProductChange = useCallback((productId?: number) => {
     if (!productId) {
+      form.setFieldValue(
+        'product_name_mode',
+        (form.getFieldValue('current_product_name') as string | undefined)?.trim() ? 'manual' : undefined,
+      )
       return
     }
     const nextName = productNameById.get(productId)
     if (nextName) {
-      form.setFieldValue('subject_product_name_snapshot', nextName)
+      form.setFieldValue('current_product_name', nextName)
+      form.setFieldValue('product_name_mode', 'follow_primary_product')
     }
   }, [form, productNameById])
+  const handleCurrentProductNameChange = useCallback((value: string) => {
+    const selectedProductName = selectedSubjectProductId ? productNameById.get(selectedSubjectProductId) : undefined
+    if (selectedProductName && value.trim() === selectedProductName) {
+      form.setFieldValue('product_name_mode', 'follow_primary_product')
+      return
+    }
+    form.setFieldValue('product_name_mode', value.trim() ? 'manual' : undefined)
+  }, [form, productNameById, selectedSubjectProductId])
+  const handleCurrentCopywritingTextChange = useCallback((value: string) => {
+    form.setFieldValue('current_copywriting_id', null)
+    form.setFieldValue('copywriting_mode', value.trim() ? 'manual' : undefined)
+  }, [form])
   const submitButtonLabel = activeProfile?.composition_mode === 'none'
     ? '提交直发准备'
     : (hasCurrentVersion ? '重新提交合成' : '提交合成')
@@ -238,7 +256,7 @@ export function useCreativeAuthoringModel({
     updateCreative,
     submitCreativeComposition,
     productsQuery,
-    watchedSubjectProductName,
+    watchedCurrentProductName,
     watchedTargetDuration,
     profileOptions,
     productOptions,
@@ -249,6 +267,8 @@ export function useCreativeAuthoringModel({
     activeProfile,
     activeInputItemCount,
     handleSubjectProductChange,
+    handleCurrentProductNameChange,
+    handleCurrentCopywritingTextChange,
     handleSaveInput,
     handleSubmitComposition,
     submitButtonLabel,

@@ -1280,6 +1280,16 @@ export type CreativeComposeSubmitResponse = {
 };
 
 /**
+ * CreativeCopywritingMode
+ */
+export type CreativeCopywritingMode = 'generated' | 'adopted_candidate' | 'manual';
+
+/**
+ * CreativeCoverMode
+ */
+export type CreativeCoverMode = 'default_from_primary_product' | 'adopted_candidate' | 'manual';
+
+/**
  * CreativeCreateRequest
  */
 export type CreativeCreateRequest = {
@@ -1303,6 +1313,26 @@ export type CreativeCreateRequest = {
      * Main Copywriting Text
      */
     main_copywriting_text?: string | null;
+    /**
+     * Current Product Name
+     */
+    current_product_name?: string | null;
+    product_name_mode?: CreativeProductNameMode | null;
+    current_cover_asset_type?: CreativeCurrentCoverAssetType | null;
+    /**
+     * Current Cover Asset Id
+     */
+    current_cover_asset_id?: number | null;
+    cover_mode?: CreativeCoverMode | null;
+    /**
+     * Current Copywriting Id
+     */
+    current_copywriting_id?: number | null;
+    /**
+     * Current Copywriting Text
+     */
+    current_copywriting_text?: string | null;
+    copywriting_mode?: CreativeCopywritingMode | null;
     /**
      * Target Duration Seconds
      */
@@ -1358,6 +1388,11 @@ export type CreativeCreateRequest = {
      */
     input_items?: Array<CreativeInputItemWrite>;
 };
+
+/**
+ * CreativeCurrentCoverAssetType
+ */
+export type CreativeCurrentCoverAssetType = 'cover';
 
 /**
  * CreativeCurrentVersionResponse
@@ -1450,6 +1485,26 @@ export type CreativeDetailResponse = {
      * Main Copywriting Text
      */
     main_copywriting_text?: string | null;
+    /**
+     * Current Product Name
+     */
+    current_product_name?: string | null;
+    product_name_mode?: CreativeProductNameMode;
+    current_cover_asset_type?: CreativeCurrentCoverAssetType | null;
+    /**
+     * Current Cover Asset Id
+     */
+    current_cover_asset_id?: number | null;
+    cover_mode?: CreativeCoverMode;
+    /**
+     * Current Copywriting Id
+     */
+    current_copywriting_id?: number | null;
+    /**
+     * Current Copywriting Text
+     */
+    current_copywriting_text?: string | null;
+    copywriting_mode?: CreativeCopywritingMode;
     /**
      * Target Duration Seconds
      */
@@ -1674,6 +1729,11 @@ export type CreativeLatestTaskSummaryResponse = {
 };
 
 /**
+ * CreativeProductNameMode
+ */
+export type CreativeProductNameMode = 'follow_primary_product' | 'adopted_candidate' | 'manual';
+
+/**
  * CreativeRejectRequest
  */
 export type CreativeRejectRequest = {
@@ -1768,6 +1828,26 @@ export type CreativeUpdateRequest = {
      * Main Copywriting Text
      */
     main_copywriting_text?: string | null;
+    /**
+     * Current Product Name
+     */
+    current_product_name?: string | null;
+    product_name_mode?: CreativeProductNameMode | null;
+    current_cover_asset_type?: CreativeCurrentCoverAssetType | null;
+    /**
+     * Current Cover Asset Id
+     */
+    current_cover_asset_id?: number | null;
+    cover_mode?: CreativeCoverMode | null;
+    /**
+     * Current Copywriting Id
+     */
+    current_copywriting_id?: number | null;
+    /**
+     * Current Copywriting Text
+     */
+    current_copywriting_text?: string | null;
+    copywriting_mode?: CreativeCopywritingMode | null;
     /**
      * Target Duration Seconds
      */
@@ -1925,6 +2005,26 @@ export type CreativeWorkbenchItemResponse = {
      * Main Copywriting Text
      */
     main_copywriting_text?: string | null;
+    /**
+     * Current Product Name
+     */
+    current_product_name?: string | null;
+    product_name_mode?: CreativeProductNameMode;
+    current_cover_asset_type?: CreativeCurrentCoverAssetType | null;
+    /**
+     * Current Cover Asset Id
+     */
+    current_cover_asset_id?: number | null;
+    cover_mode?: CreativeCoverMode;
+    /**
+     * Current Copywriting Id
+     */
+    current_copywriting_id?: number | null;
+    /**
+     * Current Copywriting Text
+     */
+    current_copywriting_text?: string | null;
+    copywriting_mode?: CreativeCopywritingMode;
     /**
      * Target Duration Seconds
      */

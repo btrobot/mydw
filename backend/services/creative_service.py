@@ -94,6 +94,9 @@ DUPLICATE_EXECUTION_LIMITATION_REASON = (
 )
 
 
+_UNSET = object()
+
+
 class CreativeService:
     """Creative aggregate service for work-driven creation and projection."""
 
@@ -144,9 +147,33 @@ class CreativeService:
         if await self._creative_no_exists(creative_no):
             raise ValueError("作品编号已存在")
 
-        subject_product_name_snapshot = await self._resolve_subject_product_name_snapshot(
+        product_truth = await self._resolve_current_product_truth(
             subject_product_id=payload.subject_product_id,
-            explicit_snapshot=payload.subject_product_name_snapshot,
+            explicit_current_product_name=payload.current_product_name if "current_product_name" in payload.model_fields_set else _UNSET,
+            explicit_product_name_mode=payload.product_name_mode.value if "product_name_mode" in payload.model_fields_set and payload.product_name_mode is not None else (None if "product_name_mode" in payload.model_fields_set else _UNSET),
+            explicit_legacy_snapshot=payload.subject_product_name_snapshot if "subject_product_name_snapshot" in payload.model_fields_set else _UNSET,
+            existing_current_product_name=None,
+            existing_product_name_mode=None,
+            existing_legacy_snapshot=None,
+        )
+        copywriting_truth = await self._resolve_current_copywriting_truth(
+            explicit_current_copywriting_id=payload.current_copywriting_id if "current_copywriting_id" in payload.model_fields_set else _UNSET,
+            explicit_current_copywriting_text=payload.current_copywriting_text if "current_copywriting_text" in payload.model_fields_set else _UNSET,
+            explicit_copywriting_mode=payload.copywriting_mode.value if "copywriting_mode" in payload.model_fields_set and payload.copywriting_mode is not None else (None if "copywriting_mode" in payload.model_fields_set else _UNSET),
+            explicit_legacy_text=payload.main_copywriting_text if "main_copywriting_text" in payload.model_fields_set else _UNSET,
+            existing_current_copywriting_id=None,
+            existing_current_copywriting_text=None,
+            existing_copywriting_mode=None,
+            existing_legacy_text=None,
+        )
+        cover_truth = await self._resolve_current_cover_truth(
+            subject_product_id=payload.subject_product_id,
+            explicit_current_cover_asset_type=payload.current_cover_asset_type.value if "current_cover_asset_type" in payload.model_fields_set and payload.current_cover_asset_type is not None else (None if "current_cover_asset_type" in payload.model_fields_set else _UNSET),
+            explicit_current_cover_asset_id=payload.current_cover_asset_id if "current_cover_asset_id" in payload.model_fields_set else _UNSET,
+            explicit_cover_mode=payload.cover_mode.value if "cover_mode" in payload.model_fields_set and payload.cover_mode is not None else (None if "cover_mode" in payload.model_fields_set else _UNSET),
+            existing_current_cover_asset_type=None,
+            existing_current_cover_asset_id=None,
+            existing_cover_mode=None,
         )
         creative = CreativeItem(
             creative_no=creative_no,
@@ -154,8 +181,16 @@ class CreativeService:
             status=CreativeStatus.PENDING_INPUT.value,
             latest_version_no=0,
             subject_product_id=payload.subject_product_id,
-            subject_product_name_snapshot=subject_product_name_snapshot,
-            main_copywriting_text=payload.main_copywriting_text,
+            subject_product_name_snapshot=product_truth["compat_snapshot"],
+            main_copywriting_text=copywriting_truth["compat_text"],
+            current_product_name=product_truth["current_product_name"],
+            product_name_mode=product_truth["product_name_mode"],
+            current_cover_asset_type=cover_truth["current_cover_asset_type"],
+            current_cover_asset_id=cover_truth["current_cover_asset_id"],
+            cover_mode=cover_truth["cover_mode"],
+            current_copywriting_id=copywriting_truth["current_copywriting_id"],
+            current_copywriting_text=copywriting_truth["current_copywriting_text"],
+            copywriting_mode=copywriting_truth["copywriting_mode"],
             target_duration_seconds=payload.target_duration_seconds,
         )
         self.db.add(creative)
@@ -207,25 +242,60 @@ class CreativeService:
 
         if "title" in payload.model_fields_set:
             creative.title = payload.title
-        if "subject_product_id" in payload.model_fields_set:
-            creative.subject_product_id = payload.subject_product_id
-        if (
-            "subject_product_id" in payload.model_fields_set
-            or "subject_product_name_snapshot" in payload.model_fields_set
-        ):
-            explicit_snapshot = (
-                payload.subject_product_name_snapshot
-                if "subject_product_name_snapshot" in payload.model_fields_set
-                else creative.subject_product_name_snapshot
-            )
-            creative.subject_product_name_snapshot = await self._resolve_subject_product_name_snapshot(
-                subject_product_id=creative.subject_product_id,
-                explicit_snapshot=explicit_snapshot,
-            )
-        if "main_copywriting_text" in payload.model_fields_set:
-            creative.main_copywriting_text = payload.main_copywriting_text
         if "target_duration_seconds" in payload.model_fields_set:
             creative.target_duration_seconds = payload.target_duration_seconds
+
+        next_subject_product_id = (
+            payload.subject_product_id
+            if "subject_product_id" in payload.model_fields_set
+            else creative.subject_product_id
+        )
+        if self._payload_updates_product_truth(payload.model_fields_set):
+            product_truth = await self._resolve_current_product_truth(
+                subject_product_id=next_subject_product_id,
+                explicit_current_product_name=payload.current_product_name if "current_product_name" in payload.model_fields_set else _UNSET,
+                explicit_product_name_mode=payload.product_name_mode.value if "product_name_mode" in payload.model_fields_set and payload.product_name_mode is not None else (None if "product_name_mode" in payload.model_fields_set else _UNSET),
+                explicit_legacy_snapshot=payload.subject_product_name_snapshot if "subject_product_name_snapshot" in payload.model_fields_set else _UNSET,
+                existing_current_product_name=creative.current_product_name,
+                existing_product_name_mode=creative.product_name_mode,
+                existing_legacy_snapshot=creative.subject_product_name_snapshot,
+            )
+            creative.subject_product_id = next_subject_product_id
+            creative.current_product_name = product_truth["current_product_name"]
+            creative.product_name_mode = product_truth["product_name_mode"]
+            creative.subject_product_name_snapshot = product_truth["compat_snapshot"]
+        elif "subject_product_id" in payload.model_fields_set:
+            creative.subject_product_id = next_subject_product_id
+
+        if self._payload_updates_cover_truth(payload.model_fields_set):
+            cover_truth = await self._resolve_current_cover_truth(
+                subject_product_id=creative.subject_product_id,
+                explicit_current_cover_asset_type=payload.current_cover_asset_type.value if "current_cover_asset_type" in payload.model_fields_set and payload.current_cover_asset_type is not None else (None if "current_cover_asset_type" in payload.model_fields_set else _UNSET),
+                explicit_current_cover_asset_id=payload.current_cover_asset_id if "current_cover_asset_id" in payload.model_fields_set else _UNSET,
+                explicit_cover_mode=payload.cover_mode.value if "cover_mode" in payload.model_fields_set and payload.cover_mode is not None else (None if "cover_mode" in payload.model_fields_set else _UNSET),
+                existing_current_cover_asset_type=creative.current_cover_asset_type,
+                existing_current_cover_asset_id=creative.current_cover_asset_id,
+                existing_cover_mode=creative.cover_mode,
+            )
+            creative.current_cover_asset_type = cover_truth["current_cover_asset_type"]
+            creative.current_cover_asset_id = cover_truth["current_cover_asset_id"]
+            creative.cover_mode = cover_truth["cover_mode"]
+
+        if self._payload_updates_copywriting_truth(payload.model_fields_set):
+            copywriting_truth = await self._resolve_current_copywriting_truth(
+                explicit_current_copywriting_id=payload.current_copywriting_id if "current_copywriting_id" in payload.model_fields_set else _UNSET,
+                explicit_current_copywriting_text=payload.current_copywriting_text if "current_copywriting_text" in payload.model_fields_set else _UNSET,
+                explicit_copywriting_mode=payload.copywriting_mode.value if "copywriting_mode" in payload.model_fields_set and payload.copywriting_mode is not None else (None if "copywriting_mode" in payload.model_fields_set else _UNSET),
+                explicit_legacy_text=payload.main_copywriting_text if "main_copywriting_text" in payload.model_fields_set else _UNSET,
+                existing_current_copywriting_id=creative.current_copywriting_id,
+                existing_current_copywriting_text=creative.current_copywriting_text,
+                existing_copywriting_mode=creative.copywriting_mode,
+                existing_legacy_text=creative.main_copywriting_text,
+            )
+            creative.current_copywriting_id = copywriting_truth["current_copywriting_id"]
+            creative.current_copywriting_text = copywriting_truth["current_copywriting_text"]
+            creative.copywriting_mode = copywriting_truth["copywriting_mode"]
+            creative.main_copywriting_text = copywriting_truth["compat_text"]
 
         if self._payload_updates_input_state(payload.model_fields_set):
             current_profile_id = (
@@ -254,17 +324,17 @@ class CreativeService:
                 creative.current_version,
                 actual_duration_seconds=None,
                 final_video_path=None,
-                final_product_name=creative.subject_product_name_snapshot,
-                final_copywriting_text=creative.main_copywriting_text,
+                final_product_name=creative.resolved_current_product_name(),
+                final_copywriting_text=creative.resolved_current_copywriting_text(),
             )
             await self.version_service.sync_publish_package(
                 creative.current_version,
                 publish_profile_id=creative.input_profile_id,
                 frozen_video_path=None,
-                frozen_cover_path=None,
+                frozen_cover_path=await self._resolve_current_cover_path(creative),
                 frozen_duration_seconds=creative.target_duration_seconds,
-                frozen_product_name=creative.subject_product_name_snapshot,
-                frozen_copywriting_text=creative.main_copywriting_text,
+                frozen_product_name=creative.resolved_current_product_name(),
+                frozen_copywriting_text=creative.resolved_current_copywriting_text(),
             )
         await self._sync_pre_compose_status(creative)
         await self.db.commit()
@@ -514,8 +584,16 @@ class CreativeService:
             status=projection["status"],
             current_version_id=creative.current_version_id,
             subject_product_id=creative.subject_product_id,
-            subject_product_name_snapshot=creative.subject_product_name_snapshot,
-            main_copywriting_text=creative.main_copywriting_text,
+            subject_product_name_snapshot=creative.resolved_current_product_name(),
+            main_copywriting_text=creative.resolved_current_copywriting_text(),
+            current_product_name=creative.resolved_current_product_name(),
+            product_name_mode=creative.resolved_product_name_mode(),
+            current_cover_asset_type=creative.resolved_current_cover_asset_type(),
+            current_cover_asset_id=creative.current_cover_asset_id,
+            cover_mode=creative.resolved_cover_mode(),
+            current_copywriting_id=creative.resolved_current_copywriting_id(),
+            current_copywriting_text=creative.resolved_current_copywriting_text(),
+            copywriting_mode=creative.resolved_copywriting_mode(),
             target_duration_seconds=creative.target_duration_seconds,
             input_items=projection["input_items"],
             input_orchestration=projection["input_orchestration"],
@@ -573,8 +651,16 @@ class CreativeService:
             review_summary=review_summary,
             linked_task_ids=linked_task_ids,
             subject_product_id=creative.subject_product_id,
-            subject_product_name_snapshot=creative.subject_product_name_snapshot,
-            main_copywriting_text=creative.main_copywriting_text,
+            subject_product_name_snapshot=creative.resolved_current_product_name(),
+            main_copywriting_text=creative.resolved_current_copywriting_text(),
+            current_product_name=creative.resolved_current_product_name(),
+            product_name_mode=creative.resolved_product_name_mode(),
+            current_cover_asset_type=creative.resolved_current_cover_asset_type(),
+            current_cover_asset_id=creative.current_cover_asset_id,
+            cover_mode=creative.resolved_cover_mode(),
+            current_copywriting_id=creative.resolved_current_copywriting_id(),
+            current_copywriting_text=creative.resolved_current_copywriting_text(),
+            copywriting_mode=creative.resolved_copywriting_mode(),
             target_duration_seconds=creative.target_duration_seconds,
             input_items=projection["input_items"],
             input_orchestration=projection["input_orchestration"],
@@ -926,20 +1012,173 @@ class CreativeService:
             enabled_material_counts=CreativeInputMaterialCountsResponse(**enabled_material_counts),
         )
 
-    async def _resolve_subject_product_name_snapshot(
+    def _payload_updates_product_truth(self, model_fields_set: set[str]) -> bool:
+        return any(
+            field_name in model_fields_set
+            for field_name in ("subject_product_id", "subject_product_name_snapshot", "current_product_name", "product_name_mode")
+        )
+
+    def _payload_updates_cover_truth(self, model_fields_set: set[str]) -> bool:
+        return any(
+            field_name in model_fields_set
+            for field_name in ("subject_product_id", "current_cover_asset_type", "current_cover_asset_id", "cover_mode")
+        )
+
+    def _payload_updates_copywriting_truth(self, model_fields_set: set[str]) -> bool:
+        return any(
+            field_name in model_fields_set
+            for field_name in ("main_copywriting_text", "current_copywriting_id", "current_copywriting_text", "copywriting_mode")
+        )
+
+    async def _resolve_current_product_truth(
         self,
         *,
         subject_product_id: Optional[int],
-        explicit_snapshot: Optional[str],
-    ) -> Optional[str]:
-        if subject_product_id is None:
-            return explicit_snapshot
-        product = await self.db.get(Product, subject_product_id)
-        if product is None:
-            raise ValueError("所选商品不存在")
-        if explicit_snapshot is not None:
-            return explicit_snapshot
-        return product.name
+        explicit_current_product_name: Any,
+        explicit_product_name_mode: Any,
+        explicit_legacy_snapshot: Any,
+        existing_current_product_name: Optional[str],
+        existing_product_name_mode: Optional[str],
+        existing_legacy_snapshot: Optional[str],
+    ) -> dict[str, Optional[str]]:
+        product = None
+        if subject_product_id is not None:
+            product = await self.db.get(Product, subject_product_id)
+            if product is None:
+                raise ValueError("所选商品不存在")
+
+        current_product_name = existing_current_product_name or existing_legacy_snapshot
+        if explicit_legacy_snapshot is not _UNSET:
+            current_product_name = explicit_legacy_snapshot
+        if explicit_current_product_name is not _UNSET:
+            current_product_name = explicit_current_product_name
+
+        product_name_mode = explicit_product_name_mode if explicit_product_name_mode is not _UNSET else existing_product_name_mode
+        if explicit_current_product_name is not _UNSET or explicit_legacy_snapshot is not _UNSET:
+            product_name_mode = product_name_mode or "manual"
+        if product_name_mode is None:
+            product_name_mode = "follow_primary_product" if subject_product_id is not None else "manual"
+        if product_name_mode == "follow_primary_product":
+            if product is None:
+                raise ValueError("follow_primary_product requires subject_product_id")
+            current_product_name = product.name
+
+        return {
+            "current_product_name": current_product_name,
+            "product_name_mode": product_name_mode,
+            "compat_snapshot": current_product_name,
+        }
+
+    async def _resolve_current_cover_truth(
+        self,
+        *,
+        subject_product_id: Optional[int],
+        explicit_current_cover_asset_type: Any,
+        explicit_current_cover_asset_id: Any,
+        explicit_cover_mode: Any,
+        existing_current_cover_asset_type: Optional[str],
+        existing_current_cover_asset_id: Optional[int],
+        existing_cover_mode: Optional[str],
+    ) -> dict[str, Optional[str] | Optional[int]]:
+        current_cover_asset_type = existing_current_cover_asset_type
+        current_cover_asset_id = existing_current_cover_asset_id
+
+        if explicit_current_cover_asset_type is not _UNSET:
+            current_cover_asset_type = explicit_current_cover_asset_type
+        if explicit_current_cover_asset_id is not _UNSET:
+            if explicit_current_cover_asset_id is not None:
+                await self._assert_cover_exists(explicit_current_cover_asset_id)
+            current_cover_asset_id = explicit_current_cover_asset_id
+            current_cover_asset_type = current_cover_asset_type or ("cover" if explicit_current_cover_asset_id is not None else None)
+
+        cover_mode = explicit_cover_mode if explicit_cover_mode is not _UNSET else existing_cover_mode
+        if explicit_current_cover_asset_id is not _UNSET and explicit_current_cover_asset_id is not None and explicit_cover_mode is _UNSET:
+            cover_mode = "manual"
+        if cover_mode is None:
+            cover_mode = "default_from_primary_product" if subject_product_id is not None else "manual"
+        if cover_mode == "default_from_primary_product":
+            if subject_product_id is None:
+                raise ValueError("default_from_primary_product requires subject_product_id")
+            current_cover_asset_id = await self._resolve_default_product_cover_id(subject_product_id)
+            current_cover_asset_type = "cover" if current_cover_asset_id is not None else None
+        elif current_cover_asset_id is None:
+            current_cover_asset_type = None
+
+        if current_cover_asset_id is not None and current_cover_asset_type is None:
+            current_cover_asset_type = "cover"
+        return {
+            "current_cover_asset_type": current_cover_asset_type,
+            "current_cover_asset_id": current_cover_asset_id,
+            "cover_mode": cover_mode,
+        }
+
+    async def _resolve_current_copywriting_truth(
+        self,
+        *,
+        explicit_current_copywriting_id: Any,
+        explicit_current_copywriting_text: Any,
+        explicit_copywriting_mode: Any,
+        explicit_legacy_text: Any,
+        existing_current_copywriting_id: Optional[int],
+        existing_current_copywriting_text: Optional[str],
+        existing_copywriting_mode: Optional[str],
+        existing_legacy_text: Optional[str],
+    ) -> dict[str, Optional[str] | Optional[int]]:
+        current_copywriting_id = existing_current_copywriting_id
+        current_copywriting_text = existing_current_copywriting_text or existing_legacy_text
+
+        if explicit_legacy_text is not _UNSET:
+            current_copywriting_text = explicit_legacy_text
+        if explicit_current_copywriting_text is not _UNSET:
+            current_copywriting_text = explicit_current_copywriting_text
+        if explicit_current_copywriting_id is not _UNSET:
+            if explicit_current_copywriting_id is None:
+                current_copywriting_id = None
+            else:
+                copywriting = await self.db.get(Copywriting, explicit_current_copywriting_id)
+                if copywriting is None:
+                    raise ValueError("???????")
+                current_copywriting_id = explicit_current_copywriting_id
+                if explicit_current_copywriting_text is _UNSET:
+                    current_copywriting_text = copywriting.content
+
+        copywriting_mode = explicit_copywriting_mode if explicit_copywriting_mode is not _UNSET else existing_copywriting_mode
+        if explicit_current_copywriting_text is not _UNSET or explicit_legacy_text is not _UNSET:
+            copywriting_mode = copywriting_mode or "manual"
+        elif explicit_current_copywriting_id is not _UNSET and explicit_current_copywriting_id is not None:
+            copywriting_mode = copywriting_mode or "adopted_candidate"
+        if copywriting_mode is None:
+            copywriting_mode = "manual"
+
+        return {
+            "current_copywriting_id": current_copywriting_id,
+            "current_copywriting_text": current_copywriting_text,
+            "copywriting_mode": copywriting_mode,
+            "compat_text": current_copywriting_text,
+        }
+
+    async def _assert_cover_exists(self, cover_id: int) -> None:
+        cover = await self.db.get(Cover, cover_id)
+        if cover is None:
+            raise ValueError("所选封面不存在")
+
+    async def _resolve_default_product_cover_id(self, subject_product_id: int) -> Optional[int]:
+        result = await self.db.execute(
+            select(Cover.id)
+            .where(Cover.product_id == subject_product_id)
+            .order_by(Cover.id.asc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    async def _resolve_current_cover_path(self, creative: CreativeItem) -> Optional[str]:
+        cover_id = creative.current_cover_asset_id
+        if cover_id is None:
+            return None
+        cover = creative.__dict__.get("current_cover")
+        if cover is None:
+            cover = await self.db.get(Cover, cover_id)
+        return cover.file_path if cover is not None else None
 
     def _resolve_authoritative_input_state(
         self,
@@ -1267,7 +1506,7 @@ class CreativeService:
             version,
             actual_duration_seconds=resolved_duration_seconds,
             final_video_path=resolved_video_path,
-            final_product_name=creative.subject_product_name_snapshot,
+            final_product_name=creative.resolved_current_product_name(),
             final_copywriting_text=resolved_copywriting_text,
         )
         await self.version_service.sync_publish_package(
@@ -1275,9 +1514,9 @@ class CreativeService:
             package_status="ready",
             publish_profile_id=profile.id,
             frozen_video_path=resolved_video_path,
-            frozen_cover_path=resolved_cover_path,
+            frozen_cover_path=resolved_cover_path or await self._resolve_current_cover_path(creative),
             frozen_duration_seconds=resolved_duration_seconds,
-            frozen_product_name=creative.subject_product_name_snapshot,
+            frozen_product_name=creative.resolved_current_product_name(),
             frozen_copywriting_text=resolved_copywriting_text,
         )
 
@@ -1417,8 +1656,16 @@ class CreativeService:
             current_version_id=creative.current_version_id,
             latest_version_no=creative.latest_version_no,
             subject_product_id=creative.subject_product_id,
-            subject_product_name_snapshot=creative.subject_product_name_snapshot,
-            main_copywriting_text=creative.main_copywriting_text,
+            subject_product_name_snapshot=creative.resolved_current_product_name(),
+            main_copywriting_text=creative.resolved_current_copywriting_text(),
+            current_product_name=creative.resolved_current_product_name(),
+            product_name_mode=creative.resolved_product_name_mode(),
+            current_cover_asset_type=creative.resolved_current_cover_asset_type(),
+            current_cover_asset_id=creative.current_cover_asset_id,
+            cover_mode=creative.resolved_cover_mode(),
+            current_copywriting_id=creative.resolved_current_copywriting_id(),
+            current_copywriting_text=creative.resolved_current_copywriting_text(),
+            copywriting_mode=creative.resolved_copywriting_mode(),
             target_duration_seconds=creative.target_duration_seconds,
             input_items=input_items,
             input_orchestration=input_orchestration,

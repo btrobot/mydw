@@ -128,12 +128,22 @@ class CreativeItem(Base):
     subject_product_id = Column(Integer, ForeignKey("products.id"), nullable=True, index=True)
     subject_product_name_snapshot = Column(String(256), nullable=True)
     main_copywriting_text = Column(Text, nullable=True)
+    current_product_name = Column(String(256), nullable=True)
+    product_name_mode = Column(String(32), nullable=True)
+    current_cover_asset_type = Column(String(32), nullable=True)
+    current_cover_asset_id = Column(Integer, ForeignKey("covers.id"), nullable=True, index=True)
+    cover_mode = Column(String(32), nullable=True)
+    current_copywriting_id = Column(Integer, ForeignKey("copywritings.id"), nullable=True, index=True)
+    current_copywriting_text = Column(Text, nullable=True)
+    copywriting_mode = Column(String(32), nullable=True)
     target_duration_seconds = Column(Integer, nullable=True)
     input_profile_id = Column(Integer, ForeignKey("publish_profiles.id"), nullable=True, index=True)
     created_at = Column(DateTime, default=utc_now_naive)
     updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     subject_product = relationship("Product", foreign_keys=[subject_product_id])
+    current_cover = relationship("Cover", foreign_keys=[current_cover_asset_id])
+    current_copywriting = relationship("Copywriting", foreign_keys=[current_copywriting_id])
     input_profile = relationship("PublishProfile", foreign_keys=[input_profile_id])
     input_items = relationship(
         "CreativeInputItem",
@@ -167,6 +177,37 @@ class CreativeItem(Base):
         foreign_keys="PublishPoolItem.creative_item_id",
         order_by="PublishPoolItem.id",
     )
+
+    def resolved_current_product_name(self) -> str | None:
+        return self.current_product_name or self.subject_product_name_snapshot
+
+    def resolved_product_name_mode(self) -> str:
+        if self.product_name_mode:
+            return self.product_name_mode
+        return "follow_primary_product" if self.subject_product_id is not None else "manual"
+
+    def resolved_current_cover_asset_type(self) -> str | None:
+        if self.current_cover_asset_type:
+            return self.current_cover_asset_type
+        if self.current_cover_asset_id is not None:
+            return "cover"
+        return None
+
+    def resolved_cover_mode(self) -> str:
+        if self.cover_mode:
+            return self.cover_mode
+        return "default_from_primary_product" if self.subject_product_id is not None else "manual"
+
+    def resolved_current_copywriting_id(self) -> int | None:
+        return self.current_copywriting_id
+
+    def resolved_current_copywriting_text(self) -> str | None:
+        return self.current_copywriting_text or self.main_copywriting_text
+
+    def resolved_copywriting_mode(self) -> str:
+        if self.copywriting_mode:
+            return self.copywriting_mode
+        return "manual"
 
 
 class CreativeInputItem(Base):
@@ -860,6 +901,8 @@ async def init_db():
     await migration_034.run_migration(engine)
     migration_035 = importlib.import_module("migrations.035_creative_phase4_snapshot_retirement")
     await migration_035.run_migration(engine)
+    migration_036 = importlib.import_module("migrations.036_creative_current_truth_explicitization")
+    await migration_036.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

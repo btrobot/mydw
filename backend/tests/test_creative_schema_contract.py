@@ -7,9 +7,13 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from models import CreativeInputItem, CreativeItem, Product
 from schemas import (
+    CreativeCoverMode,
     CreativeCreateRequest,
+    CreativeCopywritingMode,
+    CreativeCurrentCoverAssetType,
     CreativeEligibilityStatus,
     CreativeItemResponse,
+    CreativeProductNameMode,
     CreativeStatus,
     CreativeUpdateRequest,
     CreativeVersionSummaryResponse,
@@ -304,6 +308,149 @@ async def test_migration_035_backfills_missing_input_items_and_retires_snapshot_
 
 
 @pytest.mark.asyncio
+async def test_migration_036_backfills_current_truth_fields_additively() -> None:
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+    try:
+        async with engine.begin() as conn:
+            await conn.exec_driver_sql(
+                """
+                CREATE TABLE products (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name VARCHAR(256) NOT NULL
+                )
+                """
+            )
+            await conn.exec_driver_sql(
+                """
+                CREATE TABLE covers (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    product_id INTEGER,
+                    name VARCHAR(256) NOT NULL DEFAULT '',
+                    file_path VARCHAR(512) NOT NULL
+                )
+                """
+            )
+            await conn.exec_driver_sql(
+                """
+                CREATE TABLE copywritings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name VARCHAR(256) NOT NULL DEFAULT '',
+                    content TEXT
+                )
+                """
+            )
+            await conn.exec_driver_sql(
+                """
+                CREATE TABLE creative_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    creative_no VARCHAR(64) NOT NULL,
+                    title VARCHAR(256),
+                    subject_product_id INTEGER,
+                    subject_product_name_snapshot VARCHAR(256),
+                    main_copywriting_text TEXT,
+                    created_at DATETIME,
+                    updated_at DATETIME
+                )
+                """
+            )
+            await conn.exec_driver_sql(
+                """
+                CREATE TABLE creative_input_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    creative_item_id INTEGER NOT NULL,
+                    material_type VARCHAR(32) NOT NULL,
+                    material_id INTEGER NOT NULL,
+                    sequence INTEGER NOT NULL DEFAULT 0
+                )
+                """
+            )
+            await conn.exec_driver_sql("INSERT INTO products (id, name) VALUES (1, 'Primary Product')")
+            await conn.exec_driver_sql(
+                "INSERT INTO covers (id, product_id, name, file_path) VALUES (11, 1, 'Primary Cover', 'data/covers/primary.png')"
+            )
+            await conn.exec_driver_sql(
+                """
+                INSERT INTO creative_items (
+                    id, creative_no, title, subject_product_id, subject_product_name_snapshot, main_copywriting_text
+                ) VALUES (
+                    1, 'CR-036-0001', 'Legacy creative', 1, 'Primary Product', 'legacy main copy'
+                )
+                """
+            )
+            await conn.exec_driver_sql(
+                """
+                INSERT INTO creative_input_items (
+                    creative_item_id, material_type, material_id, sequence
+                ) VALUES (
+                    1, 'cover', 99, 1
+                )
+                """
+            )
+
+        migration_036 = importlib.import_module("migrations.036_creative_current_truth_explicitization")
+        await migration_036.run_migration(engine)
+        await migration_036.run_migration(engine)
+
+        async with engine.begin() as conn:
+            creative_columns = {
+                row[1]
+                for row in (await conn.exec_driver_sql("PRAGMA table_info(creative_items)")).fetchall()
+            }
+            creative_indexes = {
+                row[1]
+                for row in (
+                    await conn.exec_driver_sql("PRAGMA index_list('creative_items')")
+                ).fetchall()
+            }
+            backfilled_row = (
+                await conn.exec_driver_sql(
+                    """
+                    SELECT
+                        current_product_name,
+                        product_name_mode,
+                        current_cover_asset_type,
+                        current_cover_asset_id,
+                        cover_mode,
+                        current_copywriting_id,
+                        current_copywriting_text,
+                        copywriting_mode,
+                        subject_product_name_snapshot,
+                        main_copywriting_text
+                    FROM creative_items
+                    WHERE id = 1
+                    """
+                )
+            ).fetchone()
+
+        assert {
+            "current_product_name",
+            "product_name_mode",
+            "current_cover_asset_type",
+            "current_cover_asset_id",
+            "cover_mode",
+            "current_copywriting_id",
+            "current_copywriting_text",
+            "copywriting_mode",
+        }.issubset(creative_columns)
+        assert "ix_creative_items_current_cover_asset_id" in creative_indexes
+        assert "ix_creative_items_current_copywriting_id" in creative_indexes
+        assert backfilled_row == (
+            "Primary Product",
+            "follow_primary_product",
+            "cover",
+            11,
+            "default_from_primary_product",
+            None,
+            "legacy main copy",
+            "manual",
+            "Primary Product",
+            "legacy main copy",
+        )
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
 async def test_creative_input_items_preserve_duplicate_order_and_trim(db_session) -> None:
     product = Product(name="creative_phase1_contract_product")
     creative = CreativeItem(
@@ -383,6 +530,14 @@ def test_work_driven_creative_write_contracts_expose_canonical_inputs_without_sn
     assert "input_items" in CreativeUpdateRequest.model_fields
     assert "subject_product_id" in CreativeCreateRequest.model_fields
     assert "main_copywriting_text" in CreativeCreateRequest.model_fields
+    assert "current_product_name" in CreativeCreateRequest.model_fields
+    assert "product_name_mode" in CreativeCreateRequest.model_fields
+    assert "current_cover_asset_type" in CreativeCreateRequest.model_fields
+    assert "current_cover_asset_id" in CreativeCreateRequest.model_fields
+    assert "cover_mode" in CreativeCreateRequest.model_fields
+    assert "current_copywriting_id" in CreativeCreateRequest.model_fields
+    assert "current_copywriting_text" in CreativeCreateRequest.model_fields
+    assert "copywriting_mode" in CreativeCreateRequest.model_fields
     assert "target_duration_seconds" in CreativeCreateRequest.model_fields
     assert CreativeCreateRequest.model_fields["video_ids"].json_schema_extra == {"deprecated": True}
     assert CreativeUpdateRequest.model_fields["video_ids"].json_schema_extra == {"deprecated": True}
@@ -398,10 +553,19 @@ def test_work_driven_creative_write_contracts_expose_canonical_inputs_without_sn
 
     request = CreativeCreateRequest(
         profile_id=1,
+        subject_product_id=1,
+        current_product_name="Current Product",
+        product_name_mode=CreativeProductNameMode.MANUAL,
+        current_cover_asset_id=10,
+        cover_mode=CreativeCoverMode.MANUAL,
+        current_copywriting_id=20,
+        current_copywriting_text="Current Copy",
+        copywriting_mode=CreativeCopywritingMode.MANUAL,
         input_items=[{"material_type": "video", "material_id": 100}],
     )
     assert request.profile_id == 1
     assert len(request.input_items) == 1
+    assert request.current_cover_asset_type == CreativeCurrentCoverAssetType.COVER
     assert "Phase 4 canonical" in CreativeCreateRequest.model_fields["input_items"].description
     assert "Phase 4 canonical" in CreativeUpdateRequest.model_fields["input_items"].description
 

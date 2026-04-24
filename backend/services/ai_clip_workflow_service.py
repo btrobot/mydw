@@ -84,8 +84,8 @@ class AIClipWorkflowService:
             version,
             actual_duration_seconds=rounded_duration,
             final_video_path=stored_path,
-            final_product_name=creative.subject_product_name_snapshot,
-            final_copywriting_text=creative.main_copywriting_text,
+            final_product_name=creative.resolved_current_product_name(),
+            final_copywriting_text=creative.resolved_current_copywriting_text(),
         )
         manifest_json = self._build_manifest_json(
             source_version_id=source_version_id,
@@ -110,8 +110,8 @@ class AIClipWorkflowService:
             publish_profile_id=creative.input_profile_id,
             frozen_video_path=stored_path,
             frozen_duration_seconds=rounded_duration,
-            frozen_product_name=creative.subject_product_name_snapshot,
-            frozen_copywriting_text=creative.main_copywriting_text,
+            frozen_product_name=creative.resolved_current_product_name(),
+            frozen_copywriting_text=creative.resolved_current_copywriting_text(),
             manifest_json=manifest_json,
         )
         creative.generation_error_msg = None

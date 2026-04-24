@@ -89,6 +89,28 @@ class CreativeEligibilityStatus(str, Enum):
     INVALID = "INVALID"
 
 
+class CreativeProductNameMode(str, Enum):
+    FOLLOW_PRIMARY_PRODUCT = "follow_primary_product"
+    ADOPTED_CANDIDATE = "adopted_candidate"
+    MANUAL = "manual"
+
+
+class CreativeCurrentCoverAssetType(str, Enum):
+    COVER = "cover"
+
+
+class CreativeCoverMode(str, Enum):
+    DEFAULT_FROM_PRIMARY_PRODUCT = "default_from_primary_product"
+    ADOPTED_CANDIDATE = "adopted_candidate"
+    MANUAL = "manual"
+
+
+class CreativeCopywritingMode(str, Enum):
+    GENERATED = "generated"
+    ADOPTED_CANDIDATE = "adopted_candidate"
+    MANUAL = "manual"
+
+
 class CreativeReviewConclusion(str, Enum):
     APPROVED = "APPROVED"
     REWORK_REQUIRED = "REWORK_REQUIRED"
@@ -700,6 +722,14 @@ class CreativeCreateRequest(BaseModel):
     subject_product_id: Optional[int] = Field(None, ge=1)
     subject_product_name_snapshot: Optional[str] = Field(None, max_length=256)
     main_copywriting_text: Optional[str] = None
+    current_product_name: Optional[str] = Field(None, max_length=256)
+    product_name_mode: Optional[CreativeProductNameMode] = None
+    current_cover_asset_type: Optional[CreativeCurrentCoverAssetType] = None
+    current_cover_asset_id: Optional[int] = Field(None, ge=1)
+    cover_mode: Optional[CreativeCoverMode] = None
+    current_copywriting_id: Optional[int] = Field(None, ge=1)
+    current_copywriting_text: Optional[str] = None
+    copywriting_mode: Optional[CreativeCopywritingMode] = None
     target_duration_seconds: Optional[int] = Field(None, ge=1)
     profile_id: Optional[int] = None
     video_ids: List[int] = Field(
@@ -746,12 +776,28 @@ class CreativeCreateRequest(BaseModel):
             )
         return self
 
+    @model_validator(mode="after")
+    def validate_current_cover_contract(self) -> "CreativeCreateRequest":
+        if self.current_cover_asset_type is not None and self.current_cover_asset_type != CreativeCurrentCoverAssetType.COVER:
+            raise ValueError("current_cover_asset_type currently only supports 'cover'")
+        if self.current_cover_asset_id is not None and self.current_cover_asset_type is None:
+            self.current_cover_asset_type = CreativeCurrentCoverAssetType.COVER
+        return self
+
 
 class CreativeUpdateRequest(BaseModel):
     title: Optional[str] = Field(None, max_length=256)
     subject_product_id: Optional[int] = Field(None, ge=1)
     subject_product_name_snapshot: Optional[str] = Field(None, max_length=256)
     main_copywriting_text: Optional[str] = None
+    current_product_name: Optional[str] = Field(None, max_length=256)
+    product_name_mode: Optional[CreativeProductNameMode] = None
+    current_cover_asset_type: Optional[CreativeCurrentCoverAssetType] = None
+    current_cover_asset_id: Optional[int] = Field(None, ge=1)
+    cover_mode: Optional[CreativeCoverMode] = None
+    current_copywriting_id: Optional[int] = Field(None, ge=1)
+    current_copywriting_text: Optional[str] = None
+    copywriting_mode: Optional[CreativeCopywritingMode] = None
     target_duration_seconds: Optional[int] = Field(None, ge=1)
     profile_id: Optional[int] = None
     video_ids: Optional[List[int]] = Field(
@@ -798,6 +844,14 @@ class CreativeUpdateRequest(BaseModel):
             )
         return self
 
+    @model_validator(mode="after")
+    def validate_current_cover_contract(self) -> "CreativeUpdateRequest":
+        if self.current_cover_asset_type is not None and self.current_cover_asset_type != CreativeCurrentCoverAssetType.COVER:
+            raise ValueError("current_cover_asset_type currently only supports 'cover'")
+        if self.current_cover_asset_id is not None and self.current_cover_asset_type is None:
+            self.current_cover_asset_type = CreativeCurrentCoverAssetType.COVER
+        return self
+
 
 class CreativeItemResponse(BaseModel):
     """???????Phase A?"""
@@ -812,6 +866,14 @@ class CreativeItemResponse(BaseModel):
     subject_product_id: Optional[int] = None
     subject_product_name_snapshot: Optional[str] = None
     main_copywriting_text: Optional[str] = None
+    current_product_name: Optional[str] = None
+    product_name_mode: CreativeProductNameMode = CreativeProductNameMode.MANUAL
+    current_cover_asset_type: Optional[CreativeCurrentCoverAssetType] = None
+    current_cover_asset_id: Optional[int] = None
+    cover_mode: CreativeCoverMode = CreativeCoverMode.MANUAL
+    current_copywriting_id: Optional[int] = None
+    current_copywriting_text: Optional[str] = None
+    copywriting_mode: CreativeCopywritingMode = CreativeCopywritingMode.MANUAL
     target_duration_seconds: Optional[int] = None
     input_items: List[CreativeInputItemResponse] = Field(
         default_factory=list,
@@ -842,6 +904,14 @@ class CreativeWorkbenchItemResponse(BaseModel):
     subject_product_id: Optional[int] = None
     subject_product_name_snapshot: Optional[str] = None
     main_copywriting_text: Optional[str] = None
+    current_product_name: Optional[str] = None
+    product_name_mode: CreativeProductNameMode = CreativeProductNameMode.MANUAL
+    current_cover_asset_type: Optional[CreativeCurrentCoverAssetType] = None
+    current_cover_asset_id: Optional[int] = None
+    cover_mode: CreativeCoverMode = CreativeCoverMode.MANUAL
+    current_copywriting_id: Optional[int] = None
+    current_copywriting_text: Optional[str] = None
+    copywriting_mode: CreativeCopywritingMode = CreativeCopywritingMode.MANUAL
     target_duration_seconds: Optional[int] = None
     input_items: List[CreativeInputItemResponse] = Field(
         default_factory=list,
@@ -964,6 +1034,14 @@ class CreativeDetailResponse(BaseModel):
     subject_product_id: Optional[int] = None
     subject_product_name_snapshot: Optional[str] = None
     main_copywriting_text: Optional[str] = None
+    current_product_name: Optional[str] = None
+    product_name_mode: CreativeProductNameMode = CreativeProductNameMode.MANUAL
+    current_cover_asset_type: Optional[CreativeCurrentCoverAssetType] = None
+    current_cover_asset_id: Optional[int] = None
+    cover_mode: CreativeCoverMode = CreativeCoverMode.MANUAL
+    current_copywriting_id: Optional[int] = None
+    current_copywriting_text: Optional[str] = None
+    copywriting_mode: CreativeCopywritingMode = CreativeCopywritingMode.MANUAL
     target_duration_seconds: Optional[int] = None
     input_items: List[CreativeInputItemResponse] = Field(
         default_factory=list,

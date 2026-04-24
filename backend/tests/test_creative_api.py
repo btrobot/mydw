@@ -240,6 +240,134 @@ async def test_create_creative_dual_writes_authoritative_input_items_and_legacy_
 
 
 @pytest.mark.asyncio
+async def test_create_creative_accepts_explicit_current_truth_fields_and_projects_legacy_fields(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    profile, product, video, copywriting, _, _, _ = await _seed_domain_inputs(
+        db_session,
+        composition_mode="none",
+    )
+    product_cover = Cover(
+        product_id=product.id,
+        name="truth-cover",
+        file_path="data/covers/truth-cover.png",
+    )
+    manual_cover = Cover(
+        name="manual-cover",
+        file_path="data/covers/manual-cover.png",
+    )
+    db_session.add_all([product_cover, manual_cover])
+    await db_session.commit()
+    await db_session.refresh(product_cover)
+    await db_session.refresh(manual_cover)
+
+    response = await client.post(
+        "/api/creatives",
+        json={
+            "title": "Truth Creative",
+            "profile_id": profile.id,
+            "subject_product_id": product.id,
+            "current_product_name": "Manual Product Name",
+            "product_name_mode": "manual",
+            "current_cover_asset_id": manual_cover.id,
+            "cover_mode": "manual",
+            "current_copywriting_id": copywriting.id,
+            "current_copywriting_text": "Manual truth copy",
+            "copywriting_mode": "manual",
+            "target_duration_seconds": 30,
+            "input_items": [
+                {"material_type": "video", "material_id": video.id},
+                {"material_type": "cover", "material_id": product_cover.id},
+            ],
+        },
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["subject_product_id"] == product.id
+    assert payload["current_product_name"] == "Manual Product Name"
+    assert payload["product_name_mode"] == "manual"
+    assert payload["subject_product_name_snapshot"] == "Manual Product Name"
+    assert payload["current_cover_asset_type"] == "cover"
+    assert payload["current_cover_asset_id"] == manual_cover.id
+    assert payload["cover_mode"] == "manual"
+    assert payload["current_copywriting_id"] == copywriting.id
+    assert payload["current_copywriting_text"] == "Manual truth copy"
+    assert payload["copywriting_mode"] == "manual"
+    assert payload["main_copywriting_text"] == "Manual truth copy"
+
+
+@pytest.mark.asyncio
+async def test_creative_patch_can_switch_back_to_follow_primary_product_truth(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    profile, product, video, copywriting, _, _, _ = await _seed_domain_inputs(
+        db_session,
+        composition_mode="none",
+    )
+    product_cover = Cover(
+        product_id=product.id,
+        name="primary-cover",
+        file_path="data/covers/primary-cover.png",
+    )
+    manual_cover = Cover(
+        name="manual-cover-for-patch",
+        file_path="data/covers/manual-cover-for-patch.png",
+    )
+    db_session.add_all([product_cover, manual_cover])
+    await db_session.commit()
+    await db_session.refresh(product_cover)
+    await db_session.refresh(manual_cover)
+
+    create_response = await client.post(
+        "/api/creatives",
+        json={
+            "title": "Patch Truth Creative",
+            "profile_id": profile.id,
+            "subject_product_id": product.id,
+            "current_product_name": "Manual Before Patch",
+            "product_name_mode": "manual",
+            "current_cover_asset_id": manual_cover.id,
+            "cover_mode": "manual",
+            "current_copywriting_id": copywriting.id,
+            "current_copywriting_text": "Manual copy before patch",
+            "copywriting_mode": "manual",
+            "input_items": [{"material_type": "video", "material_id": video.id}],
+        },
+    )
+    assert create_response.status_code == 201
+    creative = create_response.json()
+
+    patch_response = await client.patch(
+        f"/api/creatives/{creative['id']}",
+        json={
+            "product_name_mode": "follow_primary_product",
+            "cover_mode": "default_from_primary_product",
+            "current_cover_asset_id": None,
+            "current_cover_asset_type": None,
+            "current_copywriting_id": None,
+            "current_copywriting_text": "Manual copy after patch",
+            "copywriting_mode": "manual",
+        },
+    )
+
+    assert patch_response.status_code == 200
+    payload = patch_response.json()
+    assert payload["current_product_name"] == product.name
+    assert payload["product_name_mode"] == "follow_primary_product"
+    assert payload["subject_product_name_snapshot"] == product.name
+    assert payload["current_cover_asset_type"] == "cover"
+    assert payload["current_cover_asset_id"] == product_cover.id
+    assert payload["cover_mode"] == "default_from_primary_product"
+    assert payload["current_copywriting_id"] is None
+    assert payload["current_copywriting_text"] == "Manual copy after patch"
+    assert payload["copywriting_mode"] == "manual"
+    assert payload["main_copywriting_text"] == "Manual copy after patch"
+
+
+@pytest.mark.asyncio
 async def test_creative_patch_does_not_silently_deduplicate_repeated_input_items(
     client: AsyncClient,
     db_session: AsyncSession,

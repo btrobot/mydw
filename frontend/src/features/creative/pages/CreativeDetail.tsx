@@ -139,7 +139,7 @@ export default function CreativeDetail() {
     updateCreative,
     submitCreativeComposition,
     productsQuery,
-    watchedSubjectProductName,
+    watchedCurrentProductName,
     watchedTargetDuration,
     profileOptions,
     productOptions,
@@ -150,6 +150,8 @@ export default function CreativeDetail() {
     activeProfile,
     activeInputItemCount,
     handleSubjectProductChange,
+    handleCurrentProductNameChange,
+    handleCurrentCopywritingTextChange,
     handleSaveInput,
     handleSubmitComposition,
     submitButtonLabel,
@@ -419,7 +421,7 @@ export default function CreativeDetail() {
 
             <ProDescriptions bordered size="small" column={screens.lg ? 4 : screens.md ? 2 : 1}>
               <ProDescriptions.Item label="主体商品">
-                {watchedSubjectProductName || creative.subject_product_name_snapshot || '待补充'}
+                {watchedCurrentProductName || creative.current_product_name || creative.subject_product_name_snapshot || '待补充'}
               </ProDescriptions.Item>
               <ProDescriptions.Item label="目标时长">
                 {formatCreativeDuration(watchedTargetDuration ?? creative.target_duration_seconds)}
@@ -431,6 +433,12 @@ export default function CreativeDetail() {
             </ProDescriptions>
 
             <Form form={form} layout="vertical">
+              <Form.Item name="product_name_mode" hidden><Input /></Form.Item>
+              <Form.Item name="current_cover_asset_type" hidden><Input /></Form.Item>
+              <Form.Item name="current_cover_asset_id" hidden><InputNumber /></Form.Item>
+              <Form.Item name="cover_mode" hidden><Input /></Form.Item>
+              <Form.Item name="current_copywriting_id" hidden><InputNumber /></Form.Item>
+              <Form.Item name="copywriting_mode" hidden><Input /></Form.Item>
               <Flex gap={16} wrap="wrap" align="start">
                 <Form.Item name="title" label="作品标题" style={{ flex: 1, minWidth: 260 }}>
                   <Input placeholder="给这条作品起一个便于检索和协作的名字" allowClear />
@@ -462,13 +470,14 @@ export default function CreativeDetail() {
                 </Form.Item>
 
                 <Form.Item
-                  name="subject_product_name_snapshot"
+                  name="current_product_name"
                   label="商品名称快照"
                   style={{ flex: 1, minWidth: 260 }}
                 >
                   <Input
                     placeholder="用于作品 brief / 版本沉淀的商品名称"
                     allowClear
+                    onChange={(event) => handleCurrentProductNameChange(event.target.value)}
                     data-testid="creative-detail-product-snapshot"
                   />
                 </Form.Item>
@@ -488,10 +497,11 @@ export default function CreativeDetail() {
                 </Form.Item>
               </Flex>
 
-              <Form.Item name="main_copywriting_text" label="主文案">
+              <Form.Item name="current_copywriting_text" label="主文案">
                 <Input.TextArea
                   autoSize={{ minRows: 3, maxRows: 6 }}
                   placeholder="填写作品级主文案；它属于作品 brief，而不是单个素材条目。"
+                  onChange={(event) => handleCurrentCopywritingTextChange(event.target.value)}
                   data-testid="creative-detail-main-copywriting"
                 />
               </Form.Item>

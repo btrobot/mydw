@@ -105,16 +105,16 @@ export default function WorkbenchTable({
           <Text strong>{record.title?.trim() || record.creative_no}</Text>
           <Text type="secondary">
             {[
-              record.subject_product_name_snapshot || undefined,
+              record.current_product_name || record.subject_product_name_snapshot || undefined,
               formatCreativeDuration(record.target_duration_seconds),
               `${countEnabledCreativeInputItems(record.input_items)} 个编排项`,
             ]
               .filter(Boolean)
               .join(' · ')}
           </Text>
-          {record.main_copywriting_text?.trim() ? (
-            <Text type="secondary" ellipsis={{ tooltip: record.main_copywriting_text }}>
-              主文案：{record.main_copywriting_text}
+          {(record.current_copywriting_text || record.main_copywriting_text)?.trim() ? (
+            <Text type="secondary" ellipsis={{ tooltip: record.current_copywriting_text || record.main_copywriting_text }}>
+              主文案：{record.current_copywriting_text || record.main_copywriting_text}
             </Text>
           ) : null}
           {record.generation_error_msg ? (

@@ -82,8 +82,8 @@ class CreativeVersionService:
             version_no=version_no,
             version_type=version_type,
             title=title,
-            final_product_name=creative_item.subject_product_name_snapshot,
-            final_copywriting_text=creative_item.main_copywriting_text,
+            final_product_name=creative_item.resolved_current_product_name(),
+            final_copywriting_text=creative_item.resolved_current_copywriting_text(),
         )
         self.db.add(version)
         await self.db.flush()
@@ -93,8 +93,8 @@ class CreativeVersionService:
             package_status=package_status,
             publish_profile_id=creative_item.input_profile_id,
             frozen_duration_seconds=creative_item.target_duration_seconds,
-            frozen_product_name=creative_item.subject_product_name_snapshot,
-            frozen_copywriting_text=creative_item.main_copywriting_text,
+            frozen_product_name=creative_item.resolved_current_product_name(),
+            frozen_copywriting_text=creative_item.resolved_current_copywriting_text(),
         )
         self.db.add(package_record)
         await self.db.flush()
