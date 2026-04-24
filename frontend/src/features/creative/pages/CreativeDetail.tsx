@@ -166,6 +166,14 @@ export default function CreativeDetail() {
     handleProductLinkProductChange,
     handleCurrentProductNameChange,
     handleCurrentCopywritingTextChange,
+    handleSetPrimaryProduct,
+    handleUseProductNameCandidate,
+    handleRestorePrimaryProductName,
+    handleSetCurrentCover,
+    handleSetCurrentCopywriting,
+    handleSetCurrentAudio,
+    handleToggleSelectedVideo,
+    handleRemoveSelectedVideo,
     handleSaveInput,
     handleSubmitComposition,
     submitButtonLabel,
@@ -377,6 +385,14 @@ export default function CreativeDetail() {
     }
     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [])
+  const handleProjectionProductNameInputChange = useCallback((value: string) => {
+    form.setFieldValue('current_product_name', value)
+    handleCurrentProductNameChange(value)
+  }, [form, handleCurrentProductNameChange])
+  const handleProjectionCopywritingInputChange = useCallback((value: string) => {
+    form.setFieldValue('current_copywriting_text', value)
+    handleCurrentCopywritingTextChange(value)
+  }, [form, handleCurrentCopywritingTextChange])
 
   if (creativeQuery.isLoading && !creative) {
     return (
@@ -477,7 +493,84 @@ export default function CreativeDetail() {
               onJumpToEditor={() => scrollToSection('creative-detail-legacy-editor')}
             />
 
-            <CreativeCurrentSelectionSection projection={projectionModel} />
+            <CreativeCurrentSelectionSection
+              projection={projectionModel}
+              productNameActions={(
+                <Button
+                  size="small"
+                  onClick={() => handleRestorePrimaryProductName()}
+                  disabled={!projectionModel.productZone.product_name_candidate?.product_name}
+                  data-testid="creative-current-selection-restore-product-name"
+                >
+                  恢复跟随主题商品
+                </Button>
+              )}
+              productNameEditor={(
+                <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                  <Text type="secondary">区内快速编辑</Text>
+                  <Input
+                    value={watchedCurrentProductName ?? ''}
+                    placeholder="直接在当前入选区维护商品名称"
+                    onChange={(event) => handleProjectionProductNameInputChange(event.target.value)}
+                    data-testid="creative-current-selection-product-name-input"
+                  />
+                </Space>
+              )}
+              coverActions={(
+                <Button
+                  size="small"
+                  disabled={!projectionModel.currentSelection.cover?.asset_id}
+                  onClick={() => handleSetCurrentCover(undefined)}
+                  data-testid="creative-current-selection-clear-cover"
+                >
+                  清空封面
+                </Button>
+              )}
+              copywritingActions={(
+                <Button
+                  size="small"
+                  disabled={!(
+                    projectionModel.currentSelection.copywriting?.asset_id
+                    || projectionModel.currentSelection.copywriting?.value_text
+                  )}
+                  onClick={() => handleSetCurrentCopywriting(undefined, '')}
+                  data-testid="creative-current-selection-clear-copywriting"
+                >
+                  清空文案
+                </Button>
+              )}
+              copywritingEditor={(
+                <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                  <Text type="secondary">区内快速编辑</Text>
+                  <Input.TextArea
+                    value={watchedCurrentCopywritingText ?? ''}
+                    rows={3}
+                    placeholder="直接在当前入选区维护文案"
+                    onChange={(event) => handleProjectionCopywritingInputChange(event.target.value)}
+                    data-testid="creative-current-selection-copywriting-input"
+                  />
+                </Space>
+              )}
+              audioActions={(
+                <Button
+                  size="small"
+                  disabled={!projectionModel.currentSelection.audio?.asset_id}
+                  onClick={() => handleSetCurrentAudio(undefined)}
+                  data-testid="creative-current-selection-clear-audio"
+                >
+                  清空音频
+                </Button>
+              )}
+              renderVideoActions={(video) => (
+                <Button
+                  size="small"
+                  onClick={() => handleRemoveSelectedVideo(video.asset_id ?? undefined)}
+                  data-testid={`creative-current-selection-remove-video-${video.asset_id ?? 'unknown'}`}
+                >
+                  移出入选
+                </Button>
+              )}
+            />
 
             <Flex gap={16} wrap="wrap" align="stretch">
               <CreativeSourceZoneSection
@@ -501,17 +594,57 @@ export default function CreativeDetail() {
                         <Tag>文案 {projectionModel.productZone.primary_product.copywriting_count ?? 0}</Tag>
                       </Space>
                       {projectionModel.productZone.product_name_candidate ? (
-                        <Text type="secondary">
-                          默认商品名称：{projectionModel.productZone.product_name_candidate.product_name}
-                          {projectionModel.productZone.product_name_candidate.is_detached ? '（当前已脱钩）' : ''}
-                        </Text>
+                        <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                          <Text type="secondary">
+                            默认商品名称：{projectionModel.productZone.product_name_candidate.product_name}
+                            {projectionModel.productZone.product_name_candidate.is_detached ? '（当前已脱钩）' : ''}
+                          </Text>
+                          <Space wrap>
+                            <Button
+                              size="small"
+                              onClick={() => handleUseProductNameCandidate(
+                                projectionModel.productZone.product_name_candidate?.product_id ?? 0,
+                                projectionModel.productZone.product_name_candidate?.product_name ?? '',
+                              )}
+                              disabled={!projectionModel.productZone.product_name_candidate?.product_id}
+                              data-testid={`creative-product-zone-use-product-name-${projectionModel.productZone.product_name_candidate.product_id ?? 'unknown'}`}
+                            >
+                              用作当前商品名
+                            </Button>
+                          </Space>
+                        </Space>
                       ) : null}
                       {(projectionModel.productZone.linked_products ?? []).length > 0 ? (
-                        <Space wrap>
+                        <Space direction="vertical" size={8} style={{ width: '100%' }}>
                           {(projectionModel.productZone.linked_products ?? []).map((product) => (
-                            <Tag key={`${product.product_id}-${product.sort_order}`} color={product.is_primary ? 'processing' : 'default'}>
-                              {product.product_name ?? `商品 #${product.product_id}`}
-                            </Tag>
+                            <Flex key={`${product.product_id}-${product.sort_order}`} justify="space-between" align="center" gap={8} wrap="wrap">
+                              <Space wrap>
+                                <Tag color={product.is_primary ? 'processing' : 'default'}>
+                                  {product.product_name ?? `商品 #${product.product_id}`}
+                                </Tag>
+                                {product.enabled === false ? <Tag>已停用</Tag> : null}
+                              </Space>
+                              <Space wrap>
+                                <Button
+                                  size="small"
+                                  onClick={() => handleSetPrimaryProduct(product.product_id)}
+                                  disabled={product.is_primary}
+                                  data-testid={`creative-product-zone-set-primary-${product.product_id}`}
+                                >
+                                  {product.is_primary ? '当前主题商品' : '设为主题商品'}
+                                </Button>
+                                <Button
+                                  size="small"
+                                  onClick={() => handleUseProductNameCandidate(
+                                    product.product_id,
+                                    product.product_name ?? `商品 #${product.product_id}`,
+                                  )}
+                                  data-testid={`creative-product-zone-use-linked-product-name-${product.product_id}`}
+                                >
+                                  用作当前商品名
+                                </Button>
+                              </Space>
+                            </Flex>
                           ))}
                         </Space>
                       ) : null}
@@ -531,18 +664,50 @@ export default function CreativeDetail() {
                     label: '封面候选',
                     items: projectionModel.productZone.cover_candidates ?? [],
                     emptyDescription: '当前商品区还没有可用封面候选。',
+                    renderItemActions: (item) => (
+                      <Button
+                        size="small"
+                        type={item.is_current_value ? 'default' : 'primary'}
+                        disabled={item.is_current_value}
+                        onClick={() => handleSetCurrentCover(item.asset_id, 'cover')}
+                        data-testid={`creative-product-zone-cover-apply-${item.asset_id}`}
+                      >
+                        {item.is_current_value ? '当前封面' : '设为当前封面'}
+                      </Button>
+                    ),
                   },
                   {
                     key: 'product-video',
                     label: '视频候选',
                     items: projectionModel.productZone.video_candidates ?? [],
                     emptyDescription: '当前商品区还没有可用视频候选。',
+                    renderItemActions: (item) => (
+                      <Button
+                        size="small"
+                        type={item.is_selected ? 'default' : 'primary'}
+                        onClick={() => handleToggleSelectedVideo(item.asset_id)}
+                        data-testid={`creative-product-zone-video-toggle-${item.asset_id}`}
+                      >
+                        {item.is_selected ? '移出入选' : '加入入选'}
+                      </Button>
+                    ),
                   },
                   {
                     key: 'product-copywriting',
                     label: '文案候选',
                     items: projectionModel.productZone.copywriting_candidates ?? [],
                     emptyDescription: '当前商品区还没有可用文案候选。',
+                    renderItemActions: (item) => (
+                      <Button
+                        size="small"
+                        type={item.is_current_value ? 'default' : 'primary'}
+                        disabled={item.is_current_value}
+                        onClick={() => handleSetCurrentCopywriting(item.asset_id, item.asset_excerpt ?? item.asset_name ?? '')}
+                        data-testid={`creative-product-zone-copywriting-apply-${item.asset_id}`}
+                      >
+                        {item.is_current_value ? '当前文案' : '设为当前文案'}
+                      </Button>
+                    ),
                   },
                 ]}
                 testId="creative-detail-product-zone"
@@ -571,24 +736,67 @@ export default function CreativeDetail() {
                     label: '封面候选',
                     items: projectionModel.freeMaterialZone.cover_candidates ?? [],
                     emptyDescription: '当前还没有自由封面候选。',
+                    renderItemActions: (item) => (
+                      <Button
+                        size="small"
+                        type={item.is_current_value ? 'default' : 'primary'}
+                        disabled={item.is_current_value}
+                        onClick={() => handleSetCurrentCover(item.asset_id, 'cover')}
+                        data-testid={`creative-free-zone-cover-apply-${item.asset_id}`}
+                      >
+                        {item.is_current_value ? '当前封面' : '设为当前封面'}
+                      </Button>
+                    ),
                   },
                   {
                     key: 'free-video',
                     label: '视频候选',
                     items: projectionModel.freeMaterialZone.video_candidates ?? [],
                     emptyDescription: '当前还没有自由视频候选。',
+                    renderItemActions: (item) => (
+                      <Button
+                        size="small"
+                        type={item.is_selected ? 'default' : 'primary'}
+                        onClick={() => handleToggleSelectedVideo(item.asset_id)}
+                        data-testid={`creative-free-zone-video-toggle-${item.asset_id}`}
+                      >
+                        {item.is_selected ? '移出入选' : '加入入选'}
+                      </Button>
+                    ),
                   },
                   {
                     key: 'free-audio',
                     label: '音频候选',
                     items: projectionModel.freeMaterialZone.audio_candidates ?? [],
                     emptyDescription: '当前还没有自由音频候选。',
+                    renderItemActions: (item) => (
+                      <Button
+                        size="small"
+                        type={item.is_selected ? 'default' : 'primary'}
+                        disabled={item.is_selected}
+                        onClick={() => handleSetCurrentAudio(item.asset_id)}
+                        data-testid={`creative-free-zone-audio-apply-${item.asset_id}`}
+                      >
+                        {item.is_selected ? '当前音频' : '设为当前音频'}
+                      </Button>
+                    ),
                   },
                   {
                     key: 'free-copywriting',
                     label: '文案候选',
                     items: projectionModel.freeMaterialZone.copywriting_candidates ?? [],
                     emptyDescription: '当前还没有自由文案候选。',
+                    renderItemActions: (item) => (
+                      <Button
+                        size="small"
+                        type={item.is_current_value ? 'default' : 'primary'}
+                        disabled={item.is_current_value}
+                        onClick={() => handleSetCurrentCopywriting(item.asset_id, item.asset_excerpt ?? item.asset_name ?? '')}
+                        data-testid={`creative-free-zone-copywriting-apply-${item.asset_id}`}
+                      >
+                        {item.is_current_value ? '当前文案' : '设为当前文案'}
+                      </Button>
+                    ),
                   },
                 ]}
                 testId="creative-detail-free-material-zone"

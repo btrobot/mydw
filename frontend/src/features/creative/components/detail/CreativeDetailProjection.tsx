@@ -202,6 +202,13 @@ export function CreativeDetailHeroCard({
 
 type CreativeCurrentSelectionSectionProps = {
   projection: CreativeDetailProjectionModel
+  productNameEditor?: ReactNode
+  copywritingEditor?: ReactNode
+  productNameActions?: ReactNode
+  coverActions?: ReactNode
+  copywritingActions?: ReactNode
+  audioActions?: ReactNode
+  renderVideoActions?: (video: CreativeCurrentSelectionFieldResponse, index: number) => ReactNode
 }
 
 const getSelectionStatus = (field?: CreativeCurrentSelectionFieldResponse) =>
@@ -211,10 +218,14 @@ function SelectionFieldCard({
   title,
   field,
   fallbackDescription,
+  actions,
+  footer,
 }: {
   title: string
   field?: CreativeCurrentSelectionFieldResponse
   fallbackDescription: string
+  actions?: ReactNode
+  footer?: ReactNode
 }) {
   const status = getSelectionStatus(field)
   const hasMainValue = Boolean(
@@ -251,6 +262,8 @@ function SelectionFieldCard({
         ) : (
           <Text type="secondary">{fallbackDescription}</Text>
         )}
+        {actions ? <Space wrap>{actions}</Space> : null}
+        {footer}
       </Space>
     </Card>
   )
@@ -258,6 +271,13 @@ function SelectionFieldCard({
 
 export function CreativeCurrentSelectionSection({
   projection,
+  productNameEditor,
+  copywritingEditor,
+  productNameActions,
+  coverActions,
+  copywritingActions,
+  audioActions,
+  renderVideoActions,
 }: CreativeCurrentSelectionSectionProps) {
   const videos = projection.currentSelection.videos ?? []
 
@@ -277,21 +297,27 @@ export function CreativeCurrentSelectionSection({
             title="商品名称"
             field={projection.currentSelection.product_name}
             fallbackDescription="待定义当前商品名称。"
+            actions={productNameActions}
+            footer={productNameEditor}
           />
           <SelectionFieldCard
             title="封面"
             field={projection.currentSelection.cover}
             fallbackDescription="待从商品区或自由素材区选择封面。"
+            actions={coverActions}
           />
           <SelectionFieldCard
             title="文案"
             field={projection.currentSelection.copywriting}
             fallbackDescription="待定义当前文案。"
+            actions={copywritingActions}
+            footer={copywritingEditor}
           />
           <SelectionFieldCard
             title="音频"
             field={projection.currentSelection.audio}
             fallbackDescription="待选择当前音频。"
+            actions={audioActions}
           />
         </Flex>
 
@@ -303,7 +329,10 @@ export function CreativeCurrentSelectionSection({
                 const status = getSelectionStatus(video)
 
                 return (
-                  <List.Item key={`${video.asset_id ?? 'video'}-${video.sequence ?? video.instance_no ?? 0}`}>
+                  <List.Item
+                    key={`${video.asset_id ?? 'video'}-${video.sequence ?? video.instance_no ?? 0}`}
+                    actions={renderVideoActions ? [renderVideoActions(video, Number(video.sequence ?? 0))] : undefined}
+                  >
                     <Space direction="vertical" size={6} style={{ width: '100%' }}>
                       <Space wrap>
                         <Tag color={status.color}>{status.label}</Tag>
@@ -340,6 +369,7 @@ type CreativeSourceZoneSectionProps = {
     label: string
     items: CreativeZoneMaterialCandidateResponse[]
     emptyDescription: string
+    renderItemActions?: (item: CreativeZoneMaterialCandidateResponse, index: number) => ReactNode
   }>
   summary?: ReactNode
   action?: ReactNode
@@ -350,18 +380,23 @@ function CandidateBucketCard({
   label,
   items,
   emptyDescription,
+  renderItemActions,
 }: {
   label: string
   items: CreativeZoneMaterialCandidateResponse[]
   emptyDescription: string
+  renderItemActions?: (item: CreativeZoneMaterialCandidateResponse, index: number) => ReactNode
 }) {
   return (
     <Card size="small" type="inner" title={`${label}（${items.length}）`}>
       {items.length > 0 ? (
         <List
           dataSource={items}
-          renderItem={(item) => (
-            <List.Item key={`${item.candidate_type}-${item.asset_id}`}>
+          renderItem={(item, index) => (
+            <List.Item
+              key={`${item.candidate_type}-${item.asset_id}`}
+              actions={renderItemActions ? [renderItemActions(item, index)] : undefined}
+            >
               <Space direction="vertical" size={6} style={{ width: '100%' }}>
                 <Space wrap>
                   {item.is_current_value ? <Tag color="success">当前值</Tag> : null}
@@ -415,6 +450,7 @@ export function CreativeSourceZoneSection({
             label={candidate.label}
             items={candidate.items}
             emptyDescription={candidate.emptyDescription}
+            renderItemActions={candidate.renderItemActions}
           />
         ))}
       </Space>

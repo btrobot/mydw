@@ -1054,6 +1054,114 @@ test.describe('Creative workbench baseline', () => {
     await expect(page.getByTestId('creative-detail-legacy-editor')).toBeVisible({ timeout: 10000 })
   })
 
+  test('updates current selection from product and free-material zone actions before save', async ({ page }) => {
+    let updatePayload: Record<string, unknown> | undefined
+    let detailState = JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload
+
+    await page.unroute('**/api/creatives/101')
+    await page.route('**/api/creatives/101', async (route) => {
+      if (route.request().method() === 'PATCH') {
+        updatePayload = route.request().postDataJSON() as Record<string, unknown>
+        detailState = {
+          ...detailState,
+          ...updatePayload,
+          updated_at: '2026-04-18T08:00:00Z',
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(detailState),
+        })
+        return
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(detailState),
+      })
+    })
+
+    await gotoHashRoute(page, `/#/creative/101`)
+
+    await page.getByTestId('creative-product-zone-cover-apply-31').click()
+    await page.getByTestId('creative-free-zone-copywriting-apply-22').click()
+    await page.getByTestId('creative-free-zone-video-toggle-12').click()
+
+    await expect(page.getByTestId('creative-detail-current-selection')).toContainText('封面首图')
+    await expect(page.getByTestId('creative-detail-current-selection')).toContainText('Copy Variant B')
+    await expect(page.getByTestId('creative-detail-current-selection')).toContainText('视频集合（2）')
+
+    await page.getByTestId('creative-detail-hero-save').click()
+
+    await expect.poll(() => updatePayload).toBeTruthy()
+    expect(updatePayload).toMatchObject({
+      current_cover_asset_type: 'cover',
+      current_cover_asset_id: 31,
+      cover_mode: 'manual',
+      current_copywriting_id: 22,
+      current_copywriting_text: 'Copy Variant B',
+      copywriting_mode: 'manual',
+      input_items: [
+        { material_type: 'video', material_id: 11, sequence: 1 },
+        { material_type: 'audio', material_id: 41, sequence: 2 },
+        { material_type: 'video', material_id: 12, sequence: 3 },
+      ],
+    })
+  })
+
+  test('supports in-zone editing and clearing inside the current selection section', async ({ page }) => {
+    let updatePayload: Record<string, unknown> | undefined
+    let detailState = JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload
+
+    await page.unroute('**/api/creatives/101')
+    await page.route('**/api/creatives/101', async (route) => {
+      if (route.request().method() === 'PATCH') {
+        updatePayload = route.request().postDataJSON() as Record<string, unknown>
+        detailState = {
+          ...detailState,
+          ...updatePayload,
+          updated_at: '2026-04-18T08:00:00Z',
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(detailState),
+        })
+        return
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(detailState),
+      })
+    })
+
+    await gotoHashRoute(page, `/#/creative/101`)
+
+    await page.getByTestId('creative-current-selection-product-name-input').fill('Spring Hoodie Pro')
+    await page.getByTestId('creative-current-selection-copywriting-input').fill('改成当前主推文案。')
+    await page.getByTestId('creative-current-selection-clear-audio').click()
+    await page.getByTestId('creative-current-selection-remove-video-11').click()
+
+    await expect(page.getByTestId('creative-detail-current-selection')).toContainText('Spring Hoodie Pro')
+    await expect(page.getByTestId('creative-detail-current-selection')).toContainText('改成当前主推文案。')
+    await expect(page.getByText('当前还没有入选视频。')).toBeVisible()
+
+    await page.getByTestId('creative-detail-hero-save').click()
+
+    await expect.poll(() => updatePayload).toBeTruthy()
+    expect(updatePayload).toMatchObject({
+      current_product_name: 'Spring Hoodie Pro',
+      product_name_mode: 'manual',
+      current_copywriting_id: null,
+      current_copywriting_text: '改成当前主推文案。',
+      copywriting_mode: 'manual',
+      input_items: [],
+    })
+  })
+
   test('filters full-carrier readback to video and audio operations only', async ({ page }) => {
     await gotoHashRoute(page, `/#/creative/101`)
 

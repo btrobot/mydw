@@ -259,6 +259,32 @@ export function buildCreativeDetailProjectionModel({
   draft,
   resolveMaterialLabel,
 }: BuildCreativeDetailProjectionModelInput): CreativeDetailProjectionModel {
+  const candidateLabelByType: Record<ResolvableMaterialType, Map<number, string>> = {
+    video: new Map(),
+    audio: new Map(),
+    copywriting: new Map(),
+    cover: new Map(),
+  }
+  const registerCandidateLabels = (
+    type: ResolvableMaterialType,
+    items: Array<{ asset_id?: number | null; asset_name?: string | null }> | undefined,
+  ) => {
+    for (const item of items ?? []) {
+      if (item.asset_id === undefined || item.asset_id === null || !cleanText(item.asset_name)) {
+        continue
+      }
+      candidateLabelByType[type].set(Number(item.asset_id), cleanText(item.asset_name)!)
+    }
+  }
+
+  registerCandidateLabels('cover', creative.product_zone?.cover_candidates)
+  registerCandidateLabels('video', creative.product_zone?.video_candidates)
+  registerCandidateLabels('copywriting', creative.product_zone?.copywriting_candidates)
+  registerCandidateLabels('cover', creative.free_material_zone?.cover_candidates)
+  registerCandidateLabels('video', creative.free_material_zone?.video_candidates)
+  registerCandidateLabels('audio', creative.free_material_zone?.audio_candidates)
+  registerCandidateLabels('copywriting', creative.free_material_zone?.copywriting_candidates)
+
   const draftProductLinks = draft?.productLinks ?? creative.product_zone?.linked_products ?? creative.product_links ?? []
   const productLinks = normalizeDraftProductLinks(draftProductLinks)
   const primaryProduct = creative.product_zone?.primary_product
@@ -349,6 +375,7 @@ export function buildCreativeDetailProjectionModel({
           asset_type: currentCoverAssetType,
           asset_name:
             creative.current_selection?.cover?.asset_name
+            ?? candidateLabelByType.cover.get(currentCoverAssetId)
             ?? resolveMaterialLabel?.('cover', currentCoverAssetId)
             ?? `封面 #${currentCoverAssetId}`,
           source_label:
@@ -375,6 +402,7 @@ export function buildCreativeDetailProjectionModel({
           value_text: currentCopywritingText,
           asset_name:
             creative.current_selection?.copywriting?.asset_name
+            ?? (currentCopywritingId ? candidateLabelByType.copywriting.get(currentCopywritingId) : undefined)
             ?? (currentCopywritingId
               ? resolveMaterialLabel?.('copywriting', currentCopywritingId) ?? `文案 #${currentCopywritingId}`
               : undefined),
@@ -405,6 +433,8 @@ export function buildCreativeDetailProjectionModel({
           asset_name: resolveMaterialLabel?.(
             'audio',
             Number(enabledSelectionItems.find((item) => item.material_type === 'audio' && item.material_id !== undefined)?.material_id),
+          ) ?? candidateLabelByType.audio.get(
+            Number(enabledSelectionItems.find((item) => item.material_type === 'audio' && item.material_id !== undefined)?.material_id),
           ),
           source_label: '当前入选音频',
         }
@@ -426,7 +456,10 @@ export function buildCreativeDetailProjectionModel({
             state: 'defined',
             asset_id: Number(item.material_id),
             asset_type: 'video',
-            asset_name: resolveMaterialLabel?.('video', item.material_id) ?? `视频 #${item.material_id}`,
+            asset_name:
+              candidateLabelByType.video.get(Number(item.material_id))
+              ?? resolveMaterialLabel?.('video', item.material_id)
+              ?? `视频 #${item.material_id}`,
             asset_excerpt: cleanText(item.role),
             source_label: '当前入选视频',
             sequence: item.sequence ?? index + 1,

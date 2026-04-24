@@ -386,6 +386,117 @@ export function useCreativeAuthoringModel({
     form.setFieldValue('copywriting_mode', value.trim() ? 'manual' : undefined)
     clearCandidateAdoptionStatus('copywriting')
   }, [clearCandidateAdoptionStatus, form])
+  const handleSetPrimaryProduct = useCallback((productId: number) => {
+    const productLinks = [...getFormProductLinks()]
+    const existingIndex = productLinks.findIndex((item) => item.product_id === productId)
+
+    if (existingIndex >= 0) {
+      const nextProductLinks = productLinks.map((item, index) => ({
+        ...item,
+        is_primary: index === existingIndex,
+        enabled: item.enabled ?? true,
+        source_mode: item.source_mode ?? 'manual_add',
+      }))
+      form.setFieldValue('product_links', nextProductLinks)
+      syncCurrentProductNameFromPrimary(productId)
+      return
+    }
+
+    const nextProductLinks = [
+      ...productLinks.map((item) => ({
+        ...item,
+        is_primary: false,
+        enabled: item.enabled ?? true,
+        source_mode: item.source_mode ?? 'manual_add',
+      })),
+      {
+        product_id: productId,
+        is_primary: true,
+        enabled: true,
+        source_mode: 'manual_add' as const,
+      },
+    ]
+    form.setFieldValue('product_links', nextProductLinks)
+    syncCurrentProductNameFromPrimary(productId)
+  }, [form, getFormProductLinks, syncCurrentProductNameFromPrimary])
+  const handleUseProductNameCandidate = useCallback((productId: number, productName: string) => {
+    form.setFieldValue('current_product_name', productName)
+    form.setFieldValue('product_name_mode', 'follow_primary_product')
+    const productLinks = [...getFormProductLinks()]
+    const existingIndex = productLinks.findIndex((item) => item.product_id === productId)
+    if (existingIndex >= 0) {
+      const nextProductLinks = productLinks.map((item, index) => ({
+        ...item,
+        is_primary: index === existingIndex,
+        enabled: item.enabled ?? true,
+        source_mode: item.source_mode ?? 'manual_add',
+      }))
+      form.setFieldValue('product_links', nextProductLinks)
+      return
+    }
+    handleSetPrimaryProduct(productId)
+  }, [form, getFormProductLinks, handleSetPrimaryProduct])
+  const handleRestorePrimaryProductName = useCallback(() => {
+    syncCurrentProductNameFromPrimary(selectedSubjectProductId)
+  }, [selectedSubjectProductId, syncCurrentProductNameFromPrimary])
+  const handleSetCurrentCover = useCallback((assetId?: number, assetType: 'cover' = 'cover') => {
+    form.setFieldValue('current_cover_asset_id', assetId ?? null)
+    form.setFieldValue('current_cover_asset_type', assetId ? assetType : null)
+    form.setFieldValue('cover_mode', assetId ? 'manual' : null)
+    if (!assetId) {
+      clearCandidateAdoptionStatus('cover')
+    }
+  }, [clearCandidateAdoptionStatus, form])
+  const handleSetCurrentCopywriting = useCallback((assetId?: number, text?: string) => {
+    form.setFieldValue('current_copywriting_id', assetId ?? null)
+    form.setFieldValue('current_copywriting_text', text ?? '')
+    form.setFieldValue('copywriting_mode', assetId ? 'manual' : null)
+    if (!assetId) {
+      clearCandidateAdoptionStatus('copywriting')
+    }
+  }, [clearCandidateAdoptionStatus, form])
+  const handleSetCurrentAudio = useCallback((assetId?: number) => {
+    const existingItems = [...(((form.getFieldValue('input_items') as CreativeAuthoringFormValues['input_items'] | undefined) ?? []))]
+    const nonAudioItems = existingItems.filter((item) => item.material_type !== 'audio')
+    const nextItems = assetId
+      ? [
+        ...nonAudioItems,
+        {
+          material_type: 'audio' as const,
+          material_id: assetId,
+          enabled: true,
+        },
+      ]
+      : nonAudioItems
+    form.setFieldValue('input_items', nextItems)
+  }, [form])
+  const handleToggleSelectedVideo = useCallback((assetId: number) => {
+    const existingItems = [...(((form.getFieldValue('input_items') as CreativeAuthoringFormValues['input_items'] | undefined) ?? []))]
+    const hasSelectedVideo = existingItems.some((item) => (
+      item.material_type === 'video' && item.material_id === assetId && item.enabled !== false
+    ))
+    const nextItems = hasSelectedVideo
+      ? existingItems.filter((item) => !(item.material_type === 'video' && item.material_id === assetId))
+      : [
+        ...existingItems,
+        {
+          material_type: 'video' as const,
+          material_id: assetId,
+          enabled: true,
+        },
+      ]
+    form.setFieldValue('input_items', nextItems)
+  }, [form])
+  const handleRemoveSelectedVideo = useCallback((assetId?: number) => {
+    if (!assetId) {
+      return
+    }
+    const existingItems = [...(((form.getFieldValue('input_items') as CreativeAuthoringFormValues['input_items'] | undefined) ?? []))]
+    form.setFieldValue(
+      'input_items',
+      existingItems.filter((item) => !(item.material_type === 'video' && item.material_id === assetId)),
+    )
+  }, [form])
   const submitButtonLabel = activeProfile?.composition_mode === 'none'
     ? '提交直发准备'
     : (hasCurrentVersion ? '重新提交合成' : '提交合成')
@@ -414,6 +525,14 @@ export function useCreativeAuthoringModel({
     handleProductLinkProductChange,
     handleCurrentProductNameChange,
     handleCurrentCopywritingTextChange,
+    handleSetPrimaryProduct,
+    handleUseProductNameCandidate,
+    handleRestorePrimaryProductName,
+    handleSetCurrentCover,
+    handleSetCurrentCopywriting,
+    handleSetCurrentAudio,
+    handleToggleSelectedVideo,
+    handleRemoveSelectedVideo,
     handleSaveInput,
     handleSubmitComposition,
     submitButtonLabel,
