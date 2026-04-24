@@ -531,3 +531,51 @@ PRD 应固定为以下结构：
 | candidate_audio_count | candidate pool | row + summary | display only |
 | definition_ready | backend aggregated readiness | row + summary | preset/filter optional after Slice 5 |
 | composition_ready | backend aggregated readiness | row + summary | preset/filter optional after Slice 5 |
+
+---
+
+## 2026-04-24 总收口更新（Master Closeout Update）
+
+### 结论
+
+`creative two-level candidate pool adoption` 这条总计划已执行完成，正式 closeout 见：
+
+- `.omx/plans/closeout-creative-two-level-candidate-pool-adoption-2026-04-24.md`
+
+### 计划完成矩阵
+
+| Phase / Slice | Status | 代表提交 |
+|---|---|---|
+| Phase 0 | completed | `454eac9` |
+| Slice 1 | completed | `2fb9561` |
+| Slice 2 | completed | `38b8a29` |
+| Slice 3 | completed | `6333d13` |
+| Slice 4 | completed | `a426abd`、`867c80d` |
+| Slice 5 | completed | `b81fcad` |
+| Slice 6 | completed | `9a49bb9` |
+
+### 现状改写
+
+本 PRD 中原本以 future tense 描述的核心设计点，现已成为已落地约束：
+
+1. `creative_items.current-*` 已成为当前真值面
+2. `creative_product_links.is_primary` 已成为 primary product 的唯一主入口
+3. `creative_candidate_items` 已成为作品候选池持久化表达
+4. selected-media projection 已成为 video/audio 当前入选的权威读口径
+5. Workbench 已切到后端 summary aggregator
+6. Version / Package / Publish 已切到统一 freeze/manifest 口径
+
+### 计划退出规则
+
+从 2026-04-24 起，本 PRD 不再作为“待执行 roadmap”，而是作为：
+
+- 已实现计划的设计归档
+- 后续 follow-up 的边界基线
+
+若后续继续推进：
+
+- compat hard-removal
+- selected-media 物理迁移
+- publish/runtime live verification
+
+都应单独立项，不再继续作为本 PRD 的“追加 Slice”。
