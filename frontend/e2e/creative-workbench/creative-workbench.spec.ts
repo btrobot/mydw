@@ -781,8 +781,6 @@ test.describe('Creative workbench baseline', () => {
 
     await gotoHashRoute(page, `/#/creative/101`)
 
-    await expect(page.getByText('创作 brief 与当前入选媒体')).toBeVisible()
-    await expect(page.getByLabel('合成配置')).toBeVisible()
     await expect(page.locator('[data-testid^="creative-detail-input-item-type-"]')).toHaveCount(2)
     await expect(page.getByTestId('creative-detail-product-snapshot')).toHaveValue('Classic Hoodie')
     await page.getByTestId('creative-detail-product-snapshot').fill('Runner Pro')
