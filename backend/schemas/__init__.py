@@ -733,8 +733,31 @@ class CreativeInputMaterialType(str, Enum):
     TOPIC = "topic"
 
 
+class CreativeSelectedMediaWriteMaterialType(str, Enum):
+    VIDEO = "video"
+    AUDIO = "audio"
+
+
+CREATIVE_INPUT_ITEMS_WRITE_DESCRIPTION = (
+    "Slice 4 selected-media projection write surface. During migration input_items still targets the "
+    "creative_input_items carrier/runtime compatibility surface, but authoritative writes only accept "
+    "video/audio; copywriting/cover are read-only compatibility carriers and topic is prompt/runtime "
+    "reference only."
+)
+
+
+CREATIVE_INPUT_ITEMS_READ_DESCRIPTION = (
+    "Slice 4 full-carrier compatibility readback surface. detail/workbench input_items may include legacy "
+    "copywriting/cover/topic carrier rows; selected-media semantics are projected by filtering enabled "
+    "video/audio from this list, not by introducing a new response field."
+)
+
+
 class CreativeInputItemWrite(BaseModel):
-    material_type: CreativeInputMaterialType
+    material_type: CreativeSelectedMediaWriteMaterialType = Field(
+        ...,
+        description="Selected-media authoritative write type. Only video/audio are accepted.",
+    )
     material_id: int = Field(..., ge=1)
     role: Optional[str] = Field(None, max_length=64)
     sequence: Optional[int] = Field(None, ge=1)
@@ -759,7 +782,10 @@ class CreativeInputItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: Optional[int] = None
-    material_type: CreativeInputMaterialType
+    material_type: CreativeInputMaterialType = Field(
+        ...,
+        description="Full-carrier readback material type. May include legacy copywriting/cover/topic rows.",
+    )
     material_id: int
     role: Optional[str] = None
     sequence: int
@@ -878,7 +904,7 @@ class CreativeCreateRequest(BaseModel):
     )
     input_items: List[CreativeInputItemWrite] = Field(
         default_factory=list,
-        description="Phase 4 canonical creative input orchestration surface.",
+        description=CREATIVE_INPUT_ITEMS_WRITE_DESCRIPTION,
     )
 
     @model_validator(mode="after")
@@ -964,7 +990,7 @@ class CreativeUpdateRequest(BaseModel):
     )
     input_items: Optional[List[CreativeInputItemWrite]] = Field(
         None,
-        description="When present, input_items is the Phase 4 canonical creative input orchestration source.",
+        description=f"When present, {CREATIVE_INPUT_ITEMS_WRITE_DESCRIPTION}",
     )
 
     @model_validator(mode="after")
@@ -1024,7 +1050,7 @@ class CreativeItemResponse(BaseModel):
     target_duration_seconds: Optional[int] = None
     input_items: List[CreativeInputItemResponse] = Field(
         default_factory=list,
-        description="Phase 4 canonical creative input orchestration surface.",
+        description=CREATIVE_INPUT_ITEMS_READ_DESCRIPTION,
     )
     input_orchestration: CreativeInputOrchestrationResponse = Field(
         default_factory=_default_creative_input_orchestration_response,
@@ -1062,7 +1088,7 @@ class CreativeWorkbenchItemResponse(BaseModel):
     target_duration_seconds: Optional[int] = None
     input_items: List[CreativeInputItemResponse] = Field(
         default_factory=list,
-        description="Phase 4 canonical creative input orchestration surface.",
+        description=CREATIVE_INPUT_ITEMS_READ_DESCRIPTION,
     )
     input_orchestration: CreativeInputOrchestrationResponse = Field(
         default_factory=_default_creative_input_orchestration_response,
@@ -1194,7 +1220,7 @@ class CreativeDetailResponse(BaseModel):
     target_duration_seconds: Optional[int] = None
     input_items: List[CreativeInputItemResponse] = Field(
         default_factory=list,
-        description="Phase 4 canonical creative input orchestration surface.",
+        description=CREATIVE_INPUT_ITEMS_READ_DESCRIPTION,
     )
     input_orchestration: CreativeInputOrchestrationResponse = Field(
         default_factory=_default_creative_input_orchestration_response,

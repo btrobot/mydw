@@ -207,8 +207,8 @@ async def test_creative_openapi_exposes_phase4_workbench_and_detail_contracts(
         assert field_name in schemas["CreativeWorkbenchItemResponse"]["properties"]
     assert schemas["CreativeCreateRequest"]["properties"]["input_items"]["type"] == "array"
     assert schemas["CreativeUpdateRequest"]["properties"]["input_items"]["anyOf"][0]["type"] == "array"
-    assert "Phase 4 canonical" in schemas["CreativeCreateRequest"]["properties"]["input_items"]["description"]
-    assert "Phase 4 canonical" in schemas["CreativeUpdateRequest"]["properties"]["input_items"]["description"]
+    assert "authoritative writes only accept video/audio" in schemas["CreativeCreateRequest"]["properties"]["input_items"]["description"]
+    assert "authoritative writes only accept video/audio" in schemas["CreativeUpdateRequest"]["properties"]["input_items"]["description"]
     assert schemas["CreativeCreateRequest"]["properties"]["product_name_mode"]["anyOf"][0]["$ref"].endswith("/CreativeProductNameMode")
     assert schemas["CreativeCreateRequest"]["properties"]["current_cover_asset_type"]["anyOf"][0]["$ref"].endswith("/CreativeCurrentCoverAssetType")
     assert schemas["CreativeCreateRequest"]["properties"]["cover_mode"]["anyOf"][0]["$ref"].endswith("/CreativeCoverMode")
@@ -218,6 +218,9 @@ async def test_creative_openapi_exposes_phase4_workbench_and_detail_contracts(
         assert schemas["CreativeUpdateRequest"]["properties"][field_name]["deprecated"] is True
         assert "compatibility-only projection" in schemas["CreativeCreateRequest"]["properties"][field_name]["description"]
         assert "compatibility-only projection" in schemas["CreativeUpdateRequest"]["properties"][field_name]["description"]
+    write_material_type_ref = schemas["CreativeInputItemWrite"]["properties"]["material_type"]["$ref"]
+    assert write_material_type_ref.endswith("/CreativeSelectedMediaWriteMaterialType")
+    assert schemas["CreativeSelectedMediaWriteMaterialType"]["enum"] == ["video", "audio"]
     assert schemas["CreativeInputItemResponse"]["properties"]["material_type"]["$ref"].endswith("/CreativeInputMaterialType")
     assert schemas["CreativeInputItemResponse"]["properties"]["material_id"]["type"] == "integer"
     assert "CreativeInputSnapshotResponse" not in schemas
@@ -233,11 +236,13 @@ async def test_creative_openapi_exposes_phase4_workbench_and_detail_contracts(
     assert schemas["CreativeDetailResponse"]["properties"]["main_copywriting_text"]["anyOf"][0]["type"] == "string"
     assert schemas["CreativeDetailResponse"]["properties"]["target_duration_seconds"]["anyOf"][0]["type"] == "integer"
     assert schemas["CreativeDetailResponse"]["properties"]["input_items"]["type"] == "array"
+    assert "full-carrier compatibility readback" in schemas["CreativeDetailResponse"]["properties"]["input_items"]["description"]
     assert schemas["CreativeDetailResponse"]["properties"]["input_orchestration"]["$ref"].endswith("/CreativeInputOrchestrationResponse")
     assert "input_snapshot" not in schemas["CreativeDetailResponse"]["properties"]
     assert schemas["CreativeDetailResponse"]["properties"]["eligibility_status"]["$ref"].endswith("/CreativeEligibilityStatus")
     assert schemas["CreativeDetailResponse"]["properties"]["latest_task_summary"]["anyOf"][0]["$ref"].endswith("/CreativeLatestTaskSummaryResponse")
     assert schemas["CreativeWorkbenchItemResponse"]["properties"]["input_items"]["type"] == "array"
+    assert "full-carrier compatibility readback" in schemas["CreativeWorkbenchItemResponse"]["properties"]["input_items"]["description"]
     assert schemas["CreativeWorkbenchItemResponse"]["properties"]["input_orchestration"]["$ref"].endswith("/CreativeInputOrchestrationResponse")
     assert schemas["CreativeWorkbenchItemResponse"]["properties"]["pool_state"]["$ref"].endswith("/CreativeWorkbenchPoolState")
     assert schemas["CreativeWorkbenchItemResponse"]["properties"]["active_pool_item_id"]["anyOf"][0]["type"] == "integer"
@@ -299,11 +304,17 @@ async def test_frontend_exported_openapi_keeps_phase4_creative_contract_in_sync(
     )
 
     for schema_name in ("CreativeCreateRequest", "CreativeUpdateRequest"):
-        for field_name in (*PHASE2_LEGACY_CREATIVE_WRITE_FIELDS, "input_items"):
+        for field_name in PHASE2_LEGACY_CREATIVE_WRITE_FIELDS:
             exported_property = _schema_property(exported_spec, schema_name, field_name)
             live_property = _schema_property(live_spec, schema_name, field_name)
             assert exported_property.get("description") == live_property.get("description")
             assert exported_property.get("deprecated") == live_property.get("deprecated")
+
+        exported_input_items = _schema_property(exported_spec, schema_name, "input_items")
+        live_input_items = _schema_property(live_spec, schema_name, "input_items")
+        assert exported_input_items.get("type", exported_input_items.get("anyOf")) == live_input_items.get(
+            "type", live_input_items.get("anyOf")
+        )
 
 
 @pytest.mark.asyncio

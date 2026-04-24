@@ -15,6 +15,8 @@ from schemas import (
     CreativeDetailResponse,
     CreativeCurrentCoverAssetType,
     CreativeEligibilityStatus,
+    CreativeInputItemResponse,
+    CreativeInputMaterialType,
     CreativeItemResponse,
     CreativeProductLinkSourceMode,
     CreativeProductNameMode,
@@ -861,9 +863,24 @@ def test_work_driven_creative_write_contracts_expose_canonical_inputs_without_sn
     assert len(request.input_items) == 1
     assert len(request.candidate_items) == 1
     assert request.current_cover_asset_type == CreativeCurrentCoverAssetType.COVER
-    assert "Phase 4 canonical" in CreativeCreateRequest.model_fields["input_items"].description
-    assert "Phase 4 canonical" in CreativeUpdateRequest.model_fields["input_items"].description
+    assert "authoritative writes only accept video/audio" in CreativeCreateRequest.model_fields["input_items"].description
+    assert "authoritative writes only accept video/audio" in CreativeUpdateRequest.model_fields["input_items"].description
     assert "Slice 3 persistent" in CreativeCreateRequest.model_fields["candidate_items"].description
+    assert "full-carrier compatibility readback" in CreativeDetailResponse.model_fields["input_items"].description
+
+    with pytest.raises(ValidationError):
+        CreativeCreateRequest(
+            profile_id=1,
+            input_items=[{"material_type": "topic", "material_id": 100}],
+        )
+
+    response_item = CreativeInputItemResponse(
+        material_type=CreativeInputMaterialType.TOPIC,
+        material_id=100,
+        sequence=1,
+        instance_no=1,
+    )
+    assert response_item.material_type == CreativeInputMaterialType.TOPIC
 
 
 def test_phase_a_response_contracts_are_instantiable() -> None:

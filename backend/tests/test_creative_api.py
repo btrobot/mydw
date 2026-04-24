@@ -1,10 +1,11 @@
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from utils.time import utc_now_naive
 from datetime import timedelta
 
-from models import Account, Audio, Copywriting, Cover, CreativeItem, CreativeVersion, Product, PublishPoolItem, PublishProfile, Task, Topic, Video
+from models import Account, Audio, Copywriting, Cover, CreativeInputItem, CreativeItem, CreativeVersion, Product, PublishPoolItem, PublishProfile, Task, Topic, Video
 from services.creative_version_service import CreativeVersionService
 from services.creative_service import CreativeService
 
@@ -154,21 +155,18 @@ async def test_create_creative_allows_work_item_without_current_version(
 
 
 @pytest.mark.asyncio
-async def test_create_creative_can_project_ready_to_compose_from_input_items(
+async def test_create_creative_can_project_ready_to_compose_from_selected_media_input_items(
     client: AsyncClient,
     db_session: AsyncSession,
 ) -> None:
-    profile, video, _, topic = await _seed_profile_and_materials(db_session, composition_mode="none")
+    profile, video, _, _ = await _seed_profile_and_materials(db_session, composition_mode="none")
 
     response = await client.post(
         "/api/creatives",
         json={
             "title": "Ready Creative",
             "profile_id": profile.id,
-            "input_items": [
-                {"material_type": "video", "material_id": video.id},
-                {"material_type": "topic", "material_id": topic.id},
-            ],
+            "input_items": [{"material_type": "video", "material_id": video.id}],
         },
     )
 
@@ -178,65 +176,45 @@ async def test_create_creative_can_project_ready_to_compose_from_input_items(
     assert payload["eligibility_status"] == "READY_TO_COMPOSE"
     assert payload["eligibility_reasons"] == []
     assert payload["input_orchestration"]["profile_id"] == profile.id
-    assert payload["input_orchestration"]["item_count"] == 2
-    assert payload["input_orchestration"]["enabled_item_count"] == 2
+    assert payload["input_orchestration"]["item_count"] == 1
+    assert payload["input_orchestration"]["enabled_item_count"] == 1
     assert payload["input_orchestration"]["material_counts"]["video"] == 1
-    assert payload["input_orchestration"]["material_counts"]["topic"] == 1
     assert "input_snapshot" not in payload
 
 
 @pytest.mark.asyncio
-async def test_create_creative_dual_writes_authoritative_input_items_and_legacy_snapshot_carriers(
+@pytest.mark.parametrize("material_type", ["copywriting", "cover", "topic"])
+async def test_create_creative_rejects_non_media_selected_write_material_types(
     client: AsyncClient,
     db_session: AsyncSession,
+    material_type: str,
 ) -> None:
     profile, product, video, copywriting, cover, audio, topic = await _seed_domain_inputs(
         db_session,
         composition_mode="coze",
     )
+    material_ids = {
+        "copywriting": copywriting.id,
+        "cover": cover.id,
+        "topic": topic.id,
+    }
 
     response = await client.post(
         "/api/creatives",
         json={
-            "title": "Creative Phase1 PR2",
+            "title": "Creative Phase4 Reject",
             "subject_product_id": product.id,
-            "main_copywriting_text": "authoritative copy brief",
-            "target_duration_seconds": 45,
             "profile_id": profile.id,
             "input_items": [
-                {"material_type": "video", "material_id": video.id, "role": "opening", "trim_in": 0, "trim_out": 8},
-                {"material_type": "video", "material_id": video.id, "role": "ending", "trim_in": 9, "trim_out": 16},
-                {"material_type": "copywriting", "material_id": copywriting.id},
-                {"material_type": "cover", "material_id": cover.id},
-                {"material_type": "audio", "material_id": audio.id},
-                {"material_type": "topic", "material_id": topic.id},
+                {"material_type": "video", "material_id": video.id},
+                {"material_type": material_type, "material_id": material_ids[material_type]},
             ],
         },
     )
 
-    assert response.status_code == 201
-    payload = response.json()
-    assert payload["subject_product_id"] == product.id
-    assert payload["subject_product_name_snapshot"] == product.name
-    assert payload["main_copywriting_text"] == "authoritative copy brief"
-    assert payload["target_duration_seconds"] == 45
-    assert [item["material_type"] for item in payload["input_items"]] == [
-        "video",
-        "video",
-        "copywriting",
-        "cover",
-        "audio",
-        "topic",
-    ]
-    assert [item["material_id"] for item in payload["input_items"][:2]] == [video.id, video.id]
-    assert [item["instance_no"] for item in payload["input_items"][:2]] == [1, 2]
-    assert [item["role"] for item in payload["input_items"][:2]] == ["opening", "ending"]
-    assert payload["input_orchestration"]["profile_id"] == profile.id
-    assert payload["input_orchestration"]["item_count"] == 6
-    assert payload["input_orchestration"]["enabled_item_count"] == 6
-    assert payload["input_orchestration"]["material_counts"]["video"] == 2
-    assert payload["input_orchestration"]["enabled_material_counts"]["audio"] == 1
-    assert "input_snapshot" not in payload
+    assert response.status_code == 422
+    assert "input_items" in response.text
+    assert material_type in response.text
 
 
 @pytest.mark.asyncio
@@ -276,10 +254,7 @@ async def test_create_creative_accepts_explicit_current_truth_fields_and_project
             "current_copywriting_text": "Manual truth copy",
             "copywriting_mode": "manual",
             "target_duration_seconds": 30,
-            "input_items": [
-                {"material_type": "video", "material_id": video.id},
-                {"material_type": "cover", "material_id": product_cover.id},
-            ],
+            "input_items": [{"material_type": "video", "material_id": video.id}],
         },
     )
 
@@ -858,7 +833,7 @@ async def test_creative_patch_rejects_legacy_list_write_fields_in_phase2(
     client: AsyncClient,
     db_session: AsyncSession,
 ) -> None:
-    profile, _, video, _, _, _, topic = await _seed_domain_inputs(
+    profile, _, video, _, _, _, _ = await _seed_domain_inputs(
         db_session,
         composition_mode="coze",
     )
@@ -867,10 +842,7 @@ async def test_creative_patch_rejects_legacy_list_write_fields_in_phase2(
         json={
             "title": "Legacy Patch Reject",
             "profile_id": profile.id,
-            "input_items": [
-                {"material_type": "video", "material_id": video.id},
-                {"material_type": "topic", "material_id": topic.id},
-            ],
+            "input_items": [{"material_type": "video", "material_id": video.id}],
         },
     )
     assert create_response.status_code == 201
@@ -883,6 +855,166 @@ async def test_creative_patch_rejects_legacy_list_write_fields_in_phase2(
 
     assert patch_response.status_code == 422
     assert "Phase 2 creative write requests must use input_items" in patch_response.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("material_type", ["copywriting", "cover", "topic"])
+async def test_creative_patch_rejects_non_media_selected_write_material_types(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    material_type: str,
+) -> None:
+    profile, _, video, copywriting, cover, _, topic = await _seed_domain_inputs(
+        db_session,
+        composition_mode="coze",
+    )
+    material_ids = {
+        "copywriting": copywriting.id,
+        "cover": cover.id,
+        "topic": topic.id,
+    }
+    create_response = await client.post(
+        "/api/creatives",
+        json={
+            "title": "Selected Patch Reject",
+            "profile_id": profile.id,
+            "input_items": [{"material_type": "video", "material_id": video.id}],
+        },
+    )
+    assert create_response.status_code == 201
+    creative = create_response.json()
+
+    patch_response = await client.patch(
+        f"/api/creatives/{creative['id']}",
+        json={
+            "input_items": [
+                {"material_type": "video", "material_id": video.id},
+                {"material_type": material_type, "material_id": material_ids[material_type]},
+            ]
+        },
+    )
+
+    assert patch_response.status_code == 422
+    assert "input_items" in patch_response.text
+    assert material_type in patch_response.text
+
+
+@pytest.mark.asyncio
+async def test_selected_media_patch_preserves_legacy_non_media_input_item_rows_in_detail_and_workbench(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    profile, _, video, copywriting, cover, audio, topic = await _seed_domain_inputs(
+        db_session,
+        composition_mode="coze",
+    )
+    create_response = await client.post(
+        "/api/creatives",
+        json={
+            "title": "Selected Patch Preserve Legacy",
+            "profile_id": profile.id,
+            "input_items": [{"material_type": "video", "material_id": video.id}],
+        },
+    )
+    assert create_response.status_code == 201
+    creative = create_response.json()
+
+    db_session.add_all(
+        [
+            CreativeInputItem(
+                creative_item_id=creative["id"],
+                material_type="copywriting",
+                material_id=copywriting.id,
+                sequence=2,
+                instance_no=1,
+                enabled=True,
+            ),
+            CreativeInputItem(
+                creative_item_id=creative["id"],
+                material_type="cover",
+                material_id=cover.id,
+                sequence=3,
+                instance_no=1,
+                enabled=True,
+            ),
+            CreativeInputItem(
+                creative_item_id=creative["id"],
+                material_type="topic",
+                material_id=topic.id,
+                sequence=4,
+                instance_no=1,
+                enabled=True,
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    patch_response = await client.patch(
+        f"/api/creatives/{creative['id']}",
+        json={
+            "input_items": [
+                {"material_type": "audio", "material_id": audio.id},
+                {"material_type": "video", "material_id": video.id, "enabled": False},
+            ]
+        },
+    )
+
+    assert patch_response.status_code == 200
+    payload = patch_response.json()
+    assert [item["material_type"] for item in payload["input_items"]] == [
+        "audio",
+        "video",
+        "copywriting",
+        "cover",
+        "topic",
+    ]
+    assert [item["enabled"] for item in payload["input_items"][:2]] == [True, False]
+    assert payload["input_orchestration"]["item_count"] == 5
+    assert payload["input_orchestration"]["material_counts"]["copywriting"] == 1
+    assert payload["input_orchestration"]["material_counts"]["cover"] == 1
+    assert payload["input_orchestration"]["material_counts"]["topic"] == 1
+    assert payload["input_orchestration"]["enabled_material_counts"]["audio"] == 1
+    assert payload["input_orchestration"]["enabled_material_counts"]["video"] == 0
+
+    stored_rows = (
+        (
+            await db_session.execute(
+                select(CreativeInputItem)
+                .where(CreativeInputItem.creative_item_id == creative["id"])
+                .order_by(CreativeInputItem.sequence.asc(), CreativeInputItem.id.asc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert [row.material_type for row in stored_rows] == [
+        "audio",
+        "video",
+        "copywriting",
+        "cover",
+        "topic",
+    ]
+
+    detail_response = await client.get(f"/api/creatives/{creative['id']}")
+    assert detail_response.status_code == 200
+    assert [item["material_type"] for item in detail_response.json()["input_items"]] == [
+        "audio",
+        "video",
+        "copywriting",
+        "cover",
+        "topic",
+    ]
+
+    list_response = await client.get("/api/creatives")
+    assert list_response.status_code == 200
+    workbench_item = next(item for item in list_response.json()["items"] if item["id"] == creative["id"])
+    assert [item["material_type"] for item in workbench_item["input_items"]] == [
+        "audio",
+        "video",
+        "copywriting",
+        "cover",
+        "topic",
+    ]
 
 
 @pytest.mark.asyncio

@@ -89,6 +89,7 @@ INPUT_ITEM_TO_RESOURCE_FIELD = {
     "audio": "audio_ids",
     "topic": "topic_ids",
 }
+SELECTED_MEDIA_WRITE_MATERIAL_TYPES = frozenset({"video", "audio"})
 
 INPUT_STATE_FIELD_NAMES = (
     "profile_id",
@@ -260,6 +261,7 @@ class CreativeService:
             creative,
             profile_id=input_profile_id,
             input_items=authoritative_input_items,
+            preserve_existing_non_media_rows="input_items" in payload.model_fields_set,
         )
         await self._sync_pre_compose_status(creative)
         await self.db.commit()
@@ -446,6 +448,7 @@ class CreativeService:
                 creative,
                 profile_id=input_profile_id,
                 input_items=authoritative_input_items,
+                preserve_existing_non_media_rows="input_items" in payload.model_fields_set,
             )
         if (
             creative.current_version is not None
@@ -1834,7 +1837,10 @@ class CreativeService:
         explicit_input_items: Optional[list[Any]],
     ) -> tuple[Optional[int], list[dict[str, Any]]]:
         if explicit_input_items is not None:
-            return profile_id, self._normalize_input_items(explicit_input_items)
+            return profile_id, self._normalize_input_items(
+                explicit_input_items,
+                allowed_material_types=SELECTED_MEDIA_WRITE_MATERIAL_TYPES,
+            )
         if current_input_items:
             return profile_id, self._normalize_input_items(current_input_items)
         return profile_id, []
@@ -1845,8 +1851,21 @@ class CreativeService:
         *,
         profile_id: Optional[int],
         input_items: list[dict[str, Any]],
+        preserve_existing_non_media_rows: bool = False,
     ) -> None:
-        normalized_items = self._normalize_input_items(input_items)
+        normalized_items = self._normalize_input_items(
+            input_items,
+            allowed_material_types=(
+                SELECTED_MEDIA_WRITE_MATERIAL_TYPES if preserve_existing_non_media_rows else None
+            ),
+        )
+        if preserve_existing_non_media_rows:
+            normalized_items = self._normalize_input_items(
+                [
+                    *normalized_items,
+                    *self._extract_legacy_non_media_input_items(creative),
+                ]
+            )
         if creative.id is not None:
             await self.db.execute(
                 delete(CreativeInputItem).where(CreativeInputItem.creative_item_id == creative.id)
@@ -1890,7 +1909,19 @@ class CreativeService:
             return []
         return self._normalize_input_items(rows)
 
-    def _normalize_input_items(self, items: list[Any]) -> list[dict[str, Any]]:
+    def _extract_legacy_non_media_input_items(self, creative: CreativeItem) -> list[dict[str, Any]]:
+        return [
+            item
+            for item in self._extract_authoritative_input_items(creative)
+            if item["material_type"] not in SELECTED_MEDIA_WRITE_MATERIAL_TYPES
+        ]
+
+    def _normalize_input_items(
+        self,
+        items: list[Any],
+        *,
+        allowed_material_types: Optional[frozenset[str]] = None,
+    ) -> list[dict[str, Any]]:
         staged: list[tuple[int, int, dict[str, Any]]] = []
         for index, raw_item in enumerate(items, start=1):
             material_type = self._read_input_item_value(raw_item, "material_type")
@@ -1900,6 +1931,13 @@ class CreativeService:
             material_type_value = str(material_type_value)
             if material_type_value not in INPUT_ITEM_TO_RESOURCE_FIELD:
                 raise ValueError(f"不支持的 input_items.material_type: {material_type_value}")
+            if (
+                allowed_material_types is not None
+                and material_type_value not in allowed_material_types
+            ):
+                raise ValueError(
+                    "input_items.material_type authoritative write only supports video/audio"
+                )
             material_id = self._read_input_item_value(raw_item, "material_id")
             if material_id is None:
                 raise ValueError("input_items.material_id 不能为空")
