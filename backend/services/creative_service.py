@@ -126,8 +126,10 @@ class CreativeService:
             select(CreativeItem)
             .order_by(CreativeItem.updated_at.desc(), CreativeItem.id.desc())
             .options(
+                selectinload(CreativeItem.current_cover),
                 selectinload(CreativeItem.input_items),
                 selectinload(CreativeItem.input_profile),
+                selectinload(CreativeItem.candidate_items),
                 selectinload(CreativeItem.tasks).selectinload(Task.profile),
                 selectinload(CreativeItem.publish_pool_items),
             )
@@ -688,6 +690,7 @@ class CreativeService:
             .where(CreativeItem.id == creative_id)
             .execution_options(populate_existing=True)
             .options(
+                selectinload(CreativeItem.current_cover),
                 selectinload(CreativeItem.input_items),
                 selectinload(CreativeItem.input_profile),
                 selectinload(CreativeItem.product_links).selectinload(CreativeProductLink.product),
@@ -715,6 +718,10 @@ class CreativeService:
             creative.current_version_id,
             active_pool_item,
         )
+        summary_projection = await self._build_workbench_summary_projection(
+            creative,
+            projection=projection,
+        )
         return CreativeWorkbenchItemResponse(
             id=creative.id,
             creative_no=creative.creative_no,
@@ -725,6 +732,8 @@ class CreativeService:
             subject_product_name_snapshot=creative.resolved_current_product_name(),
             main_copywriting_text=creative.resolved_current_copywriting_text(),
             current_product_name=creative.resolved_current_product_name(),
+            current_cover_thumb=summary_projection["current_cover_thumb"],
+            current_copy_excerpt=summary_projection["current_copy_excerpt"],
             product_name_mode=creative.resolved_product_name_mode(),
             current_cover_asset_type=creative.resolved_current_cover_asset_type(),
             current_cover_asset_id=creative.current_cover_asset_id,
@@ -733,6 +742,14 @@ class CreativeService:
             current_copywriting_text=creative.resolved_current_copywriting_text(),
             copywriting_mode=creative.resolved_copywriting_mode(),
             target_duration_seconds=creative.target_duration_seconds,
+            selected_video_count=summary_projection["selected_video_count"],
+            selected_audio_count=summary_projection["selected_audio_count"],
+            candidate_video_count=summary_projection["candidate_video_count"],
+            candidate_audio_count=summary_projection["candidate_audio_count"],
+            candidate_cover_count=summary_projection["candidate_cover_count"],
+            definition_ready=summary_projection["definition_ready"],
+            composition_ready=summary_projection["composition_ready"],
+            missing_required_fields=summary_projection["missing_required_fields"],
             input_items=projection["input_items"],
             input_orchestration=projection["input_orchestration"],
             generation_error_msg=creative.generation_error_msg,
@@ -840,6 +857,113 @@ class CreativeService:
             "eligibility_reasons": eligibility_reasons,
             "latest_task_summary": latest_task_summary,
         }
+
+    async def _build_workbench_summary_projection(
+        self,
+        creative: CreativeItem,
+        *,
+        projection: dict[str, Any],
+    ) -> dict[str, Any]:
+        current_product_name = creative.resolved_current_product_name()
+        current_copywriting_text = creative.resolved_current_copywriting_text()
+        current_cover_thumb = await self._resolve_current_cover_path(creative)
+        selected_media_counts = self._build_selected_media_counts(projection["input_items"])
+        candidate_counts = self._build_candidate_media_counts(creative.candidate_items)
+        missing_required_fields = self._build_workbench_missing_required_fields(
+            creative,
+            selected_video_count=selected_media_counts["selected_video_count"],
+            input_profile_id=projection["input_orchestration"].profile_id,
+        )
+        definition_ready = all(
+            field not in missing_required_fields
+            for field in (
+                "current_product_name",
+                "current_cover",
+                "current_copywriting",
+                "selected_video",
+            )
+        )
+        composition_ready = projection["eligibility_status"] == CreativeEligibilityStatus.READY_TO_COMPOSE
+        return {
+            "current_cover_thumb": current_cover_thumb,
+            "current_copy_excerpt": self._build_workbench_copy_excerpt(current_copywriting_text),
+            **selected_media_counts,
+            **candidate_counts,
+            "definition_ready": definition_ready,
+            "composition_ready": composition_ready,
+            "missing_required_fields": missing_required_fields,
+        }
+
+    def _build_selected_media_counts(
+        self,
+        input_items: list[CreativeInputItemResponse],
+    ) -> dict[str, int]:
+        selected_video_count = sum(
+            1
+            for item in input_items
+            if item.enabled and item.material_type == "video"
+        )
+        selected_audio_count = sum(
+            1
+            for item in input_items
+            if item.enabled and item.material_type == "audio"
+        )
+        return {
+            "selected_video_count": selected_video_count,
+            "selected_audio_count": selected_audio_count,
+        }
+
+    def _build_candidate_media_counts(
+        self,
+        candidate_items: list[CreativeCandidateItem],
+    ) -> dict[str, int]:
+        active_candidate_items = [
+            item
+            for item in candidate_items
+            if item.enabled and item.status != CreativeCandidateStatus.DISMISSED.value
+        ]
+        return {
+            "candidate_video_count": sum(
+                1 for item in active_candidate_items if item.candidate_type == CreativeCandidateType.VIDEO.value
+            ),
+            "candidate_audio_count": sum(
+                1 for item in active_candidate_items if item.candidate_type == CreativeCandidateType.AUDIO.value
+            ),
+            "candidate_cover_count": sum(
+                1 for item in active_candidate_items if item.candidate_type == CreativeCandidateType.COVER.value
+            ),
+        }
+
+    def _build_workbench_missing_required_fields(
+        self,
+        creative: CreativeItem,
+        *,
+        selected_video_count: int,
+        input_profile_id: Optional[int],
+    ) -> list[str]:
+        missing_fields: list[str] = []
+        if not self._has_display_text(creative.resolved_current_product_name()):
+            missing_fields.append("current_product_name")
+        if creative.resolved_current_cover_asset_type() is None or creative.current_cover_asset_id is None:
+            missing_fields.append("current_cover")
+        if not self._has_display_text(creative.resolved_current_copywriting_text()):
+            missing_fields.append("current_copywriting")
+        if selected_video_count <= 0:
+            missing_fields.append("selected_video")
+        if input_profile_id is None:
+            missing_fields.append("input_profile")
+        return missing_fields
+
+    def _build_workbench_copy_excerpt(self, value: Optional[str], *, max_length: int = 80) -> Optional[str]:
+        if not self._has_display_text(value):
+            return None
+        normalized = " ".join((value or "").strip().split())
+        if len(normalized) <= max_length:
+            return normalized
+        return f"{normalized[: max_length - 1].rstrip()}…"
+
+    def _has_display_text(self, value: Optional[str]) -> bool:
+        return bool(value and value.strip())
 
     async def _build_eligibility_projection(
         self,
@@ -1020,6 +1144,13 @@ class CreativeService:
             version_mismatch_count=sum(
                 1 for item in items if item.pool_state == CreativeWorkbenchPoolState.VERSION_MISMATCH
             ),
+            selected_video_count=sum(item.selected_video_count for item in items),
+            selected_audio_count=sum(item.selected_audio_count for item in items),
+            candidate_video_count=sum(item.candidate_video_count for item in items),
+            candidate_audio_count=sum(item.candidate_audio_count for item in items),
+            candidate_cover_count=sum(item.candidate_cover_count for item in items),
+            definition_ready_count=sum(1 for item in items if item.definition_ready),
+            composition_ready_count=sum(1 for item in items if item.composition_ready),
         )
 
     def _filter_workbench_items(

@@ -103,6 +103,13 @@ export const fetchCreatives = async (params?: CreativeListParams): Promise<Creat
       active_pool_count: 0,
       aligned_pool_count: 0,
       version_mismatch_count: 0,
+      selected_video_count: 0,
+      selected_audio_count: 0,
+      candidate_video_count: 0,
+      candidate_audio_count: 0,
+      candidate_cover_count: 0,
+      definition_ready_count: 0,
+      composition_ready_count: 0,
     },
   }
 }

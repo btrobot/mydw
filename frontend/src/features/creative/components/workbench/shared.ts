@@ -48,6 +48,13 @@ export type WorkbenchSummaryCounts = {
   active_pool_count: number
   aligned_pool_count: number
   version_mismatch_count: number
+  selected_video_count: number
+  selected_audio_count: number
+  candidate_video_count: number
+  candidate_audio_count: number
+  candidate_cover_count: number
+  definition_ready_count: number
+  composition_ready_count: number
 }
 
 export const defaultWorkbenchSummary: WorkbenchSummaryCounts = {
@@ -59,4 +66,11 @@ export const defaultWorkbenchSummary: WorkbenchSummaryCounts = {
   active_pool_count: 0,
   aligned_pool_count: 0,
   version_mismatch_count: 0,
+  selected_video_count: 0,
+  selected_audio_count: 0,
+  candidate_video_count: 0,
+  candidate_audio_count: 0,
+  candidate_cover_count: 0,
+  definition_ready_count: 0,
+  composition_ready_count: 0,
 }

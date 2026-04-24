@@ -2200,6 +2200,14 @@ export type CreativeWorkbenchItemResponse = {
      * Current Product Name
      */
     current_product_name?: string | null;
+    /**
+     * Current Cover Thumb
+     */
+    current_cover_thumb?: string | null;
+    /**
+     * Current Copy Excerpt
+     */
+    current_copy_excerpt?: string | null;
     product_name_mode?: CreativeProductNameMode;
     current_cover_asset_type?: CreativeCurrentCoverAssetType | null;
     /**
@@ -2220,6 +2228,38 @@ export type CreativeWorkbenchItemResponse = {
      * Target Duration Seconds
      */
     target_duration_seconds?: number | null;
+    /**
+     * Selected Video Count
+     */
+    selected_video_count?: number;
+    /**
+     * Selected Audio Count
+     */
+    selected_audio_count?: number;
+    /**
+     * Candidate Video Count
+     */
+    candidate_video_count?: number;
+    /**
+     * Candidate Audio Count
+     */
+    candidate_audio_count?: number;
+    /**
+     * Candidate Cover Count
+     */
+    candidate_cover_count?: number;
+    /**
+     * Definition Ready
+     */
+    definition_ready?: boolean;
+    /**
+     * Composition Ready
+     */
+    composition_ready?: boolean;
+    /**
+     * Missing Required Fields
+     */
+    missing_required_fields?: Array<string>;
     /**
      * Input Items
      *
@@ -2328,6 +2368,34 @@ export type CreativeWorkbenchSummaryResponse = {
      * Version Mismatch Count
      */
     version_mismatch_count?: number;
+    /**
+     * Selected Video Count
+     */
+    selected_video_count?: number;
+    /**
+     * Selected Audio Count
+     */
+    selected_audio_count?: number;
+    /**
+     * Candidate Video Count
+     */
+    candidate_video_count?: number;
+    /**
+     * Candidate Audio Count
+     */
+    candidate_audio_count?: number;
+    /**
+     * Candidate Cover Count
+     */
+    candidate_cover_count?: number;
+    /**
+     * Definition Ready Count
+     */
+    definition_ready_count?: number;
+    /**
+     * Composition Ready Count
+     */
+    composition_ready_count?: number;
 };
 
 /**

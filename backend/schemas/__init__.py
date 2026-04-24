@@ -1078,6 +1078,8 @@ class CreativeWorkbenchItemResponse(BaseModel):
     subject_product_name_snapshot: Optional[str] = None
     main_copywriting_text: Optional[str] = None
     current_product_name: Optional[str] = None
+    current_cover_thumb: Optional[str] = None
+    current_copy_excerpt: Optional[str] = None
     product_name_mode: CreativeProductNameMode = CreativeProductNameMode.MANUAL
     current_cover_asset_type: Optional[CreativeCurrentCoverAssetType] = None
     current_cover_asset_id: Optional[int] = None
@@ -1086,6 +1088,14 @@ class CreativeWorkbenchItemResponse(BaseModel):
     current_copywriting_text: Optional[str] = None
     copywriting_mode: CreativeCopywritingMode = CreativeCopywritingMode.MANUAL
     target_duration_seconds: Optional[int] = None
+    selected_video_count: int = 0
+    selected_audio_count: int = 0
+    candidate_video_count: int = 0
+    candidate_audio_count: int = 0
+    candidate_cover_count: int = 0
+    definition_ready: bool = False
+    composition_ready: bool = False
+    missing_required_fields: List[str] = Field(default_factory=list)
     input_items: List[CreativeInputItemResponse] = Field(
         default_factory=list,
         description=CREATIVE_INPUT_ITEMS_READ_DESCRIPTION,
@@ -1117,6 +1127,13 @@ class CreativeWorkbenchSummaryResponse(BaseModel):
     active_pool_count: int = 0
     aligned_pool_count: int = 0
     version_mismatch_count: int = 0
+    selected_video_count: int = 0
+    selected_audio_count: int = 0
+    candidate_video_count: int = 0
+    candidate_audio_count: int = 0
+    candidate_cover_count: int = 0
+    definition_ready_count: int = 0
+    composition_ready_count: int = 0
 
 
 class CreativeWorkbenchListResponse(BaseModel):

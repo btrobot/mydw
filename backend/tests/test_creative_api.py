@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from utils.time import utc_now_naive
 from datetime import timedelta
 
-from models import Account, Audio, Copywriting, Cover, CreativeInputItem, CreativeItem, CreativeVersion, Product, PublishPoolItem, PublishProfile, Task, Topic, Video
+from models import Account, Audio, Copywriting, Cover, CreativeCandidateItem, CreativeInputItem, CreativeItem, CreativeVersion, Product, PublishPoolItem, PublishProfile, Task, Topic, Video
 from services.creative_version_service import CreativeVersionService
 from services.creative_service import CreativeService
 
@@ -117,6 +117,13 @@ async def test_list_creatives_returns_empty_state(client: AsyncClient) -> None:
             "active_pool_count": 0,
             "aligned_pool_count": 0,
             "version_mismatch_count": 0,
+            "selected_video_count": 0,
+            "selected_audio_count": 0,
+            "candidate_video_count": 0,
+            "candidate_audio_count": 0,
+            "candidate_cover_count": 0,
+            "definition_ready_count": 0,
+            "composition_ready_count": 0,
         },
     }
 
@@ -1114,6 +1121,18 @@ async def test_creative_list_and_detail_return_phase_a_projection(
     assert list_payload["items"][0]["active_pool_item_id"] is None
     assert list_payload["items"][0]["active_pool_version_id"] is None
     assert list_payload["items"][0]["active_pool_aligned"] is False
+    assert list_payload["items"][0]["current_cover_thumb"] is None
+    assert list_payload["items"][0]["current_copy_excerpt"] == "Creative API Copy"
+    assert list_payload["items"][0]["selected_video_count"] == 0
+    assert list_payload["items"][0]["selected_audio_count"] == 0
+    assert list_payload["items"][0]["candidate_video_count"] == 0
+    assert list_payload["items"][0]["candidate_audio_count"] == 0
+    assert list_payload["items"][0]["candidate_cover_count"] == 0
+    assert list_payload["items"][0]["definition_ready"] is False
+    assert list_payload["items"][0]["composition_ready"] is False
+    assert "current_cover" in list_payload["items"][0]["missing_required_fields"]
+    assert "selected_video" in list_payload["items"][0]["missing_required_fields"]
+    assert "input_profile" in list_payload["items"][0]["missing_required_fields"]
 
     detail_response = await client.get(f"/api/creatives/{creative_id}")
     assert detail_response.status_code == 200
@@ -1182,6 +1201,7 @@ async def test_list_creatives_supports_service_side_filters_and_summary(
     assert delta is not None
 
     now = utc_now_naive()
+    profile, _, video, _, cover, audio, _ = await _seed_domain_inputs(db_session)
 
     alpha.status = "WAITING_REVIEW"
     alpha.updated_at = now - timedelta(hours=2)
@@ -1206,8 +1226,56 @@ async def test_list_creatives_supports_service_side_filters_and_summary(
             creative_version_id=delta.current_version_id,
             status="active",
         ),
+        CreativeCandidateItem(
+            creative_item_id=beta.id,
+            candidate_type="video",
+            asset_id=video.id,
+            sort_order=1,
+            enabled=True,
+            status="candidate",
+        ),
+        CreativeCandidateItem(
+            creative_item_id=beta.id,
+            candidate_type="audio",
+            asset_id=audio.id,
+            sort_order=2,
+            enabled=True,
+            status="candidate",
+        ),
+        CreativeCandidateItem(
+            creative_item_id=beta.id,
+            candidate_type="cover",
+            asset_id=cover.id,
+            sort_order=3,
+            enabled=True,
+            status="candidate",
+        ),
     ])
     beta.current_version_id = None
+    beta.input_profile_id = profile.id
+    beta.current_product_name = "Runner Pro"
+    beta.current_copywriting_text = "Beta copy"
+    beta.current_cover_asset_type = "cover"
+    beta.current_cover_asset_id = cover.id
+    beta_input_items = [
+        CreativeInputItem(
+            creative_item_id=beta.id,
+            material_type="video",
+            material_id=video.id,
+            sequence=1,
+            instance_no=1,
+            enabled=True,
+        ),
+        CreativeInputItem(
+            creative_item_id=beta.id,
+            material_type="audio",
+            material_id=audio.id,
+            sequence=2,
+            instance_no=1,
+            enabled=True,
+        ),
+    ]
+    db_session.add_all(beta_input_items)
     await db_session.commit()
 
     response = await client.get(
@@ -1228,6 +1296,14 @@ async def test_list_creatives_supports_service_side_filters_and_summary(
     assert payload["items"][0]["pool_state"] == "version_mismatch"
     assert payload["items"][0]["active_pool_item_id"] is not None
     assert payload["items"][0]["active_pool_aligned"] is False
+    assert payload["items"][0]["selected_video_count"] == 1
+    assert payload["items"][0]["selected_audio_count"] == 1
+    assert payload["items"][0]["candidate_video_count"] == 1
+    assert payload["items"][0]["candidate_audio_count"] == 1
+    assert payload["items"][0]["candidate_cover_count"] == 1
+    assert payload["items"][0]["definition_ready"] is True
+    assert payload["items"][0]["composition_ready"] is False
+    assert payload["items"][0]["missing_required_fields"] == []
     assert payload["summary"] == {
         "all_count": 4,
         "waiting_review_count": 1,
@@ -1237,6 +1313,13 @@ async def test_list_creatives_supports_service_side_filters_and_summary(
         "active_pool_count": 2,
         "aligned_pool_count": 1,
         "version_mismatch_count": 1,
+        "selected_video_count": 1,
+        "selected_audio_count": 1,
+        "candidate_video_count": 1,
+        "candidate_audio_count": 1,
+        "candidate_cover_count": 1,
+        "definition_ready_count": 1,
+        "composition_ready_count": 0,
     }
 
 

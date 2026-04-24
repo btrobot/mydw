@@ -186,6 +186,21 @@ function buildCreativeListItem(
     : activePoolItem.creative_version_id === detail.current_version_id
       ? 'in_pool'
       : 'version_mismatch'
+  const inputItems = detail.input_items ?? []
+  const candidateItems = detail.candidate_items ?? []
+  const selectedVideoCount = inputItems.filter((item) => item.enabled && item.material_type === 'video').length
+  const selectedAudioCount = inputItems.filter((item) => item.enabled && item.material_type === 'audio').length
+  const activeCandidateItems = candidateItems.filter((item) => item.enabled && item.status !== 'dismissed')
+  const candidateVideoCount = activeCandidateItems.filter((item) => item.candidate_type === 'video').length
+  const candidateAudioCount = activeCandidateItems.filter((item) => item.candidate_type === 'audio').length
+  const candidateCoverCount = activeCandidateItems.filter((item) => item.candidate_type === 'cover').length
+  const missingRequiredFields = [
+    ...(detail.current_product_name?.trim() ? [] : ['current_product_name']),
+    ...(detail.current_cover_asset_id ? [] : ['current_cover']),
+    ...((detail.current_copywriting_text || detail.main_copywriting_text)?.trim() ? [] : ['current_copywriting']),
+    ...(selectedVideoCount > 0 ? [] : ['selected_video']),
+    ...(detail.input_orchestration?.profile_id ? [] : ['input_profile']),
+  ]
 
   return {
     id: detail.id,
@@ -195,9 +210,27 @@ function buildCreativeListItem(
     current_version_id: detail.current_version_id,
     subject_product_id: detail.subject_product_id ?? null,
     subject_product_name_snapshot: detail.subject_product_name_snapshot ?? null,
+    current_product_name: detail.current_product_name ?? detail.subject_product_name_snapshot ?? null,
+    current_cover_thumb: null,
+    current_copy_excerpt: (detail.current_copywriting_text ?? detail.main_copywriting_text ?? null),
+    product_name_mode: detail.product_name_mode ?? 'manual',
+    current_cover_asset_type: detail.current_cover_asset_type ?? null,
+    current_cover_asset_id: detail.current_cover_asset_id ?? null,
+    cover_mode: detail.cover_mode ?? 'manual',
+    current_copywriting_id: detail.current_copywriting_id ?? null,
+    current_copywriting_text: detail.current_copywriting_text ?? null,
+    copywriting_mode: detail.copywriting_mode ?? 'manual',
     main_copywriting_text: detail.main_copywriting_text ?? null,
     target_duration_seconds: detail.target_duration_seconds ?? null,
-    input_items: detail.input_items ?? [],
+    selected_video_count: selectedVideoCount,
+    selected_audio_count: selectedAudioCount,
+    candidate_video_count: candidateVideoCount,
+    candidate_audio_count: candidateAudioCount,
+    candidate_cover_count: candidateCoverCount,
+    definition_ready: !missingRequiredFields.some((field) => ['current_product_name', 'current_cover', 'current_copywriting', 'selected_video'].includes(field)),
+    composition_ready: detail.eligibility_status === 'READY_TO_COMPOSE',
+    missing_required_fields: missingRequiredFields,
+    input_items: inputItems,
     input_orchestration: detail.input_orchestration ?? createInputOrchestration(detail.input_items ?? []),
     generation_error_msg: detail.generation_error_msg ?? null,
     generation_failed_at: detail.generation_failed_at ?? null,
@@ -526,6 +559,13 @@ export async function mockCreativeReviewApis(
         active_pool_count: listItem.active_pool_item_id ? 1 : 0,
         aligned_pool_count: listItem.pool_state === 'in_pool' ? 1 : 0,
         version_mismatch_count: listItem.pool_state === 'version_mismatch' ? 1 : 0,
+        selected_video_count: listItem.selected_video_count,
+        selected_audio_count: listItem.selected_audio_count,
+        candidate_video_count: listItem.candidate_video_count,
+        candidate_audio_count: listItem.candidate_audio_count,
+        candidate_cover_count: listItem.candidate_cover_count,
+        definition_ready_count: listItem.definition_ready ? 1 : 0,
+        composition_ready_count: listItem.composition_ready ? 1 : 0,
       },
     })
   })

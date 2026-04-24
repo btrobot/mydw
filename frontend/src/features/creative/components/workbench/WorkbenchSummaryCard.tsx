@@ -45,11 +45,42 @@ export default function WorkbenchSummaryCard({
       )}
 
       <Flex wrap gap={24}>
-        <Statistic title="作品数" value={summary.all_count} />
-        <Statistic title="待审核" value={summary.waiting_review_count} />
-        <Statistic title="待补充" value={summary.pending_input_count} />
-        <Statistic title="已进发布池" value={summary.active_pool_count} />
-        <Statistic title="池版本已对齐" value={summary.aligned_pool_count} />
+        <div data-testid="creative-workbench-summary-all-count">
+          <Statistic title="作品数" value={summary.all_count} />
+        </div>
+        <div data-testid="creative-workbench-summary-waiting-review-count">
+          <Statistic title="待审核" value={summary.waiting_review_count} />
+        </div>
+        <div data-testid="creative-workbench-summary-pending-input-count">
+          <Statistic title="待补充" value={summary.pending_input_count} />
+        </div>
+        <div data-testid="creative-workbench-summary-active-pool-count">
+          <Statistic title="已进发布池" value={summary.active_pool_count} />
+        </div>
+        <div data-testid="creative-workbench-summary-aligned-pool-count">
+          <Statistic title="池版本已对齐" value={summary.aligned_pool_count} />
+        </div>
+        <div data-testid="creative-workbench-summary-selected-video-count">
+          <Statistic title="入选视频" value={summary.selected_video_count} />
+        </div>
+        <div data-testid="creative-workbench-summary-selected-audio-count">
+          <Statistic title="入选音频" value={summary.selected_audio_count} />
+        </div>
+        <div data-testid="creative-workbench-summary-candidate-video-count">
+          <Statistic title="候选视频" value={summary.candidate_video_count} />
+        </div>
+        <div data-testid="creative-workbench-summary-candidate-audio-count">
+          <Statistic title="候选音频" value={summary.candidate_audio_count} />
+        </div>
+        <div data-testid="creative-workbench-summary-candidate-cover-count">
+          <Statistic title="候选封面" value={summary.candidate_cover_count} />
+        </div>
+        <div data-testid="creative-workbench-summary-definition-ready-count">
+          <Statistic title="定义就绪" value={summary.definition_ready_count} />
+        </div>
+        <div data-testid="creative-workbench-summary-composition-ready-count">
+          <Statistic title="可提交合成" value={summary.composition_ready_count} />
+        </div>
       </Flex>
     </Card>
   )

@@ -5,7 +5,7 @@ import { Button, Select, Space, Tag, Typography } from 'antd'
 import { useMemo } from 'react'
 import type { MutableRefObject, ReactNode } from 'react'
 
-import { countEnabledCreativeInputItems, formatCreativeDuration } from '../../creativeAuthoring'
+import { formatCreativeDuration } from '../../creativeAuthoring'
 import {
   creativeStatusMeta,
   creativeWorkbenchPoolStateMeta,
@@ -107,14 +107,26 @@ export default function WorkbenchTable({
             {[
               record.current_product_name || record.subject_product_name_snapshot || undefined,
               formatCreativeDuration(record.target_duration_seconds),
-              `${countEnabledCreativeInputItems(record.input_items)} 个编排项`,
+              `入选视频 ${record.selected_video_count}`,
+              `入选音频 ${record.selected_audio_count}`,
             ]
               .filter(Boolean)
               .join(' · ')}
           </Text>
-          {(record.current_copywriting_text || record.main_copywriting_text)?.trim() ? (
-            <Text type="secondary" ellipsis={{ tooltip: record.current_copywriting_text || record.main_copywriting_text }}>
-              主文案：{record.current_copywriting_text || record.main_copywriting_text}
+          <Text type="secondary">
+            {`候选视频 ${record.candidate_video_count} · 候选音频 ${record.candidate_audio_count} · 候选封面 ${record.candidate_cover_count}`}
+          </Text>
+          <Space wrap size={[4, 4]}>
+            <Tag color={record.definition_ready ? 'success' : 'default'}>
+              {record.definition_ready ? '定义就绪' : '定义待补'}
+            </Tag>
+            <Tag color={record.composition_ready ? 'processing' : 'default'}>
+              {record.composition_ready ? '可提交合成' : '不可提交合成'}
+            </Tag>
+          </Space>
+          {(record.current_copy_excerpt || record.current_copywriting_text || record.main_copywriting_text)?.trim() ? (
+            <Text type="secondary" ellipsis={{ tooltip: record.current_copy_excerpt || record.current_copywriting_text || record.main_copywriting_text }}>
+              当前文案：{record.current_copy_excerpt || record.current_copywriting_text || record.main_copywriting_text}
             </Text>
           ) : null}
           {record.generation_error_msg ? (
