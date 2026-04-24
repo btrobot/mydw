@@ -176,6 +176,7 @@ export default function CreativeDetail() {
     handleRemoveSelectedVideo,
     handleMoveSelectedVideo,
     handleUpdateSelectedVideoRole,
+    handleUpdateSelectedVideoTiming,
     handleSaveInput,
     handleSubmitComposition,
     submitButtonLabel,
@@ -198,6 +199,10 @@ export default function CreativeDetail() {
   const watchedProductNameMode = Form.useWatch('product_name_mode', form)
   const watchedCoverMode = Form.useWatch('cover_mode', form)
   const watchedCopywritingMode = Form.useWatch('copywriting_mode', form)
+  const selectedVideoDraftItems = useMemo(
+    () => watchedInputItems.filter((item) => item.material_type === 'video' && item.enabled !== false),
+    [watchedInputItems],
+  )
 
   const eligibilityReasons = creative?.eligibility_reasons ?? []
   const statusMeta = creative ? creativeStatusMeta[creative.status] : null
@@ -601,6 +606,41 @@ export default function CreativeDetail() {
                     onChange={(event) => handleUpdateSelectedVideoRole(index, event.target.value)}
                     data-testid={`creative-current-selection-video-role-input-${video.asset_id ?? 'unknown'}-${index}`}
                   />
+                  <Flex wrap gap={12}>
+                    <Space direction="vertical" size={4}>
+                      <Text type="secondary">槽位时长（秒）</Text>
+                      <div data-testid={`creative-current-selection-video-slot-duration-${video.asset_id ?? 'unknown'}-${index}`}>
+                        <InputNumber
+                          min={1}
+                          precision={0}
+                          value={selectedVideoDraftItems[index]?.slot_duration_seconds ?? null}
+                          onChange={(value) => handleUpdateSelectedVideoTiming(index, 'slot_duration_seconds', value)}
+                        />
+                      </div>
+                    </Space>
+                    <Space direction="vertical" size={4}>
+                      <Text type="secondary">裁切起点（秒）</Text>
+                      <div data-testid={`creative-current-selection-video-trim-in-${video.asset_id ?? 'unknown'}-${index}`}>
+                        <InputNumber
+                          min={0}
+                          precision={0}
+                          value={selectedVideoDraftItems[index]?.trim_in ?? null}
+                          onChange={(value) => handleUpdateSelectedVideoTiming(index, 'trim_in', value)}
+                        />
+                      </div>
+                    </Space>
+                    <Space direction="vertical" size={4}>
+                      <Text type="secondary">裁切终点（秒）</Text>
+                      <div data-testid={`creative-current-selection-video-trim-out-${video.asset_id ?? 'unknown'}-${index}`}>
+                        <InputNumber
+                          min={0}
+                          precision={0}
+                          value={selectedVideoDraftItems[index]?.trim_out ?? null}
+                          onChange={(value) => handleUpdateSelectedVideoTiming(index, 'trim_out', value)}
+                        />
+                      </div>
+                    </Space>
+                  </Flex>
                 </Space>
               )}
             />

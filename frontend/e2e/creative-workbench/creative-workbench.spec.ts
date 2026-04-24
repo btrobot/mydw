@@ -1212,6 +1212,68 @@ test.describe('Creative workbench baseline', () => {
     })
   })
 
+  test('supports in-zone video trim and slot duration editing inside current selection', async ({ page }) => {
+    let updatePayload: Record<string, unknown> | undefined
+    let detailState = JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload
+
+    await page.unroute('**/api/creatives/101')
+    await page.route('**/api/creatives/101', async (route) => {
+      if (route.request().method() === 'PATCH') {
+        updatePayload = route.request().postDataJSON() as Record<string, unknown>
+        detailState = {
+          ...detailState,
+          ...updatePayload,
+          updated_at: '2026-04-18T08:00:00Z',
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(detailState),
+        })
+        return
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(detailState),
+      })
+    })
+
+    await gotoHashRoute(page, `/#/creative/101`)
+
+    await page.getByTestId('creative-current-selection-video-slot-duration-11-0').locator('input').fill('12')
+    await page.getByTestId('creative-current-selection-video-trim-in-11-0').locator('input').fill('1')
+    await page.getByTestId('creative-current-selection-video-trim-out-11-0').locator('input').fill('9')
+
+    await expect(page.getByTestId('creative-current-selection-video-slot-duration-11-0').locator('input')).toHaveValue('12')
+    await expect(page.getByTestId('creative-current-selection-video-trim-in-11-0').locator('input')).toHaveValue('1')
+    await expect(page.getByTestId('creative-current-selection-video-trim-out-11-0').locator('input')).toHaveValue('9')
+
+    await page.getByTestId('creative-detail-hero-save').click()
+
+    await expect.poll(() => updatePayload).toBeTruthy()
+    expect(updatePayload).toMatchObject({
+      input_items: [
+        {
+          material_type: 'video',
+          material_id: 11,
+          role: '主镜头',
+          sequence: 1,
+          slot_duration_seconds: 12,
+          trim_in: 1,
+          trim_out: 9,
+        },
+        {
+          material_type: 'audio',
+          material_id: 41,
+          role: '配乐',
+          sequence: 2,
+        },
+      ],
+    })
+  })
+
   test('filters full-carrier readback to video and audio operations only', async ({ page }) => {
     await gotoHashRoute(page, `/#/creative/101`)
 

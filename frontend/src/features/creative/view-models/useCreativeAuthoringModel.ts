@@ -543,6 +543,27 @@ export function useCreativeAuthoringModel({
     }
     form.setFieldValue('input_items', nextItems)
   }, [form, getFormInputItems])
+  const handleUpdateSelectedVideoTiming = useCallback((
+    videoIndex: number,
+    field: 'trim_in' | 'trim_out' | 'slot_duration_seconds',
+    value: number | null,
+  ) => {
+    const existingItems = [...getFormInputItems()]
+    const videoSlotIndexes = existingItems
+      .map((item, index) => (item.material_type === 'video' ? index : -1))
+      .filter((index) => index >= 0)
+    const targetSlot = videoSlotIndexes[videoIndex]
+    if (targetSlot === undefined) {
+      return
+    }
+
+    const nextItems = [...existingItems]
+    nextItems[targetSlot] = {
+      ...nextItems[targetSlot],
+      [field]: value ?? null,
+    }
+    form.setFieldValue('input_items', nextItems)
+  }, [form, getFormInputItems])
   const submitButtonLabel = activeProfile?.composition_mode === 'none'
     ? '提交直发准备'
     : (hasCurrentVersion ? '重新提交合成' : '提交合成')
@@ -581,6 +602,7 @@ export function useCreativeAuthoringModel({
     handleRemoveSelectedVideo,
     handleMoveSelectedVideo,
     handleUpdateSelectedVideoRole,
+    handleUpdateSelectedVideoTiming,
     handleSaveInput,
     handleSubmitComposition,
     submitButtonLabel,
