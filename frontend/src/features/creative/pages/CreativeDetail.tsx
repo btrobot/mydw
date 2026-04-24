@@ -34,8 +34,10 @@ import CheckDrawer from '../components/CheckDrawer'
 import DiagnosticsActionPanel, { type DiagnosticsRecommendation } from '../components/diagnostics/DiagnosticsActionPanel'
 import VersionPanel from '../components/VersionPanel'
 import {
+  creativeCandidateMeta,
   creativeInputMaterialMeta,
   formatCreativeDuration,
+  type CreativeAuthoringCandidateType,
   type CreativeInputMaterialType,
 } from '../creativeAuthoring'
 import { useCreative } from '../hooks/useCreatives'
@@ -141,6 +143,8 @@ export default function CreativeDetail() {
     productsQuery,
     watchedCurrentProductName,
     watchedTargetDuration,
+    candidateTypeOptions,
+    coverNameById,
     profileOptions,
     productOptions,
     materialTypeOptions,
@@ -149,6 +153,9 @@ export default function CreativeDetail() {
     canonicalProfileId,
     activeProfile,
     activeInputItemCount,
+    handleAdoptCandidateItem,
+    handleCandidateItemAssetChange,
+    handleCandidateItemTypeChange,
     handleMakePrimaryProductLink,
     handleProductLinkProductChange,
     handleCurrentProductNameChange,
@@ -171,6 +178,10 @@ export default function CreativeDetail() {
   const aiClipOpen = aiClipRequested && Boolean(currentVersion)
   const detailCardMinWidth = screens.md ? 320 : '100%'
   const aiClipDrawerWidth = screens.xl ? 720 : screens.lg ? 640 : screens.md ? 560 : '100vw'
+  const candidateTypes = useMemo(
+    () => Object.keys(creativeCandidateMeta) as CreativeAuthoringCandidateType[],
+    [],
+  )
 
   const retryCreative = () => {
     void creativeQuery.refetch()
@@ -611,6 +622,189 @@ export default function CreativeDetail() {
                   data-testid="creative-detail-main-copywriting"
                 />
               </Form.Item>
+
+              <Form.List name="candidate_items">
+                {(fields, { add, remove }) => (
+                  <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                    <Alert
+                      type="info"
+                      showIcon
+                      message="作品候选池（candidate_items）"
+                      description={`这里维护作品级候选池；当前商品名：${watchedCurrentProductName || '未设定'}。当前封面：${(() => {
+                        const coverId = form.getFieldValue('current_cover_asset_id') as number | undefined
+                        return coverId ? (coverNameById.get(coverId) ?? `封面 #${coverId}`) : '未采用候选'
+                      })()}。视频 / 音频候选在本 Slice 只进入候选池，不会自动进入当前编排。`}
+                    />
+
+                    {candidateTypes.map((sectionType) => {
+                      const sectionFields = fields.filter((field) => {
+                        const candidateType =
+                          (form.getFieldValue(['candidate_items', field.name, 'candidate_type']) as CreativeAuthoringCandidateType | undefined)
+                          ?? sectionType
+                        return candidateType === sectionType
+                      })
+                      const sectionLabel = creativeCandidateMeta[sectionType].label
+                      const sectionOptions = materialOptionsByType[sectionType as CreativeInputMaterialType] ?? []
+                      const sectionLoading = materialLoadingByType[sectionType as CreativeInputMaterialType] ?? false
+
+                      return (
+                        <Card
+                          key={sectionType}
+                          type="inner"
+                          size="small"
+                          title={sectionLabel}
+                          extra={(
+                            <Button
+                              type="dashed"
+                              size="small"
+                              icon={<PlusOutlined />}
+                              onClick={() => add({
+                                candidate_type: sectionType,
+                                source_kind: 'material_library',
+                                enabled: true,
+                                status: 'candidate',
+                              })}
+                              data-testid={`creative-detail-add-candidate-${sectionType}`}
+                            >
+                              添加{sectionLabel}
+                            </Button>
+                          )}
+                        >
+                          {sectionFields.length === 0 ? (
+                            <Empty
+                              image={Empty.PRESENTED_IMAGE_SIMPLE}
+                              description={`当前还没有${sectionLabel}`}
+                            />
+                          ) : (
+                            <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                              {sectionFields.map((field, index) => {
+                                const candidateType =
+                                  (form.getFieldValue(['candidate_items', field.name, 'candidate_type']) as CreativeAuthoringCandidateType | undefined)
+                                  ?? sectionType
+                                const status =
+                                  (form.getFieldValue(['candidate_items', field.name, 'status']) as string | undefined)
+                                  ?? 'candidate'
+                                const assetId = form.getFieldValue(['candidate_items', field.name, 'asset_id']) as number | undefined
+                                const candidateMeta = creativeCandidateMeta[candidateType]
+                                const candidateOptions = materialOptionsByType[candidateType as CreativeInputMaterialType] ?? sectionOptions
+                                const candidateLoading = materialLoadingByType[candidateType as CreativeInputMaterialType] ?? sectionLoading
+
+                                return (
+                                  <Card
+                                    key={field.key}
+                                    type="inner"
+                                    size="small"
+                                    title={`${candidateMeta.label} ${index + 1}`}
+                                    extra={(
+                                      <Space wrap>
+                                        <Tag color={status === 'adopted' ? 'processing' : status === 'dismissed' ? 'default' : 'success'}>
+                                          {status === 'adopted' ? '已采用' : status === 'dismissed' ? '已忽略' : '候选中'}
+                                        </Tag>
+                                        {candidateType === 'cover' || candidateType === 'copywriting' ? (
+                                          <Button
+                                            size="small"
+                                            type={status === 'adopted' ? 'primary' : 'default'}
+                                            disabled={!assetId}
+                                            onClick={() => handleAdoptCandidateItem(field.name)}
+                                            data-testid={`creative-detail-adopt-candidate-${candidateType}-${index}`}
+                                          >
+                                            {status === 'adopted' ? '当前已采用' : candidateMeta.adoptLabel}
+                                          </Button>
+                                        ) : null}
+                                        <Button
+                                          size="small"
+                                          danger
+                                          icon={<DeleteOutlined />}
+                                          onClick={() => remove(field.name)}
+                                          data-testid={`creative-detail-remove-candidate-${candidateType}-${index}`}
+                                        >
+                                          移除
+                                        </Button>
+                                      </Space>
+                                    )}
+                                  >
+                                    <Flex gap={16} wrap="wrap" align="start">
+                                      <Form.Item
+                                        name={[field.name, 'candidate_type']}
+                                        label="候选类型"
+                                        rules={[{ required: true, message: '请选择候选类型' }]}
+                                        style={{ minWidth: 180, flex: 1 }}
+                                      >
+                                        <Select
+                                          options={candidateTypeOptions}
+                                          onChange={(value) => handleCandidateItemTypeChange(field.name, value)}
+                                          data-testid={`creative-detail-candidate-type-${candidateType}-${index}`}
+                                        />
+                                      </Form.Item>
+
+                                      <Form.Item
+                                        name={[field.name, 'asset_id']}
+                                        label="候选素材"
+                                        rules={[{ required: true, message: '请选择候选素材' }]}
+                                        style={{ minWidth: 240, flex: 1.4 }}
+                                      >
+                                        <Select
+                                          allowClear
+                                          showSearch
+                                          optionFilterProp="label"
+                                          placeholder={`选择${candidateMeta.label}`}
+                                          options={candidateOptions}
+                                          loading={candidateLoading}
+                                          onChange={(value) => handleCandidateItemAssetChange(field.name, value)}
+                                          data-testid={`creative-detail-candidate-asset-${candidateType}-${index}`}
+                                        />
+                                      </Form.Item>
+
+                                      <Form.Item
+                                        name={[field.name, 'source_kind']}
+                                        label="来源"
+                                        style={{ minWidth: 180, flex: 1 }}
+                                      >
+                                        <Select
+                                          options={[
+                                            { value: 'material_library', label: '素材库' },
+                                            { value: 'product_derived', label: '商品派生' },
+                                            { value: 'manual_upload', label: '手工上传' },
+                                            { value: 'llm_generated', label: '模型生成' },
+                                          ]}
+                                          data-testid={`creative-detail-candidate-source-${candidateType}-${index}`}
+                                        />
+                                      </Form.Item>
+
+                                      <Form.Item
+                                        name={[field.name, 'status']}
+                                        label="状态"
+                                        style={{ width: screens.md ? 160 : '100%' }}
+                                      >
+                                        <Select
+                                          options={[
+                                            { value: 'candidate', label: '候选中' },
+                                            { value: 'dismissed', label: '已忽略' },
+                                          ]}
+                                          data-testid={`creative-detail-candidate-status-${candidateType}-${index}`}
+                                        />
+                                      </Form.Item>
+
+                                      <Form.Item
+                                        name={[field.name, 'enabled']}
+                                        label="启用"
+                                        valuePropName="checked"
+                                        style={{ width: screens.md ? 120 : '100%' }}
+                                      >
+                                        <Switch checkedChildren="启用" unCheckedChildren="停用" />
+                                      </Form.Item>
+                                    </Flex>
+                                  </Card>
+                                )
+                              })}
+                            </Space>
+                          )}
+                        </Card>
+                      )
+                    })}
+                  </Space>
+                )}
+              </Form.List>
 
               <Form.List name="input_items">
                 {(fields, { add, move, remove }) => (

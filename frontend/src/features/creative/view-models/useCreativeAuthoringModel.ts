@@ -3,11 +3,13 @@ import { Form } from 'antd'
 
 import {
   buildCreativeAuthoringPayload,
+  creativeCandidateMeta,
   countEnabledCreativeInputItems,
   creativeInputMaterialMeta,
   getPrimaryCreativeProductId,
   toCreativeAuthoringFormValues,
   type CreativeAuthoringFormValues,
+  type CreativeAuthoringCandidateType,
   type CreativeInputMaterialType,
 } from '../creativeAuthoring'
 import {
@@ -163,6 +165,14 @@ export function useCreativeAuthoringModel({
     () => new Map(products.map((product) => [product.id, product.name])),
     [products],
   )
+  const coverNameById = useMemo(
+    () => new Map(covers.map((item) => [item.id, item.name || `封面 #${item.id}`])),
+    [covers],
+  )
+  const copywritingContentById = useMemo(
+    () => new Map(copywritings.map((item) => [item.id, item.content || ''])),
+    [copywritings],
+  )
   const videoOptions = useMemo(
     () => videos.map((item) => ({ value: item.id, label: item.name || `视频 #${item.id}` })),
     [videos],
@@ -188,6 +198,14 @@ export function useCreativeAuthoringModel({
       value,
       label: meta.label,
     })),
+    [],
+  )
+  const candidateTypeOptions = useMemo(
+    () => (Object.entries(creativeCandidateMeta) as Array<[CreativeAuthoringCandidateType, { label: string }]>)
+      .map(([value, meta]) => ({
+        value,
+        label: meta.label,
+      })),
     [],
   )
   const materialOptionsByType = useMemo<Record<CreativeInputMaterialType, Array<{ value: number; label: string }>>>(
@@ -229,6 +247,36 @@ export function useCreativeAuthoringModel({
       ((form.getFieldValue('product_links') as CreativeAuthoringFormValues['product_links'] | undefined) ?? []),
     [form],
   )
+  const getFormCandidateItems = useCallback(
+    (): CreativeAuthoringFormValues['candidate_items'] =>
+      ((form.getFieldValue('candidate_items') as CreativeAuthoringFormValues['candidate_items'] | undefined) ?? []),
+    [form],
+  )
+  const clearCandidateAdoptionStatus = useCallback((candidateType: CreativeAuthoringCandidateType) => {
+    const candidateItems = [...getFormCandidateItems()]
+    const nextCandidateItems = candidateItems.map((item) => (
+      item.candidate_type === candidateType && item.status === 'adopted'
+        ? { ...item, status: 'candidate' as const }
+        : item
+    ))
+    form.setFieldValue('candidate_items', nextCandidateItems)
+  }, [form, getFormCandidateItems])
+  const syncCurrentTruthFromCandidate = useCallback((candidateType: CreativeAuthoringCandidateType, assetId?: number) => {
+    if (!assetId) {
+      return
+    }
+    if (candidateType === 'cover') {
+      form.setFieldValue('current_cover_asset_id', assetId)
+      form.setFieldValue('current_cover_asset_type', 'cover')
+      form.setFieldValue('cover_mode', 'adopted_candidate')
+      return
+    }
+    if (candidateType === 'copywriting') {
+      form.setFieldValue('current_copywriting_id', assetId)
+      form.setFieldValue('current_copywriting_text', copywritingContentById.get(assetId) ?? '')
+      form.setFieldValue('copywriting_mode', 'adopted_candidate')
+    }
+  }, [copywritingContentById, form])
   const syncCurrentProductNameFromPrimary = useCallback((productId?: number) => {
     const currentMode = form.getFieldValue('product_name_mode') as string | undefined
     if (currentMode === 'manual') {
@@ -282,6 +330,57 @@ export function useCreativeAuthoringModel({
       syncCurrentProductNameFromPrimary(productId)
     }
   }, [form, getFormProductLinks, syncCurrentProductNameFromPrimary])
+  const handleCandidateItemTypeChange = useCallback((index: number, candidateType?: CreativeAuthoringCandidateType) => {
+    const candidateItems = [...getFormCandidateItems()]
+    const currentItem = candidateItems[index]
+    if (!currentItem) {
+      return
+    }
+    candidateItems[index] = {
+      ...currentItem,
+      candidate_type: candidateType,
+      asset_id: undefined,
+      status: 'candidate',
+      source_kind: currentItem.source_kind ?? 'material_library',
+    }
+    form.setFieldValue('candidate_items', candidateItems)
+  }, [form, getFormCandidateItems])
+  const handleCandidateItemAssetChange = useCallback((index: number, assetId?: number) => {
+    const candidateItems = [...getFormCandidateItems()]
+    const currentItem = candidateItems[index]
+    if (!currentItem) {
+      return
+    }
+    candidateItems[index] = {
+      ...currentItem,
+      asset_id: assetId,
+      source_kind: currentItem.source_kind ?? 'material_library',
+      status: currentItem.status ?? 'candidate',
+      enabled: currentItem.enabled ?? true,
+    }
+    form.setFieldValue('candidate_items', candidateItems)
+    if (currentItem.status === 'adopted' && currentItem.candidate_type) {
+      syncCurrentTruthFromCandidate(currentItem.candidate_type, assetId)
+    }
+  }, [form, getFormCandidateItems, syncCurrentTruthFromCandidate])
+  const handleAdoptCandidateItem = useCallback((index: number) => {
+    const candidateItems = [...getFormCandidateItems()]
+    const currentItem = candidateItems[index]
+    if (!currentItem?.candidate_type || !currentItem.asset_id) {
+      return
+    }
+    const nextCandidateItems = candidateItems.map((item, currentIndex) => {
+      if (item.candidate_type !== currentItem.candidate_type) {
+        return item
+      }
+      return {
+        ...item,
+        status: currentIndex === index ? 'adopted' : (item.status === 'dismissed' ? 'dismissed' : 'candidate'),
+      }
+    })
+    form.setFieldValue('candidate_items', nextCandidateItems)
+    syncCurrentTruthFromCandidate(currentItem.candidate_type, currentItem.asset_id)
+  }, [form, getFormCandidateItems, syncCurrentTruthFromCandidate])
   const handleCurrentProductNameChange = useCallback((value: string) => {
     const selectedProductName = selectedSubjectProductId ? productNameById.get(selectedSubjectProductId) : undefined
     if (selectedProductName && value.trim() === selectedProductName) {
@@ -293,7 +392,8 @@ export function useCreativeAuthoringModel({
   const handleCurrentCopywritingTextChange = useCallback((value: string) => {
     form.setFieldValue('current_copywriting_id', null)
     form.setFieldValue('copywriting_mode', value.trim() ? 'manual' : undefined)
-  }, [form])
+    clearCandidateAdoptionStatus('copywriting')
+  }, [clearCandidateAdoptionStatus, form])
   const submitButtonLabel = activeProfile?.composition_mode === 'none'
     ? '提交直发准备'
     : (hasCurrentVersion ? '重新提交合成' : '提交合成')
@@ -307,6 +407,8 @@ export function useCreativeAuthoringModel({
     watchedTargetDuration,
     profileOptions,
     productOptions,
+    coverNameById,
+    candidateTypeOptions,
     materialTypeOptions,
     materialOptionsByType,
     materialLoadingByType,
@@ -314,6 +416,9 @@ export function useCreativeAuthoringModel({
     activeProfile,
     activeInputItemCount,
     handleMakePrimaryProductLink,
+    handleAdoptCandidateItem,
+    handleCandidateItemAssetChange,
+    handleCandidateItemTypeChange,
     handleProductLinkProductChange,
     handleCurrentProductNameChange,
     handleCurrentCopywritingTextChange,

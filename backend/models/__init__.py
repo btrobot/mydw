@@ -152,6 +152,13 @@ class CreativeItem(Base):
         order_by="CreativeProductLink.sort_order",
         cascade="all, delete-orphan",
     )
+    candidate_items = relationship(
+        "CreativeCandidateItem",
+        back_populates="creative_item",
+        foreign_keys="CreativeCandidateItem.creative_item_id",
+        order_by="CreativeCandidateItem.sort_order",
+        cascade="all, delete-orphan",
+    )
     input_items = relationship(
         "CreativeInputItem",
         back_populates="creative_item",
@@ -247,6 +254,40 @@ class CreativeProductLink(Base):
         foreign_keys=[creative_item_id],
     )
     product = relationship("Product", foreign_keys=[product_id])
+
+
+class CreativeCandidateItem(Base):
+    """Persistent work-level candidate pool item."""
+    __tablename__ = "creative_candidate_items"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    creative_item_id = Column(Integer, ForeignKey("creative_items.id"), nullable=False, index=True)
+    candidate_type = Column(String(32), nullable=False, index=True)
+    asset_id = Column(Integer, nullable=False, index=True)
+    source_kind = Column(String(32), nullable=False, default="material_library")
+    source_product_id = Column(Integer, ForeignKey("products.id"), nullable=True, index=True)
+    source_ref = Column(String(256), nullable=True)
+    sort_order = Column(Integer, nullable=False, default=1)
+    enabled = Column(Boolean, nullable=False, default=True)
+    status = Column(String(32), nullable=False, default="candidate")
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "creative_item_id",
+            "candidate_type",
+            "asset_id",
+            name="uq_creative_candidate_items_creative_type_asset",
+        ),
+    )
+
+    creative_item = relationship(
+        "CreativeItem",
+        back_populates="candidate_items",
+        foreign_keys=[creative_item_id],
+    )
+    source_product = relationship("Product", foreign_keys=[source_product_id])
 
 
 class CreativeInputItem(Base):
@@ -944,6 +985,8 @@ async def init_db():
     await migration_036.run_migration(engine)
     migration_037 = importlib.import_module("migrations.037_creative_product_links")
     await migration_037.run_migration(engine)
+    migration_038 = importlib.import_module("migrations.038_creative_candidate_items")
+    await migration_038.run_migration(engine)
 
     logger.info("数据库初始化完成")
 

@@ -79,7 +79,10 @@ async def update_creative(
 ) -> CreativeDetailResponse:
     """Update a creative using canonical input_items orchestration semantics while legacy list carriers remain deprecated compatibility-only projection."""
     service = CreativeService(db)
-    creative = await service.update_creative(creative_id, payload)
+    try:
+        creative = await service.update_creative(creative_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if creative is None:
         raise HTTPException(status_code=404, detail="作品不存在")
     return creative

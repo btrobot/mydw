@@ -5,11 +5,14 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from models import CreativeInputItem, CreativeItem, CreativeProductLink, Product
+from models import CreativeCandidateItem, CreativeInputItem, CreativeItem, CreativeProductLink, Product
 from schemas import (
+    CreativeCandidateStatus,
+    CreativeCandidateType,
     CreativeCoverMode,
     CreativeCreateRequest,
     CreativeCopywritingMode,
+    CreativeDetailResponse,
     CreativeCurrentCoverAssetType,
     CreativeEligibilityStatus,
     CreativeItemResponse,
@@ -526,6 +529,66 @@ async def test_migration_037_backfills_creative_product_links_additively() -> No
 
 
 @pytest.mark.asyncio
+async def test_migration_038_adds_creative_candidate_items_additively() -> None:
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+    try:
+        async with engine.begin() as conn:
+            await conn.exec_driver_sql(
+                """
+                CREATE TABLE products (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name VARCHAR(256) NOT NULL
+                )
+                """
+            )
+            await conn.exec_driver_sql(
+                """
+                CREATE TABLE creative_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    creative_no VARCHAR(64) NOT NULL,
+                    title VARCHAR(256),
+                    created_at DATETIME,
+                    updated_at DATETIME
+                )
+                """
+            )
+
+        migration_038 = importlib.import_module("migrations.038_creative_candidate_items")
+        await migration_038.run_migration(engine)
+        await migration_038.run_migration(engine)
+
+        async with engine.begin() as conn:
+            tables = {
+                row[0]
+                for row in (
+                    await conn.exec_driver_sql(
+                        "SELECT name FROM sqlite_master WHERE type='table'"
+                    )
+                ).fetchall()
+            }
+            indexes = {
+                row[1]
+                for row in (
+                    await conn.exec_driver_sql("PRAGMA index_list('creative_candidate_items')")
+                ).fetchall()
+            }
+            table_sql = (
+                await conn.exec_driver_sql(
+                    "SELECT sql FROM sqlite_master WHERE type='table' AND name='creative_candidate_items'"
+                )
+            ).scalar_one()
+
+        assert "creative_candidate_items" in tables
+        assert "ix_creative_candidate_items_creative_item_id" in indexes
+        assert "ix_creative_candidate_items_candidate_type" in indexes
+        assert "ix_creative_candidate_items_asset_id" in indexes
+        assert "ix_creative_candidate_items_source_product_id" in indexes
+        assert "uq_creative_candidate_items_creative_type_asset" in table_sql
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
 async def test_creative_input_items_preserve_duplicate_order_and_trim(db_session) -> None:
     product = Product(name="creative_phase1_contract_product")
     creative = CreativeItem(
@@ -611,6 +674,37 @@ def test_creative_product_link_write_rejects_multiple_primaries() -> None:
         )
 
 
+def test_creative_candidate_item_write_rejects_duplicate_type_asset_pairs() -> None:
+    with pytest.raises(ValidationError):
+        CreativeCreateRequest(
+            title="duplicate candidates",
+            candidate_items=[
+                {"candidate_type": "cover", "asset_id": 1},
+                {"candidate_type": "cover", "asset_id": 1},
+            ],
+        )
+
+
+def test_creative_candidate_item_write_rejects_multiple_adopted_items_per_type() -> None:
+    with pytest.raises(ValidationError):
+        CreativeUpdateRequest(
+            candidate_items=[
+                {"candidate_type": "copywriting", "asset_id": 1, "status": "adopted"},
+                {"candidate_type": "copywriting", "asset_id": 2, "status": "adopted"},
+            ],
+        )
+
+
+def test_creative_candidate_item_write_rejects_adopting_unsupported_media_types() -> None:
+    with pytest.raises(ValidationError):
+        CreativeCreateRequest(
+            title="unsupported adopted candidate",
+            candidate_items=[
+                {"candidate_type": "video", "asset_id": 1, "status": "adopted"},
+            ],
+        )
+
+
 @pytest.mark.asyncio
 async def test_creative_product_links_model_supports_single_primary_and_order(db_session) -> None:
     product_a = Product(name="creative-product-a")
@@ -660,6 +754,55 @@ async def test_creative_product_links_model_supports_single_primary_and_order(db
     ]
 
 
+@pytest.mark.asyncio
+async def test_creative_candidate_items_model_supports_order_and_status(db_session) -> None:
+    creative = CreativeItem(
+        creative_no="CR-SLICE3-0001",
+        title="Slice 3 creative",
+        status=CreativeStatus.PENDING_INPUT.value,
+        latest_version_no=0,
+    )
+    db_session.add(creative)
+    await db_session.flush()
+
+    db_session.add_all(
+        [
+            CreativeCandidateItem(
+                creative_item_id=creative.id,
+                candidate_type=CreativeCandidateType.COVER.value,
+                asset_id=31,
+                source_kind="material_library",
+                sort_order=2,
+                enabled=True,
+                status=CreativeCandidateStatus.CANDIDATE.value,
+            ),
+            CreativeCandidateItem(
+                creative_item_id=creative.id,
+                candidate_type=CreativeCandidateType.COPYWRITING.value,
+                asset_id=21,
+                source_kind="llm_generated",
+                sort_order=1,
+                enabled=True,
+                status=CreativeCandidateStatus.ADOPTED.value,
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    reloaded_candidates = (
+        await db_session.execute(
+            select(CreativeCandidateItem)
+            .where(CreativeCandidateItem.creative_item_id == creative.id)
+            .order_by(CreativeCandidateItem.sort_order.asc(), CreativeCandidateItem.id.asc())
+        )
+    ).scalars().all()
+
+    assert [(item.candidate_type, item.asset_id, item.status) for item in reloaded_candidates] == [
+        (CreativeCandidateType.COPYWRITING.value, 21, CreativeCandidateStatus.ADOPTED.value),
+        (CreativeCandidateType.COVER.value, 31, CreativeCandidateStatus.CANDIDATE.value),
+    ]
+
+
 def test_phase_a_task_write_contracts_do_not_expose_task_kind() -> None:
     assert "task_kind" not in TaskCreateRequest.model_fields
     assert "task_kind" not in TaskUpdate.model_fields
@@ -684,6 +827,8 @@ def test_work_driven_creative_write_contracts_expose_canonical_inputs_without_sn
     assert "current_copywriting_text" in CreativeCreateRequest.model_fields
     assert "copywriting_mode" in CreativeCreateRequest.model_fields
     assert "target_duration_seconds" in CreativeCreateRequest.model_fields
+    assert "candidate_items" in CreativeCreateRequest.model_fields
+    assert "candidate_items" in CreativeUpdateRequest.model_fields
     assert CreativeCreateRequest.model_fields["video_ids"].json_schema_extra == {"deprecated": True}
     assert CreativeUpdateRequest.model_fields["video_ids"].json_schema_extra == {"deprecated": True}
 
@@ -695,6 +840,7 @@ def test_work_driven_creative_write_contracts_expose_canonical_inputs_without_sn
 
     assert "input_orchestration" in CreativeItemResponse.model_fields
     assert "input_snapshot" not in CreativeItemResponse.model_fields
+    assert "candidate_items" in CreativeDetailResponse.model_fields
 
     request = CreativeCreateRequest(
         profile_id=1,
@@ -706,13 +852,18 @@ def test_work_driven_creative_write_contracts_expose_canonical_inputs_without_sn
         current_copywriting_id=20,
         current_copywriting_text="Current Copy",
         copywriting_mode=CreativeCopywritingMode.MANUAL,
+        candidate_items=[
+            {"candidate_type": "cover", "asset_id": 10},
+        ],
         input_items=[{"material_type": "video", "material_id": 100}],
     )
     assert request.profile_id == 1
     assert len(request.input_items) == 1
+    assert len(request.candidate_items) == 1
     assert request.current_cover_asset_type == CreativeCurrentCoverAssetType.COVER
     assert "Phase 4 canonical" in CreativeCreateRequest.model_fields["input_items"].description
     assert "Phase 4 canonical" in CreativeUpdateRequest.model_fields["input_items"].description
+    assert "Slice 3 persistent" in CreativeCreateRequest.model_fields["candidate_items"].description
 
 
 def test_phase_a_response_contracts_are_instantiable() -> None:

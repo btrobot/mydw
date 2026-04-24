@@ -657,23 +657,23 @@ export async function mockCreativeReviewApis(
     })
   })
 
-  await page.route('**/api/copywritings?**', async (route) => {
+  await page.route('**/api/copywritings**', async (route) => {
     await fulfillJson(route, {
       total: 2,
       items: [
-        { id: 21, name: '卖点短句 A' },
-        { id: 22, name: '卖点短句 B' },
+        { id: 21, name: '卖点短句 A', content: 'Copy Variant A' },
+        { id: 22, name: '卖点短句 B', content: 'Copy Variant B' },
       ],
     })
   })
 
-  await page.route('**/api/covers?**', async (route) => {
+  await page.route('**/api/covers**', async (route) => {
     await fulfillJson(route, [
       { id: 31, name: '封面首图' },
     ])
   })
 
-  await page.route('**/api/audios?**', async (route) => {
+  await page.route('**/api/audios**', async (route) => {
     await fulfillJson(route, [
       { id: 41, name: '节奏音轨' },
     ])

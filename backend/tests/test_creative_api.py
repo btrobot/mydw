@@ -310,6 +310,214 @@ async def test_create_creative_accepts_explicit_current_truth_fields_and_project
 
 
 @pytest.mark.asyncio
+async def test_create_creative_persists_candidate_pool_and_adopted_cover_copywriting_truth(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    profile, product, video, copywriting, cover, audio, _ = await _seed_domain_inputs(
+        db_session,
+        composition_mode="none",
+    )
+
+    response = await client.post(
+        "/api/creatives",
+        json={
+            "title": "Creative Candidate Pool",
+            "profile_id": profile.id,
+            "product_links": [
+                {"product_id": product.id, "is_primary": True},
+            ],
+            "candidate_items": [
+                {
+                    "candidate_type": "cover",
+                    "asset_id": cover.id,
+                    "source_kind": "product_derived",
+                    "source_product_id": product.id,
+                    "status": "adopted",
+                },
+                {
+                    "candidate_type": "copywriting",
+                    "asset_id": copywriting.id,
+                    "source_kind": "llm_generated",
+                    "source_ref": "llm://candidate-copy-1",
+                    "status": "adopted",
+                },
+                {
+                    "candidate_type": "video",
+                    "asset_id": video.id,
+                    "source_kind": "material_library",
+                    "status": "candidate",
+                },
+                {
+                    "candidate_type": "audio",
+                    "asset_id": audio.id,
+                    "source_kind": "material_library",
+                    "status": "dismissed",
+                },
+            ],
+            "input_items": [{"material_type": "video", "material_id": video.id}],
+        },
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["current_cover_asset_type"] == "cover"
+    assert payload["current_cover_asset_id"] == cover.id
+    assert payload["cover_mode"] == "adopted_candidate"
+    assert payload["current_copywriting_id"] == copywriting.id
+    assert payload["current_copywriting_text"] == copywriting.content
+    assert payload["copywriting_mode"] == "adopted_candidate"
+    assert payload["main_copywriting_text"] == copywriting.content
+    assert [
+        (item["candidate_type"], item["asset_id"], item["status"])
+        for item in payload["candidate_items"]
+    ] == [
+        ("cover", cover.id, "adopted"),
+        ("copywriting", copywriting.id, "adopted"),
+        ("video", video.id, "candidate"),
+        ("audio", audio.id, "dismissed"),
+    ]
+    assert payload["candidate_items"][0]["source_product_name"] == product.name
+    assert payload["candidate_items"][1]["asset_excerpt"] == copywriting.content
+
+
+@pytest.mark.asyncio
+async def test_creative_patch_manual_truth_changes_clear_adopted_candidate_statuses(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    profile, product, video, copywriting, cover, _, _ = await _seed_domain_inputs(
+        db_session,
+        composition_mode="none",
+    )
+    manual_cover = Cover(
+        name="manual-candidate-pool-cover",
+        file_path="data/covers/manual-candidate-pool-cover.png",
+    )
+    db_session.add(manual_cover)
+    await db_session.commit()
+    await db_session.refresh(manual_cover)
+
+    create_response = await client.post(
+        "/api/creatives",
+        json={
+            "title": "Creative Candidate Pool Manual Override",
+            "profile_id": profile.id,
+            "product_links": [
+                {"product_id": product.id, "is_primary": True},
+            ],
+            "candidate_items": [
+                {"candidate_type": "cover", "asset_id": cover.id, "status": "adopted"},
+                {"candidate_type": "copywriting", "asset_id": copywriting.id, "status": "adopted"},
+            ],
+            "input_items": [{"material_type": "video", "material_id": video.id}],
+        },
+    )
+    assert create_response.status_code == 201
+    creative = create_response.json()
+
+    patch_response = await client.patch(
+        f"/api/creatives/{creative['id']}",
+        json={
+            "current_cover_asset_type": "cover",
+            "current_cover_asset_id": manual_cover.id,
+            "cover_mode": "manual",
+            "current_copywriting_id": None,
+            "current_copywriting_text": "Manual override copy",
+            "copywriting_mode": "manual",
+        },
+    )
+
+    assert patch_response.status_code == 200
+    payload = patch_response.json()
+    assert payload["current_cover_asset_id"] == manual_cover.id
+    assert payload["cover_mode"] == "manual"
+    assert payload["current_copywriting_id"] is None
+    assert payload["current_copywriting_text"] == "Manual override copy"
+    assert payload["copywriting_mode"] == "manual"
+    assert payload["main_copywriting_text"] == "Manual override copy"
+    assert [
+        (item["candidate_type"], item["status"])
+        for item in payload["candidate_items"]
+    ] == [
+        ("cover", "candidate"),
+        ("copywriting", "candidate"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_creative_patch_rejects_removing_currently_adopted_candidate_without_switching_truth(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    profile, product, video, _, cover, _, _ = await _seed_domain_inputs(
+        db_session,
+        composition_mode="none",
+    )
+
+    create_response = await client.post(
+        "/api/creatives",
+        json={
+            "title": "Creative Candidate Pool Removal Guard",
+            "profile_id": profile.id,
+            "product_links": [
+                {"product_id": product.id, "is_primary": True},
+            ],
+            "candidate_items": [
+                {"candidate_type": "cover", "asset_id": cover.id, "status": "adopted"},
+            ],
+            "input_items": [{"material_type": "video", "material_id": video.id}],
+        },
+    )
+    assert create_response.status_code == 201
+    creative = create_response.json()
+
+    patch_response = await client.patch(
+        f"/api/creatives/{creative['id']}",
+        json={"candidate_items": []},
+    )
+
+    assert patch_response.status_code == 400
+
+    detail_response = await client.get(f"/api/creatives/{creative['id']}")
+    assert detail_response.status_code == 200
+    detail_payload = detail_response.json()
+    assert [
+        (item["candidate_type"], item["asset_id"], item["status"])
+        for item in detail_payload["candidate_items"]
+    ] == [
+        ("cover", cover.id, "adopted"),
+    ]
+    assert detail_payload["current_cover_asset_id"] == cover.id
+    assert detail_payload["cover_mode"] == "adopted_candidate"
+
+
+@pytest.mark.asyncio
+async def test_create_creative_rejects_adopting_video_candidate_in_slice_3(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    profile, _, video, _, _, _, _ = await _seed_domain_inputs(
+        db_session,
+        composition_mode="none",
+    )
+
+    response = await client.post(
+        "/api/creatives",
+        json={
+            "title": "Creative Unsupported Candidate Adoption",
+            "profile_id": profile.id,
+            "candidate_items": [
+                {"candidate_type": "video", "asset_id": video.id, "status": "adopted"},
+            ],
+            "input_items": [{"material_type": "video", "material_id": video.id}],
+        },
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_create_creative_supports_multiple_product_links_and_switching_primary_updates_follow_truth(
     client: AsyncClient,
     db_session: AsyncSession,

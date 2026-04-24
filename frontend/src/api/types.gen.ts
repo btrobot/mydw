@@ -1238,6 +1238,95 @@ export type CreativeApproveRequest = {
 };
 
 /**
+ * CreativeCandidateItemResponse
+ */
+export type CreativeCandidateItemResponse = {
+    /**
+     * Id
+     */
+    id?: number | null;
+    candidate_type: CreativeCandidateType;
+    /**
+     * Asset Id
+     */
+    asset_id: number;
+    /**
+     * Asset Name
+     */
+    asset_name?: string | null;
+    /**
+     * Asset Excerpt
+     */
+    asset_excerpt?: string | null;
+    source_kind?: CreativeCandidateSourceKind;
+    /**
+     * Source Product Id
+     */
+    source_product_id?: number | null;
+    /**
+     * Source Product Name
+     */
+    source_product_name?: string | null;
+    /**
+     * Source Ref
+     */
+    source_ref?: string | null;
+    /**
+     * Sort Order
+     */
+    sort_order: number;
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    status?: CreativeCandidateStatus;
+};
+
+/**
+ * CreativeCandidateItemWrite
+ */
+export type CreativeCandidateItemWrite = {
+    candidate_type: CreativeCandidateType;
+    /**
+     * Asset Id
+     */
+    asset_id: number;
+    source_kind?: CreativeCandidateSourceKind;
+    /**
+     * Source Product Id
+     */
+    source_product_id?: number | null;
+    /**
+     * Source Ref
+     */
+    source_ref?: string | null;
+    /**
+     * Sort Order
+     */
+    sort_order?: number | null;
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    status?: CreativeCandidateStatus;
+};
+
+/**
+ * CreativeCandidateSourceKind
+ */
+export type CreativeCandidateSourceKind = 'product_derived' | 'material_library' | 'manual_upload' | 'llm_generated';
+
+/**
+ * CreativeCandidateStatus
+ */
+export type CreativeCandidateStatus = 'candidate' | 'adopted' | 'dismissed';
+
+/**
+ * CreativeCandidateType
+ */
+export type CreativeCandidateType = 'cover' | 'copywriting' | 'video' | 'audio';
+
+/**
  * CreativeComposeSubmitResponse
  */
 export type CreativeComposeSubmitResponse = {
@@ -1347,6 +1436,12 @@ export type CreativeCreateRequest = {
      * Slice 2 canonical creative-product association surface.
      */
     product_links?: Array<CreativeProductLinkWrite>;
+    /**
+     * Candidate Items
+     *
+     * Slice 3 persistent work-level candidate pool surface.
+     */
+    candidate_items?: Array<CreativeCandidateItemWrite>;
     /**
      * Video Ids
      *
@@ -1483,6 +1578,10 @@ export type CreativeDetailResponse = {
      * Product Links
      */
     product_links?: Array<CreativeProductLinkResponse>;
+    /**
+     * Candidate Items
+     */
+    candidate_items?: Array<CreativeCandidateItemResponse>;
     /**
      * Subject Product Id
      */
@@ -1931,6 +2030,12 @@ export type CreativeUpdateRequest = {
      * When present, product_links is the Slice 2 canonical creative-product association source.
      */
     product_links?: Array<CreativeProductLinkWrite> | null;
+    /**
+     * Candidate Items
+     *
+     * When present, candidate_items is the Slice 3 persistent work-level candidate pool source.
+     */
+    candidate_items?: Array<CreativeCandidateItemWrite> | null;
     /**
      * Video Ids
      *

@@ -1,4 +1,9 @@
 import type {
+  CreativeCandidateItemResponse,
+  CreativeCandidateItemWrite,
+  CreativeCandidateSourceKind,
+  CreativeCandidateStatus,
+  CreativeCandidateType,
   CreativeCoverMode,
   CreativeCopywritingMode,
   CreativeCurrentCoverAssetType,
@@ -20,6 +25,14 @@ export const creativeInputMaterialMeta = {
 } as const
 
 export type CreativeInputMaterialType = keyof typeof creativeInputMaterialMeta
+export type CreativeAuthoringCandidateType = Exclude<CreativeCandidateType, never>
+
+export const creativeCandidateMeta: Record<CreativeAuthoringCandidateType, { label: string; adoptLabel?: string }> = {
+  cover: { label: '封面候选', adoptLabel: '采用为当前封面' },
+  copywriting: { label: '文案候选', adoptLabel: '采用为当前文案' },
+  video: { label: '视频候选' },
+  audio: { label: '音频候选' },
+}
 
 export type CreativeAuthoringInputItemFormValue = {
   material_type: CreativeInputMaterialType
@@ -46,6 +59,7 @@ export type CreativeAuthoringFormValues = {
   copywriting_mode?: CreativeCopywritingMode
   target_duration_seconds?: number
   product_links: CreativeAuthoringProductLinkFormValue[]
+  candidate_items: CreativeAuthoringCandidateItemFormValue[]
   input_items: CreativeAuthoringInputItemFormValue[]
 }
 
@@ -54,6 +68,18 @@ export type CreativeAuthoringProductLinkFormValue = {
   is_primary?: boolean
   enabled?: boolean
   source_mode?: CreativeProductLinkSourceMode
+}
+
+export type CreativeAuthoringCandidateItemFormValue = {
+  candidate_type?: CreativeCandidateType
+  asset_id?: number
+  source_kind?: CreativeCandidateSourceKind
+  source_product_id?: number
+  source_ref?: string
+  enabled?: boolean
+  status?: CreativeCandidateStatus
+  asset_name?: string
+  asset_excerpt?: string
 }
 
 const normalizeInputItem = (
@@ -107,6 +133,35 @@ const normalizeProductLink = (
       : undefined,
 })
 
+const normalizeCandidateItem = (
+  item: CreativeCandidateItemResponse | Record<string, unknown>,
+): CreativeAuthoringCandidateItemFormValue => ({
+  candidate_type:
+    typeof item.candidate_type === 'string'
+      ? item.candidate_type as CreativeCandidateType
+      : undefined,
+  asset_id:
+    item.asset_id === undefined || item.asset_id === null
+      ? undefined
+      : Number(item.asset_id),
+  source_kind:
+    typeof item.source_kind === 'string'
+      ? item.source_kind as CreativeCandidateSourceKind
+      : undefined,
+  source_product_id:
+    item.source_product_id === undefined || item.source_product_id === null
+      ? undefined
+      : Number(item.source_product_id),
+  source_ref: typeof item.source_ref === 'string' ? item.source_ref : undefined,
+  enabled: item.enabled === undefined ? true : Boolean(item.enabled),
+  status:
+    typeof item.status === 'string'
+      ? item.status as CreativeCandidateStatus
+      : undefined,
+  asset_name: typeof item.asset_name === 'string' ? item.asset_name : undefined,
+  asset_excerpt: typeof item.asset_excerpt === 'string' ? item.asset_excerpt : undefined,
+})
+
 const normalizeAuthoringProductLinks = (
   productLinks: CreativeAuthoringProductLinkFormValue[] | undefined,
 ): Array<CreativeProductLinkWrite> => {
@@ -127,6 +182,28 @@ const normalizeAuthoringProductLinks = (
   return normalizedLinks
 }
 
+const normalizeAuthoringCandidateItems = (
+  candidateItems: CreativeAuthoringCandidateItemFormValue[] | undefined,
+): Array<CreativeCandidateItemWrite> => (
+  (candidateItems ?? [])
+    .filter(
+      (item): item is CreativeAuthoringCandidateItemFormValue & { candidate_type: CreativeCandidateType; asset_id: number } =>
+        item.candidate_type !== undefined
+        && item.asset_id !== undefined
+        && item.asset_id !== null,
+    )
+    .map((item, index) => ({
+      candidate_type: item.candidate_type,
+      asset_id: Number(item.asset_id),
+      source_kind: item.source_kind ?? 'material_library',
+      source_product_id: item.source_product_id ?? null,
+      source_ref: item.source_ref?.trim() || null,
+      sort_order: index + 1,
+      enabled: item.enabled ?? true,
+      status: item.status ?? 'candidate',
+    }))
+)
+
 export const getCreativeAuthoringProductLinks = (
   creative: Pick<CreativeDetailResponse, 'product_links' | 'subject_product_id'>,
 ): CreativeAuthoringProductLinkFormValue[] => {
@@ -141,6 +218,14 @@ export const getCreativeAuthoringProductLinks = (
   }
   return []
 }
+
+export const getCreativeAuthoringCandidateItems = (
+  creative: Pick<CreativeDetailResponse, 'candidate_items'>,
+): CreativeAuthoringCandidateItemFormValue[] => (
+  [...(creative.candidate_items ?? [])]
+    .sort((left, right) => (left.sort_order ?? 0) - (right.sort_order ?? 0))
+    .map(normalizeCandidateItem)
+)
 
 export const getPrimaryCreativeProductId = (
   productLinks: CreativeAuthoringProductLinkFormValue[] | undefined,
@@ -167,6 +252,7 @@ export const toCreativeAuthoringFormValues = (
   copywriting_mode: creative.copywriting_mode ?? undefined,
   target_duration_seconds: creative.target_duration_seconds ?? undefined,
   product_links: getCreativeAuthoringProductLinks(creative),
+  candidate_items: getCreativeAuthoringCandidateItems(creative),
   input_items: getCreativeAuthoringInputItems(creative),
 })
 
@@ -177,6 +263,7 @@ export const buildCreativeAuthoringPayload = (
   profile_id: number | null
   subject_product_id: number | null
   product_links: Array<CreativeProductLinkWrite>
+  candidate_items: Array<CreativeCandidateItemWrite>
   subject_product_name_snapshot: string | null
   main_copywriting_text: string | null
   current_product_name: string | null
@@ -191,6 +278,7 @@ export const buildCreativeAuthoringPayload = (
   input_items: Array<CreativeInputItemWrite>
 } => {
   const normalizedProductLinks = normalizeAuthoringProductLinks(values.product_links)
+  const normalizedCandidateItems = normalizeAuthoringCandidateItems(values.candidate_items)
   const primaryProductId = normalizedProductLinks.find((item) => item.is_primary)?.product_id ?? null
   const currentProductName = values.current_product_name?.trim() || null
   const currentCopywritingText = values.current_copywriting_text?.trim() || null
@@ -215,6 +303,7 @@ export const buildCreativeAuthoringPayload = (
     profile_id: values.profile_id ?? null,
     subject_product_id: primaryProductId,
     product_links: normalizedProductLinks,
+    candidate_items: normalizedCandidateItems,
     subject_product_name_snapshot: currentProductName,
     main_copywriting_text: currentCopywritingText,
     current_product_name: currentProductName,

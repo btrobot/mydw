@@ -188,8 +188,15 @@ const creativeDetailPayload = {
   subject_product_name_snapshot: 'Classic Hoodie',
   current_product_name: 'Classic Hoodie',
   product_name_mode: 'follow_primary_product',
+  current_cover_asset_type: null,
+  current_cover_asset_id: null,
+  cover_mode: 'manual',
+  current_copywriting_id: null,
+  current_copywriting_text: 'Lightweight spring styling.',
+  copywriting_mode: 'manual',
   main_copywriting_text: '轻盈春装，上身即走。',
   target_duration_seconds: 30,
+  candidate_items: [],
   input_items: [
     {
       material_type: 'video',
@@ -541,21 +548,21 @@ async function mockCreativeApis(page: Page) {
     })
   })
 
-  await page.route('**/api/copywritings?**', async (route) => {
+  await page.route('**/api/copywritings**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         total: 2,
         items: [
-          { id: 21, name: '卖点短句 A' },
-          { id: 22, name: '卖点短句 B' },
+          { id: 21, name: '卖点短句 A', content: 'Copy Variant A' },
+          { id: 22, name: '卖点短句 B', content: 'Copy Variant B' },
         ],
       }),
     })
   })
 
-  await page.route('**/api/covers?**', async (route) => {
+  await page.route('**/api/covers**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -563,7 +570,7 @@ async function mockCreativeApis(page: Page) {
     })
   })
 
-  await page.route('**/api/audios?**', async (route) => {
+  await page.route('**/api/audios**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -761,6 +768,7 @@ test.describe('Creative workbench baseline', () => {
       subject_product_name_snapshot: 'Runner Pro',
       main_copywriting_text: '主推轻盈舒适与全天候穿着体验。',
       target_duration_seconds: 45,
+      candidate_items: [],
       input_items: [
         { material_type: 'video', material_id: 11, sequence: 1 },
       ],
@@ -771,6 +779,82 @@ test.describe('Creative workbench baseline', () => {
     expect(updatePayload).not.toHaveProperty('audio_ids')
     expect(updatePayload).not.toHaveProperty('topic_ids')
     await expect(page.locator('body')).toContainText('45 秒')
+  })
+
+  test('persists candidate pool adoption separately from selected media state', async ({ page }) => {
+    let updatePayload: Record<string, unknown> | undefined
+    let detailState = JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload
+
+    await page.unroute('**/api/creatives/101')
+    await page.route('**/api/creatives/101', async (route) => {
+      if (route.request().method() === 'PATCH') {
+        updatePayload = route.request().postDataJSON() as Record<string, unknown>
+        detailState = {
+          ...detailState,
+          ...updatePayload,
+          updated_at: '2026-04-18T08:00:00Z',
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(detailState),
+        })
+        return
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(detailState),
+      })
+    })
+
+    await gotoHashRoute(page, `/#/creative/101`)
+
+    await page.getByTestId('creative-detail-add-candidate-cover').click()
+    await chooseAntSelectOption(page, 'creative-detail-candidate-asset-cover-0', '封面首图')
+    await page.getByTestId('creative-detail-adopt-candidate-cover-0').click()
+
+    await page.getByTestId('creative-detail-add-candidate-copywriting').click()
+    await chooseAntSelectOption(page, 'creative-detail-candidate-asset-copywriting-0', '卖点短句 B')
+    await page.getByTestId('creative-detail-adopt-candidate-copywriting-0').click()
+
+    await expect(page.getByTestId('creative-detail-adopt-candidate-cover-0')).toContainText('当前已采用')
+    await expect(page.getByTestId('creative-detail-adopt-candidate-copywriting-0')).toContainText('当前已采用')
+
+    await page.getByTestId('creative-detail-save-authoring').click()
+
+    await expect.poll(() => updatePayload).toBeTruthy()
+    expect(updatePayload).toMatchObject({
+      current_cover_asset_type: 'cover',
+      current_cover_asset_id: 31,
+      cover_mode: 'adopted_candidate',
+      current_copywriting_id: 22,
+      current_copywriting_text: 'Copy Variant B',
+      copywriting_mode: 'adopted_candidate',
+      main_copywriting_text: 'Copy Variant B',
+      candidate_items: [
+        {
+          candidate_type: 'cover',
+          asset_id: 31,
+          source_kind: 'material_library',
+          sort_order: 1,
+          enabled: true,
+          status: 'adopted',
+        },
+        {
+          candidate_type: 'copywriting',
+          asset_id: 22,
+          source_kind: 'material_library',
+          sort_order: 2,
+          enabled: true,
+          status: 'adopted',
+        },
+      ],
+      input_items: [
+        { material_type: 'video', material_id: 11, sequence: 1 },
+      ],
+    })
   })
 
   test('writes taskId to detail URL only after submit composition succeeds', async ({ page }) => {

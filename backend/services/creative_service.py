@@ -19,6 +19,7 @@ from models import (
     CompositionJob,
     Copywriting,
     Cover,
+    CreativeCandidateItem,
     CreativeInputItem,
     CreativeItem,
     CreativeProductLink,
@@ -42,8 +43,11 @@ from schemas import (
     CreativeInputItemResponse,
     CreativeInputMaterialCountsResponse,
     CreativeInputOrchestrationResponse,
+    CreativeCandidateItemResponse,
     CreativeItemResponse,
     CreativeLatestTaskSummaryResponse,
+    CreativeCandidateStatus,
+    CreativeCandidateType,
     CreativeProductLinkResponse,
     CreativeComposeSubmitResponse,
     CreativeReviewSummaryResponse,
@@ -154,7 +158,13 @@ class CreativeService:
             explicit_product_links=payload.product_links if "product_links" in payload.model_fields_set else None,
             compat_subject_product_id=payload.subject_product_id if "subject_product_id" in payload.model_fields_set else _UNSET,
         )
+        candidate_items_payload = await self._resolve_authoritative_candidate_items(
+            existing_items=[],
+            explicit_candidate_items=payload.candidate_items if "candidate_items" in payload.model_fields_set else None,
+        )
         primary_product_id = self._extract_primary_product_id(product_links_payload)
+        adopted_cover_candidate = self._extract_adopted_candidate_item(candidate_items_payload, CreativeCandidateType.COVER.value)
+        adopted_copywriting_candidate = self._extract_adopted_candidate_item(candidate_items_payload, CreativeCandidateType.COPYWRITING.value)
         product_truth = await self._resolve_current_product_truth(
             subject_product_id=primary_product_id,
             explicit_current_product_name=payload.current_product_name if "current_product_name" in payload.model_fields_set else _UNSET,
@@ -165,9 +175,21 @@ class CreativeService:
             existing_legacy_snapshot=None,
         )
         copywriting_truth = await self._resolve_current_copywriting_truth(
-            explicit_current_copywriting_id=payload.current_copywriting_id if "current_copywriting_id" in payload.model_fields_set else _UNSET,
+            explicit_current_copywriting_id=(
+                payload.current_copywriting_id
+                if "current_copywriting_id" in payload.model_fields_set
+                else (adopted_copywriting_candidate["asset_id"] if adopted_copywriting_candidate is not None else _UNSET)
+            ),
             explicit_current_copywriting_text=payload.current_copywriting_text if "current_copywriting_text" in payload.model_fields_set else _UNSET,
-            explicit_copywriting_mode=payload.copywriting_mode.value if "copywriting_mode" in payload.model_fields_set and payload.copywriting_mode is not None else (None if "copywriting_mode" in payload.model_fields_set else _UNSET),
+            explicit_copywriting_mode=(
+                payload.copywriting_mode.value
+                if "copywriting_mode" in payload.model_fields_set and payload.copywriting_mode is not None
+                else (
+                    None
+                    if "copywriting_mode" in payload.model_fields_set
+                    else ("adopted_candidate" if adopted_copywriting_candidate is not None else _UNSET)
+                )
+            ),
             explicit_legacy_text=payload.main_copywriting_text if "main_copywriting_text" in payload.model_fields_set else _UNSET,
             existing_current_copywriting_id=None,
             existing_current_copywriting_text=None,
@@ -176,12 +198,35 @@ class CreativeService:
         )
         cover_truth = await self._resolve_current_cover_truth(
             subject_product_id=primary_product_id,
-            explicit_current_cover_asset_type=payload.current_cover_asset_type.value if "current_cover_asset_type" in payload.model_fields_set and payload.current_cover_asset_type is not None else (None if "current_cover_asset_type" in payload.model_fields_set else _UNSET),
-            explicit_current_cover_asset_id=payload.current_cover_asset_id if "current_cover_asset_id" in payload.model_fields_set else _UNSET,
-            explicit_cover_mode=payload.cover_mode.value if "cover_mode" in payload.model_fields_set and payload.cover_mode is not None else (None if "cover_mode" in payload.model_fields_set else _UNSET),
+            explicit_current_cover_asset_type=(
+                payload.current_cover_asset_type.value
+                if "current_cover_asset_type" in payload.model_fields_set and payload.current_cover_asset_type is not None
+                else (None if "current_cover_asset_type" in payload.model_fields_set else ("cover" if adopted_cover_candidate is not None else _UNSET))
+            ),
+            explicit_current_cover_asset_id=(
+                payload.current_cover_asset_id
+                if "current_cover_asset_id" in payload.model_fields_set
+                else (adopted_cover_candidate["asset_id"] if adopted_cover_candidate is not None else _UNSET)
+            ),
+            explicit_cover_mode=(
+                payload.cover_mode.value
+                if "cover_mode" in payload.model_fields_set and payload.cover_mode is not None
+                else (
+                    None
+                    if "cover_mode" in payload.model_fields_set
+                    else ("adopted_candidate" if adopted_cover_candidate is not None else _UNSET)
+                )
+            ),
             existing_current_cover_asset_type=None,
             existing_current_cover_asset_id=None,
             existing_cover_mode=None,
+        )
+        candidate_items_payload = self._synchronize_candidate_items_with_current_truth(
+            candidate_items_payload,
+            current_cover_asset_id=cover_truth["current_cover_asset_id"],
+            cover_mode=cover_truth["cover_mode"],
+            current_copywriting_id=copywriting_truth["current_copywriting_id"],
+            copywriting_mode=copywriting_truth["copywriting_mode"],
         )
         creative = CreativeItem(
             creative_no=creative_no,
@@ -204,6 +249,7 @@ class CreativeService:
         self.db.add(creative)
         await self.db.flush()
         self._apply_product_links(creative, product_links_payload)
+        self._apply_candidate_items(creative, candidate_items_payload)
 
         input_profile_id, authoritative_input_items = self._resolve_authoritative_input_state(
             profile_id=payload.profile_id,
@@ -259,7 +305,28 @@ class CreativeService:
             explicit_product_links=payload.product_links if "product_links" in payload.model_fields_set else None,
             compat_subject_product_id=payload.subject_product_id if "subject_product_id" in payload.model_fields_set else _UNSET,
         )
+        next_candidate_items = await self._resolve_authoritative_candidate_items(
+            existing_items=creative.candidate_items,
+            explicit_candidate_items=payload.candidate_items if "candidate_items" in payload.model_fields_set else None,
+        )
         next_subject_product_id = self._extract_primary_product_id(next_product_links)
+        adopted_cover_candidate = self._extract_adopted_candidate_item(next_candidate_items, CreativeCandidateType.COVER.value)
+        adopted_copywriting_candidate = self._extract_adopted_candidate_item(next_candidate_items, CreativeCandidateType.COPYWRITING.value)
+        if self._payload_updates_candidate_items(payload.model_fields_set):
+            if (
+                creative.cover_mode == "adopted_candidate"
+                and creative.current_cover_asset_id is not None
+                and adopted_cover_candidate is None
+                and not any(field_name in payload.model_fields_set for field_name in ("current_cover_asset_type", "current_cover_asset_id", "cover_mode"))
+            ):
+                raise ValueError("请先切换当前封面，再移除已采用候选")
+            if (
+                creative.copywriting_mode == "adopted_candidate"
+                and creative.current_copywriting_id is not None
+                and adopted_copywriting_candidate is None
+                and not any(field_name in payload.model_fields_set for field_name in ("current_copywriting_id", "current_copywriting_text", "copywriting_mode", "main_copywriting_text"))
+            ):
+                raise ValueError("请先切换当前文案，再移除已采用候选")
         if self._payload_updates_product_truth(payload.model_fields_set):
             product_truth = await self._resolve_current_product_truth(
                 subject_product_id=next_subject_product_id,
@@ -280,9 +347,25 @@ class CreativeService:
         if self._payload_updates_cover_truth(payload.model_fields_set):
             cover_truth = await self._resolve_current_cover_truth(
                 subject_product_id=next_subject_product_id,
-                explicit_current_cover_asset_type=payload.current_cover_asset_type.value if "current_cover_asset_type" in payload.model_fields_set and payload.current_cover_asset_type is not None else (None if "current_cover_asset_type" in payload.model_fields_set else _UNSET),
-                explicit_current_cover_asset_id=payload.current_cover_asset_id if "current_cover_asset_id" in payload.model_fields_set else _UNSET,
-                explicit_cover_mode=payload.cover_mode.value if "cover_mode" in payload.model_fields_set and payload.cover_mode is not None else (None if "cover_mode" in payload.model_fields_set else _UNSET),
+                explicit_current_cover_asset_type=(
+                    payload.current_cover_asset_type.value
+                    if "current_cover_asset_type" in payload.model_fields_set and payload.current_cover_asset_type is not None
+                    else (None if "current_cover_asset_type" in payload.model_fields_set else ("cover" if adopted_cover_candidate is not None else _UNSET))
+                ),
+                explicit_current_cover_asset_id=(
+                    payload.current_cover_asset_id
+                    if "current_cover_asset_id" in payload.model_fields_set
+                    else (adopted_cover_candidate["asset_id"] if adopted_cover_candidate is not None else _UNSET)
+                ),
+                explicit_cover_mode=(
+                    payload.cover_mode.value
+                    if "cover_mode" in payload.model_fields_set and payload.cover_mode is not None
+                    else (
+                        None
+                        if "cover_mode" in payload.model_fields_set
+                        else ("adopted_candidate" if adopted_cover_candidate is not None else _UNSET)
+                    )
+                ),
                 existing_current_cover_asset_type=creative.current_cover_asset_type,
                 existing_current_cover_asset_id=creative.current_cover_asset_id,
                 existing_cover_mode=creative.cover_mode,
@@ -296,9 +379,21 @@ class CreativeService:
 
         if self._payload_updates_copywriting_truth(payload.model_fields_set):
             copywriting_truth = await self._resolve_current_copywriting_truth(
-                explicit_current_copywriting_id=payload.current_copywriting_id if "current_copywriting_id" in payload.model_fields_set else _UNSET,
+                explicit_current_copywriting_id=(
+                    payload.current_copywriting_id
+                    if "current_copywriting_id" in payload.model_fields_set
+                    else (adopted_copywriting_candidate["asset_id"] if adopted_copywriting_candidate is not None else _UNSET)
+                ),
                 explicit_current_copywriting_text=payload.current_copywriting_text if "current_copywriting_text" in payload.model_fields_set else _UNSET,
-                explicit_copywriting_mode=payload.copywriting_mode.value if "copywriting_mode" in payload.model_fields_set and payload.copywriting_mode is not None else (None if "copywriting_mode" in payload.model_fields_set else _UNSET),
+                explicit_copywriting_mode=(
+                    payload.copywriting_mode.value
+                    if "copywriting_mode" in payload.model_fields_set and payload.copywriting_mode is not None
+                    else (
+                        None
+                        if "copywriting_mode" in payload.model_fields_set
+                        else ("adopted_candidate" if adopted_copywriting_candidate is not None else _UNSET)
+                    )
+                ),
                 explicit_legacy_text=payload.main_copywriting_text if "main_copywriting_text" in payload.model_fields_set else _UNSET,
                 existing_current_copywriting_id=creative.current_copywriting_id,
                 existing_current_copywriting_text=creative.current_copywriting_text,
@@ -309,6 +404,31 @@ class CreativeService:
             creative.current_copywriting_text = copywriting_truth["current_copywriting_text"]
             creative.copywriting_mode = copywriting_truth["copywriting_mode"]
             creative.main_copywriting_text = copywriting_truth["compat_text"]
+
+        should_sync_candidate_items = self._payload_updates_candidate_items(payload.model_fields_set) or (
+            bool(creative.candidate_items)
+            and any(
+                field_name in payload.model_fields_set
+                for field_name in (
+                    "current_cover_asset_type",
+                    "current_cover_asset_id",
+                    "cover_mode",
+                    "current_copywriting_id",
+                    "current_copywriting_text",
+                    "copywriting_mode",
+                    "main_copywriting_text",
+                )
+            )
+        )
+        if should_sync_candidate_items:
+            next_candidate_items = self._synchronize_candidate_items_with_current_truth(
+                next_candidate_items,
+                current_cover_asset_id=creative.current_cover_asset_id,
+                cover_mode=creative.cover_mode,
+                current_copywriting_id=creative.current_copywriting_id,
+                copywriting_mode=creative.copywriting_mode,
+            )
+            self._apply_candidate_items(creative, next_candidate_items)
 
         if self._payload_updates_input_state(payload.model_fields_set):
             current_profile_id = (
@@ -568,6 +688,7 @@ class CreativeService:
                 selectinload(CreativeItem.input_items),
                 selectinload(CreativeItem.input_profile),
                 selectinload(CreativeItem.product_links).selectinload(CreativeProductLink.product),
+                selectinload(CreativeItem.candidate_items),
                 selectinload(CreativeItem.current_version).selectinload(CreativeVersion.package_records),
                 selectinload(CreativeItem.current_version).selectinload(CreativeVersion.check_records),
                 selectinload(CreativeItem.versions).selectinload(CreativeVersion.package_records),
@@ -665,6 +786,7 @@ class CreativeService:
             review_summary=review_summary,
             linked_task_ids=linked_task_ids,
             product_links=self._build_product_links_response(creative),
+            candidate_items=await self._build_candidate_items_response(creative),
             subject_product_id=creative.subject_product_id,
             subject_product_name_snapshot=creative.resolved_current_product_name(),
             main_copywriting_text=creative.resolved_current_copywriting_text(),
@@ -1203,6 +1325,333 @@ class CreativeService:
             existing_link.enabled = bool(link_payload["enabled"])
             existing_link.source_mode = str(link_payload["source_mode"] or "manual_add")
 
+    async def _build_candidate_items_response(
+        self,
+        creative: CreativeItem,
+    ) -> list[CreativeCandidateItemResponse]:
+        candidate_items = sorted(creative.candidate_items, key=lambda item: (item.sort_order, item.id or 0))
+        asset_maps = await self._load_candidate_asset_maps(candidate_items)
+        product_name_by_id = await self._load_product_name_map(
+            [
+                item.source_product_id
+                for item in candidate_items
+                if item.source_product_id is not None
+            ]
+        )
+        return [
+            CreativeCandidateItemResponse(
+                id=item.id,
+                candidate_type=item.candidate_type,
+                asset_id=item.asset_id,
+                asset_name=asset_maps[item.candidate_type].get(item.asset_id, {}).get("name"),
+                asset_excerpt=asset_maps[item.candidate_type].get(item.asset_id, {}).get("excerpt"),
+                source_kind=item.source_kind,
+                source_product_id=item.source_product_id,
+                source_product_name=product_name_by_id.get(item.source_product_id),
+                source_ref=item.source_ref,
+                sort_order=item.sort_order,
+                enabled=item.enabled,
+                status=item.status,
+            )
+            for item in candidate_items
+        ]
+
+    async def _resolve_authoritative_candidate_items(
+        self,
+        *,
+        existing_items: list[CreativeCandidateItem],
+        explicit_candidate_items: Optional[list[Any]],
+    ) -> list[dict[str, Any]]:
+        if explicit_candidate_items is not None:
+            normalized_items = self._serialize_candidate_item_payloads(explicit_candidate_items)
+        else:
+            normalized_items = self._serialize_existing_candidate_items(existing_items)
+
+        candidate_keys = [
+            (item["candidate_type"], item["asset_id"])
+            for item in normalized_items
+        ]
+        if len(candidate_keys) != len(set(candidate_keys)):
+            raise ValueError("candidate_items 不允许同类型资产重复")
+
+        adopted_counts: dict[str, int] = {}
+        for item in normalized_items:
+            if item["status"] != CreativeCandidateStatus.ADOPTED.value:
+                continue
+            adopted_counts[item["candidate_type"]] = adopted_counts.get(item["candidate_type"], 0) + 1
+            if item["candidate_type"] not in {
+                CreativeCandidateType.COVER.value,
+                CreativeCandidateType.COPYWRITING.value,
+            }:
+                raise ValueError("当前 Slice 仅支持采用封面或文案候选")
+
+        if any(count > 1 for count in adopted_counts.values()):
+            raise ValueError("同类型候选最多只能有 1 个 adopted")
+
+        await self._assert_candidate_assets_exist(normalized_items)
+        return normalized_items
+
+    def _serialize_existing_candidate_items(
+        self,
+        existing_items: list[CreativeCandidateItem],
+    ) -> list[dict[str, Any]]:
+        return [
+            self._serialize_candidate_item_payload(
+                candidate_type=item.candidate_type,
+                asset_id=item.asset_id,
+                source_kind=item.source_kind,
+                source_product_id=item.source_product_id,
+                source_ref=item.source_ref,
+                sort_order=item.sort_order,
+                enabled=item.enabled,
+                status=item.status,
+            )
+            for item in sorted(existing_items, key=lambda entry: (entry.sort_order, entry.id or 0))
+        ]
+
+    def _serialize_candidate_item_payloads(
+        self,
+        candidate_items: list[Any],
+    ) -> list[dict[str, Any]]:
+        return [
+            self._serialize_candidate_item_payload(
+                candidate_type=item.candidate_type,
+                asset_id=item.asset_id,
+                source_kind=item.source_kind,
+                source_product_id=getattr(item, "source_product_id", None),
+                source_ref=getattr(item, "source_ref", None),
+                sort_order=index + 1,
+                enabled=item.enabled,
+                status=item.status,
+            )
+            for index, item in enumerate(candidate_items)
+        ]
+
+    def _serialize_candidate_item_payload(
+        self,
+        *,
+        candidate_type: Any,
+        asset_id: Any,
+        source_kind: Any,
+        source_product_id: Any,
+        source_ref: Any,
+        sort_order: Any,
+        enabled: Any,
+        status: Any,
+    ) -> dict[str, Any]:
+        normalized_candidate_type = (
+            candidate_type.value
+            if getattr(candidate_type, "value", None) is not None
+            else str(candidate_type)
+        )
+        normalized_source_kind = (
+            source_kind.value
+            if getattr(source_kind, "value", None) is not None
+            else str(source_kind or "material_library")
+        )
+        normalized_status = (
+            status.value
+            if getattr(status, "value", None) is not None
+            else str(status or CreativeCandidateStatus.CANDIDATE.value)
+        )
+        return {
+            "candidate_type": normalized_candidate_type,
+            "asset_id": int(asset_id),
+            "source_kind": normalized_source_kind,
+            "source_product_id": int(source_product_id) if source_product_id is not None else None,
+            "source_ref": str(source_ref) if source_ref is not None else None,
+            "sort_order": int(sort_order),
+            "enabled": bool(enabled),
+            "status": normalized_status,
+        }
+
+    async def _assert_candidate_assets_exist(
+        self,
+        candidate_items: list[dict[str, Any]],
+    ) -> None:
+        for item in candidate_items:
+            candidate_type = item["candidate_type"]
+            asset_id = int(item["asset_id"])
+            if candidate_type == CreativeCandidateType.COVER.value:
+                await self._assert_cover_exists(asset_id)
+            elif candidate_type == CreativeCandidateType.COPYWRITING.value:
+                copywriting = await self.db.get(Copywriting, asset_id)
+                if copywriting is None:
+                    raise ValueError("所选文案不存在")
+            elif candidate_type == CreativeCandidateType.VIDEO.value:
+                video = await self.db.get(Video, asset_id)
+                if video is None:
+                    raise ValueError("所选视频不存在")
+            elif candidate_type == CreativeCandidateType.AUDIO.value:
+                audio = await self.db.get(Audio, asset_id)
+                if audio is None:
+                    raise ValueError("所选音频不存在")
+            else:
+                raise ValueError(f"暂不支持的 candidate_type: {candidate_type}")
+
+            source_product_id = item["source_product_id"]
+            if source_product_id is not None:
+                product = await self.db.get(Product, source_product_id)
+                if product is None:
+                    raise ValueError("候选来源商品不存在")
+
+    async def _load_candidate_asset_maps(
+        self,
+        candidate_items: list[CreativeCandidateItem],
+    ) -> dict[str, dict[int, dict[str, Optional[str]]]]:
+        asset_ids_by_type: dict[str, set[int]] = {
+            CreativeCandidateType.COVER.value: set(),
+            CreativeCandidateType.COPYWRITING.value: set(),
+            CreativeCandidateType.VIDEO.value: set(),
+            CreativeCandidateType.AUDIO.value: set(),
+        }
+        for item in candidate_items:
+            if item.candidate_type in asset_ids_by_type:
+                asset_ids_by_type[item.candidate_type].add(item.asset_id)
+
+        asset_maps: dict[str, dict[int, dict[str, Optional[str]]]] = {
+            candidate_type: {}
+            for candidate_type in asset_ids_by_type
+        }
+        if asset_ids_by_type[CreativeCandidateType.COVER.value]:
+            rows = await self.db.execute(
+                select(Cover.id, Cover.name).where(Cover.id.in_(asset_ids_by_type[CreativeCandidateType.COVER.value]))
+            )
+            asset_maps[CreativeCandidateType.COVER.value] = {
+                row[0]: {"name": row[1] or f"封面 #{row[0]}", "excerpt": None}
+                for row in rows.all()
+            }
+        if asset_ids_by_type[CreativeCandidateType.COPYWRITING.value]:
+            rows = await self.db.execute(
+                select(Copywriting.id, Copywriting.name, Copywriting.content).where(
+                    Copywriting.id.in_(asset_ids_by_type[CreativeCandidateType.COPYWRITING.value])
+                )
+            )
+            asset_maps[CreativeCandidateType.COPYWRITING.value] = {
+                row[0]: {
+                    "name": row[1] or f"文案 #{row[0]}",
+                    "excerpt": row[2],
+                }
+                for row in rows.all()
+            }
+        if asset_ids_by_type[CreativeCandidateType.VIDEO.value]:
+            rows = await self.db.execute(
+                select(Video.id, Video.name).where(Video.id.in_(asset_ids_by_type[CreativeCandidateType.VIDEO.value]))
+            )
+            asset_maps[CreativeCandidateType.VIDEO.value] = {
+                row[0]: {"name": row[1] or f"视频 #{row[0]}", "excerpt": None}
+                for row in rows.all()
+            }
+        if asset_ids_by_type[CreativeCandidateType.AUDIO.value]:
+            rows = await self.db.execute(
+                select(Audio.id, Audio.name).where(Audio.id.in_(asset_ids_by_type[CreativeCandidateType.AUDIO.value]))
+            )
+            asset_maps[CreativeCandidateType.AUDIO.value] = {
+                row[0]: {"name": row[1] or f"音频 #{row[0]}", "excerpt": None}
+                for row in rows.all()
+            }
+        return asset_maps
+
+    async def _load_product_name_map(
+        self,
+        product_ids: list[Optional[int]],
+    ) -> dict[int, str]:
+        normalized_ids = {product_id for product_id in product_ids if product_id is not None}
+        if not normalized_ids:
+            return {}
+        result = await self.db.execute(select(Product.id, Product.name).where(Product.id.in_(normalized_ids)))
+        return {row[0]: row[1] for row in result.all()}
+
+    def _extract_adopted_candidate_item(
+        self,
+        candidate_items: list[dict[str, Any]],
+        candidate_type: str,
+    ) -> Optional[dict[str, Any]]:
+        return next(
+            (
+                item
+                for item in candidate_items
+                if item["candidate_type"] == candidate_type
+                and item["status"] == CreativeCandidateStatus.ADOPTED.value
+                and item["enabled"]
+            ),
+            None,
+        )
+
+    def _synchronize_candidate_items_with_current_truth(
+        self,
+        candidate_items: list[dict[str, Any]],
+        *,
+        current_cover_asset_id: Optional[int],
+        cover_mode: Optional[str],
+        current_copywriting_id: Optional[int],
+        copywriting_mode: Optional[str],
+    ) -> list[dict[str, Any]]:
+        synchronized_items: list[dict[str, Any]] = []
+        for item in candidate_items:
+            next_item = dict(item)
+            if item["candidate_type"] == CreativeCandidateType.COVER.value and item["status"] != CreativeCandidateStatus.DISMISSED.value:
+                next_item["status"] = (
+                    CreativeCandidateStatus.ADOPTED.value
+                    if cover_mode == "adopted_candidate" and current_cover_asset_id == item["asset_id"]
+                    else CreativeCandidateStatus.CANDIDATE.value
+                )
+            elif item["candidate_type"] == CreativeCandidateType.COPYWRITING.value and item["status"] != CreativeCandidateStatus.DISMISSED.value:
+                next_item["status"] = (
+                    CreativeCandidateStatus.ADOPTED.value
+                    if copywriting_mode == "adopted_candidate" and current_copywriting_id == item["asset_id"]
+                    else CreativeCandidateStatus.CANDIDATE.value
+                )
+            synchronized_items.append(next_item)
+        return synchronized_items
+
+    def _apply_candidate_items(
+        self,
+        creative: CreativeItem,
+        candidate_items: list[dict[str, Any]],
+    ) -> None:
+        if "candidate_items" not in creative.__dict__:
+            set_committed_value(creative, "candidate_items", [])
+        existing_items = creative.candidate_items
+        existing_items_by_key = {
+            (item.candidate_type, int(item.asset_id)): item
+            for item in existing_items
+        }
+        next_keys = {
+            (item["candidate_type"], int(item["asset_id"]))
+            for item in candidate_items
+        }
+
+        for existing_item in list(existing_items):
+            if (existing_item.candidate_type, int(existing_item.asset_id)) not in next_keys:
+                creative.candidate_items.remove(existing_item)
+
+        for index, item_payload in enumerate(candidate_items, start=1):
+            item_key = (item_payload["candidate_type"], int(item_payload["asset_id"]))
+            existing_item = existing_items_by_key.get(item_key)
+            if existing_item is None:
+                creative.candidate_items.append(
+                    CreativeCandidateItem(
+                        creative_item_id=creative.id,
+                        candidate_type=item_payload["candidate_type"],
+                        asset_id=int(item_payload["asset_id"]),
+                        source_kind=item_payload["source_kind"],
+                        source_product_id=item_payload["source_product_id"],
+                        source_ref=item_payload["source_ref"],
+                        sort_order=index,
+                        enabled=bool(item_payload["enabled"]),
+                        status=item_payload["status"],
+                    )
+                )
+                continue
+
+            existing_item.source_kind = item_payload["source_kind"]
+            existing_item.source_product_id = item_payload["source_product_id"]
+            existing_item.source_ref = item_payload["source_ref"]
+            existing_item.sort_order = index
+            existing_item.enabled = bool(item_payload["enabled"])
+            existing_item.status = item_payload["status"]
+
     def _payload_updates_product_truth(self, model_fields_set: set[str]) -> bool:
         return any(
             field_name in model_fields_set
@@ -1212,16 +1661,19 @@ class CreativeService:
     def _payload_updates_cover_truth(self, model_fields_set: set[str]) -> bool:
         return any(
             field_name in model_fields_set
-            for field_name in ("product_links", "subject_product_id", "current_cover_asset_type", "current_cover_asset_id", "cover_mode")
+            for field_name in ("product_links", "candidate_items", "subject_product_id", "current_cover_asset_type", "current_cover_asset_id", "cover_mode")
         )
 
     def _payload_updates_product_links(self, model_fields_set: set[str]) -> bool:
         return any(field_name in model_fields_set for field_name in ("product_links", "subject_product_id"))
 
+    def _payload_updates_candidate_items(self, model_fields_set: set[str]) -> bool:
+        return "candidate_items" in model_fields_set
+
     def _payload_updates_copywriting_truth(self, model_fields_set: set[str]) -> bool:
         return any(
             field_name in model_fields_set
-            for field_name in ("main_copywriting_text", "current_copywriting_id", "current_copywriting_text", "copywriting_mode")
+            for field_name in ("candidate_items", "main_copywriting_text", "current_copywriting_id", "current_copywriting_text", "copywriting_mode")
         )
 
     async def _resolve_current_product_truth(

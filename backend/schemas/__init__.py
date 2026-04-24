@@ -116,6 +116,26 @@ class CreativeProductLinkSourceMode(str, Enum):
     IMPORT_BOOTSTRAP = "import_bootstrap"
 
 
+class CreativeCandidateType(str, Enum):
+    COVER = "cover"
+    COPYWRITING = "copywriting"
+    VIDEO = "video"
+    AUDIO = "audio"
+
+
+class CreativeCandidateSourceKind(str, Enum):
+    PRODUCT_DERIVED = "product_derived"
+    MATERIAL_LIBRARY = "material_library"
+    MANUAL_UPLOAD = "manual_upload"
+    LLM_GENERATED = "llm_generated"
+
+
+class CreativeCandidateStatus(str, Enum):
+    CANDIDATE = "candidate"
+    ADOPTED = "adopted"
+    DISMISSED = "dismissed"
+
+
 class CreativeReviewConclusion(str, Enum):
     APPROVED = "APPROVED"
     REWORK_REQUIRED = "REWORK_REQUIRED"
@@ -680,6 +700,31 @@ def _validate_creative_product_link_writes(
         raise ValueError("product_links 最多只能有 1 个主题商品")
 
 
+def _validate_creative_candidate_item_writes(
+    candidate_items: Optional[List["CreativeCandidateItemWrite"]],
+) -> None:
+    if candidate_items is None:
+        return
+    candidate_keys = [(item.candidate_type, item.asset_id) for item in candidate_items]
+    if len(candidate_keys) != len(set(candidate_keys)):
+        raise ValueError("candidate_items 不允许同类型资产重复")
+
+    adopted_counts: dict[CreativeCandidateType, int] = {}
+    for item in candidate_items:
+        if item.status != CreativeCandidateStatus.ADOPTED:
+            continue
+        adopted_counts[item.candidate_type] = adopted_counts.get(item.candidate_type, 0) + 1
+        if item.candidate_type not in {CreativeCandidateType.COVER, CreativeCandidateType.COPYWRITING}:
+            raise ValueError("当前 Slice 仅支持采用封面或文案候选")
+
+    duplicate_adopted_type = next(
+        (candidate_type for candidate_type, count in adopted_counts.items() if count > 1),
+        None,
+    )
+    if duplicate_adopted_type is not None:
+        raise ValueError(f"{duplicate_adopted_type.value} 候选最多只能有 1 个 adopted")
+
+
 class CreativeInputMaterialType(str, Enum):
     VIDEO = "video"
     COPYWRITING = "copywriting"
@@ -745,6 +790,34 @@ class CreativeProductLinkResponse(BaseModel):
     source_mode: CreativeProductLinkSourceMode = CreativeProductLinkSourceMode.MANUAL_ADD
 
 
+class CreativeCandidateItemWrite(BaseModel):
+    candidate_type: CreativeCandidateType
+    asset_id: int = Field(..., ge=1)
+    source_kind: CreativeCandidateSourceKind = CreativeCandidateSourceKind.MATERIAL_LIBRARY
+    source_product_id: Optional[int] = Field(None, ge=1)
+    source_ref: Optional[str] = Field(None, max_length=256)
+    sort_order: Optional[int] = Field(None, ge=1)
+    enabled: bool = True
+    status: CreativeCandidateStatus = CreativeCandidateStatus.CANDIDATE
+
+
+class CreativeCandidateItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: Optional[int] = None
+    candidate_type: CreativeCandidateType
+    asset_id: int
+    asset_name: Optional[str] = None
+    asset_excerpt: Optional[str] = None
+    source_kind: CreativeCandidateSourceKind = CreativeCandidateSourceKind.MATERIAL_LIBRARY
+    source_product_id: Optional[int] = None
+    source_product_name: Optional[str] = None
+    source_ref: Optional[str] = None
+    sort_order: int
+    enabled: bool = True
+    status: CreativeCandidateStatus = CreativeCandidateStatus.CANDIDATE
+
+
 class CreativeLatestTaskSummaryResponse(BaseModel):
     task_id: int
     task_kind: Optional[TaskKind] = None
@@ -773,6 +846,10 @@ class CreativeCreateRequest(BaseModel):
     product_links: List[CreativeProductLinkWrite] = Field(
         default_factory=list,
         description="Slice 2 canonical creative-product association surface.",
+    )
+    candidate_items: List[CreativeCandidateItemWrite] = Field(
+        default_factory=list,
+        description="Slice 3 persistent work-level candidate pool surface.",
     )
     video_ids: List[int] = Field(
         default_factory=list,
@@ -831,6 +908,11 @@ class CreativeCreateRequest(BaseModel):
         _validate_creative_product_link_writes(self.product_links)
         return self
 
+    @model_validator(mode="after")
+    def validate_candidate_items_contract(self) -> "CreativeCreateRequest":
+        _validate_creative_candidate_item_writes(self.candidate_items)
+        return self
+
 
 class CreativeUpdateRequest(BaseModel):
     title: Optional[str] = Field(None, max_length=256)
@@ -850,6 +932,10 @@ class CreativeUpdateRequest(BaseModel):
     product_links: Optional[List[CreativeProductLinkWrite]] = Field(
         None,
         description="When present, product_links is the Slice 2 canonical creative-product association source.",
+    )
+    candidate_items: Optional[List[CreativeCandidateItemWrite]] = Field(
+        None,
+        description="When present, candidate_items is the Slice 3 persistent work-level candidate pool source.",
     )
     video_ids: Optional[List[int]] = Field(
         None,
@@ -906,6 +992,11 @@ class CreativeUpdateRequest(BaseModel):
     @model_validator(mode="after")
     def validate_product_links_contract(self) -> "CreativeUpdateRequest":
         _validate_creative_product_link_writes(self.product_links)
+        return self
+
+    @model_validator(mode="after")
+    def validate_candidate_items_contract(self) -> "CreativeUpdateRequest":
+        _validate_creative_candidate_item_writes(self.candidate_items)
         return self
 
 
@@ -1088,6 +1179,7 @@ class CreativeDetailResponse(BaseModel):
     review_summary: Optional[CreativeReviewSummaryResponse] = None
     linked_task_ids: List[int] = Field(default_factory=list)
     product_links: List[CreativeProductLinkResponse] = Field(default_factory=list)
+    candidate_items: List[CreativeCandidateItemResponse] = Field(default_factory=list)
     subject_product_id: Optional[int] = None
     subject_product_name_snapshot: Optional[str] = None
     main_copywriting_text: Optional[str] = None
