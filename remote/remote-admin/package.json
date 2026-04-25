@@ -12,7 +12,7 @@
     "build:react": "vite build",
     "preview:react": "vite preview --open /react-index.html",
     "test": "npm run build && node --test tests/app.test.mjs",
-    "test:react-step-up": "npm run build:react && node --test tests/step-up.react.test.mjs",
+    "test:react-step-up": "npm run build:react && node --test --test-concurrency=1 tests/step-up.react.test.mjs",
     "lint": "node -e \"process.exit(0)\""
   },
   "dependencies": {
