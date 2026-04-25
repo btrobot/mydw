@@ -8,6 +8,7 @@ import { EmptyState } from '../../components/states/EmptyState.js';
 import { ErrorState } from '../../components/states/ErrorState.js';
 import { LoadingState } from '../../components/states/LoadingState.js';
 import {
+  ADMIN_STEP_UP_SCOPE_SESSIONS_REVOKE,
   AdminApiError,
   canEditUsersRole,
   DEFAULT_ADMIN_LIST_PAGE_SIZE,
@@ -20,6 +21,7 @@ import {
   type OffsetPaginationFilters,
 } from '../../features/auth/auth-client.js';
 import { useAuth } from '../../features/auth/auth-context.js';
+import { isAdminStepUpCancelledError, useAdminStepUp } from '../../features/auth/useAdminStepUp.js';
 
 const EMPTY_FILTERS: AdminSessionsFilters = {
   query: '',
@@ -51,6 +53,13 @@ export function SessionsPage(): JSX.Element {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const canWrite = canEditUsersRole(session);
+  const { requestStepUp, stepUpModal } = useAdminStepUp({
+    accessToken,
+    onExpiredSession: () => {
+      handleExpiredSession();
+      navigate('/login', { replace: true, state: { from: '/sessions' } });
+    },
+  });
   const sessionsQuery = useQuery({
     queryKey: ['adminSessions', appliedFilters],
     queryFn: () => getAdminSessions(accessToken ?? '', appliedFilters),
@@ -86,12 +95,12 @@ export function SessionsPage(): JSX.Element {
   }
 
   const revokeMutation = useMutation({
-    mutationFn: async ({ sessionId }: { sessionId: string }) => {
+    mutationFn: async ({ sessionId, stepUpToken }: { sessionId: string; stepUpToken: string }) => {
       if (!accessToken) {
         throw new Error('Missing admin session');
       }
 
-      return revokeAdminSession(accessToken, sessionId);
+      return revokeAdminSession(accessToken, sessionId, stepUpToken);
     },
     onMutate: () => {
       setActionFeedback(null);
@@ -141,6 +150,22 @@ export function SessionsPage(): JSX.Element {
     }
   }, [selectedSessionId, sessionsQuery.data?.items]);
 
+  async function runSessionRevoke(sessionId: string): Promise<void> {
+    try {
+      const stepUpToken = await requestStepUp({
+        scope: ADMIN_STEP_UP_SCOPE_SESSIONS_REVOKE,
+        actionLabel: 'Revoke session',
+        description:
+          'Confirm your password before revoking this session. The admin API will issue a short-lived step-up token for the destructive request.',
+      });
+      await revokeMutation.mutateAsync({ sessionId, stepUpToken });
+    } catch (error) {
+      if (isAdminStepUpCancelledError(error)) {
+        return;
+      }
+    }
+  }
+
   if (!accessToken) {
     return <ErrorState title="Admin session missing" description="Please sign in again before loading sessions." />;
   }
@@ -166,7 +191,7 @@ export function SessionsPage(): JSX.Element {
         message={canWrite ? 'Write-capable role detected' : 'Read-only role detected'}
         description={
           canWrite
-            ? 'This route supports session revoke and refreshes the filtered list after each successful action.'
+            ? 'Session revoke now asks for password confirmation first, then refreshes the filtered list after each successful action.'
             : 'This role can inspect sessions, but revoke controls remain disabled.'
         }
       />
@@ -342,7 +367,7 @@ export function SessionsPage(): JSX.Element {
                   disabled={!canWrite || revokeMutation.isPending}
                   loading={revokeMutation.isPending}
                   onClick={() => {
-                    void revokeMutation.mutateAsync({ sessionId: selectedSession.session_id });
+                    void runSessionRevoke(selectedSession.session_id);
                   }}
                 >
                   Revoke session
@@ -358,7 +383,7 @@ export function SessionsPage(): JSX.Element {
                 message="Danger zone"
                 description={
                   canWrite
-                    ? 'Session revoke is audited server-side and this page refreshes the filtered session list after success.'
+                    ? 'Session revoke is audited server-side. Before revoking a session, this page confirms your password, obtains a short-lived step-up token, then refreshes the filtered session list after success.'
                     : 'This admin role can view session detail only. Revoke controls remain disabled.'
                 }
               />
@@ -372,6 +397,7 @@ export function SessionsPage(): JSX.Element {
           )}
         </Card>
       </Flex>
+      {stepUpModal}
     </Space>
   );
 }

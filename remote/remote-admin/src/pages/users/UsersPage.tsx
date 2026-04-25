@@ -8,6 +8,7 @@ import { EmptyState } from '../../components/states/EmptyState.js';
 import { ErrorState } from '../../components/states/ErrorState.js';
 import { LoadingState } from '../../components/states/LoadingState.js';
 import {
+  ADMIN_STEP_UP_SCOPE_USERS_WRITE,
   AdminApiError,
   canEditUsersRole,
   DEFAULT_ADMIN_LIST_PAGE_SIZE,
@@ -22,6 +23,7 @@ import {
   type OffsetPaginationFilters,
 } from '../../features/auth/auth-client.js';
 import { useAuth } from '../../features/auth/auth-context.js';
+import { isAdminStepUpCancelledError, useAdminStepUp } from '../../features/auth/useAdminStepUp.js';
 
 const EMPTY_FILTERS: AdminUsersFilters = {
   query: '',
@@ -61,6 +63,13 @@ export function UsersPage(): JSX.Element {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const canWrite = canEditUsersRole(session);
+  const { requestStepUp, stepUpModal } = useAdminStepUp({
+    accessToken,
+    onExpiredSession: () => {
+      handleExpiredSession();
+      navigate('/login', { replace: true, state: { from: '/users' } });
+    },
+  });
   const usersQuery = useQuery({
     queryKey: ['adminUsers', appliedFilters],
     queryFn: () => getAdminUsers(accessToken ?? '', appliedFilters),
@@ -111,12 +120,22 @@ export function UsersPage(): JSX.Element {
   }
 
   const userActionMutation = useMutation({
-    mutationFn: async ({ action, userId }: { action: 'revoke' | 'restore'; userId: string }) => {
+    mutationFn: async ({
+      action,
+      userId,
+      stepUpToken,
+    }: {
+      action: 'revoke' | 'restore';
+      userId: string;
+      stepUpToken: string;
+    }) => {
       if (!accessToken) {
         throw new Error('Missing admin session');
       }
 
-      return action === 'revoke' ? revokeAdminUser(accessToken, userId) : restoreAdminUser(accessToken, userId);
+      return action === 'revoke'
+        ? revokeAdminUser(accessToken, userId, stepUpToken)
+        : restoreAdminUser(accessToken, userId, stepUpToken);
     },
     onMutate: () => {
       setActionFeedback(null);
@@ -181,6 +200,24 @@ export function UsersPage(): JSX.Element {
   const selectedUserIsRevoked =
     selectedDetail?.status === 'revoked' || selectedDetail?.license_status === 'revoked';
 
+  async function runUserAction(action: 'revoke' | 'restore', userId: string): Promise<void> {
+    try {
+      const stepUpToken = await requestStepUp({
+        scope: ADMIN_STEP_UP_SCOPE_USERS_WRITE,
+        actionLabel: action === 'revoke' ? 'Revoke user' : 'Restore user',
+        description:
+          action === 'revoke'
+            ? 'Confirm your password before revoking this user. The admin API will issue a short-lived step-up token for the destructive request.'
+            : 'Confirm your password before restoring this user. The admin API will issue a short-lived step-up token for the destructive request.',
+      });
+      await userActionMutation.mutateAsync({ action, userId, stepUpToken });
+    } catch (error) {
+      if (isAdminStepUpCancelledError(error)) {
+        return;
+      }
+    }
+  }
+
   if (!accessToken) {
     return <ErrorState title="Admin session missing" description="Please sign in again before loading managed users." />;
   }
@@ -206,7 +243,7 @@ export function UsersPage(): JSX.Element {
         message={canWrite ? 'Write-capable role detected' : 'Read-only role detected'}
         description={
           canWrite
-            ? 'Day 3.1 enables revoke / restore and automatically refreshes list/detail state after each successful action.'
+            ? 'Revoke / restore now ask for password confirmation first, then automatically refresh list/detail state after each successful action.'
             : 'This role can inspect users, but revoke / restore / edit controls stay disabled during and after migration.'
         }
       />
@@ -390,7 +427,7 @@ export function UsersPage(): JSX.Element {
                   loading={isRevoking}
                   onClick={() => {
                     if (!selectedDetail) return;
-                    void userActionMutation.mutateAsync({ action: 'revoke', userId: selectedDetail.id });
+                    void runUserAction('revoke', selectedDetail.id);
                   }}
                 >
                   Revoke user
@@ -400,7 +437,7 @@ export function UsersPage(): JSX.Element {
                   loading={isRestoring}
                   onClick={() => {
                     if (!selectedDetail) return;
-                    void userActionMutation.mutateAsync({ action: 'restore', userId: selectedDetail.id });
+                    void runUserAction('restore', selectedDetail.id);
                   }}
                 >
                   Restore user
@@ -418,7 +455,7 @@ export function UsersPage(): JSX.Element {
                 message="Danger zone"
                 description={
                   canWrite
-                    ? 'Revoke / restore are audited server-side and this page immediately refetches list and detail data after success.'
+                    ? 'Revoke / restore are audited server-side. Before each destructive action, this page confirms your password, obtains a short-lived step-up token, then immediately refetches list and detail data after success.'
                     : 'This admin role can view user detail only. Revoke / restore controls remain disabled.'
                 }
               />
@@ -432,6 +469,7 @@ export function UsersPage(): JSX.Element {
           )}
         </Card>
       </Flex>
+      {stepUpModal}
     </Space>
   );
 }

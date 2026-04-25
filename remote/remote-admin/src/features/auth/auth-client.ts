@@ -19,6 +19,22 @@ export type AdminLoginResponse = {
   user: AdminIdentity;
 };
 
+export const ADMIN_STEP_UP_SCOPE_USERS_WRITE = 'users.write';
+export const ADMIN_STEP_UP_SCOPE_DEVICES_WRITE = 'devices.write';
+export const ADMIN_STEP_UP_SCOPE_SESSIONS_REVOKE = 'sessions.revoke';
+
+export type AdminStepUpScope =
+  | typeof ADMIN_STEP_UP_SCOPE_USERS_WRITE
+  | typeof ADMIN_STEP_UP_SCOPE_DEVICES_WRITE
+  | typeof ADMIN_STEP_UP_SCOPE_SESSIONS_REVOKE;
+
+export type AdminStepUpVerifyResponse = {
+  step_up_token: string;
+  scope: AdminStepUpScope;
+  expires_at: string;
+  method: string;
+};
+
 export type DashboardMetrics = {
   active_sessions: number;
   login_failures: number;
@@ -260,6 +276,12 @@ export function mapAdminActionError(errorCode?: string): string {
       return 'Your current role is read-only and cannot perform this action.';
     case 'not_found':
       return 'The requested user could not be found.';
+    case 'step_up_required':
+      return 'Please confirm your password before retrying this action.';
+    case 'step_up_invalid':
+      return 'Your confirmation expired or is no longer valid. Please confirm again.';
+    case 'step_up_expired':
+      return 'Your confirmation expired. Please confirm your password again.';
     case 'token_expired':
       return 'Your admin session expired. Please sign in again.';
     default:
@@ -273,6 +295,12 @@ export function mapDeviceActionError(errorCode?: string): string {
       return 'Your current role is read-only and cannot perform this device action.';
     case 'not_found':
       return 'The requested device or target user could not be found.';
+    case 'step_up_required':
+      return 'Please confirm your password before retrying this device action.';
+    case 'step_up_invalid':
+      return 'Your confirmation expired or is no longer valid. Please confirm again.';
+    case 'step_up_expired':
+      return 'Your confirmation expired. Please confirm your password again.';
     case 'token_expired':
       return 'Your admin session expired. Please sign in again.';
     default:
@@ -286,10 +314,31 @@ export function mapSessionActionError(errorCode?: string): string {
       return 'Your current role is read-only and cannot revoke sessions.';
     case 'not_found':
       return 'The requested session could not be found.';
+    case 'step_up_required':
+      return 'Please confirm your password before retrying this session action.';
+    case 'step_up_invalid':
+      return 'Your confirmation expired or is no longer valid. Please confirm again.';
+    case 'step_up_expired':
+      return 'Your confirmation expired. Please confirm your password again.';
     case 'token_expired':
       return 'Your admin session expired. Please sign in again.';
     default:
       return 'The session action failed. Please retry.';
+  }
+}
+
+export function mapStepUpVerifyError(errorCode?: string): string {
+  switch (errorCode) {
+    case 'invalid_credentials':
+      return 'Incorrect password. Please retry.';
+    case 'too_many_requests':
+      return 'Too many confirmation attempts. Please retry later.';
+    case 'forbidden':
+      return 'Your current role cannot perform this action.';
+    case 'token_expired':
+      return 'Your admin session expired. Please sign in again.';
+    default:
+      return 'Unable to verify your password right now.';
   }
 }
 
@@ -366,89 +415,117 @@ export function buildAuditLogQuery(filters: AdminAuditFilters): string {
   return query ? `?${query}` : '';
 }
 
+type AdminAuthHeaderOptions = {
+  contentType?: boolean;
+  stepUpToken?: string | null;
+};
+
+export function createAdminAuthHeaders(accessToken: string, options: AdminAuthHeaderOptions = {}): HeadersInit {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+  };
+  if (options.contentType) {
+    headers['Content-Type'] = 'application/json';
+  }
+  if (options.stepUpToken) {
+    headers['X-Step-Up-Token'] = options.stepUpToken;
+  }
+  return headers;
+}
+
 export async function getAdminUsers(accessToken: string, filters: AdminUsersFilters): Promise<AdminUserListResponse> {
   return requestJson<AdminUserListResponse>(`/admin/users${buildUsersQuery(filters)}`, {
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: createAdminAuthHeaders(accessToken),
   });
 }
 
 export async function getAdminUserDetail(accessToken: string, userId: string): Promise<AdminUserRecord> {
   return requestJson<AdminUserRecord>(`/admin/users/${userId}`, {
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: createAdminAuthHeaders(accessToken),
   });
 }
 
-export async function revokeAdminUser(accessToken: string, userId: string): Promise<AdminActionResponse> {
+export async function verifyAdminStepUpPassword(
+  accessToken: string,
+  password: string,
+  scope: AdminStepUpScope
+): Promise<AdminStepUpVerifyResponse> {
+  return requestJson<AdminStepUpVerifyResponse>('/admin/step-up/password/verify', {
+    method: 'POST',
+    headers: createAdminAuthHeaders(accessToken, { contentType: true }),
+    body: JSON.stringify({ password, scope }),
+  });
+}
+
+export async function revokeAdminUser(
+  accessToken: string,
+  userId: string,
+  stepUpToken?: string | null
+): Promise<AdminActionResponse> {
   return requestJson<AdminActionResponse>(`/admin/users/${userId}/revoke`, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: createAdminAuthHeaders(accessToken, { stepUpToken }),
   });
 }
 
-export async function restoreAdminUser(accessToken: string, userId: string): Promise<AdminActionResponse> {
+export async function restoreAdminUser(
+  accessToken: string,
+  userId: string,
+  stepUpToken?: string | null
+): Promise<AdminActionResponse> {
   return requestJson<AdminActionResponse>(`/admin/users/${userId}/restore`, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: createAdminAuthHeaders(accessToken, { stepUpToken }),
   });
 }
 
 export async function getAdminDevices(accessToken: string, filters: AdminDevicesFilters): Promise<AdminDeviceListResponse> {
   return requestJson<AdminDeviceListResponse>(`/admin/devices${buildDevicesQuery(filters)}`, {
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: createAdminAuthHeaders(accessToken),
   });
 }
 
 export async function getAdminDeviceDetail(accessToken: string, deviceId: string): Promise<AdminDeviceRecord> {
   return requestJson<AdminDeviceRecord>(`/admin/devices/${deviceId}`, {
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: createAdminAuthHeaders(accessToken),
   });
 }
 
-export async function unbindAdminDevice(accessToken: string, deviceId: string): Promise<AdminActionResponse> {
+export async function unbindAdminDevice(
+  accessToken: string,
+  deviceId: string,
+  stepUpToken?: string | null
+): Promise<AdminActionResponse> {
   return requestJson<AdminActionResponse>(`/admin/devices/${deviceId}/unbind`, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: createAdminAuthHeaders(accessToken, { stepUpToken }),
   });
 }
 
-export async function disableAdminDevice(accessToken: string, deviceId: string): Promise<AdminActionResponse> {
+export async function disableAdminDevice(
+  accessToken: string,
+  deviceId: string,
+  stepUpToken?: string | null
+): Promise<AdminActionResponse> {
   return requestJson<AdminActionResponse>(`/admin/devices/${deviceId}/disable`, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: createAdminAuthHeaders(accessToken, { stepUpToken }),
   });
 }
 
 export async function rebindAdminDevice(
   accessToken: string,
   deviceId: string,
-  payload: AdminDeviceRebindRequest
+  payload: AdminDeviceRebindRequest,
+  stepUpToken?: string | null
 ): Promise<AdminActionResponse> {
   return requestJson<AdminActionResponse>(`/admin/devices/${deviceId}/rebind`, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
+    headers: createAdminAuthHeaders(accessToken, { contentType: true, stepUpToken }),
     body: JSON.stringify(payload),
   });
 }
@@ -456,26 +533,24 @@ export async function rebindAdminDevice(
 export async function getAdminSessions(accessToken: string, filters: AdminSessionsFilters): Promise<AdminSessionListResponse> {
   return requestJson<AdminSessionListResponse>(`/admin/sessions${buildSessionsQuery(filters)}`, {
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: createAdminAuthHeaders(accessToken),
   });
 }
 
-export async function revokeAdminSession(accessToken: string, sessionId: string): Promise<AdminActionResponse> {
+export async function revokeAdminSession(
+  accessToken: string,
+  sessionId: string,
+  stepUpToken?: string | null
+): Promise<AdminActionResponse> {
   return requestJson<AdminActionResponse>(`/admin/sessions/${sessionId}/revoke`, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: createAdminAuthHeaders(accessToken, { stepUpToken }),
   });
 }
 
 export async function getAdminAuditLogs(accessToken: string, filters: AdminAuditFilters): Promise<AdminAuditListResponse> {
   return requestJson<AdminAuditListResponse>(`/admin/audit-logs${buildAuditLogQuery(filters)}`, {
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: createAdminAuthHeaders(accessToken),
   });
 }

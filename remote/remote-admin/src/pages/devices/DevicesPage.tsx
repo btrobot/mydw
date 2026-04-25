@@ -8,6 +8,7 @@ import { EmptyState } from '../../components/states/EmptyState.js';
 import { ErrorState } from '../../components/states/ErrorState.js';
 import { LoadingState } from '../../components/states/LoadingState.js';
 import {
+  ADMIN_STEP_UP_SCOPE_DEVICES_WRITE,
   AdminApiError,
   canEditUsersRole,
   DEFAULT_ADMIN_LIST_PAGE_SIZE,
@@ -23,6 +24,7 @@ import {
   type OffsetPaginationFilters,
 } from '../../features/auth/auth-client.js';
 import { useAuth } from '../../features/auth/auth-context.js';
+import { isAdminStepUpCancelledError, useAdminStepUp } from '../../features/auth/useAdminStepUp.js';
 
 const EMPTY_FILTERS: AdminDevicesFilters = {
   query: '',
@@ -31,6 +33,12 @@ const EMPTY_FILTERS: AdminDevicesFilters = {
   limit: DEFAULT_ADMIN_LIST_PAGE_SIZE,
   offset: 0,
 };
+
+type DeviceAction = 'unbind' | 'disable' | 'rebind';
+type DeviceActionVariables =
+  | { action: 'unbind'; deviceId: string }
+  | { action: 'disable'; deviceId: string }
+  | { action: 'rebind'; deviceId: string; userId: string; clientVersion: string };
 
 function formatValue(value: string | number | null | undefined): string {
   if (value === null || value === undefined || value === '') return 'n/a';
@@ -57,6 +65,13 @@ export function DevicesPage(): JSX.Element {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const canWrite = canEditUsersRole(session);
+  const { requestStepUp, stepUpModal } = useAdminStepUp({
+    accessToken,
+    onExpiredSession: () => {
+      handleExpiredSession();
+      navigate('/login', { replace: true, state: { from: '/devices' } });
+    },
+  });
   const devicesQuery = useQuery({
     queryKey: ['adminDevices', appliedFilters],
     queryFn: () => getAdminDevices(accessToken ?? '', appliedFilters),
@@ -109,26 +124,26 @@ export function DevicesPage(): JSX.Element {
   const deviceActionMutation = useMutation({
     mutationFn: async (
       variables:
-        | { action: 'unbind'; deviceId: string }
-        | { action: 'disable'; deviceId: string }
-        | { action: 'rebind'; deviceId: string; userId: string; clientVersion: string }
+        | { action: 'unbind'; deviceId: string; stepUpToken: string }
+        | { action: 'disable'; deviceId: string; stepUpToken: string }
+        | { action: 'rebind'; deviceId: string; userId: string; clientVersion: string; stepUpToken: string }
     ) => {
       if (!accessToken) {
         throw new Error('Missing admin session');
       }
 
       if (variables.action === 'unbind') {
-        return unbindAdminDevice(accessToken, variables.deviceId);
+        return unbindAdminDevice(accessToken, variables.deviceId, variables.stepUpToken);
       }
 
       if (variables.action === 'disable') {
-        return disableAdminDevice(accessToken, variables.deviceId);
+        return disableAdminDevice(accessToken, variables.deviceId, variables.stepUpToken);
       }
 
       return rebindAdminDevice(accessToken, variables.deviceId, {
         user_id: variables.userId,
         client_version: variables.clientVersion,
-      });
+      }, variables.stepUpToken);
     },
     onMutate: () => {
       setActionFeedback(null);
@@ -197,6 +212,32 @@ export function DevicesPage(): JSX.Element {
   const actionType = deviceActionMutation.variables?.action;
   const selectedDetail = detailQuery.data;
 
+  async function runDeviceAction(variables: DeviceActionVariables): Promise<void> {
+    const descriptions: Record<DeviceAction, string> = {
+      unbind: 'Confirm your password before unbinding this device. The admin API will issue a short-lived step-up token for the destructive request.',
+      disable: 'Confirm your password before disabling this device. The admin API will issue a short-lived step-up token for the destructive request.',
+      rebind: 'Confirm your password before rebinding this device. The admin API will issue a short-lived step-up token for the destructive request.',
+    };
+    const labels: Record<DeviceAction, string> = {
+      unbind: 'Unbind device',
+      disable: 'Disable device',
+      rebind: 'Rebind device',
+    };
+
+    try {
+      const stepUpToken = await requestStepUp({
+        scope: ADMIN_STEP_UP_SCOPE_DEVICES_WRITE,
+        actionLabel: labels[variables.action],
+        description: descriptions[variables.action],
+      });
+      await deviceActionMutation.mutateAsync({ ...variables, stepUpToken });
+    } catch (error) {
+      if (isAdminStepUpCancelledError(error)) {
+        return;
+      }
+    }
+  }
+
   if (!accessToken) {
     return <ErrorState title="Admin session missing" description="Please sign in again before loading managed devices." />;
   }
@@ -222,7 +263,7 @@ export function DevicesPage(): JSX.Element {
         message={canWrite ? 'Write-capable role detected' : 'Read-only role detected'}
         description={
           canWrite
-            ? 'This route supports unbind / disable / rebind and refreshes list/detail state after each successful device action.'
+            ? 'Unbind / disable / rebind now ask for password confirmation first, then refresh list/detail state after each successful device action.'
             : 'This role can inspect devices, but all device mutations remain disabled.'
         }
       />
@@ -395,7 +436,7 @@ export function DevicesPage(): JSX.Element {
 
                     setActionFeedback(null);
                     setActionError(null);
-                    void deviceActionMutation.mutateAsync({
+                    void runDeviceAction({
                       action: 'rebind',
                       deviceId: selectedDetail.device_id,
                       userId: rebindUserId.trim(),
@@ -437,7 +478,7 @@ export function DevicesPage(): JSX.Element {
                   disabled={!canWrite || isMutating || !detailQuery.data.user_id}
                   loading={actionType === 'unbind' && isMutating}
                   onClick={() => {
-                    void deviceActionMutation.mutateAsync({ action: 'unbind', deviceId: detailQuery.data.device_id });
+                    void runDeviceAction({ action: 'unbind', deviceId: detailQuery.data.device_id });
                   }}
                 >
                   Unbind device
@@ -447,7 +488,7 @@ export function DevicesPage(): JSX.Element {
                   disabled={!canWrite || isMutating || detailQuery.data.device_status === 'disabled'}
                   loading={actionType === 'disable' && isMutating}
                   onClick={() => {
-                    void deviceActionMutation.mutateAsync({ action: 'disable', deviceId: detailQuery.data.device_id });
+                    void runDeviceAction({ action: 'disable', deviceId: detailQuery.data.device_id });
                   }}
                 >
                   Disable device
@@ -463,7 +504,7 @@ export function DevicesPage(): JSX.Element {
                 message="Danger zone"
                 description={
                   canWrite
-                    ? 'Unbind / disable / rebind are audited server-side and this page immediately refetches list and detail data after success.'
+                    ? 'Unbind / disable / rebind are audited server-side. Before each destructive action, this page confirms your password, obtains a short-lived step-up token, then immediately refetches list and detail data after success.'
                     : 'This admin role can view device detail only. Device mutation controls remain disabled.'
                 }
               />
@@ -477,6 +518,7 @@ export function DevicesPage(): JSX.Element {
           )}
         </Card>
       </Flex>
+      {stepUpModal}
     </Space>
   );
 }

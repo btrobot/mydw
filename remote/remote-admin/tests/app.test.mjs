@@ -18,16 +18,21 @@ import {
   resolveGuardedRoute,
 } from '../dist/app/App.js';
 import {
+  ADMIN_STEP_UP_SCOPE_USERS_WRITE,
   buildAuditLogQuery as buildReactAuditLogQuery,
   buildDevicesQuery as buildReactDevicesQuery,
   buildSessionsQuery as buildReactSessionsQuery,
   buildUsersQuery as buildReactUsersQuery,
+  createAdminAuthHeaders,
   formatPageSummary,
   hasNextPage,
   hasPreviousPage,
+  mapStepUpVerifyError,
   replacePaginationPageSize,
+  revokeAdminUser,
   shiftOffsetPagination,
   toUtcAuditFilterTimestamp,
+  verifyAdminStepUpPassword,
 } from '../dist/features/auth/auth-client.js';
 
 const session = {
@@ -247,6 +252,12 @@ test('session action error mapping keeps session UX stable', () => {
   assert.equal(mapSessionActionError('not_found'), 'The requested session could not be found.');
 });
 
+test('step-up verification error mapping keeps password-confirmation UX stable', () => {
+  assert.equal(mapStepUpVerifyError('invalid_credentials'), 'Incorrect password. Please retry.');
+  assert.equal(mapStepUpVerifyError('too_many_requests'), 'Too many confirmation attempts. Please retry later.');
+  assert.equal(mapStepUpVerifyError('forbidden'), 'Your current role cannot perform this action.');
+});
+
 test('devices page renders device control layout', () => {
   const state = createInitialState('devices');
   state.session = session;
@@ -390,6 +401,90 @@ test('React list query helpers include stable limit and offset parameters', () =
     }),
     '?q=sess_1&auth_state=authenticated_active&user_id=u_1&device_id=device_1&limit=50&offset=100'
   );
+});
+
+test('createAdminAuthHeaders appends optional step-up token without changing bearer auth', () => {
+  assert.deepEqual(createAdminAuthHeaders('admin_access_token'), {
+    Authorization: 'Bearer admin_access_token',
+  });
+  assert.deepEqual(createAdminAuthHeaders('admin_access_token', { contentType: true, stepUpToken: 'step_up_1' }), {
+    Authorization: 'Bearer admin_access_token',
+    'Content-Type': 'application/json',
+    'X-Step-Up-Token': 'step_up_1',
+  });
+});
+
+test('step-up verify client posts password confirmation contract to backend', async () => {
+  const originalWindow = globalThis.window;
+  const originalFetch = globalThis.fetch;
+  let requestInput;
+  let requestInit;
+  globalThis.window = { location: { search: '' } };
+  globalThis.fetch = async (input, init) => {
+    requestInput = input;
+    requestInit = init;
+    return new Response(
+      JSON.stringify({
+        step_up_token: 'admin_step_up_1',
+        scope: ADMIN_STEP_UP_SCOPE_USERS_WRITE,
+        expires_at: '2026-05-01T00:05:00Z',
+        method: 'password',
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  };
+
+  try {
+    const response = await verifyAdminStepUpPassword(
+      'admin_access_token',
+      'admin-secret',
+      ADMIN_STEP_UP_SCOPE_USERS_WRITE
+    );
+
+    assert.equal(response.step_up_token, 'admin_step_up_1');
+    assert.equal(String(requestInput), 'http://127.0.0.1:8100/admin/step-up/password/verify');
+    assert.equal(requestInit.method, 'POST');
+    assert.deepEqual(requestInit.headers, {
+      Authorization: 'Bearer admin_access_token',
+      'Content-Type': 'application/json',
+    });
+    assert.equal(
+      requestInit.body,
+      JSON.stringify({
+        password: 'admin-secret',
+        scope: ADMIN_STEP_UP_SCOPE_USERS_WRITE,
+      })
+    );
+  } finally {
+    globalThis.window = originalWindow;
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('destructive admin client forwards X-Step-Up-Token header', async () => {
+  const originalWindow = globalThis.window;
+  const originalFetch = globalThis.fetch;
+  let requestInit;
+  globalThis.window = { location: { search: '' } };
+  globalThis.fetch = async (_input, init) => {
+    requestInit = init;
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+
+  try {
+    const response = await revokeAdminUser('admin_access_token', 'u_1', 'step_up_1');
+    assert.equal(response.success, true);
+    assert.deepEqual(requestInit.headers, {
+      Authorization: 'Bearer admin_access_token',
+      'X-Step-Up-Token': 'step_up_1',
+    });
+  } finally {
+    globalThis.window = originalWindow;
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('formatPageSummary keeps paginated list copy consistent across admin resources', () => {
