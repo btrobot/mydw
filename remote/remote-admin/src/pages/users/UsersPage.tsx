@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Button, Card, Descriptions, Empty, Flex, Form, Input, List, Select, Space, Tag, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -12,6 +12,9 @@ import {
   getAdminUserDetail,
   getAdminUsers,
   isAuthExpiredError,
+  mapAdminActionError,
+  restoreAdminUser,
+  revokeAdminUser,
   type AdminUserRecord,
   type AdminUsersFilters,
 } from '../../features/auth/auth-client.js';
@@ -43,11 +46,14 @@ function renderEntitlements(user: AdminUserRecord): JSX.Element {
 }
 
 export function UsersPage(): JSX.Element {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { accessToken, session, handleExpiredSession } = useAuth();
   const [draftFilters, setDraftFilters] = useState<AdminUsersFilters>(EMPTY_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<AdminUsersFilters>(EMPTY_FILTERS);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const canWrite = canEditUsersRole(session);
   const usersQuery = useQuery({
@@ -65,6 +71,70 @@ export function UsersPage(): JSX.Element {
     queryKey: ['adminUserDetail', selectedUserId],
     queryFn: () => getAdminUserDetail(accessToken ?? '', selectedUserId ?? ''),
     enabled: Boolean(accessToken && selectedUserId),
+  });
+
+  async function refreshUsersState(preferredUserId: string): Promise<void> {
+    if (!accessToken) return;
+
+    const listResult = await usersQuery.refetch();
+    const items = listResult.data?.items ?? [];
+    const nextSelectedUserId = items.some((item) => item.id === preferredUserId)
+      ? preferredUserId
+      : (items[0]?.id ?? null);
+
+    if (nextSelectedUserId) {
+      await queryClient.fetchQuery({
+        queryKey: ['adminUserDetail', nextSelectedUserId],
+        queryFn: () => getAdminUserDetail(accessToken, nextSelectedUserId),
+      });
+    }
+
+    setSelectedUserId(nextSelectedUserId);
+  }
+
+  const userActionMutation = useMutation({
+    mutationFn: async ({ action, userId }: { action: 'revoke' | 'restore'; userId: string }) => {
+      if (!accessToken) {
+        throw new Error('Missing admin session');
+      }
+
+      return action === 'revoke' ? revokeAdminUser(accessToken, userId) : restoreAdminUser(accessToken, userId);
+    },
+    onMutate: () => {
+      setActionFeedback(null);
+      setActionError(null);
+    },
+    onSuccess: async (_response, variables) => {
+      try {
+        await refreshUsersState(variables.userId);
+        setActionFeedback(
+          variables.action === 'revoke'
+            ? 'User access revoked. The list and detail panel were refreshed from the backend.'
+            : 'User access restored. The list and detail panel were refreshed from the backend.'
+        );
+      } catch (error) {
+        if (error instanceof AdminApiError && isAuthExpiredError(error.errorCode)) {
+          handleExpiredSession();
+          navigate('/login', { replace: true, state: { from: '/users' } });
+          return;
+        }
+
+        setActionError(
+          variables.action === 'revoke'
+            ? 'User access was revoked, but the follow-up refresh failed. Retry the list or detail query.'
+            : 'User access was restored, but the follow-up refresh failed. Retry the list or detail query.'
+        );
+      }
+    },
+    onError: (error) => {
+      if (error instanceof AdminApiError && isAuthExpiredError(error.errorCode)) {
+        handleExpiredSession();
+        navigate('/login', { replace: true, state: { from: '/users' } });
+        return;
+      }
+
+      setActionError(error instanceof AdminApiError ? mapAdminActionError(error.errorCode) : mapAdminActionError());
+    },
   });
 
   useEffect(() => {
@@ -86,6 +156,12 @@ export function UsersPage(): JSX.Element {
       setSelectedUserId(items[0].id);
     }
   }, [selectedUserId, usersQuery.data?.items]);
+
+  const isRevoking = userActionMutation.isPending && userActionMutation.variables?.action === 'revoke';
+  const isRestoring = userActionMutation.isPending && userActionMutation.variables?.action === 'restore';
+  const selectedDetail = detailQuery.data;
+  const selectedUserIsRevoked =
+    selectedDetail?.status === 'revoked' || selectedDetail?.license_status === 'revoked';
 
   if (!accessToken) {
     return <ErrorState title="Admin session missing" description="Please sign in again before loading managed users." />;
@@ -112,13 +188,20 @@ export function UsersPage(): JSX.Element {
         message={canWrite ? 'Write-capable role detected' : 'Read-only role detected'}
         description={
           canWrite
-            ? 'This slice only migrates list/detail browsing. Destructive user actions remain on the follow-up queue.'
+            ? 'Day 3.1 enables revoke / restore and automatically refreshes list/detail state after each successful action.'
             : 'This role can inspect users, but revoke / restore / edit controls stay disabled during and after migration.'
         }
       />
 
       <Card>
-        <Form layout="vertical" onFinish={() => setAppliedFilters({ ...draftFilters })}>
+        <Form
+          layout="vertical"
+          onFinish={() => {
+            setActionFeedback(null);
+            setActionError(null);
+            setAppliedFilters({ ...draftFilters });
+          }}
+        >
           <Flex gap={16} wrap="wrap" align="end">
             <Form.Item label="Search" style={{ minWidth: 240, flex: 1, marginBottom: 0 }}>
               <Input
@@ -171,6 +254,8 @@ export function UsersPage(): JSX.Element {
               </Button>
               <Button
                 onClick={() => {
+                  setActionFeedback(null);
+                  setActionError(null);
                   setDraftFilters(EMPTY_FILTERS);
                   setAppliedFilters(EMPTY_FILTERS);
                 }}
@@ -205,7 +290,11 @@ export function UsersPage(): JSX.Element {
                     border: item.id === selectedUserId ? '1px solid #adc6ff' : '1px solid transparent',
                     marginBottom: 8,
                   }}
-                  onClick={() => setSelectedUserId(item.id)}
+                  onClick={() => {
+                    setActionFeedback(null);
+                    setActionError(null);
+                    setSelectedUserId(item.id);
+                  }}
                 >
                   <List.Item.Meta
                     title={
@@ -244,6 +333,9 @@ export function UsersPage(): JSX.Element {
             />
           ) : detailQuery.data ? (
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
+              {actionFeedback ? <Alert type="success" showIcon message={actionFeedback} /> : null}
+              {actionError ? <Alert type="error" showIcon message={actionError} /> : null}
+
               <Descriptions bordered column={2} size="small">
                 <Descriptions.Item label="User ID">{detailQuery.data.id}</Descriptions.Item>
                 <Descriptions.Item label="Username">{detailQuery.data.username}</Descriptions.Item>
@@ -260,11 +352,44 @@ export function UsersPage(): JSX.Element {
                 </Descriptions.Item>
               </Descriptions>
 
+              <Flex gap={12} wrap="wrap">
+                <Button
+                  danger
+                  disabled={!canWrite || isRevoking || isRestoring}
+                  loading={isRevoking}
+                  onClick={() => {
+                    if (!selectedDetail) return;
+                    void userActionMutation.mutateAsync({ action: 'revoke', userId: selectedDetail.id });
+                  }}
+                >
+                  Revoke user
+                </Button>
+                <Button
+                  disabled={!canWrite || isRevoking || isRestoring}
+                  loading={isRestoring}
+                  onClick={() => {
+                    if (!selectedDetail) return;
+                    void userActionMutation.mutateAsync({ action: 'restore', userId: selectedDetail.id });
+                  }}
+                >
+                  Restore user
+                </Button>
+                {selectedUserIsRevoked ? (
+                  <Tag color="red">Current state: revoked</Tag>
+                ) : (
+                  <Tag color="green">Current state: active-or-readable</Tag>
+                )}
+              </Flex>
+
               <Alert
-                type="info"
+                type={canWrite ? 'warning' : 'info'}
                 showIcon
-                message="Mutation scope deferred"
-                description="Revoke / restore / edit actions stay on the next slice so this first React users page can settle list/detail behavior with minimal risk."
+                message="Danger zone"
+                description={
+                  canWrite
+                    ? 'Revoke / restore are audited server-side and this page immediately refetches list and detail data after success.'
+                    : 'This admin role can view user detail only. Revoke / restore controls remain disabled.'
+                }
               />
             </Space>
           ) : usersQuery.isFetching ? (

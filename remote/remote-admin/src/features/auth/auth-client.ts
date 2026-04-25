@@ -46,6 +46,10 @@ export type AdminUserListResponse = {
   total: number;
 };
 
+export type AdminActionResponse = {
+  success: boolean;
+};
+
 export type AdminUsersFilters = {
   query: string;
   status: string;
@@ -174,6 +178,24 @@ export async function getAdminUsers(accessToken: string, filters: AdminUsersFilt
 export async function getAdminUserDetail(accessToken: string, userId: string): Promise<AdminUserRecord> {
   return requestJson<AdminUserRecord>(`/admin/users/${userId}`, {
     method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export async function revokeAdminUser(accessToken: string, userId: string): Promise<AdminActionResponse> {
+  return requestJson<AdminActionResponse>(`/admin/users/${userId}/revoke`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export async function restoreAdminUser(accessToken: string, userId: string): Promise<AdminActionResponse> {
+  return requestJson<AdminActionResponse>(`/admin/users/${userId}/restore`, {
+    method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
