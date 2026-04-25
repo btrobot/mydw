@@ -3,17 +3,14 @@ from __future__ import annotations
 from pathlib import Path
 
 from alembic import command
-from alembic.config import Config
-from alembic.runtime.migration import MigrationContext
 from sqlalchemy import create_engine, inspect
 
 from app.core.config import reset_settings_cache
 from app.core.db import reset_db_state
+from app.migrations.alembic import build_alembic_config, get_current_revision
 from app.migrations.runner import upgrade as legacy_upgrade
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-ALEMBIC_INI = PROJECT_ROOT / "alembic.ini"
 EXPECTED_TABLES = {
     "admin_sessions",
     "admin_users",
@@ -28,22 +25,6 @@ EXPECTED_TABLES = {
     "user_entitlements",
     "users",
 }
-
-
-def build_alembic_config(database_url: str) -> Config:
-    config = Config(str(ALEMBIC_INI))
-    config.set_main_option("script_location", str(PROJECT_ROOT / "migrations"))
-    config.set_main_option("sqlalchemy.url", database_url)
-    return config
-
-
-def get_current_revision(database_url: str) -> str | None:
-    engine = create_engine(database_url, future=True)
-    try:
-        with engine.connect() as connection:
-            return MigrationContext.configure(connection).get_current_revision()
-    finally:
-        engine.dispose()
 
 
 def test_alembic_upgrade_head_creates_current_schema(tmp_path: Path) -> None:

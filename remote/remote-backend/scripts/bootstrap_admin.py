@@ -14,7 +14,7 @@ if str(APP_ROOT) not in sys.path:
 from app.core.config import reset_settings_cache
 from app.core.db import reset_db_state, session_scope
 from app.core.security import hash_password
-from app.migrations.runner import upgrade
+from app.migrations.alembic import ensure_database_on_head
 from app.models import AdminUser
 
 
@@ -86,7 +86,7 @@ def main() -> int:
     reset_settings_cache()
     reset_db_state()
     if args.migrate:
-        upgrade()
+        ensure_database_on_head()
     result = bootstrap_admin(
         username=args.username,
         password=password,

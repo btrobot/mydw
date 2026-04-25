@@ -14,33 +14,35 @@ FastAPI backend for the remote authorization center and admin control plane.
 From `remote/remote-backend/`:
 
 ```bash
-python -c "from app.migrations.runner import upgrade; upgrade()"
+python scripts/migrate.py ensure-head
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8100
 ```
 
-## Alembic baseline preview
+## Database migrations
 
-Day 5.1 adds an Alembic baseline alongside the existing runner so the schema can be
-verified on empty databases without switching the runtime bootstrap path yet.
+Day 5.2 promotes Alembic to the default local/test migration entrypoint while the legacy
+runner stays in the repo only as a temporary compatibility artifact.
 
 For a brand-new empty database, from `remote/remote-backend/`:
 
 ```bash
-alembic upgrade head
-alembic current
-alembic downgrade base
+python scripts/migrate.py upgrade head
+python scripts/migrate.py current
+python scripts/migrate.py downgrade base
 ```
 
 If your local database was already created by the legacy runner, stamp it first instead of
 rerunning the baseline DDL:
 
 ```bash
-alembic stamp 20260425_0001
-alembic current
+python scripts/migrate.py stamp 20260425_0001
+python scripts/migrate.py upgrade head
+python scripts/migrate.py current
 ```
 
-For now, local bootstrap scripts and the documented runtime flow may still call
-`app.migrations.runner`. The runtime switch-over happens in the later Slice 10 steps.
+`python scripts/migrate.py ensure-head` is the safest default for local setup: it upgrades
+empty databases, and it adopts legacy-runner databases by stamping the baseline before
+moving to `head`.
 
 ## Bootstrap the first admin
 
@@ -49,7 +51,8 @@ set BOOTSTRAP_ADMIN_PASSWORD=admin-secret
 python scripts/bootstrap_admin.py --migrate --username admin --password-env BOOTSTRAP_ADMIN_PASSWORD --role super_admin --display-name "Remote Admin"
 ```
 
-The script is idempotent: rerunning it updates the matching admin account.
+`--migrate` now uses the Alembic entrypoint above. The script remains idempotent:
+rerunning it updates the matching admin account.
 
 ## Recommended staging env
 
