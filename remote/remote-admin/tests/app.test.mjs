@@ -17,6 +17,10 @@ import {
   renderApp,
   resolveGuardedRoute,
 } from '../dist/app/App.js';
+import {
+  buildAuditLogQuery as buildReactAuditLogQuery,
+  toUtcAuditFilterTimestamp,
+} from '../dist/features/auth/auth-client.js';
 
 const session = {
   session_id: 'admin_sess_123',
@@ -305,6 +309,47 @@ test('buildAuditLogQuery keeps filter ordering stable', () => {
   assert.equal(params.get('offset'), '50');
   assert.ok(createdFrom?.endsWith('Z'));
   assert.ok(createdTo?.endsWith('Z'));
+  assert.equal(new Date(createdFrom).getUTCSeconds(), 0);
+  assert.equal(new Date(createdFrom).getUTCMilliseconds(), 0);
+  assert.equal(new Date(createdTo).getUTCSeconds(), 59);
+  assert.equal(new Date(createdTo).getUTCMilliseconds(), 999);
+});
+
+test('React audit query helpers keep UTC conversion and ordering aligned with legacy audit route', () => {
+  const query = buildReactAuditLogQuery({
+    eventType: 'authorization_user_revoked',
+    actorId: 'admin_1',
+    targetUserId: 'u_1',
+    targetDeviceId: 'device_1',
+    targetSessionId: 'sess_1',
+    createdFrom: '2026-04-01T00:00',
+    createdTo: '2026-04-30T23:59',
+    limit: 50,
+    offset: 100,
+  });
+
+  assert.deepEqual(
+    query
+      .slice(1)
+      .split('&')
+      .map((entry) => entry.split('=')[0]),
+    [
+      'event_type',
+      'actor_id',
+      'target_user_id',
+      'target_device_id',
+      'target_session_id',
+      'created_from',
+      'created_to',
+      'limit',
+      'offset',
+    ]
+  );
+
+  const createdFrom = toUtcAuditFilterTimestamp('2026-04-01T00:00', 'start');
+  const createdTo = toUtcAuditFilterTimestamp('2026-04-30T23:59', 'end');
+  assert.ok(createdFrom.endsWith('Z'));
+  assert.ok(createdTo.endsWith('Z'));
   assert.equal(new Date(createdFrom).getUTCSeconds(), 0);
   assert.equal(new Date(createdFrom).getUTCMilliseconds(), 0);
   assert.equal(new Date(createdTo).getUTCSeconds(), 59);

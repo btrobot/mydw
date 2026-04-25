@@ -103,6 +103,37 @@ export type AdminSessionsFilters = {
   deviceId: string;
 };
 
+export type AdminAuditRecord = {
+  id: string;
+  event_type: string;
+  actor_type?: string | null;
+  actor_id?: string | null;
+  target_user_id?: string | null;
+  target_device_id?: string | null;
+  target_session_id?: string | null;
+  request_id?: string | null;
+  trace_id?: string | null;
+  created_at: string;
+  details: Record<string, unknown>;
+};
+
+export type AdminAuditListResponse = {
+  items: AdminAuditRecord[];
+  total: number;
+};
+
+export type AdminAuditFilters = {
+  eventType: string;
+  actorId: string;
+  targetUserId: string;
+  targetDeviceId: string;
+  targetSessionId: string;
+  createdFrom: string;
+  createdTo: string;
+  limit: number;
+  offset: number;
+};
+
 type RemoteAdminWindow = Window & {
   REMOTE_ADMIN_API_BASE?: string;
 };
@@ -258,6 +289,36 @@ export function buildSessionsQuery(filters: AdminSessionsFilters): string {
   return query ? `?${query}` : '';
 }
 
+export function toUtcAuditFilterTimestamp(localValue: string, boundary: 'start' | 'end'): string {
+  const date = new Date(localValue);
+  if (Number.isNaN(date.getTime())) {
+    return localValue;
+  }
+
+  if (boundary === 'end') {
+    date.setSeconds(59, 999);
+  } else {
+    date.setSeconds(0, 0);
+  }
+
+  return date.toISOString();
+}
+
+export function buildAuditLogQuery(filters: AdminAuditFilters): string {
+  const params = new URLSearchParams();
+  if (filters.eventType) params.set('event_type', filters.eventType);
+  if (filters.actorId) params.set('actor_id', filters.actorId);
+  if (filters.targetUserId) params.set('target_user_id', filters.targetUserId);
+  if (filters.targetDeviceId) params.set('target_device_id', filters.targetDeviceId);
+  if (filters.targetSessionId) params.set('target_session_id', filters.targetSessionId);
+  if (filters.createdFrom) params.set('created_from', toUtcAuditFilterTimestamp(filters.createdFrom, 'start'));
+  if (filters.createdTo) params.set('created_to', toUtcAuditFilterTimestamp(filters.createdTo, 'end'));
+  params.set('limit', String(filters.limit));
+  params.set('offset', String(filters.offset));
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
 export async function getAdminUsers(accessToken: string, filters: AdminUsersFilters): Promise<AdminUserListResponse> {
   return requestJson<AdminUserListResponse>(`/admin/users${buildUsersQuery(filters)}`, {
     method: 'GET',
@@ -357,6 +418,15 @@ export async function getAdminSessions(accessToken: string, filters: AdminSessio
 export async function revokeAdminSession(accessToken: string, sessionId: string): Promise<AdminActionResponse> {
   return requestJson<AdminActionResponse>(`/admin/sessions/${sessionId}/revoke`, {
     method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export async function getAdminAuditLogs(accessToken: string, filters: AdminAuditFilters): Promise<AdminAuditListResponse> {
+  return requestJson<AdminAuditListResponse>(`/admin/audit-logs${buildAuditLogQuery(filters)}`, {
+    method: 'GET',
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
