@@ -18,6 +18,30 @@ python -c "from app.migrations.runner import upgrade; upgrade()"
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8100
 ```
 
+## Alembic baseline preview
+
+Day 5.1 adds an Alembic baseline alongside the existing runner so the schema can be
+verified on empty databases without switching the runtime bootstrap path yet.
+
+For a brand-new empty database, from `remote/remote-backend/`:
+
+```bash
+alembic upgrade head
+alembic current
+alembic downgrade base
+```
+
+If your local database was already created by the legacy runner, stamp it first instead of
+rerunning the baseline DDL:
+
+```bash
+alembic stamp 20260425_0001
+alembic current
+```
+
+For now, local bootstrap scripts and the documented runtime flow may still call
+`app.migrations.runner`. The runtime switch-over happens in the later Slice 10 steps.
+
 ## Bootstrap the first admin
 
 ```bash

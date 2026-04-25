@@ -1,0 +1,98 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from alembic import command
+from alembic.config import Config
+from alembic.runtime.migration import MigrationContext
+from sqlalchemy import create_engine, inspect
+
+from app.core.config import reset_settings_cache
+from app.core.db import reset_db_state
+from app.migrations.runner import upgrade as legacy_upgrade
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+ALEMBIC_INI = PROJECT_ROOT / "alembic.ini"
+EXPECTED_TABLES = {
+    "admin_sessions",
+    "admin_users",
+    "alembic_version",
+    "audit_logs",
+    "devices",
+    "licenses",
+    "refresh_tokens",
+    "sessions",
+    "user_credentials",
+    "user_devices",
+    "user_entitlements",
+    "users",
+}
+
+
+def build_alembic_config(database_url: str) -> Config:
+    config = Config(str(ALEMBIC_INI))
+    config.set_main_option("script_location", str(PROJECT_ROOT / "migrations"))
+    config.set_main_option("sqlalchemy.url", database_url)
+    return config
+
+
+def get_current_revision(database_url: str) -> str | None:
+    engine = create_engine(database_url, future=True)
+    try:
+        with engine.connect() as connection:
+            return MigrationContext.configure(connection).get_current_revision()
+    finally:
+        engine.dispose()
+
+
+def test_alembic_upgrade_head_creates_current_schema(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{(tmp_path / 'alembic-upgrade.sqlite3').as_posix()}"
+    config = build_alembic_config(database_url)
+
+    command.upgrade(config, "head")
+
+    engine = create_engine(database_url, future=True)
+    try:
+        inspector = inspect(engine)
+        assert EXPECTED_TABLES <= set(inspector.get_table_names())
+    finally:
+        engine.dispose()
+
+    assert get_current_revision(database_url) == "20260425_0001"
+
+
+def test_alembic_downgrade_base_clears_revision_state(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{(tmp_path / 'alembic-downgrade.sqlite3').as_posix()}"
+    config = build_alembic_config(database_url)
+
+    command.upgrade(config, "head")
+    command.downgrade(config, "base")
+
+    engine = create_engine(database_url, future=True)
+    try:
+        inspector = inspect(engine)
+        remaining_tables = set(inspector.get_table_names())
+        assert "users" not in inspector.get_table_names()
+        assert remaining_tables <= {"alembic_version"}
+    finally:
+        engine.dispose()
+
+    assert get_current_revision(database_url) is None
+
+
+def test_alembic_stamp_adopts_existing_legacy_runner_schema(tmp_path: Path, monkeypatch) -> None:
+    database_url = f"sqlite:///{(tmp_path / 'legacy-runner.sqlite3').as_posix()}"
+    config = build_alembic_config(database_url)
+
+    monkeypatch.setenv("REMOTE_BACKEND_DATABASE_URL", database_url)
+    reset_settings_cache()
+    reset_db_state()
+    legacy_upgrade()
+
+    command.stamp(config, "20260425_0001")
+
+    assert get_current_revision(database_url) == "20260425_0001"
+
+    reset_db_state()
+    reset_settings_cache()
