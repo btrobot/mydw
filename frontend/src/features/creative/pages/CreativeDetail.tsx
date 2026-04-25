@@ -704,6 +704,33 @@ export default function CreativeDetail() {
         return null
     }
   }, [detailInteractionMode])
+  const authoringSurfaceLocked = ['submitting', 'reviewing', 'publishing', 'published_followup'].includes(detailInteractionMode)
+  const authoringLockMeta = useMemo(() => {
+    switch (detailInteractionMode) {
+      case 'submitting':
+        return {
+          message: '当前作品正在生成中，定义区已锁定为只读快照。',
+          description: '请先跟进执行进度；如需修改创作定义，请等待本次生成结束后再继续编辑。',
+        }
+      case 'reviewing':
+        return {
+          message: '当前版本待审核，定义区已锁定为只读快照。',
+          description: '当前页应先完成结果确认；如需改定义，应在进入可编辑模式后再处理，而不是直接改写待审核版本。',
+        }
+      case 'publishing':
+        return {
+          message: '当前作品正在发布中，定义区已锁定为只读快照。',
+          description: '当前页重点是发布状态与诊断；A/B/C 仅作为当前版本来源与结果的追溯视图。',
+        }
+      case 'published_followup':
+        return {
+          message: '当前版本已发布，定义区已锁定为已发布快照。',
+          description: '如需继续修改，请创建下一轮版本，而不是直接改写已发布版本的定义。',
+        }
+      default:
+        return null
+    }
+  }, [detailInteractionMode])
 
   if (creativeQuery.isLoading && !creative) {
     return (
@@ -796,6 +823,16 @@ export default function CreativeDetail() {
           />
         ) : null}
 
+        {authoringSurfaceLocked && authoringLockMeta ? (
+          <Alert
+            type="info"
+            showIcon
+            message={authoringLockMeta.message}
+            description={authoringLockMeta.description}
+            data-testid="creative-detail-authoring-lock-notice"
+          />
+        ) : null}
+
         {projectionModel ? (
           <>
             <CreativeDetailHeroCard
@@ -813,7 +850,15 @@ export default function CreativeDetail() {
 
             <CreativeCurrentSelectionSection
               projection={projectionModel}
-              productNameActions={(
+              notice={authoringSurfaceLocked && authoringLockMeta ? (
+                <Alert
+                  type="info"
+                  showIcon
+                  message="当前入选区为只读结果快照"
+                  description={authoringLockMeta.description}
+                />
+              ) : undefined}
+              productNameActions={!authoringSurfaceLocked ? (
                 <Button
                   size="small"
                   onClick={() => handleRestorePrimaryProductName()}
@@ -822,8 +867,8 @@ export default function CreativeDetail() {
                 >
                   恢复跟随主题商品
                 </Button>
-              )}
-              productNameEditor={(
+              ) : undefined}
+              productNameEditor={!authoringSurfaceLocked ? (
                 <Space direction="vertical" size={8} style={{ width: '100%' }}>
                   <Text type="secondary">区内快速编辑</Text>
                   <Input
@@ -833,8 +878,8 @@ export default function CreativeDetail() {
                     data-testid="creative-current-selection-product-name-input"
                   />
                 </Space>
-              )}
-              coverActions={(
+              ) : undefined}
+              coverActions={!authoringSurfaceLocked ? (
                 <Button
                   size="small"
                   disabled={!projectionModel.currentSelection.cover?.asset_id}
@@ -843,8 +888,8 @@ export default function CreativeDetail() {
                 >
                   清空封面
                 </Button>
-              )}
-              copywritingActions={(
+              ) : undefined}
+              copywritingActions={!authoringSurfaceLocked ? (
                 <Button
                   size="small"
                   disabled={!(
@@ -856,8 +901,8 @@ export default function CreativeDetail() {
                 >
                   清空文案
                 </Button>
-              )}
-              copywritingEditor={(
+              ) : undefined}
+              copywritingEditor={!authoringSurfaceLocked ? (
                 <Space direction="vertical" size={8} style={{ width: '100%' }}>
                   <Text type="secondary">区内快速编辑</Text>
                   <Input.TextArea
@@ -868,8 +913,8 @@ export default function CreativeDetail() {
                     data-testid="creative-current-selection-copywriting-input"
                   />
                 </Space>
-              )}
-              audioActions={(
+              ) : undefined}
+              audioActions={!authoringSurfaceLocked ? (
                 <Button
                   size="small"
                   disabled={!projectionModel.currentSelection.audio?.asset_id}
@@ -878,8 +923,8 @@ export default function CreativeDetail() {
                 >
                   清空音频
                 </Button>
-              )}
-              renderVideoActions={(video, index) => (
+              ) : undefined}
+              renderVideoActions={!authoringSurfaceLocked ? ((video, index) => (
                 <Space wrap>
                   <Button
                     size="small"
@@ -907,8 +952,8 @@ export default function CreativeDetail() {
                     移出入选
                   </Button>
                 </Space>
-              )}
-              renderVideoFooter={(video, index) => (
+              )) : undefined}
+              renderVideoFooter={!authoringSurfaceLocked ? ((video, index) => (
                 <Space direction="vertical" size={6} style={{ width: '100%' }}>
                   <Text type="secondary">用途 / 角色</Text>
                   <Input
@@ -953,8 +998,8 @@ export default function CreativeDetail() {
                     </Space>
                   </Flex>
                 </Space>
-              )}
-              getVideoWarnings={(_, index) => {
+              )) : undefined}
+              getVideoWarnings={!authoringSurfaceLocked ? ((_, index) => {
                 const warnings = selectedVideoTimingWarnings.get(index) ?? []
                 if (warnings.length === 0) {
                   return null
@@ -972,8 +1017,8 @@ export default function CreativeDetail() {
                     ))}
                   </Space>
                 )
-              }}
-              onVideoDrop={(fromIndex, toIndex) => handleReorderSelectedVideo(fromIndex, toIndex)}
+              }) : undefined}
+              onVideoDrop={!authoringSurfaceLocked ? ((fromIndex, toIndex) => handleReorderSelectedVideo(fromIndex, toIndex)) : undefined}
             />
 
             <Flex gap={16} wrap="wrap" align="stretch">
@@ -981,11 +1026,19 @@ export default function CreativeDetail() {
                 title="B. 商品区"
                 subtitle="主题商品与默认来源"
                 description="商品区负责承接主题商品、默认商品名称，以及来自商品侧的封面 / 视频 / 文案候选。"
-                action={(
+                notice={authoringSurfaceLocked && authoringLockMeta ? (
+                  <Alert
+                    type="info"
+                    showIcon
+                    message="当前商品区为只读来源快照"
+                    description="商品来源、默认商品名与候选素材仅用于追溯当前版本，不在该模式下直接改写当前入选。"
+                  />
+                ) : undefined}
+                action={!authoringSurfaceLocked ? (
                   <Button size="small" onClick={() => scrollToSection('creative-detail-product-editor')}>
                     编辑商品区
                   </Button>
-                )}
+                ) : undefined}
                 summary={projectionModel.productZone.primary_product ? (
                   <Card size="small" type="inner" title="当前主题商品摘要">
                     <Space direction="vertical" size={8} style={{ width: '100%' }}>
@@ -1003,19 +1056,21 @@ export default function CreativeDetail() {
                             默认商品名称：{projectionModel.productZone.product_name_candidate.product_name}
                             {projectionModel.productZone.product_name_candidate.is_detached ? '（当前已脱钩）' : ''}
                           </Text>
-                          <Space wrap>
-                            <Button
-                              size="small"
-                              onClick={() => handleUseProductNameCandidate(
-                                projectionModel.productZone.product_name_candidate?.product_id ?? 0,
-                                projectionModel.productZone.product_name_candidate?.product_name ?? '',
-                              )}
-                              disabled={!projectionModel.productZone.product_name_candidate?.product_id}
-                              data-testid={`creative-product-zone-use-product-name-${projectionModel.productZone.product_name_candidate.product_id ?? 'unknown'}`}
-                            >
-                              用作当前商品名
-                            </Button>
-                          </Space>
+                          {!authoringSurfaceLocked ? (
+                            <Space wrap>
+                              <Button
+                                size="small"
+                                onClick={() => handleUseProductNameCandidate(
+                                  projectionModel.productZone.product_name_candidate?.product_id ?? 0,
+                                  projectionModel.productZone.product_name_candidate?.product_name ?? '',
+                                )}
+                                disabled={!projectionModel.productZone.product_name_candidate?.product_id}
+                                data-testid={`creative-product-zone-use-product-name-${projectionModel.productZone.product_name_candidate.product_id ?? 'unknown'}`}
+                              >
+                                用作当前商品名
+                              </Button>
+                            </Space>
+                          ) : null}
                         </Space>
                       ) : null}
                       {(projectionModel.productZone.linked_products ?? []).length > 0 ? (
@@ -1028,26 +1083,28 @@ export default function CreativeDetail() {
                                 </Tag>
                                 {product.enabled === false ? <Tag>已停用</Tag> : null}
                               </Space>
-                              <Space wrap>
-                                <Button
-                                  size="small"
-                                  onClick={() => handleSetPrimaryProduct(product.product_id)}
-                                  disabled={product.is_primary}
-                                  data-testid={`creative-product-zone-set-primary-${product.product_id}`}
-                                >
-                                  {product.is_primary ? '当前主题商品' : '设为主题商品'}
-                                </Button>
-                                <Button
-                                  size="small"
-                                  onClick={() => handleUseProductNameCandidate(
-                                    product.product_id,
-                                    product.product_name ?? `商品 #${product.product_id}`,
-                                  )}
-                                  data-testid={`creative-product-zone-use-linked-product-name-${product.product_id}`}
-                                >
-                                  用作当前商品名
-                                </Button>
-                              </Space>
+                              {!authoringSurfaceLocked ? (
+                                <Space wrap>
+                                  <Button
+                                    size="small"
+                                    onClick={() => handleSetPrimaryProduct(product.product_id)}
+                                    disabled={product.is_primary}
+                                    data-testid={`creative-product-zone-set-primary-${product.product_id}`}
+                                  >
+                                    {product.is_primary ? '当前主题商品' : '设为主题商品'}
+                                  </Button>
+                                  <Button
+                                    size="small"
+                                    onClick={() => handleUseProductNameCandidate(
+                                      product.product_id,
+                                      product.product_name ?? `商品 #${product.product_id}`,
+                                    )}
+                                    data-testid={`creative-product-zone-use-linked-product-name-${product.product_id}`}
+                                  >
+                                    用作当前商品名
+                                  </Button>
+                                </Space>
+                              ) : null}
                             </Flex>
                           ))}
                         </Space>
@@ -1068,7 +1125,7 @@ export default function CreativeDetail() {
                     label: '封面候选',
                     items: projectionModel.productZone.cover_candidates ?? [],
                     emptyDescription: '当前商品区还没有可用封面候选。',
-                    renderItemActions: (item) => (
+                    renderItemActions: authoringSurfaceLocked ? undefined : ((item) => (
                       <Button
                         size="small"
                         type={item.is_current_value ? 'default' : 'primary'}
@@ -1078,14 +1135,14 @@ export default function CreativeDetail() {
                       >
                         {item.is_current_value ? '当前封面' : '设为当前封面'}
                       </Button>
-                    ),
+                    )),
                   },
                   {
                     key: 'product-video',
                     label: '视频候选',
                     items: projectionModel.productZone.video_candidates ?? [],
                     emptyDescription: '当前商品区还没有可用视频候选。',
-                    renderItemActions: (item) => (
+                    renderItemActions: authoringSurfaceLocked ? undefined : ((item) => (
                       <Button
                         size="small"
                         type={item.is_selected ? 'default' : 'primary'}
@@ -1094,14 +1151,14 @@ export default function CreativeDetail() {
                       >
                         {item.is_selected ? '移出入选' : '加入入选'}
                       </Button>
-                    ),
+                    )),
                   },
                   {
                     key: 'product-copywriting',
                     label: '文案候选',
                     items: projectionModel.productZone.copywriting_candidates ?? [],
                     emptyDescription: '当前商品区还没有可用文案候选。',
-                    renderItemActions: (item) => (
+                    renderItemActions: authoringSurfaceLocked ? undefined : ((item) => (
                       <Button
                         size="small"
                         type={item.is_current_value ? 'default' : 'primary'}
@@ -1111,7 +1168,7 @@ export default function CreativeDetail() {
                       >
                         {item.is_current_value ? '当前文案' : '设为当前文案'}
                       </Button>
-                    ),
+                    )),
                   },
                 ]}
                 testId="creative-detail-product-zone"
@@ -1121,11 +1178,19 @@ export default function CreativeDetail() {
                 title="C. 自由素材区"
                 subtitle="补充来源区"
                 description="自由素材区负责承接非主题商品来源的补充素材，不抢占首屏主角，但要能清楚表达哪些素材已被当前作品采用。"
-                action={(
+                notice={authoringSurfaceLocked && authoringLockMeta ? (
+                  <Alert
+                    type="info"
+                    showIcon
+                    message="当前自由素材区为只读来源快照"
+                    description="自由素材仅用于追溯当前版本采用过哪些候选；若要调整，请回到可编辑模式后处理。"
+                  />
+                ) : undefined}
+                action={!authoringSurfaceLocked ? (
                   <Button size="small" onClick={() => scrollToSection('creative-detail-candidate-editor')}>
                     管理自由素材
                   </Button>
-                )}
+                ) : undefined}
                 summary={(
                   <Alert
                     type="info"
@@ -1140,7 +1205,7 @@ export default function CreativeDetail() {
                     label: '封面候选',
                     items: projectionModel.freeMaterialZone.cover_candidates ?? [],
                     emptyDescription: '当前还没有自由封面候选。',
-                    renderItemActions: (item) => (
+                    renderItemActions: authoringSurfaceLocked ? undefined : ((item) => (
                       <Button
                         size="small"
                         type={item.is_current_value ? 'default' : 'primary'}
@@ -1150,14 +1215,14 @@ export default function CreativeDetail() {
                       >
                         {item.is_current_value ? '当前封面' : '设为当前封面'}
                       </Button>
-                    ),
+                    )),
                   },
                   {
                     key: 'free-video',
                     label: '视频候选',
                     items: projectionModel.freeMaterialZone.video_candidates ?? [],
                     emptyDescription: '当前还没有自由视频候选。',
-                    renderItemActions: (item) => (
+                    renderItemActions: authoringSurfaceLocked ? undefined : ((item) => (
                       <Button
                         size="small"
                         type={item.is_selected ? 'default' : 'primary'}
@@ -1166,14 +1231,14 @@ export default function CreativeDetail() {
                       >
                         {item.is_selected ? '移出入选' : '加入入选'}
                       </Button>
-                    ),
+                    )),
                   },
                   {
                     key: 'free-audio',
                     label: '音频候选',
                     items: projectionModel.freeMaterialZone.audio_candidates ?? [],
                     emptyDescription: '当前还没有自由音频候选。',
-                    renderItemActions: (item) => (
+                    renderItemActions: authoringSurfaceLocked ? undefined : ((item) => (
                       <Button
                         size="small"
                         type={item.is_selected ? 'default' : 'primary'}
@@ -1183,14 +1248,14 @@ export default function CreativeDetail() {
                       >
                         {item.is_selected ? '当前音频' : '设为当前音频'}
                       </Button>
-                    ),
+                    )),
                   },
                   {
                     key: 'free-copywriting',
                     label: '文案候选',
                     items: projectionModel.freeMaterialZone.copywriting_candidates ?? [],
                     emptyDescription: '当前还没有自由文案候选。',
-                    renderItemActions: (item) => (
+                    renderItemActions: authoringSurfaceLocked ? undefined : ((item) => (
                       <Button
                         size="small"
                         type={item.is_current_value ? 'default' : 'primary'}
@@ -1200,7 +1265,7 @@ export default function CreativeDetail() {
                       >
                         {item.is_current_value ? '当前文案' : '设为当前文案'}
                       </Button>
-                    ),
+                    )),
                   },
                 ]}
                 testId="creative-detail-free-material-zone"
@@ -1212,33 +1277,51 @@ export default function CreativeDetail() {
         <Card
           id="creative-detail-legacy-editor"
           data-testid="creative-detail-legacy-editor"
-          title="定义编辑区（兼容编辑）"
+          title={authoringSurfaceLocked ? '定义快照区（兼容只读）' : '定义编辑区（兼容编辑）'}
           extra={(
             <Space wrap>
               <Text type="secondary">入选媒体：{activeInputItemCount}</Text>
-              <Button
-                loading={updateCreative.isPending}
-                onClick={() => void handleSaveInput()}
-                data-testid="creative-detail-save-authoring"
-              >
-                保存创作定义
-              </Button>
-              <Button
-                type="primary"
-                loading={submitCreativeComposition.isPending}
-                disabled={creative.eligibility_status !== 'READY_TO_COMPOSE' || updateCreative.isPending}
-                onClick={() => void handleSubmitComposition()}
-                data-testid="creative-submit-composition"
-              >
-                {submitButtonLabel}
-              </Button>
+              {authoringSurfaceLocked ? (
+                <Tag color="default" data-testid="creative-detail-legacy-readonly-tag">只读快照</Tag>
+              ) : (
+                <>
+                  <Button
+                    loading={updateCreative.isPending}
+                    onClick={() => void handleSaveInput()}
+                    data-testid="creative-detail-save-authoring"
+                  >
+                    保存创作定义
+                  </Button>
+                  <Button
+                    type="primary"
+                    loading={submitCreativeComposition.isPending}
+                    disabled={creative.eligibility_status !== 'READY_TO_COMPOSE' || updateCreative.isPending}
+                    onClick={() => void handleSubmitComposition()}
+                    data-testid="creative-submit-composition"
+                  >
+                    {submitButtonLabel}
+                  </Button>
+                </>
+              )}
             </Space>
           )}
         >
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-              P0-2 之后，首屏改由“当前入选区 + 来源区”承接；这里保留兼容编辑能力，用于继续维护作品级商品、候选池与入选媒体。
+              {authoringSurfaceLocked
+                ? '当前模式下，这里降级为兼容只读快照，用于追溯作品级商品、候选池与入选媒体，不直接改写当前版本。'
+                : 'P0-2 之后，首屏改由“当前入选区 + 来源区”承接；这里保留兼容编辑能力，用于继续维护作品级商品、候选池与入选媒体。'}
             </Paragraph>
+
+            {authoringSurfaceLocked && authoringLockMeta ? (
+              <Alert
+                type="info"
+                showIcon
+                message="兼容编辑区当前为只读快照"
+                description={authoringLockMeta.description}
+                data-testid="creative-detail-legacy-readonly-notice"
+              />
+            ) : null}
 
             <ProDescriptions bordered size="small" column={screens.lg ? 4 : screens.md ? 2 : 1}>
               <ProDescriptions.Item label="主体商品">
@@ -1253,7 +1336,7 @@ export default function CreativeDetail() {
               </ProDescriptions.Item>
             </ProDescriptions>
 
-            <Form form={form} layout="vertical">
+            <Form form={form} layout="vertical" disabled={authoringSurfaceLocked}>
               <Form.Item name="product_name_mode" hidden><Input /></Form.Item>
               <Form.Item name="current_cover_asset_type" hidden><Input /></Form.Item>
               <Form.Item name="current_cover_asset_id" hidden><InputNumber /></Form.Item>
@@ -1285,14 +1368,16 @@ export default function CreativeDetail() {
                         <Text strong>关联商品（product_links）</Text>
                         <Text type="secondary">一个作品可关联多个商品；主题商品唯一，并驱动默认商品名 / 封面来源。</Text>
                       </Space>
-                      <Button
-                        type="dashed"
-                        icon={<PlusOutlined />}
-                        onClick={() => add({ enabled: true, is_primary: fields.length === 0, source_mode: 'manual_add' })}
-                        data-testid="creative-detail-add-product-link"
-                      >
-                        添加关联商品
-                      </Button>
+                      {!authoringSurfaceLocked ? (
+                        <Button
+                          type="dashed"
+                          icon={<PlusOutlined />}
+                          onClick={() => add({ enabled: true, is_primary: fields.length === 0, source_mode: 'manual_add' })}
+                          data-testid="creative-detail-add-product-link"
+                        >
+                          添加关联商品
+                        </Button>
+                      ) : null}
                     </Flex>
 
                     {fields.length === 0 ? (
@@ -1313,7 +1398,7 @@ export default function CreativeDetail() {
                           type="inner"
                           size="small"
                           title={`关联商品 ${index + 1}`}
-                          extra={(
+                          extra={!authoringSurfaceLocked ? (
                             <Space wrap>
                               <Tag color={isPrimary ? 'processing' : 'default'}>
                                 {isPrimary ? '主题商品' : '关联商品'}
@@ -1356,6 +1441,10 @@ export default function CreativeDetail() {
                                 移除
                               </Button>
                             </Space>
+                          ) : (
+                            <Tag color={isPrimary ? 'processing' : 'default'}>
+                              {isPrimary ? '主题商品' : '关联商品'}
+                            </Tag>
                           )}
                         >
                           <Form.Item name={[field.name, 'is_primary']} hidden valuePropName="checked"><Switch /></Form.Item>
@@ -1465,7 +1554,7 @@ export default function CreativeDetail() {
                           type="inner"
                           size="small"
                           title={sectionLabel}
-                          extra={(
+                          extra={!authoringSurfaceLocked ? (
                             <Button
                               type="dashed"
                               size="small"
@@ -1480,7 +1569,7 @@ export default function CreativeDetail() {
                             >
                               添加{sectionLabel}
                             </Button>
-                          )}
+                          ) : undefined}
                         >
                           {sectionFields.length === 0 ? (
                             <Empty
@@ -1512,7 +1601,7 @@ export default function CreativeDetail() {
                                         <Tag color={status === 'adopted' ? 'processing' : status === 'dismissed' ? 'default' : 'success'}>
                                           {status === 'adopted' ? '已采用' : status === 'dismissed' ? '已忽略' : '候选中'}
                                         </Tag>
-                                        {candidateType === 'cover' || candidateType === 'copywriting' ? (
+                                        {!authoringSurfaceLocked && (candidateType === 'cover' || candidateType === 'copywriting') ? (
                                           <Button
                                             size="small"
                                             type={status === 'adopted' ? 'primary' : 'default'}
@@ -1523,15 +1612,17 @@ export default function CreativeDetail() {
                                             {status === 'adopted' ? '当前已采用' : candidateMeta.adoptLabel}
                                           </Button>
                                         ) : null}
-                                        <Button
-                                          size="small"
-                                          danger
-                                          icon={<DeleteOutlined />}
-                                          onClick={() => remove(field.name)}
-                                          data-testid={`creative-detail-remove-candidate-${candidateType}-${index}`}
-                                        >
-                                          移除
-                                        </Button>
+                                        {!authoringSurfaceLocked ? (
+                                          <Button
+                                            size="small"
+                                            danger
+                                            icon={<DeleteOutlined />}
+                                            onClick={() => remove(field.name)}
+                                            data-testid={`creative-detail-remove-candidate-${candidateType}-${index}`}
+                                          >
+                                            移除
+                                          </Button>
+                                        ) : null}
                                       </Space>
                                     )}
                                   >
@@ -1628,14 +1719,16 @@ export default function CreativeDetail() {
                         <Text strong>当前入选媒体集合（selected video / audio）</Text>
                         <Text type="secondary">基于 detail.input_items 的 full-carrier 读回，仅展示并维护其中的视频 / 音频条目；封面 / 文案 / 话题不再从这里写回。</Text>
                       </Space>
-                      <Button
-                        type="dashed"
-                        icon={<PlusOutlined />}
-                        onClick={() => add({ material_type: 'video', enabled: true })}
-                        data-testid="creative-detail-add-input-item"
-                      >
-                        添加入选媒体
-                      </Button>
+                      {!authoringSurfaceLocked ? (
+                        <Button
+                          type="dashed"
+                          icon={<PlusOutlined />}
+                          onClick={() => add({ material_type: 'video', enabled: true })}
+                          data-testid="creative-detail-add-input-item"
+                        >
+                          添加入选媒体
+                        </Button>
+                      ) : null}
                     </Flex>
 
                     {fields.length === 0 ? (
@@ -1659,7 +1752,7 @@ export default function CreativeDetail() {
                           type="inner"
                           size="small"
                           title={`入选媒体 ${index + 1}`}
-                          extra={(
+                          extra={!authoringSurfaceLocked ? (
                             <Space>
                               <Button
                                 size="small"
@@ -1686,7 +1779,7 @@ export default function CreativeDetail() {
                                 删除
                               </Button>
                             </Space>
-                          )}
+                          ) : undefined}
                         >
                           <Flex gap={16} wrap="wrap" align="start">
                             <Form.Item

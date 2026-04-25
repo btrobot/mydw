@@ -214,6 +214,7 @@ export function CreativeDetailHeroCard({
 
 type CreativeCurrentSelectionSectionProps = {
   projection: CreativeDetailProjectionModel
+  notice?: ReactNode
   productNameEditor?: ReactNode
   copywritingEditor?: ReactNode
   productNameActions?: ReactNode
@@ -286,6 +287,7 @@ function SelectionFieldCard({
 
 export function CreativeCurrentSelectionSection({
   projection,
+  notice,
   productNameEditor,
   copywritingEditor,
   productNameActions,
@@ -307,6 +309,7 @@ export function CreativeCurrentSelectionSection({
       data-testid="creative-detail-current-selection"
     >
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
+        {notice}
         <Paragraph type="secondary" style={{ marginBottom: 0 }}>
           先看最终采用了什么，再看这些内容从哪里来。当前入选区是本页首屏主角。
         </Paragraph>
@@ -424,6 +427,7 @@ type CreativeSourceZoneSectionProps = {
   title: string
   subtitle: string
   description: string
+  notice?: ReactNode
   candidates: Array<{
     key: string
     label: string
@@ -486,6 +490,7 @@ export function CreativeSourceZoneSection({
   title,
   subtitle,
   description,
+  notice,
   candidates,
   summary,
   action,
@@ -503,6 +508,7 @@ export function CreativeSourceZoneSection({
           <Text strong>{subtitle}</Text>
           <Text type="secondary">{description}</Text>
         </Space>
+        {notice}
         {summary}
         {candidates.map((candidate) => (
           <CandidateBucketCard

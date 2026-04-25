@@ -1013,7 +1013,7 @@ test.describe('Creative workbench baseline', () => {
 
   test('saves creative brief and input_items without legacy list write fields', async ({ page }) => {
     let updatePayload: Record<string, unknown> | undefined
-    let detailState = JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload
+    let detailState = createEditableCreativeDetailState()
 
     await page.unroute('**/api/creatives/101')
     await page.route('**/api/creatives/101', async (route) => {
@@ -1087,6 +1087,26 @@ test.describe('Creative workbench baseline', () => {
     await expect(page.getByTestId('creative-detail-product-zone')).toContainText('Classic Hoodie')
     await expect(page.getByTestId('creative-detail-free-material-zone')).toContainText('Studio BGM 01')
     await expect(page.getByTestId('creative-detail-legacy-editor')).toBeVisible({ timeout: 10000 })
+  })
+
+  test('locks current selection, source zones, and compatibility editor in reviewing mode', async ({ page }) => {
+    await gotoHashRoute(page, `/#/creative/101`)
+
+    await expect(page.getByTestId('creative-detail-authoring-lock-notice')).toBeVisible()
+    await expect(page.getByTestId('creative-detail-current-selection')).toContainText('当前入选区为只读结果快照')
+    await expect(page.getByTestId('creative-detail-product-zone')).toContainText('当前商品区为只读来源快照')
+    await expect(page.getByTestId('creative-detail-free-material-zone')).toContainText('当前自由素材区为只读来源快照')
+    await expect(page.getByTestId('creative-current-selection-product-name-input')).toHaveCount(0)
+    await expect(page.getByTestId('creative-current-selection-copywriting-input')).toHaveCount(0)
+    await expect(page.getByTestId('creative-current-selection-clear-audio')).toHaveCount(0)
+    await expect(page.getByTestId('creative-product-zone-cover-apply-31')).toHaveCount(0)
+    await expect(page.getByTestId('creative-free-zone-video-toggle-12')).toHaveCount(0)
+    await expect(page.getByTestId('creative-detail-save-authoring')).toHaveCount(0)
+    await expect(page.getByTestId('creative-submit-composition')).toHaveCount(0)
+    await expect(page.getByTestId('creative-detail-legacy-readonly-tag')).toBeVisible()
+    await expect(page.getByTestId('creative-detail-legacy-readonly-notice')).toBeVisible()
+    await expect(page.getByTestId('creative-detail-product-snapshot')).toBeDisabled()
+    await expect(page.getByTestId('creative-detail-main-copywriting')).toBeDisabled()
   })
 
   test('switches hero summary and primary CTA back to authoring semantics when detail is editable', async ({ page }) => {
@@ -1421,6 +1441,17 @@ test.describe('Creative workbench baseline', () => {
   })
 
   test('filters full-carrier readback to video and audio operations only', async ({ page }) => {
+    const authoringState = createEditableCreativeDetailState()
+
+    await page.unroute('**/api/creatives/101')
+    await page.route('**/api/creatives/101', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(authoringState),
+      })
+    })
+
     await gotoHashRoute(page, `/#/creative/101`)
 
     await expect(page.getByTestId('creative-detail-legacy-editor')).toBeVisible({ timeout: 10000 })
@@ -1438,7 +1469,7 @@ test.describe('Creative workbench baseline', () => {
 
   test('persists candidate pool adoption separately from selected media state', async ({ page }) => {
     let updatePayload: Record<string, unknown> | undefined
-    let detailState = JSON.parse(JSON.stringify(creativeDetailPayload)) as typeof creativeDetailPayload
+    let detailState = createEditableCreativeDetailState()
 
     await page.unroute('**/api/creatives/101')
     await page.route('**/api/creatives/101', async (route) => {
