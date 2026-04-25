@@ -12,6 +12,7 @@ from tests.migrations.support import seed_pre_alembic_schema
 
 
 EXPECTED_TABLES = {
+    "admin_step_up_grants",
     "admin_sessions",
     "admin_users",
     "alembic_version",

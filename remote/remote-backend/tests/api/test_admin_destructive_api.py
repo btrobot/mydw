@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from app.api import admin as admin_api
 from app.main import create_app
-from app.schemas.admin import AdminActionResponse, AdminDeviceRebindRequest
+from app.schemas.admin import AdminActionResponse, AdminDeviceRebindRequest, AdminUserResponse
 from app.services.admin_service import AdminServiceError
 from tests.support.route_contract import (
     ErrorContractCase,
@@ -24,6 +24,7 @@ from tests.support.route_contract import (
 class DestructiveRouteCase:
     name: str
     path: str
+    http_method: str
     service_method: str
     resource_key: str
     resource_value: str
@@ -34,6 +35,7 @@ ROUTE_CASES = [
     DestructiveRouteCase(
         name="revoke_user",
         path="/admin/users/u_1/revoke",
+        http_method="post",
         service_method="revoke_user",
         resource_key="user_id",
         resource_value="u_1",
@@ -41,6 +43,7 @@ ROUTE_CASES = [
     DestructiveRouteCase(
         name="restore_user",
         path="/admin/users/u_1/restore",
+        http_method="post",
         service_method="restore_user",
         resource_key="user_id",
         resource_value="u_1",
@@ -48,6 +51,7 @@ ROUTE_CASES = [
     DestructiveRouteCase(
         name="unbind_device",
         path="/admin/devices/device_1/unbind",
+        http_method="post",
         service_method="unbind_device",
         resource_key="device_id",
         resource_value="device_1",
@@ -55,6 +59,7 @@ ROUTE_CASES = [
     DestructiveRouteCase(
         name="disable_device",
         path="/admin/devices/device_1/disable",
+        http_method="post",
         service_method="disable_device",
         resource_key="device_id",
         resource_value="device_1",
@@ -62,6 +67,7 @@ ROUTE_CASES = [
     DestructiveRouteCase(
         name="rebind_device",
         path="/admin/devices/device_1/rebind",
+        http_method="post",
         service_method="rebind_device",
         resource_key="device_id",
         resource_value="device_1",
@@ -70,6 +76,7 @@ ROUTE_CASES = [
     DestructiveRouteCase(
         name="revoke_session",
         path="/admin/sessions/sess_1/revoke",
+        http_method="post",
         service_method="revoke_session",
         resource_key="session_id",
         resource_value="sess_1",
@@ -81,32 +88,48 @@ class FakeAdminDestructiveService(RecordingRouteService):
     def __init__(self) -> None:
         super().__init__()
 
-    def _handle(self, method: str, access_token: str, resource_value: str, payload: dict[str, Any] | None = None) -> AdminActionResponse:
+    def _handle(
+        self,
+        method: str,
+        access_token: str,
+        resource_value: str,
+        payload: dict[str, Any] | None = None,
+        *,
+        step_up_token: str | None = None,
+    ) -> AdminActionResponse:
         self.handle(
             method,
             access_token=access_token,
             resource_value=resource_value,
             payload=payload,
+            step_up_token=step_up_token,
         )
         return AdminActionResponse(success=True)
 
-    def revoke_user(self, access_token: str, user_id: str) -> AdminActionResponse:
-        return self._handle("revoke_user", access_token, user_id)
+    def revoke_user(self, access_token: str, user_id: str, *, step_up_token: str | None = None) -> AdminActionResponse:
+        return self._handle("revoke_user", access_token, user_id, step_up_token=step_up_token)
 
-    def restore_user(self, access_token: str, user_id: str) -> AdminActionResponse:
-        return self._handle("restore_user", access_token, user_id)
+    def restore_user(self, access_token: str, user_id: str, *, step_up_token: str | None = None) -> AdminActionResponse:
+        return self._handle("restore_user", access_token, user_id, step_up_token=step_up_token)
 
-    def unbind_device(self, access_token: str, device_id: str) -> AdminActionResponse:
-        return self._handle("unbind_device", access_token, device_id)
+    def unbind_device(self, access_token: str, device_id: str, *, step_up_token: str | None = None) -> AdminActionResponse:
+        return self._handle("unbind_device", access_token, device_id, step_up_token=step_up_token)
 
-    def disable_device(self, access_token: str, device_id: str) -> AdminActionResponse:
-        return self._handle("disable_device", access_token, device_id)
+    def disable_device(self, access_token: str, device_id: str, *, step_up_token: str | None = None) -> AdminActionResponse:
+        return self._handle("disable_device", access_token, device_id, step_up_token=step_up_token)
 
-    def rebind_device(self, access_token: str, device_id: str, payload: AdminDeviceRebindRequest) -> AdminActionResponse:
-        return self._handle("rebind_device", access_token, device_id, payload.model_dump())
+    def rebind_device(
+        self,
+        access_token: str,
+        device_id: str,
+        payload: AdminDeviceRebindRequest,
+        *,
+        step_up_token: str | None = None,
+    ) -> AdminActionResponse:
+        return self._handle("rebind_device", access_token, device_id, payload.model_dump(), step_up_token=step_up_token)
 
-    def revoke_session(self, access_token: str, session_id: str) -> AdminActionResponse:
-        return self._handle("revoke_session", access_token, session_id)
+    def revoke_session(self, access_token: str, session_id: str, *, step_up_token: str | None = None) -> AdminActionResponse:
+        return self._handle("revoke_session", access_token, session_id, step_up_token=step_up_token)
 
 
 @pytest.fixture
@@ -122,9 +145,9 @@ def test_destructive_routes_forward_bearer_token_and_payload(case: DestructiveRo
     app.dependency_overrides[admin_api.get_admin_service] = lambda: service
 
     with TestClient(app) as client:
-        response = client.post(
+        response = getattr(client, case.http_method)(
             case.path,
-            headers=bearer_headers("admin_access_token"),
+            headers={**(bearer_headers("admin_access_token") or {}), "X-Step-Up-Token": "step-up-token"},
             json=case.payload,
         )
 
@@ -136,6 +159,7 @@ def test_destructive_routes_forward_bearer_token_and_payload(case: DestructiveRo
         access_token="admin_access_token",
         resource_value=case.resource_value,
         payload=case.payload,
+        step_up_token="step-up-token",
     )
 
 
@@ -173,9 +197,13 @@ def test_destructive_routes_surface_401_403_404_semantics(
     app.dependency_overrides[admin_api.get_admin_service] = lambda: service
 
     with TestClient(app) as client:
-        response = client.post(
+        response = getattr(client, case.http_method)(
             case.path,
-            headers=bearer_headers(None if expected_status == 401 else "admin_access_token"),
+            headers=(
+                None
+                if expected_status == 401
+                else {**(bearer_headers("admin_access_token") or {}), "X-Step-Up-Token": "step-up-token"}
+            ),
             json=case.payload,
         )
 
@@ -186,4 +214,49 @@ def test_destructive_routes_surface_401_403_404_semantics(
         access_token=expected_access_token(expected_status, "admin_access_token"),
         resource_value=case.resource_value,
         payload=case.payload,
+        step_up_token=None if expected_status == 401 else "step-up-token",
+    )
+
+
+def test_update_user_route_forwards_step_up_token(app) -> None:
+    class FakeAdminUpdateUserService(RecordingRouteService):
+        def update_user(self, access_token: str, user_id: str, payload, *, step_up_token: str | None = None) -> AdminUserResponse:
+            self.handle(
+                "update_user",
+                access_token=access_token,
+                resource_value=user_id,
+                payload=payload.model_dump(),
+                step_up_token=step_up_token,
+            )
+            return AdminUserResponse(
+                id=user_id,
+                username="alice",
+                display_name="Alice",
+                entitlements=["dashboard:view"],
+            )
+
+    service = FakeAdminUpdateUserService()
+    app.dependency_overrides[admin_api.get_admin_service] = lambda: service
+
+    with TestClient(app) as client:
+        response = client.patch(
+            "/admin/users/u_1",
+            headers={**(bearer_headers("admin_access_token") or {}), "X-Step-Up-Token": "step-up-token"},
+            json={"entitlements": ["dashboard:view"]},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["id"] == "u_1"
+    assert_single_service_call(
+        service.calls,
+        method="update_user",
+        access_token="admin_access_token",
+        resource_value="u_1",
+        payload={
+            "display_name": None,
+            "license_status": None,
+            "license_expires_at": None,
+            "entitlements": ["dashboard:view"],
+        },
+        step_up_token="step-up-token",
     )

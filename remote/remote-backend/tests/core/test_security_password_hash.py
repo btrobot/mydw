@@ -6,8 +6,10 @@ from app.core.security import (
     PASSWORD_ALGO_PBKDF2_SHA256,
     hash_account_password,
     hash_refresh_token,
+    hash_step_up_token,
     verify_account_password,
     verify_refresh_token,
+    verify_step_up_token,
 )
 
 
@@ -50,3 +52,11 @@ def test_refresh_token_hash_and_verify_remain_pbkdf2_compatible() -> None:
     assert token_hash.startswith("pbkdf2_sha256$")
     assert verify_refresh_token("refresh-token", token_hash) is True
     assert verify_refresh_token("wrong-token", token_hash) is False
+
+
+def test_step_up_token_hash_and_verify_use_stable_fingerprint() -> None:
+    token_hash = hash_step_up_token("step-up-token")
+
+    assert token_hash == hash_step_up_token("step-up-token")
+    assert verify_step_up_token("step-up-token", token_hash) is True
+    assert verify_step_up_token("wrong-token", token_hash) is False

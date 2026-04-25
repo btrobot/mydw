@@ -71,9 +71,18 @@ def _make_service(repository: FakeAdminRepository) -> AdminService:
 
     admin_user = SimpleNamespace(id=7, role="super_admin", status="active")
 
-    def _require_admin_session(self, access_token: str, *, permission: str):
+    def _require_admin_session(
+        self,
+        access_token: str,
+        *,
+        permission: str,
+        step_up_scope: str | None = None,
+        step_up_token: str | None = None,
+    ):
         assert access_token == "token"
         assert permission in {ADMIN_PERMISSION_USERS_READ, ADMIN_PERMISSION_USERS_WRITE}
+        assert step_up_scope in {None, ADMIN_PERMISSION_USERS_WRITE}
+        assert step_up_token is None
         return admin_user, SimpleNamespace(session_id="admin_sess_1")
 
     service._require_admin_session = MethodType(_require_admin_session, service)

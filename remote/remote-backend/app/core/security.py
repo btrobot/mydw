@@ -120,6 +120,14 @@ def verify_refresh_token(token: str, stored: str) -> bool:
     return _verify_pbkdf2_secret(token, stored)
 
 
+def hash_step_up_token(token: str) -> str:
+    return fingerprint_token(token)
+
+
+def verify_step_up_token(token: str, stored: str) -> bool:
+    return hmac.compare_digest(hash_step_up_token(token), stored)
+
+
 def issue_token(prefix: str) -> str:
     return f"{prefix}_{secrets.token_urlsafe(24)}"
 

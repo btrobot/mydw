@@ -33,6 +33,18 @@ class AdminCurrentSessionResponse(BaseModel):
     user: AdminIdentity
 
 
+class AdminStepUpVerifyRequest(BaseModel):
+    password: str
+    scope: str
+
+
+class AdminStepUpVerifyResponse(BaseModel):
+    step_up_token: str
+    scope: str
+    expires_at: datetime
+    method: str
+
+
 class AdminUserResponse(BaseModel):
     id: str
     username: str

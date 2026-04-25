@@ -17,6 +17,7 @@ ALEMBIC_SCRIPT_LOCATION = PROJECT_ROOT / "migrations"
 BASELINE_REVISION = "20260425_0001"
 PRE_ALEMBIC_SCHEMA_MIGRATIONS_TABLE = "schema_migrations"
 MANAGED_TABLES = {
+    "admin_step_up_grants",
     "admin_sessions",
     "admin_users",
     "audit_logs",

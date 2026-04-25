@@ -176,6 +176,25 @@ class AdminSession(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
 
     admin_user: Mapped[AdminUser] = relationship(back_populates="sessions")
+    step_up_grants: Mapped[list["AdminStepUpGrant"]] = relationship(back_populates="admin_session")
+
+
+class AdminStepUpGrant(Base):
+    __tablename__ = "admin_step_up_grants"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    admin_session_id: Mapped[int] = mapped_column(ForeignKey("admin_sessions.id"), nullable=False, index=True)
+    scope: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    token_hash: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    method: Mapped[str] = mapped_column(String(32), default="password", nullable=False)
+    issued_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
+
+    admin_session: Mapped[AdminSession] = relationship(back_populates="step_up_grants")
 
 
 class AuditLog(Base):

@@ -8,8 +8,10 @@ from app.core.observability import get_request_context
 from app.core.security import (
     fingerprint_token,
     hash_account_password,
+    hash_step_up_token,
     issue_token,
     verify_account_password,
+    verify_step_up_token,
 )
 from app.models import AdminSession, AdminUser, User
 from app.repositories.admin import AdminRepository
@@ -21,6 +23,8 @@ from app.schemas.admin import (
     AdminDeviceListResponse,
     AdminDeviceRebindRequest,
     AdminDeviceResponse,
+    AdminStepUpVerifyRequest,
+    AdminStepUpVerifyResponse,
     AuditLogListResponse,
     AuditLogResponse,
     AdminIdentity,
@@ -56,6 +60,11 @@ class AdminServiceError(Exception):
         self.error_code = error_code
         self.status_code = status_code
         self.details = details or {}
+
+
+STEP_UP_METHOD_PASSWORD = 'password'
+STEP_UP_REQUIRED_MESSAGE = 'Step-up verification required'
+SENSITIVE_USER_UPDATE_FIELDS = frozenset({'license_status', 'license_expires_at', 'entitlements'})
 
 
 class AdminService:
@@ -170,6 +179,59 @@ class AdminService:
             user=self._build_identity(admin_user),
         )
 
+    def verify_step_up_password(
+        self,
+        access_token: str,
+        payload: AdminStepUpVerifyRequest,
+        *,
+        client_ip: str,
+    ) -> AdminStepUpVerifyResponse:
+        admin_user, session = self._require_admin_session(access_token, permission=payload.scope)
+        verification = verify_account_password(
+            payload.password,
+            admin_user.password_hash,
+            password_algo=admin_user.password_algo,
+        )
+        if not verification.verified:
+            self._raise_with_audit(
+                event_type='admin_step_up_failed',
+                error_code='invalid_credentials',
+                message='Invalid username or password',
+                status_code=401,
+                actor_id=f'admin_{admin_user.id}',
+                target_user_id=f'admin_{admin_user.id}',
+                target_session_id=session.session_id,
+                details={'reason': 'invalid_credentials', 'scope': payload.scope, 'client_ip': client_ip},
+            )
+
+        if verification.needs_rehash:
+            self._maybe_upgrade_password_hash(admin_user, payload.password)
+
+        step_up_token = issue_token('admin_step_up')
+        expires_at = utc_now_naive() + timedelta(seconds=self.settings.STEP_UP_TOKEN_TTL_SECONDS)
+        self.repository.revoke_admin_step_up_grants(admin_session_id=session.id, scope=payload.scope)
+        self.repository.create_admin_step_up_grant(
+            admin_session_id=session.id,
+            scope=payload.scope,
+            token_hash=hash_step_up_token(step_up_token),
+            expires_at=expires_at,
+            method=STEP_UP_METHOD_PASSWORD,
+        )
+        self._write_audit(
+            'admin_step_up_verified',
+            actor_id=f'admin_{admin_user.id}',
+            target_user_id=f'admin_{admin_user.id}',
+            target_session_id=session.session_id,
+            details={'scope': payload.scope, 'client_ip': client_ip, 'method': STEP_UP_METHOD_PASSWORD},
+        )
+        self.repository.db.commit()
+        return AdminStepUpVerifyResponse(
+            step_up_token=step_up_token,
+            scope=payload.scope,
+            expires_at=expires_at,
+            method=STEP_UP_METHOD_PASSWORD,
+        )
+
     def list_users(
         self,
         access_token: str,
@@ -217,8 +279,20 @@ class AdminService:
         self.repository.db.commit()
         return self._build_user_response(target)
 
-    def update_user(self, access_token: str, user_id: str, payload: AdminUserUpdateRequest) -> AdminUserResponse:
-        admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_USERS_WRITE)
+    def update_user(
+        self,
+        access_token: str,
+        user_id: str,
+        payload: AdminUserUpdateRequest,
+        *,
+        step_up_token: str | None = None,
+    ) -> AdminUserResponse:
+        admin_user, _ = self._require_admin_session(
+            access_token,
+            permission=ADMIN_PERMISSION_USERS_WRITE,
+            step_up_scope=ADMIN_PERMISSION_USERS_WRITE if self._requires_user_update_step_up(payload) else None,
+            step_up_token=step_up_token,
+        )
         target = self._load_target_user(user_id)
         changed_fields = payload.model_dump(exclude_none=True)
 
@@ -245,15 +319,25 @@ class AdminService:
         self.repository.db.commit()
         return self._build_user_response(target)
 
-    def revoke_user(self, access_token: str, user_id: str) -> AdminActionResponse:
-        admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_USERS_WRITE)
+    def revoke_user(self, access_token: str, user_id: str, *, step_up_token: str | None = None) -> AdminActionResponse:
+        admin_user, _ = self._require_admin_session(
+            access_token,
+            permission=ADMIN_PERMISSION_USERS_WRITE,
+            step_up_scope=ADMIN_PERMISSION_USERS_WRITE,
+            step_up_token=step_up_token,
+        )
         target = self._load_target_user(user_id)
         self.user_control.revoke_user(target.id, actor_type='admin', actor_id=f'admin_{admin_user.id}')
         self.repository.db.commit()
         return AdminActionResponse(success=True)
 
-    def restore_user(self, access_token: str, user_id: str) -> AdminActionResponse:
-        admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_USERS_WRITE)
+    def restore_user(self, access_token: str, user_id: str, *, step_up_token: str | None = None) -> AdminActionResponse:
+        admin_user, _ = self._require_admin_session(
+            access_token,
+            permission=ADMIN_PERMISSION_USERS_WRITE,
+            step_up_scope=ADMIN_PERMISSION_USERS_WRITE,
+            step_up_token=step_up_token,
+        )
         target = self._load_target_user(user_id)
         self.user_control.restore_user(target.id, actor_type='admin', actor_id=f'admin_{admin_user.id}')
         self.repository.db.commit()
@@ -307,8 +391,13 @@ class AdminService:
         self.repository.db.commit()
         return self._build_device_response(device)
 
-    def unbind_device(self, access_token: str, device_id: str) -> AdminActionResponse:
-        admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_DEVICES_WRITE)
+    def unbind_device(self, access_token: str, device_id: str, *, step_up_token: str | None = None) -> AdminActionResponse:
+        admin_user, _ = self._require_admin_session(
+            access_token,
+            permission=ADMIN_PERMISSION_DEVICES_WRITE,
+            step_up_scope=ADMIN_PERMISSION_DEVICES_WRITE,
+            step_up_token=step_up_token,
+        )
         device = self._load_target_device(device_id)
         current_user_id = self._current_bound_user_id(device)
         if current_user_id is None:
@@ -317,15 +406,32 @@ class AdminService:
         self.repository.db.commit()
         return AdminActionResponse(success=True)
 
-    def disable_device(self, access_token: str, device_id: str) -> AdminActionResponse:
-        admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_DEVICES_WRITE)
+    def disable_device(self, access_token: str, device_id: str, *, step_up_token: str | None = None) -> AdminActionResponse:
+        admin_user, _ = self._require_admin_session(
+            access_token,
+            permission=ADMIN_PERMISSION_DEVICES_WRITE,
+            step_up_scope=ADMIN_PERMISSION_DEVICES_WRITE,
+            step_up_token=step_up_token,
+        )
         self._load_target_device(device_id)
         self.device_control.disable_device(device_id, actor_type='admin', actor_id=f'admin_{admin_user.id}')
         self.repository.db.commit()
         return AdminActionResponse(success=True)
 
-    def rebind_device(self, access_token: str, device_id: str, payload: AdminDeviceRebindRequest) -> AdminActionResponse:
-        admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_DEVICES_WRITE)
+    def rebind_device(
+        self,
+        access_token: str,
+        device_id: str,
+        payload: AdminDeviceRebindRequest,
+        *,
+        step_up_token: str | None = None,
+    ) -> AdminActionResponse:
+        admin_user, _ = self._require_admin_session(
+            access_token,
+            permission=ADMIN_PERMISSION_DEVICES_WRITE,
+            step_up_scope=ADMIN_PERMISSION_DEVICES_WRITE,
+            step_up_token=step_up_token,
+        )
         self._load_target_device(device_id)
         target_user = self._load_target_user(payload.user_id)
         self.device_control.rebind_device(
@@ -377,8 +483,13 @@ class AdminService:
         self.repository.db.commit()
         return AdminSessionListResponse(items=items, total=total, page=page, page_size=page_size)
 
-    def revoke_session(self, access_token: str, session_id: str) -> AdminActionResponse:
-        admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_SESSIONS_REVOKE)
+    def revoke_session(self, access_token: str, session_id: str, *, step_up_token: str | None = None) -> AdminActionResponse:
+        admin_user, _ = self._require_admin_session(
+            access_token,
+            permission=ADMIN_PERMISSION_SESSIONS_REVOKE,
+            step_up_scope=ADMIN_PERMISSION_SESSIONS_REVOKE,
+            step_up_token=step_up_token,
+        )
         session = self.auth_repository.get_session_by_session_id(session_id)
         if session is None:
             raise AdminServiceError('not_found', 'Requested admin resource missing', status_code=404, details={'session_id': session_id})
@@ -547,7 +658,14 @@ class AdminService:
                 return binding.user.id
         return None
 
-    def _require_admin_session(self, access_token: str, *, permission: str) -> tuple[AdminUser, AdminSession]:
+    def _require_admin_session(
+        self,
+        access_token: str,
+        *,
+        permission: str,
+        step_up_scope: str | None = None,
+        step_up_token: str | None = None,
+    ) -> tuple[AdminUser, AdminSession]:
         if not access_token:
             self._raise_with_audit(
                 event_type='admin_session_failed',
@@ -609,9 +727,78 @@ class AdminService:
             actor_id=f'admin_{admin_user.id}',
             target_user_id=f'admin_{admin_user.id}',
             target_session_id=session.session_id,
-            details={'permission': permission, 'role': policy.role},
+            details={'permission': permission, 'role': policy.role, 'step_up_scope': step_up_scope},
         )
+        if step_up_scope is not None:
+            self._require_step_up(
+                admin_user=admin_user,
+                session=session,
+                scope=step_up_scope,
+                step_up_token=step_up_token,
+            )
         return admin_user, session
+
+    def _require_step_up(
+        self,
+        *,
+        admin_user: AdminUser,
+        session: AdminSession,
+        scope: str,
+        step_up_token: str | None,
+    ) -> None:
+        normalized_token = (step_up_token or '').strip()
+        details = {'reason': 'step_up_required', 'scope': scope}
+        if not normalized_token:
+            self._raise_with_audit(
+                event_type='admin_step_up_failed',
+                error_code='step_up_required',
+                message=STEP_UP_REQUIRED_MESSAGE,
+                status_code=403,
+                actor_id=f'admin_{admin_user.id}',
+                target_user_id=f'admin_{admin_user.id}',
+                target_session_id=session.session_id,
+                details=details,
+            )
+
+        grant = self.repository.get_admin_step_up_grant(
+            admin_session_id=session.id,
+            scope=scope,
+            token_hash=hash_step_up_token(normalized_token),
+        )
+        if grant is None or grant.revoked_at is not None or not verify_step_up_token(normalized_token, grant.token_hash):
+            self._raise_with_audit(
+                event_type='admin_step_up_failed',
+                error_code='step_up_invalid',
+                message=STEP_UP_REQUIRED_MESSAGE,
+                status_code=403,
+                actor_id=f'admin_{admin_user.id}',
+                target_user_id=f'admin_{admin_user.id}',
+                target_session_id=session.session_id,
+                details={'reason': 'step_up_invalid', 'scope': scope},
+            )
+        if grant.expires_at <= utc_now_naive():
+            self._raise_with_audit(
+                event_type='admin_step_up_failed',
+                error_code='step_up_expired',
+                message=STEP_UP_REQUIRED_MESSAGE,
+                status_code=403,
+                actor_id=f'admin_{admin_user.id}',
+                target_user_id=f'admin_{admin_user.id}',
+                target_session_id=session.session_id,
+                details={'reason': 'step_up_expired', 'scope': scope},
+            )
+        self.repository.touch_admin_step_up_grant(grant)
+        self._write_audit(
+            'admin_step_up_checked',
+            actor_id=f'admin_{admin_user.id}',
+            target_user_id=f'admin_{admin_user.id}',
+            target_session_id=session.session_id,
+            details={'scope': scope, 'method': grant.method},
+        )
+
+    @staticmethod
+    def _requires_user_update_step_up(payload: AdminUserUpdateRequest) -> bool:
+        return bool(SENSITIVE_USER_UPDATE_FIELDS & set(payload.model_dump(exclude_none=True).keys()))
 
     @staticmethod
     def _build_identity(admin_user: AdminUser) -> AdminIdentity:

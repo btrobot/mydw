@@ -5,7 +5,18 @@ from datetime import datetime
 from sqlalchemy import String, cast, func, literal, or_, select
 from sqlalchemy.orm import Session, joinedload
 
-from app.models import AdminSession, AdminUser, AuditLog, Device, EndUserSession, License, User, UserDevice, UserEntitlement
+from app.models import (
+    AdminSession,
+    AdminStepUpGrant,
+    AdminUser,
+    AuditLog,
+    Device,
+    EndUserSession,
+    License,
+    User,
+    UserDevice,
+    UserEntitlement,
+)
 from app.utils.time import utc_now_naive
 
 
@@ -46,6 +57,61 @@ class AdminRepository:
 
     def touch_admin_session(self, session: AdminSession) -> None:
         session.last_seen_at = utc_now_naive()
+
+    def create_admin_step_up_grant(
+        self,
+        *,
+        admin_session_id: int,
+        scope: str,
+        token_hash: str,
+        expires_at: datetime,
+        method: str = "password",
+    ) -> AdminStepUpGrant:
+        grant = AdminStepUpGrant(
+            admin_session_id=admin_session_id,
+            scope=scope,
+            token_hash=token_hash,
+            expires_at=expires_at,
+            method=method,
+        )
+        self.db.add(grant)
+        self.db.flush()
+        return grant
+
+    def get_admin_step_up_grant(
+        self,
+        *,
+        admin_session_id: int,
+        scope: str,
+        token_hash: str,
+    ) -> AdminStepUpGrant | None:
+        return self.db.execute(
+            select(AdminStepUpGrant).where(
+                AdminStepUpGrant.admin_session_id == admin_session_id,
+                AdminStepUpGrant.scope == scope,
+                AdminStepUpGrant.token_hash == token_hash,
+            )
+        ).scalars().first()
+
+    def revoke_admin_step_up_grants(
+        self,
+        *,
+        admin_session_id: int,
+        scope: str | None = None,
+    ) -> None:
+        query = select(AdminStepUpGrant).where(
+            AdminStepUpGrant.admin_session_id == admin_session_id,
+            AdminStepUpGrant.revoked_at.is_(None),
+        )
+        if scope is not None:
+            query = query.where(AdminStepUpGrant.scope == scope)
+        grants = self.db.execute(query).scalars().all()
+        revoked_at = utc_now_naive()
+        for grant in grants:
+            grant.revoked_at = revoked_at
+
+    def touch_admin_step_up_grant(self, grant: AdminStepUpGrant) -> None:
+        grant.last_used_at = utc_now_naive()
 
     @staticmethod
     def _apply_user_filters(query, *, q: str | None = None, status: str | None = None, license_status: str | None = None):

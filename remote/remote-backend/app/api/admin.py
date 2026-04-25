@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query, Request, Security
+from fastapi import APIRouter, Depends, Header, Query, Request, Security
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
@@ -19,6 +19,8 @@ from app.schemas.admin import (
     AdminDeviceListResponse,
     AdminDeviceRebindRequest,
     AdminDeviceResponse,
+    AdminStepUpVerifyRequest,
+    AdminStepUpVerifyResponse,
     AuditLogListResponse,
     AdminLoginRequest,
     AdminLoginResponse,
@@ -37,6 +39,13 @@ admin_login_rate_limiter = create_rate_limiter(
     scope='admin_login',
     window_seconds=settings.ADMIN_LOGIN_RATE_LIMIT_WINDOW_SECONDS,
     max_attempts=settings.ADMIN_LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
+    sqlite_path=settings.LOGIN_RATE_LIMIT_SQLITE_PATH,
+)
+admin_step_up_rate_limiter = create_rate_limiter(
+    backend=settings.LOGIN_RATE_LIMIT_BACKEND,
+    scope='admin_step_up_verify',
+    window_seconds=settings.ADMIN_STEP_UP_RATE_LIMIT_WINDOW_SECONDS,
+    max_attempts=settings.ADMIN_STEP_UP_RATE_LIMIT_MAX_ATTEMPTS,
     sqlite_path=settings.LOGIN_RATE_LIMIT_SQLITE_PATH,
 )
 bearer_auth = HTTPBearer(auto_error=False, scheme_name='BearerAuth')
@@ -93,6 +102,32 @@ def admin_session(
         return _error_response(exc)
 
 
+@router.post('/step-up/password/verify', response_model=AdminStepUpVerifyResponse, responses=error_responses(401, 403, 429))
+def verify_step_up_password(
+    payload: AdminStepUpVerifyRequest,
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
+    service: AdminService = Depends(get_admin_service),
+) -> AdminStepUpVerifyResponse | JSONResponse:
+    client_ip = request.client.host if request.client else 'unknown'
+    if not admin_step_up_rate_limiter.allow(f'{client_ip}:{payload.scope}'):
+        return JSONResponse(
+            status_code=429,
+            content=ErrorResponse(
+                error_code='too_many_requests',
+                message='Too many admin step-up attempts, please retry later.',
+            ).model_dump(),
+        )
+    try:
+        return service.verify_step_up_password(
+            _extract_bearer_token(credentials),
+            payload,
+            client_ip=client_ip,
+        )
+    except AdminServiceError as exc:
+        return _error_response(exc)
+
+
 @router.get('/users', response_model=AdminUserListResponse, responses=error_responses(401, 403))
 def list_users(
     q: str | None = None,
@@ -132,11 +167,12 @@ def get_user(
 def update_user(
     user_id: str,
     payload: AdminUserUpdateRequest,
+    step_up_token: str | None = Header(default=None, alias='X-Step-Up-Token'),
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
     service: AdminService = Depends(get_admin_service),
 ) -> AdminUserResponse | JSONResponse:
     try:
-        return service.update_user(_extract_bearer_token(credentials), user_id, payload)
+        return service.update_user(_extract_bearer_token(credentials), user_id, payload, step_up_token=step_up_token)
     except AdminServiceError as exc:
         return _error_response(exc)
 
@@ -144,11 +180,12 @@ def update_user(
 @router.post('/users/{user_id}/revoke', response_model=AdminActionResponse, responses=error_responses(401, 403, 404))
 def revoke_user(
     user_id: str,
+    step_up_token: str | None = Header(default=None, alias='X-Step-Up-Token'),
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
     service: AdminService = Depends(get_admin_service),
 ) -> AdminActionResponse | JSONResponse:
     try:
-        return service.revoke_user(_extract_bearer_token(credentials), user_id)
+        return service.revoke_user(_extract_bearer_token(credentials), user_id, step_up_token=step_up_token)
     except AdminServiceError as exc:
         return _error_response(exc)
 
@@ -156,11 +193,12 @@ def revoke_user(
 @router.post('/users/{user_id}/restore', response_model=AdminActionResponse, responses=error_responses(401, 403, 404))
 def restore_user(
     user_id: str,
+    step_up_token: str | None = Header(default=None, alias='X-Step-Up-Token'),
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
     service: AdminService = Depends(get_admin_service),
 ) -> AdminActionResponse | JSONResponse:
     try:
-        return service.restore_user(_extract_bearer_token(credentials), user_id)
+        return service.restore_user(_extract_bearer_token(credentials), user_id, step_up_token=step_up_token)
     except AdminServiceError as exc:
         return _error_response(exc)
 
@@ -203,11 +241,12 @@ def get_device(
 @router.post('/devices/{device_id}/unbind', response_model=AdminActionResponse, responses=error_responses(401, 403, 404))
 def unbind_device(
     device_id: str,
+    step_up_token: str | None = Header(default=None, alias='X-Step-Up-Token'),
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
     service: AdminService = Depends(get_admin_service),
 ) -> AdminActionResponse | JSONResponse:
     try:
-        return service.unbind_device(_extract_bearer_token(credentials), device_id)
+        return service.unbind_device(_extract_bearer_token(credentials), device_id, step_up_token=step_up_token)
     except AdminServiceError as exc:
         return _error_response(exc)
 
@@ -215,11 +254,12 @@ def unbind_device(
 @router.post('/devices/{device_id}/disable', response_model=AdminActionResponse, responses=error_responses(401, 403, 404))
 def disable_device(
     device_id: str,
+    step_up_token: str | None = Header(default=None, alias='X-Step-Up-Token'),
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
     service: AdminService = Depends(get_admin_service),
 ) -> AdminActionResponse | JSONResponse:
     try:
-        return service.disable_device(_extract_bearer_token(credentials), device_id)
+        return service.disable_device(_extract_bearer_token(credentials), device_id, step_up_token=step_up_token)
     except AdminServiceError as exc:
         return _error_response(exc)
 
@@ -228,11 +268,12 @@ def disable_device(
 def rebind_device(
     device_id: str,
     payload: AdminDeviceRebindRequest,
+    step_up_token: str | None = Header(default=None, alias='X-Step-Up-Token'),
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
     service: AdminService = Depends(get_admin_service),
 ) -> AdminActionResponse | JSONResponse:
     try:
-        return service.rebind_device(_extract_bearer_token(credentials), device_id, payload)
+        return service.rebind_device(_extract_bearer_token(credentials), device_id, payload, step_up_token=step_up_token)
     except AdminServiceError as exc:
         return _error_response(exc)
 
@@ -265,11 +306,12 @@ def list_sessions(
 @router.post('/sessions/{session_id}/revoke', response_model=AdminActionResponse, responses=error_responses(401, 403, 404))
 def revoke_session(
     session_id: str,
+    step_up_token: str | None = Header(default=None, alias='X-Step-Up-Token'),
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
     service: AdminService = Depends(get_admin_service),
 ) -> AdminActionResponse | JSONResponse:
     try:
-        return service.revoke_session(_extract_bearer_token(credentials), session_id)
+        return service.revoke_session(_extract_bearer_token(credentials), session_id, step_up_token=step_up_token)
     except AdminServiceError as exc:
         return _error_response(exc)
 
