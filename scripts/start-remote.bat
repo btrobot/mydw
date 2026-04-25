@@ -44,11 +44,6 @@ if errorlevel 1 exit /b 1
 echo [INFO] Bootstrapping remote admin account...
 set "BOOTSTRAP_ADMIN_PASSWORD=admin-secret"
 pushd remote\remote-backend
-python -c "from app.migrations.runner import upgrade; upgrade()"
-if errorlevel 1 (
-  popd
-  exit /b 1
-)
 python scripts/bootstrap_admin.py --migrate --username admin --password-env BOOTSTRAP_ADMIN_PASSWORD --role super_admin --display-name "Remote Admin"
 if errorlevel 1 (
   popd
