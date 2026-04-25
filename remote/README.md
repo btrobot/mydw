@@ -44,7 +44,7 @@ Copy `remote/.env.example` to the repo-root `.env` and adjust values.
 ### 2. Start the backend
 
 ```bash
-python -c "from app.migrations.runner import upgrade; upgrade()"
+python remote/remote-backend/scripts/migrate.py ensure-head
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8100
 ```
 
@@ -62,6 +62,11 @@ python remote/remote-backend/scripts/bootstrap_admin.py --migrate --username adm
 ```
 
 See `remote/remote-shared/docs/admin-bootstrap-runbook.md` for dev/staging/prod notes.
+
+### Database schema changes
+
+Schema changes must go through Alembic revisions under `remote/remote-backend/migrations/versions/`.
+Do not add new database changes through deleted runner code paths or manual `schema_migrations` updates.
 
 ### 4. Build and open the admin console
 

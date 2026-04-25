@@ -37,7 +37,7 @@ def parse_args() -> argparse.Namespace:
     stamp_parser.add_argument("revision", nargs="?", default=BASELINE_REVISION)
 
     subparsers.add_parser("current", help="Print the current Alembic revision")
-    subparsers.add_parser("ensure-head", help="Adopt legacy runner state when needed, then upgrade to head")
+    subparsers.add_parser("ensure-head", help="Adopt pre-Alembic schema state when needed, then upgrade to head")
     return parser.parse_args()
 
 

@@ -243,7 +243,7 @@ class LocalCompatHarness(CompatHarness):
         from app.api.auth import login_rate_limiter, refresh_rate_limiter  # noqa: WPS433
         from app.core.config import reset_settings_cache  # noqa: WPS433
         from app.core.db import reset_db_state  # noqa: WPS433
-        from app.migrations.runner import upgrade  # noqa: WPS433
+        from app.migrations.alembic import ensure_database_on_head  # noqa: WPS433
         from app.main import create_app  # noqa: WPS433
 
         self._previous_db_url = os.environ.get("REMOTE_BACKEND_DATABASE_URL")
@@ -255,7 +255,7 @@ class LocalCompatHarness(CompatHarness):
         self.refresh_rate_limiter = refresh_rate_limiter
         self.admin_login_rate_limiter = admin_login_rate_limiter
         self.reset_rate_limits()
-        upgrade()
+        ensure_database_on_head()
         self.client = TestClient(create_app())
 
     def request(self, method: str, path: str, *, json_body: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> tuple[int, dict[str, Any], dict[str, str]]:

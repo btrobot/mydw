@@ -14,7 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ALEMBIC_INI_PATH = PROJECT_ROOT / "alembic.ini"
 ALEMBIC_SCRIPT_LOCATION = PROJECT_ROOT / "migrations"
 BASELINE_REVISION = "20260425_0001"
-LEGACY_SCHEMA_MIGRATIONS_TABLE = "schema_migrations"
+PRE_ALEMBIC_SCHEMA_MIGRATIONS_TABLE = "schema_migrations"
 MANAGED_TABLES = {
     "admin_sessions",
     "admin_users",
@@ -59,7 +59,7 @@ def get_current_revision(database_url: str | None = None) -> str | None:
         engine.dispose()
 
 
-def has_legacy_runner_state(database_url: str | None = None) -> bool:
+def has_untracked_schema_state(database_url: str | None = None) -> bool:
     resolved_database_url = resolve_database_url(database_url)
     engine = create_engine(
         resolved_database_url,
@@ -69,7 +69,7 @@ def has_legacy_runner_state(database_url: str | None = None) -> bool:
     try:
         inspector = inspect(engine)
         table_names = set(inspector.get_table_names())
-        return LEGACY_SCHEMA_MIGRATIONS_TABLE in table_names or bool(MANAGED_TABLES & table_names)
+        return PRE_ALEMBIC_SCHEMA_MIGRATIONS_TABLE in table_names or bool(MANAGED_TABLES & table_names)
     finally:
         engine.dispose()
 
@@ -93,6 +93,6 @@ def stamp_revision(revision: str, database_url: str | None = None) -> None:
 def ensure_database_on_head(database_url: str | None = None) -> None:
     resolved_database_url = resolve_database_url(database_url)
     current_revision = get_current_revision(resolved_database_url)
-    if current_revision is None and has_legacy_runner_state(resolved_database_url):
+    if current_revision is None and has_untracked_schema_state(resolved_database_url):
         stamp_revision(BASELINE_REVISION, resolved_database_url)
     upgrade_head(resolved_database_url)

@@ -31,7 +31,7 @@ python scripts/migrate.py current
 python scripts/migrate.py downgrade base
 ```
 
-If your local database was already created by the legacy runner, stamp it first instead of
+If your local database predates Alembic, stamp it first instead of
 rerunning the baseline DDL:
 
 ```bash
@@ -41,8 +41,26 @@ python scripts/migrate.py current
 ```
 
 `python scripts/migrate.py ensure-head` is the safest default for local setup: it upgrades
-empty databases, and it adopts legacy-runner databases by stamping the baseline before
+empty databases, and it adopts pre-Alembic databases by stamping the baseline before
 moving to `head`.
+
+## Schema change workflow
+
+Alembic is now the only supported schema evolution path.
+
+- create a new revision from `remote/remote-backend/`
+- put the schema change in `migrations/versions/`
+- apply it with `python scripts/migrate.py upgrade head`
+
+Example:
+
+```bash
+alembic revision -m "describe schema change"
+python scripts/migrate.py upgrade head
+```
+
+Do not add or update schema through removed runner code or hand-maintained
+`schema_migrations` state.
 
 ## Bootstrap the first admin
 

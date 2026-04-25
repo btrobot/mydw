@@ -33,7 +33,7 @@ Hard requirements:
 From `remote/remote-backend/`:
 
 ```bash
-python -c "from app.migrations.runner import upgrade; upgrade()"
+python scripts/migrate.py ensure-head
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8100
 ```
 

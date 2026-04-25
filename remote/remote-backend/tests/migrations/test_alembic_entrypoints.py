@@ -8,10 +8,10 @@ from sqlalchemy import create_engine, inspect
 from app.core.config import reset_settings_cache
 from app.core.db import reset_db_state, session_scope
 from app.migrations.alembic import ensure_database_on_head, get_current_revision
-from app.migrations.runner import upgrade as legacy_upgrade
 from app.models import AdminUser
 from scripts import bootstrap_admin as bootstrap_admin_script
 from scripts import migrate as migrate_script
+from tests.migrations.support import seed_pre_alembic_schema
 
 
 EXPECTED_TABLES = {
@@ -54,12 +54,12 @@ def test_ensure_database_on_head_upgrades_empty_database(tmp_path: Path, monkeyp
     reset_settings_cache()
 
 
-def test_ensure_database_on_head_adopts_legacy_runner_database(tmp_path: Path, monkeypatch) -> None:
-    database_url = f"sqlite:///{(tmp_path / 'ensure-head-legacy.sqlite3').as_posix()}"
+def test_ensure_database_on_head_adopts_pre_alembic_database(tmp_path: Path, monkeypatch) -> None:
+    database_url = f"sqlite:///{(tmp_path / 'ensure-head-pre-alembic.sqlite3').as_posix()}"
     monkeypatch.setenv("REMOTE_BACKEND_DATABASE_URL", database_url)
     reset_settings_cache()
     reset_db_state()
-    legacy_upgrade()
+    seed_pre_alembic_schema(database_url)
 
     ensure_database_on_head()
 

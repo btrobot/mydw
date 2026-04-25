@@ -8,7 +8,7 @@ from sqlalchemy import create_engine, inspect
 from app.core.config import reset_settings_cache
 from app.core.db import reset_db_state
 from app.migrations.alembic import build_alembic_config, get_current_revision
-from app.migrations.runner import upgrade as legacy_upgrade
+from tests.migrations.support import seed_pre_alembic_schema
 
 
 EXPECTED_TABLES = {
@@ -62,14 +62,14 @@ def test_alembic_downgrade_base_clears_revision_state(tmp_path: Path) -> None:
     assert get_current_revision(database_url) is None
 
 
-def test_alembic_stamp_adopts_existing_legacy_runner_schema(tmp_path: Path, monkeypatch) -> None:
-    database_url = f"sqlite:///{(tmp_path / 'legacy-runner.sqlite3').as_posix()}"
+def test_alembic_stamp_adopts_existing_pre_alembic_schema(tmp_path: Path, monkeypatch) -> None:
+    database_url = f"sqlite:///{(tmp_path / 'pre-alembic.sqlite3').as_posix()}"
     config = build_alembic_config(database_url)
 
     monkeypatch.setenv("REMOTE_BACKEND_DATABASE_URL", database_url)
     reset_settings_cache()
     reset_db_state()
-    legacy_upgrade()
+    seed_pre_alembic_schema(database_url)
 
     command.stamp(config, "20260425_0001")
 
