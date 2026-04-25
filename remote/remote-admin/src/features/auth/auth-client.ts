@@ -56,6 +56,31 @@ export type AdminUsersFilters = {
   licenseStatus: string;
 };
 
+export type AdminDeviceRecord = {
+  device_id: string;
+  user_id?: string | null;
+  device_status: string;
+  first_bound_at?: string | null;
+  last_seen_at?: string | null;
+  client_version?: string | null;
+};
+
+export type AdminDeviceListResponse = {
+  items: AdminDeviceRecord[];
+  total: number;
+};
+
+export type AdminDevicesFilters = {
+  query: string;
+  status: string;
+  userId: string;
+};
+
+export type AdminDeviceRebindRequest = {
+  user_id: string;
+  client_version?: string | null;
+};
+
 type RemoteAdminWindow = Window & {
   REMOTE_ADMIN_API_BASE?: string;
 };
@@ -149,6 +174,19 @@ export function mapAdminActionError(errorCode?: string): string {
   }
 }
 
+export function mapDeviceActionError(errorCode?: string): string {
+  switch (errorCode) {
+    case 'forbidden':
+      return 'Your current role is read-only and cannot perform this device action.';
+    case 'not_found':
+      return 'The requested device or target user could not be found.';
+    case 'token_expired':
+      return 'Your admin session expired. Please sign in again.';
+    default:
+      return 'The device action failed. Please retry.';
+  }
+}
+
 export function canEditUsersRole(session: AdminSession | null): boolean {
   return session?.user.role === 'super_admin' || session?.user.role === 'auth_admin';
 }
@@ -162,6 +200,15 @@ export function buildUsersQuery(filters: AdminUsersFilters): string {
   if (filters.query) params.set('q', filters.query);
   if (filters.status) params.set('status', filters.status);
   if (filters.licenseStatus) params.set('license_status', filters.licenseStatus);
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
+export function buildDevicesQuery(filters: AdminDevicesFilters): string {
+  const params = new URLSearchParams();
+  if (filters.query) params.set('q', filters.query);
+  if (filters.status) params.set('device_status', filters.status);
+  if (filters.userId) params.set('user_id', filters.userId);
   const query = params.toString();
   return query ? `?${query}` : '';
 }
@@ -199,5 +246,56 @@ export async function restoreAdminUser(accessToken: string, userId: string): Pro
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
+  });
+}
+
+export async function getAdminDevices(accessToken: string, filters: AdminDevicesFilters): Promise<AdminDeviceListResponse> {
+  return requestJson<AdminDeviceListResponse>(`/admin/devices${buildDevicesQuery(filters)}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export async function getAdminDeviceDetail(accessToken: string, deviceId: string): Promise<AdminDeviceRecord> {
+  return requestJson<AdminDeviceRecord>(`/admin/devices/${deviceId}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export async function unbindAdminDevice(accessToken: string, deviceId: string): Promise<AdminActionResponse> {
+  return requestJson<AdminActionResponse>(`/admin/devices/${deviceId}/unbind`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export async function disableAdminDevice(accessToken: string, deviceId: string): Promise<AdminActionResponse> {
+  return requestJson<AdminActionResponse>(`/admin/devices/${deviceId}/disable`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export async function rebindAdminDevice(
+  accessToken: string,
+  deviceId: string,
+  payload: AdminDeviceRebindRequest
+): Promise<AdminActionResponse> {
+  return requestJson<AdminActionResponse>(`/admin/devices/${deviceId}/rebind`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
   });
 }
