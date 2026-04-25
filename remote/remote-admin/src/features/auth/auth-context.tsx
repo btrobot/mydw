@@ -9,9 +9,12 @@ type AuthContextValue = {
   status: AuthStatus;
   accessToken: string | null;
   session: AdminSession | null;
+  authNotice: string | null;
   login: (username: string, password: string) => Promise<AdminSession>;
   logout: () => void;
   refreshSession: () => Promise<void>;
+  handleExpiredSession: (message?: string) => void;
+  clearAuthNotice: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -20,6 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
   const [accessToken, setAccessToken] = useState<string | null>(() => getStoredAccessToken());
   const [session, setSession] = useState<AdminSession | null>(null);
   const [status, setStatus] = useState<AuthStatus>(() => (getStoredAccessToken() ? 'restoring' : 'anonymous'));
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
 
   useEffect(() => subscribeAuthStorage(() => setAccessToken(getStoredAccessToken())), []);
 
@@ -44,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
         clearStoredAccessToken();
         setSession(null);
         setStatus('anonymous');
+        setAuthNotice('Your previous admin session expired. Please sign in again.');
       });
 
     return () => {
@@ -56,6 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
       status,
       accessToken,
       session,
+      authNotice,
       async login(username: string, password: string) {
         const response = await loginAdmin(username, password);
         setStoredAccessToken(response.access_token);
@@ -67,6 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
         setSession(nextSession);
         setStatus('authenticated');
         setAccessToken(response.access_token);
+        setAuthNotice(null);
         return nextSession;
       },
       logout() {
@@ -74,6 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
         setSession(null);
         setStatus('anonymous');
         setAccessToken(null);
+        setAuthNotice(null);
       },
       async refreshSession() {
         const token = getStoredAccessToken();
@@ -87,9 +95,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
         setSession(nextSession);
         setStatus('authenticated');
         setAccessToken(token);
+        setAuthNotice(null);
+      },
+      handleExpiredSession(message = 'Your admin session expired. Please sign in again.') {
+        clearStoredAccessToken();
+        setSession(null);
+        setStatus('anonymous');
+        setAccessToken(null);
+        setAuthNotice(message);
+      },
+      clearAuthNotice() {
+        setAuthNotice(null);
       },
     }),
-    [accessToken, session, status]
+    [accessToken, authNotice, session, status]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,19 +1,29 @@
 import { Alert, Card, Col, Row, Space, Statistic, Typography } from 'antd';
 import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { ErrorState } from '../../components/states/ErrorState.js';
 import { LoadingState } from '../../components/states/LoadingState.js';
-import { getDashboardMetrics } from '../../features/auth/auth-client.js';
+import { AdminApiError, getDashboardMetrics, isAuthExpiredError } from '../../features/auth/auth-client.js';
 import { useAuth } from '../../features/auth/auth-context.js';
 
 export function DashboardPage(): JSX.Element {
-  const { accessToken, session } = useAuth();
+  const navigate = useNavigate();
+  const { accessToken, session, handleExpiredSession } = useAuth();
 
   const metricsQuery = useQuery({
     queryKey: ['dashboardMetrics'],
     queryFn: () => getDashboardMetrics(accessToken ?? ''),
     enabled: Boolean(accessToken),
   });
+
+  useEffect(() => {
+    if (metricsQuery.error instanceof AdminApiError && isAuthExpiredError(metricsQuery.error.errorCode)) {
+      handleExpiredSession();
+      navigate('/login', { replace: true, state: { from: '/dashboard' } });
+    }
+  }, [handleExpiredSession, metricsQuery.error, navigate]);
 
   if (!accessToken) {
     return <ErrorState title="Admin session missing" description="Please sign in again before loading dashboard metrics." />;
@@ -51,7 +61,7 @@ export function DashboardPage(): JSX.Element {
         type="info"
         showIcon
         message="Migration status"
-        description="Dashboard is the first fully mounted protected page in the new React shell. Users / devices / sessions / audit stay on the migration queue."
+        description="Dashboard remains stable in Day 3 while the users list/detail route begins migrating into the new protected shell."
       />
 
       <Row gutter={[16, 16]}>

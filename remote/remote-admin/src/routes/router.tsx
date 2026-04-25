@@ -5,6 +5,7 @@ import { AppShell } from '../app/AppShell.js';
 import { useAuth } from '../features/auth/auth-context.js';
 import { DashboardPage } from '../pages/dashboard/DashboardPage.js';
 import { LoginPage } from '../pages/login/LoginPage.js';
+import { UsersPage } from '../pages/users/UsersPage.js';
 import { LoadingState } from '../components/states/LoadingState.js';
 
 function RootRedirect(): JSX.Element {
@@ -39,7 +40,7 @@ function PendingPage(): JSX.Element {
     <Result
       status="info"
       title="This page is queued for migration"
-      subTitle="Day 2 only establishes the React shell, login path, and dashboard shell."
+      subTitle="Day 3 has stabilized auth boundaries and started the users route migration. Devices / sessions / audit stay queued."
       extra={
         <Button type="primary" onClick={() => navigate('/dashboard')}>
           Back to dashboard
@@ -60,7 +61,7 @@ const router = createHashRouter([
         element: <AppShell />,
         children: [
           { path: '/dashboard', element: <DashboardPage /> },
-          { path: '/users', element: <PendingPage /> },
+          { path: '/users', element: <UsersPage /> },
           { path: '/devices', element: <PendingPage /> },
           { path: '/sessions', element: <PendingPage /> },
           { path: '/audit-logs', element: <PendingPage /> },

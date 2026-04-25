@@ -27,6 +27,31 @@ export type DashboardMetrics = {
   generated_at: string;
 };
 
+export type AdminUserRecord = {
+  id: string;
+  username: string;
+  display_name?: string | null;
+  email?: string | null;
+  tenant_id?: string | null;
+  status?: string | null;
+  license_status?: string | null;
+  license_expires_at?: string | null;
+  entitlements: string[];
+  device_count?: number | null;
+  last_seen_at?: string | null;
+};
+
+export type AdminUserListResponse = {
+  items: AdminUserRecord[];
+  total: number;
+};
+
+export type AdminUsersFilters = {
+  query: string;
+  status: string;
+  licenseStatus: string;
+};
+
 type RemoteAdminWindow = Window & {
   REMOTE_ADMIN_API_BASE?: string;
 };
@@ -105,4 +130,52 @@ export function mapLoginError(errorCode?: string): string {
     default:
       return 'Unable to sign in right now.';
   }
+}
+
+export function mapAdminActionError(errorCode?: string): string {
+  switch (errorCode) {
+    case 'forbidden':
+      return 'Your current role is read-only and cannot perform this action.';
+    case 'not_found':
+      return 'The requested user could not be found.';
+    case 'token_expired':
+      return 'Your admin session expired. Please sign in again.';
+    default:
+      return 'The action failed. Please retry.';
+  }
+}
+
+export function canEditUsersRole(session: AdminSession | null): boolean {
+  return session?.user.role === 'super_admin' || session?.user.role === 'auth_admin';
+}
+
+export function isAuthExpiredError(errorCode?: string): boolean {
+  return errorCode === 'token_expired';
+}
+
+export function buildUsersQuery(filters: AdminUsersFilters): string {
+  const params = new URLSearchParams();
+  if (filters.query) params.set('q', filters.query);
+  if (filters.status) params.set('status', filters.status);
+  if (filters.licenseStatus) params.set('license_status', filters.licenseStatus);
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
+export async function getAdminUsers(accessToken: string, filters: AdminUsersFilters): Promise<AdminUserListResponse> {
+  return requestJson<AdminUserListResponse>(`/admin/users${buildUsersQuery(filters)}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export async function getAdminUserDetail(accessToken: string, userId: string): Promise<AdminUserRecord> {
+  return requestJson<AdminUserRecord>(`/admin/users/${userId}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
 }

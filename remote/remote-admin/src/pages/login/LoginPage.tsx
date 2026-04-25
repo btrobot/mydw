@@ -13,7 +13,7 @@ type LoginFormValues = {
 export function LoginPage(): JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
-  const { status, login } = useAuth();
+  const { status, login, authNotice, clearAuthNotice } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -39,10 +39,13 @@ export function LoginPage(): JSX.Element {
               Remote Admin Next
             </Typography.Title>
             <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-              Day 2 has initialized the new React shell. Login is now wired to the existing admin backend.
+              Day 3 keeps the React shell on the existing admin backend while tightening auth boundary handling.
             </Typography.Paragraph>
           </div>
 
+          {authNotice ? (
+            <Alert type="info" showIcon message={authNotice} closable onClose={clearAuthNotice} />
+          ) : null}
           {errorMessage ? <Alert type="error" showIcon message={errorMessage} /> : null}
 
           <Form<LoginFormValues>
@@ -70,14 +73,14 @@ export function LoginPage(): JSX.Element {
               }
             }}
           >
-            <Form.Item label="Username" name="username" rules={[{ required: true, message: '请输入管理员账号' }]}>
+            <Form.Item label="Username" name="username" rules={[{ required: true, message: 'Please enter the admin username.' }]}>
               <Input autoComplete="username" placeholder="admin" />
             </Form.Item>
-            <Form.Item label="Password" name="password" rules={[{ required: true, message: '请输入密码' }]}>
-              <Input.Password autoComplete="current-password" placeholder="••••••••" />
+            <Form.Item label="Password" name="password" rules={[{ required: true, message: 'Please enter the password.' }]}>
+              <Input.Password autoComplete="current-password" placeholder="Enter your password" />
             </Form.Item>
             <Button type="primary" htmlType="submit" block loading={submitting}>
-              登录
+              Sign in
             </Button>
           </Form>
         </Space>
