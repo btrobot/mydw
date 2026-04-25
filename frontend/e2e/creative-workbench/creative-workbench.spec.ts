@@ -1548,11 +1548,7 @@ test.describe('Creative workbench baseline', () => {
     let updatePayload: Record<string, unknown> | undefined
     let submitRequestCount = 0
     let urlBeforeSubmitFulfill: string | undefined
-    let detailState: Record<string, unknown> = {
-      ...JSON.parse(JSON.stringify(creativeDetailPayload)),
-      eligibility_status: 'READY_TO_COMPOSE',
-      eligibility_reasons: [],
-    }
+    let detailState: Record<string, unknown> = createEditableCreativeDetailState()
 
     await page.unroute('**/api/creatives/101')
     await page.route('**/api/creatives/101', async (route) => {
