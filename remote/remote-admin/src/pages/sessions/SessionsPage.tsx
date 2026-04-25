@@ -9,6 +9,7 @@ import { LoadingState } from '../../components/states/LoadingState.js';
 import {
   AdminApiError,
   canEditUsersRole,
+  formatPageSummary,
   getAdminSessions,
   isAuthExpiredError,
   mapSessionActionError,
@@ -238,6 +239,11 @@ export function SessionsPage(): JSX.Element {
 
       <Flex gap={16} align="stretch" wrap="wrap">
         <Card title={`Sessions (${sessionsQuery.data?.total ?? 0})`} style={{ flex: '1 1 380px', minWidth: 320 }}>
+          {sessionsQuery.data ? (
+            <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+              {formatPageSummary(sessionsQuery.data)}
+            </Typography.Text>
+          ) : null}
           {sessionsQuery.isError ? (
             <ErrorState
               title="Sessions unavailable"

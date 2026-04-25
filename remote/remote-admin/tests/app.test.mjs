@@ -19,6 +19,7 @@ import {
 } from '../dist/app/App.js';
 import {
   buildAuditLogQuery as buildReactAuditLogQuery,
+  formatPageSummary,
   toUtcAuditFilterTimestamp,
 } from '../dist/features/auth/auth-client.js';
 
@@ -360,6 +361,13 @@ test('buildUsersQuery, buildDevicesQuery, and buildSessionsQuery encode filter s
   assert.equal(buildUsersQuery({ query: 'alice', status: 'active', licenseStatus: 'revoked' }), '?q=alice&status=active&license_status=revoked');
   assert.equal(buildDevicesQuery({ query: 'device_1', status: 'disabled', userId: 'u_1' }), '?q=device_1&device_status=disabled&user_id=u_1');
   assert.equal(buildSessionsQuery({ query: 'sess_1', authState: 'authenticated_active', userId: 'u_1', deviceId: 'device_1' }), '?q=sess_1&auth_state=authenticated_active&user_id=u_1&device_id=device_1');
+});
+
+test('formatPageSummary keeps paginated list copy consistent across admin resources', () => {
+  assert.equal(
+    formatPageSummary({ items: users, total: 12, page: 2, page_size: 10 }),
+    'Page 2 · page size 10 · total 12'
+  );
 });
 
 test('audit page renders empty and loading operational states', () => {

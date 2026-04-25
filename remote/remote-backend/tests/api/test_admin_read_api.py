@@ -103,6 +103,8 @@ ROUTE_CASES = [
                 )
             ],
             total=1,
+            page=1,
+            page_size=10,
         ),
         expected_call={
             "access_token": "admin_access_token",
@@ -149,6 +151,8 @@ ROUTE_CASES = [
                 )
             ],
             total=1,
+            page=1,
+            page_size=10,
         ),
         expected_call={
             "access_token": "admin_access_token",
@@ -191,6 +195,8 @@ ROUTE_CASES = [
                 )
             ],
             total=1,
+            page=1,
+            page_size=10,
         ),
         expected_call={
             "access_token": "admin_access_token",
@@ -206,7 +212,7 @@ ROUTE_CASES = [
         name="list_audit_logs",
         path="/admin/audit-logs?event_type=admin_login_failed&actor_id=admin_1&target_user_id=u_1&target_device_id=device_1&target_session_id=sess_1&created_from=2026-04-20T00:00:00Z&created_to=2026-04-21T00:00:00Z&limit=10&offset=5",
         service_method="list_audit_logs",
-        success_response=AuditLogListResponse(items=[AUDIT_LOG], total=1),
+        success_response=AuditLogListResponse(items=[AUDIT_LOG], total=1, page=1, page_size=10),
         expected_call={
             "access_token": "admin_access_token",
             "event_type": "admin_login_failed",

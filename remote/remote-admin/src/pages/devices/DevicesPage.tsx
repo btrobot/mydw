@@ -10,6 +10,7 @@ import {
   AdminApiError,
   canEditUsersRole,
   disableAdminDevice,
+  formatPageSummary,
   getAdminDeviceDetail,
   getAdminDevices,
   isAuthExpiredError,
@@ -281,6 +282,11 @@ export function DevicesPage(): JSX.Element {
 
       <Flex gap={16} align="stretch" wrap="wrap">
         <Card title={`Devices (${devicesQuery.data?.total ?? 0})`} style={{ flex: '1 1 360px', minWidth: 320 }}>
+          {devicesQuery.data ? (
+            <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+              {formatPageSummary(devicesQuery.data)}
+            </Typography.Text>
+          ) : null}
           {devicesQuery.isError ? (
             <ErrorState
               title="Device list unavailable"

@@ -172,13 +172,14 @@ class AdminService:
                 offset=offset,
             )
         ]
+        page, page_size = self._resolve_page_metadata(limit=limit, offset=offset, returned_count=len(items))
         self._write_audit(
             'admin_users_listed',
             actor_id=f'admin_{admin_user.id}',
             details={'count': len(items), 'total': total, 'q': q, 'status': status, 'license_status': license_status, 'limit': limit, 'offset': offset},
         )
         self.repository.db.commit()
-        return AdminUserListResponse(items=items, total=total)
+        return AdminUserListResponse(items=items, total=total, page=page, page_size=page_size)
 
     def get_user(self, access_token: str, user_id: str) -> AdminUserResponse:
         admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_USERS_READ)
@@ -261,13 +262,14 @@ class AdminService:
                 offset=offset,
             )
         ]
+        page, page_size = self._resolve_page_metadata(limit=limit, offset=offset, returned_count=len(items))
         self._write_audit(
             'admin_devices_listed',
             actor_id=f'admin_{admin_user.id}',
             details={'count': len(items), 'total': total, 'q': q, 'device_status': device_status, 'user_id': user_id, 'limit': limit, 'offset': offset},
         )
         self.repository.db.commit()
-        return AdminDeviceListResponse(items=items, total=total)
+        return AdminDeviceListResponse(items=items, total=total, page=page, page_size=page_size)
 
     def get_device(self, access_token: str, device_id: str) -> AdminDeviceResponse:
         admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_DEVICES_READ)
@@ -342,13 +344,14 @@ class AdminService:
                 offset=offset,
             )
         ]
+        page, page_size = self._resolve_page_metadata(limit=limit, offset=offset, returned_count=len(items))
         self._write_audit(
             'admin_sessions_listed',
             actor_id=f'admin_{admin_user.id}',
             details={'count': len(items), 'total': total, 'q': q, 'auth_state': auth_state, 'user_id': user_id, 'device_id': device_id, 'limit': limit, 'offset': offset},
         )
         self.repository.db.commit()
-        return AdminSessionListResponse(items=items, total=total)
+        return AdminSessionListResponse(items=items, total=total, page=page, page_size=page_size)
 
     def revoke_session(self, access_token: str, session_id: str) -> AdminActionResponse:
         admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_SESSIONS_REVOKE)
@@ -404,6 +407,7 @@ class AdminService:
             offset=offset,
         )
         items = [self._build_audit_response(row) for row in audit_rows]
+        page, page_size = self._resolve_page_metadata(limit=limit, offset=offset, returned_count=len(items))
         self._write_audit(
             'admin_audit_logs_listed',
             actor_id=f'admin_{admin_user.id}',
@@ -422,7 +426,7 @@ class AdminService:
             },
         )
         self.repository.db.commit()
-        return AuditLogListResponse(items=items, total=total)
+        return AuditLogListResponse(items=items, total=total, page=page, page_size=page_size)
 
     def get_metrics_summary(self, access_token: str) -> AdminMetricsSummaryResponse:
         admin_user, _ = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_METRICS_READ)
@@ -681,6 +685,13 @@ class AdminService:
         if value.tzinfo is None:
             return value
         return value.astimezone(timezone.utc).replace(tzinfo=None)
+
+    @staticmethod
+    def _resolve_page_metadata(*, limit: int | None, offset: int, returned_count: int) -> tuple[int, int]:
+        page_size = limit if limit is not None else returned_count
+        if page_size <= 0:
+            return 1, 0
+        return (offset // page_size) + 1, page_size
 
     def _raise_with_audit(
         self,

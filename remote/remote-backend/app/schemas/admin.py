@@ -4,6 +4,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.schemas.pagination import PageMetadata
+
 
 class AdminLoginRequest(BaseModel):
     username: str
@@ -45,9 +47,8 @@ class AdminUserResponse(BaseModel):
     last_seen_at: datetime | None = None
 
 
-class AdminUserListResponse(BaseModel):
+class AdminUserListResponse(PageMetadata):
     items: list[AdminUserResponse]
-    total: int
 
 
 class AdminUserUpdateRequest(BaseModel):
@@ -70,9 +71,8 @@ class AdminDeviceResponse(BaseModel):
     client_version: str | None = None
 
 
-class AdminDeviceListResponse(BaseModel):
+class AdminDeviceListResponse(PageMetadata):
     items: list[AdminDeviceResponse]
-    total: int
 
 
 class AdminDeviceRebindRequest(BaseModel):
@@ -90,9 +90,8 @@ class AdminSessionResponse(BaseModel):
     last_seen_at: datetime
 
 
-class AdminSessionListResponse(BaseModel):
+class AdminSessionListResponse(PageMetadata):
     items: list[AdminSessionResponse]
-    total: int
 
 
 class AuditLogResponse(BaseModel):
@@ -109,9 +108,8 @@ class AuditLogResponse(BaseModel):
     details: dict = Field(default_factory=dict)
 
 
-class AuditLogListResponse(BaseModel):
+class AuditLogListResponse(PageMetadata):
     items: list[AuditLogResponse]
-    total: int
 
 
 class AdminMetricsSummaryResponse(BaseModel):

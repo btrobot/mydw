@@ -9,6 +9,7 @@ import { LoadingState } from '../../components/states/LoadingState.js';
 import {
   AdminApiError,
   canEditUsersRole,
+  formatPageSummary,
   getAdminUserDetail,
   getAdminUsers,
   isAuthExpiredError,
@@ -269,6 +270,11 @@ export function UsersPage(): JSX.Element {
 
       <Flex gap={16} align="stretch" wrap="wrap">
         <Card title={`Users (${usersQuery.data?.total ?? 0})`} style={{ flex: '1 1 360px', minWidth: 320 }}>
+          {usersQuery.data ? (
+            <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+              {formatPageSummary(usersQuery.data)}
+            </Typography.Text>
+          ) : null}
           {usersQuery.isError ? (
             <ErrorState
               title="User list unavailable"

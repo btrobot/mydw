@@ -15,6 +15,12 @@ ERROR_DESCRIPTIONS = {
     '404': 'Not Found',
     '429': 'Too Many Requests',
 }
+LIST_SCHEMA_NAMES = [
+    'AdminUserListResponse',
+    'AdminDeviceListResponse',
+    'AdminSessionListResponse',
+    'AuditLogListResponse',
+]
 
 
 @dataclass(frozen=True)
@@ -334,3 +340,15 @@ def test_openapi_route_responses_match_documented_contract(case: OpenApiRouteCas
             assert response_spec['description'] == 'Validation Error'
         else:
             assert response_spec['description'] == ERROR_DESCRIPTIONS[status_code]
+
+
+@pytest.mark.parametrize('schema_name', LIST_SCHEMA_NAMES)
+def test_openapi_admin_list_schemas_include_page_metadata(schema_name: str, openapi_schema: dict) -> None:
+    schema = openapi_schema['components']['schemas'][schema_name]
+    properties = schema['properties']
+
+    assert {'items', 'total', 'page', 'page_size'} <= set(properties.keys())
+    assert properties['total']['type'] == 'integer'
+    assert properties['page']['type'] == 'integer'
+    assert properties['page_size']['type'] == 'integer'
+    assert {'items', 'total', 'page', 'page_size'} <= set(schema['required'])

@@ -41,10 +41,14 @@ export type AdminUserRecord = {
   last_seen_at?: string | null;
 };
 
-export type AdminUserListResponse = {
-  items: AdminUserRecord[];
+export type PaginatedResponse<T> = {
+  items: T[];
   total: number;
+  page: number;
+  page_size: number;
 };
+
+export type AdminUserListResponse = PaginatedResponse<AdminUserRecord>;
 
 export type AdminActionResponse = {
   success: boolean;
@@ -65,10 +69,7 @@ export type AdminDeviceRecord = {
   client_version?: string | null;
 };
 
-export type AdminDeviceListResponse = {
-  items: AdminDeviceRecord[];
-  total: number;
-};
+export type AdminDeviceListResponse = PaginatedResponse<AdminDeviceRecord>;
 
 export type AdminDevicesFilters = {
   query: string;
@@ -91,10 +92,7 @@ export type AdminSessionRecord = {
   last_seen_at: string;
 };
 
-export type AdminSessionListResponse = {
-  items: AdminSessionRecord[];
-  total: number;
-};
+export type AdminSessionListResponse = PaginatedResponse<AdminSessionRecord>;
 
 export type AdminSessionsFilters = {
   query: string;
@@ -117,10 +115,7 @@ export type AdminAuditRecord = {
   details: Record<string, unknown>;
 };
 
-export type AdminAuditListResponse = {
-  items: AdminAuditRecord[];
-  total: number;
-};
+export type AdminAuditListResponse = PaginatedResponse<AdminAuditRecord>;
 
 export type AdminAuditFilters = {
   eventType: string;
@@ -133,6 +128,10 @@ export type AdminAuditFilters = {
   limit: number;
   offset: number;
 };
+
+export function formatPageSummary<T>(response: PaginatedResponse<T>): string {
+  return `Page ${response.page} · page size ${response.page_size} · total ${response.total}`;
+}
 
 type RemoteAdminWindow = Window & {
   REMOTE_ADMIN_API_BASE?: string;

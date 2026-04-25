@@ -23,6 +23,7 @@ import { LoadingState } from '../../components/states/LoadingState.js';
 import {
   AdminApiError,
   buildAuditLogQuery,
+  formatPageSummary,
   getAdminAuditLogs,
   isAuthExpiredError,
   type AdminAuditFilters,
@@ -302,7 +303,9 @@ export function AuditLogsPage(): JSX.Element {
         <Card title={`Audit events (${auditQuery.data?.total ?? 0})`} style={{ flex: '1 1 420px', minWidth: 340 }}>
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             <Typography.Text type="secondary">
-              Showing {auditQuery.data?.items.length ?? 0} records from offset {appliedFilters.offset}.
+              {auditQuery.data
+                ? `${formatPageSummary(auditQuery.data)} · showing ${auditQuery.data.items.length} records from offset ${appliedFilters.offset}.`
+                : `Showing 0 records from offset ${appliedFilters.offset}.`}
             </Typography.Text>
             <code data-testid="audit-query-preview" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
               {queryPreview}
