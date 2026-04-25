@@ -38,6 +38,12 @@ const ACTIVE_USER = {
   last_seen_at: '2026-04-30T00:00:00Z',
 };
 
+const REVOKED_USER = {
+  ...ACTIVE_USER,
+  status: 'revoked',
+  license_status: 'revoked',
+};
+
 const ACTIVE_DEVICE = {
   device_id: 'device_1',
   user_id: 'u_1',
@@ -45,6 +51,12 @@ const ACTIVE_DEVICE = {
   first_bound_at: '2026-04-01T00:00:00Z',
   last_seen_at: '2026-04-30T00:00:00Z',
   client_version: '0.2.0',
+};
+
+const UNBOUND_DEVICE = {
+  ...ACTIVE_DEVICE,
+  user_id: null,
+  device_status: 'unbound',
 };
 
 const ACTIVE_SESSION = {
@@ -182,6 +194,38 @@ test('users step-up token expiry redirects back to login with auth notice', asyn
   }
 });
 
+test('users restore step-up reactivates a revoked user with the same token flow', async () => {
+  const harness = await openUsersStepUpHarness({
+    initialUser: REVOKED_USER,
+  });
+
+  try {
+    await harness.page.getByRole('button', { name: 'Restore user' }).click();
+    await harness.page.getByText('Confirm password: Restore user').waitFor();
+    await harness.page.getByText(
+      'Confirm your password before restoring this user. The admin API will issue a short-lived step-up token for the destructive request.'
+    ).waitFor();
+    await harness.page.getByPlaceholder('Enter your password').fill('admin-secret');
+    await harness.page.getByRole('button', { name: 'Confirm and continue' }).click();
+
+    await harness.page.getByText(
+      'User access restored. The list and detail panel were refreshed from the backend.'
+    ).waitFor();
+
+    assert.equal(harness.calls.verifyBodies.length, 1);
+    assert.deepEqual(harness.calls.verifyBodies[0], {
+      password: 'admin-secret',
+      scope: 'users.write',
+    });
+    assert.equal(harness.calls.restoreHeaders.length, 1);
+    assert.equal(harness.calls.restoreHeaders[0].authorization, 'Bearer admin_access_token');
+    assert.equal(harness.calls.restoreHeaders[0]['x-step-up-token'], 'admin_step_up_1');
+    await harness.page.getByText('Current state: active-or-readable').waitFor();
+  } finally {
+    await harness.close();
+  }
+});
+
 test('devices page opens a password-confirmation modal before disable', async () => {
   const harness = await openDevicesStepUpHarness();
 
@@ -270,6 +314,75 @@ test('devices step-up token expiry redirects back to login with auth notice', as
     await harness.page.waitForURL(/#\/login$/);
     await harness.page.getByText('Your admin session expired. Please sign in again.').waitFor();
     assert.equal(harness.calls.disableHeaders.length, 0);
+  } finally {
+    await harness.close();
+  }
+});
+
+test('devices unbind step-up keeps the same verify flow while clearing binding state', async () => {
+  const harness = await openDevicesStepUpHarness();
+
+  try {
+    await harness.page.getByRole('button', { name: 'Unbind device' }).click();
+    await harness.page.getByText('Confirm password: Unbind device').waitFor();
+    await harness.page.getByText(
+      'Confirm your password before unbinding this device. The admin API will issue a short-lived step-up token for the destructive request.'
+    ).waitFor();
+    await harness.page.getByPlaceholder('Enter your password').fill('admin-secret');
+    await harness.page.getByRole('button', { name: 'Confirm and continue' }).click();
+
+    await harness.page.getByText(
+      'Device unbound. The list and detail panel were refreshed from the backend.'
+    ).waitFor();
+
+    assert.equal(harness.calls.verifyBodies.length, 1);
+    assert.deepEqual(harness.calls.verifyBodies[0], {
+      password: 'admin-secret',
+      scope: 'devices.write',
+    });
+    assert.equal(harness.calls.unbindHeaders.length, 1);
+    assert.equal(harness.calls.unbindHeaders[0].authorization, 'Bearer admin_access_token');
+    assert.equal(harness.calls.unbindHeaders[0]['x-step-up-token'], 'admin_step_up_1');
+    await harness.page.getByText('Current state: unbound').waitFor();
+  } finally {
+    await harness.close();
+  }
+});
+
+test('devices rebind step-up submits payload diffs through the same tokenized path', async () => {
+  const harness = await openDevicesStepUpHarness({
+    initialDevice: UNBOUND_DEVICE,
+  });
+
+  try {
+    await harness.page.locator('input[placeholder="u_1"]').last().fill('u_2');
+    await harness.page.locator('input[placeholder="0.2.0"]').last().fill('0.3.0');
+    await harness.page.getByRole('button', { name: 'Rebind device' }).click();
+    await harness.page.getByText('Confirm password: Rebind device').waitFor();
+    await harness.page.getByText(
+      'Confirm your password before rebinding this device. The admin API will issue a short-lived step-up token for the destructive request.'
+    ).waitFor();
+    await harness.page.getByPlaceholder('Enter your password').fill('admin-secret');
+    await harness.page.getByRole('button', { name: 'Confirm and continue' }).click();
+
+    await harness.page.getByText(
+      'Device rebound. The list and detail panel were refreshed from the backend.'
+    ).waitFor();
+
+    assert.equal(harness.calls.verifyBodies.length, 1);
+    assert.deepEqual(harness.calls.verifyBodies[0], {
+      password: 'admin-secret',
+      scope: 'devices.write',
+    });
+    assert.equal(harness.calls.rebindRequests.length, 1);
+    assert.equal(harness.calls.rebindRequests[0].headers.authorization, 'Bearer admin_access_token');
+    assert.equal(harness.calls.rebindRequests[0].headers['x-step-up-token'], 'admin_step_up_1');
+    assert.deepEqual(harness.calls.rebindRequests[0].body, {
+      user_id: 'u_2',
+      client_version: '0.3.0',
+    });
+    await harness.page.getByText('u_2').first().waitFor();
+    await harness.page.getByText('Current state: bound').waitFor();
   } finally {
     await harness.close();
   }
@@ -376,9 +489,10 @@ async function openUsersStepUpHarness(options = {}) {
     verifyBodies: [],
     verifyHeaders: [],
     revokeHeaders: [],
+    restoreHeaders: [],
   };
 
-  let currentUser = { ...ACTIVE_USER };
+  let currentUser = { ...(options.initialUser ?? ACTIVE_USER) };
   const verifyResponses = [...(options.verifyResponses ?? [])];
 
   await page.addInitScript((token) => {
@@ -436,6 +550,15 @@ async function openUsersStepUpHarness(options = {}) {
       return;
     }
 
+    if (request.method() === 'POST' && url.pathname === '/admin/users/u_1/restore') {
+      calls.restoreHeaders.push(request.headers());
+      currentUser = {
+        ...ACTIVE_USER,
+      };
+      await fulfillJson(route, { success: true });
+      return;
+    }
+
     await fulfillJson(
       route,
       {
@@ -468,10 +591,12 @@ async function openDevicesStepUpHarness(options = {}) {
   const calls = {
     verifyBodies: [],
     verifyHeaders: [],
+    unbindHeaders: [],
     disableHeaders: [],
+    rebindRequests: [],
   };
 
-  let currentDevice = { ...ACTIVE_DEVICE };
+  let currentDevice = { ...(options.initialDevice ?? ACTIVE_DEVICE) };
   const verifyResponses = [...(options.verifyResponses ?? [])];
 
   await page.addInitScript(({ storageKey, token }) => {
@@ -523,6 +648,33 @@ async function openDevicesStepUpHarness(options = {}) {
       currentDevice = {
         ...currentDevice,
         device_status: 'disabled',
+      };
+      await fulfillJson(route, { success: true });
+      return;
+    }
+
+    if (request.method() === 'POST' && url.pathname === '/admin/devices/device_1/unbind') {
+      calls.unbindHeaders.push(request.headers());
+      currentDevice = {
+        ...currentDevice,
+        user_id: null,
+        device_status: 'unbound',
+      };
+      await fulfillJson(route, { success: true });
+      return;
+    }
+
+    if (request.method() === 'POST' && url.pathname === '/admin/devices/device_1/rebind') {
+      calls.rebindRequests.push({
+        headers: request.headers(),
+        body: JSON.parse(request.postData() ?? '{}'),
+      });
+      const payload = JSON.parse(request.postData() ?? '{}');
+      currentDevice = {
+        ...currentDevice,
+        user_id: payload.user_id,
+        client_version: payload.client_version,
+        device_status: 'bound',
       };
       await fulfillJson(route, { success: true });
       return;
