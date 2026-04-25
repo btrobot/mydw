@@ -81,6 +81,28 @@ export type AdminDeviceRebindRequest = {
   client_version?: string | null;
 };
 
+export type AdminSessionRecord = {
+  session_id: string;
+  user_id?: string | null;
+  device_id?: string | null;
+  auth_state: string;
+  issued_at: string;
+  expires_at: string;
+  last_seen_at: string;
+};
+
+export type AdminSessionListResponse = {
+  items: AdminSessionRecord[];
+  total: number;
+};
+
+export type AdminSessionsFilters = {
+  query: string;
+  authState: string;
+  userId: string;
+  deviceId: string;
+};
+
 type RemoteAdminWindow = Window & {
   REMOTE_ADMIN_API_BASE?: string;
 };
@@ -187,6 +209,19 @@ export function mapDeviceActionError(errorCode?: string): string {
   }
 }
 
+export function mapSessionActionError(errorCode?: string): string {
+  switch (errorCode) {
+    case 'forbidden':
+      return 'Your current role is read-only and cannot revoke sessions.';
+    case 'not_found':
+      return 'The requested session could not be found.';
+    case 'token_expired':
+      return 'Your admin session expired. Please sign in again.';
+    default:
+      return 'The session action failed. Please retry.';
+  }
+}
+
 export function canEditUsersRole(session: AdminSession | null): boolean {
   return session?.user.role === 'super_admin' || session?.user.role === 'auth_admin';
 }
@@ -209,6 +244,16 @@ export function buildDevicesQuery(filters: AdminDevicesFilters): string {
   if (filters.query) params.set('q', filters.query);
   if (filters.status) params.set('device_status', filters.status);
   if (filters.userId) params.set('user_id', filters.userId);
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
+export function buildSessionsQuery(filters: AdminSessionsFilters): string {
+  const params = new URLSearchParams();
+  if (filters.query) params.set('q', filters.query);
+  if (filters.authState) params.set('auth_state', filters.authState);
+  if (filters.userId) params.set('user_id', filters.userId);
+  if (filters.deviceId) params.set('device_id', filters.deviceId);
   const query = params.toString();
   return query ? `?${query}` : '';
 }
@@ -297,5 +342,23 @@ export async function rebindAdminDevice(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
+  });
+}
+
+export async function getAdminSessions(accessToken: string, filters: AdminSessionsFilters): Promise<AdminSessionListResponse> {
+  return requestJson<AdminSessionListResponse>(`/admin/sessions${buildSessionsQuery(filters)}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export async function revokeAdminSession(accessToken: string, sessionId: string): Promise<AdminActionResponse> {
+  return requestJson<AdminActionResponse>(`/admin/sessions/${sessionId}/revoke`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
   });
 }

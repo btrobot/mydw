@@ -6,6 +6,7 @@ import { useAuth } from '../features/auth/auth-context.js';
 import { DashboardPage } from '../pages/dashboard/DashboardPage.js';
 import { DevicesPage } from '../pages/devices/DevicesPage.js';
 import { LoginPage } from '../pages/login/LoginPage.js';
+import { SessionsPage } from '../pages/sessions/SessionsPage.js';
 import { UsersPage } from '../pages/users/UsersPage.js';
 import { LoadingState } from '../components/states/LoadingState.js';
 
@@ -41,7 +42,7 @@ function PendingPage(): JSX.Element {
     <Result
       status="info"
       title="This page is queued for migration"
-      subTitle="Day 3 has migrated users and devices into the React shell. Sessions / audit stay queued."
+      subTitle="Day 3 has migrated users, devices, and sessions into the React shell. Audit remains queued."
       extra={
         <Button type="primary" onClick={() => navigate('/dashboard')}>
           Back to dashboard
@@ -64,7 +65,7 @@ const router = createHashRouter([
           { path: '/dashboard', element: <DashboardPage /> },
           { path: '/users', element: <UsersPage /> },
           { path: '/devices', element: <DevicesPage /> },
-          { path: '/sessions', element: <PendingPage /> },
+          { path: '/sessions', element: <SessionsPage /> },
           { path: '/audit-logs', element: <PendingPage /> },
         ],
       },
