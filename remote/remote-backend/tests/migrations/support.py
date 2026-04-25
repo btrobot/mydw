@@ -14,7 +14,7 @@ PRE_ALEMBIC_SCHEMA_VERSIONS = (
 
 
 def seed_pre_alembic_schema(database_url: str) -> None:
-    command.upgrade(build_alembic_config(database_url), "head")
+    command.upgrade(build_alembic_config(database_url), "20260425_0001")
 
     engine = create_engine(database_url, future=True)
     try:

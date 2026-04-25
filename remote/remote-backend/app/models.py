@@ -38,7 +38,7 @@ class UserCredential(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
-    password_algo: Mapped[str] = mapped_column(String(32), default="pbkdf2_sha256", nullable=False)
+    password_algo: Mapped[str] = mapped_column(String(32), default="argon2id", nullable=False)
     password_updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
 
     user: Mapped[User] = relationship(back_populates="credential")
@@ -152,6 +152,7 @@ class AdminUser(Base):
     username: Mapped[str] = mapped_column(String(128), unique=True, nullable=False, index=True)
     display_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    password_algo: Mapped[str] = mapped_column(String(32), default="argon2id", nullable=False)
     role: Mapped[str] = mapped_column(String(64), default="super_admin", nullable=False)
     status: Mapped[str] = mapped_column(String(32), default="active", nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)

@@ -5,7 +5,12 @@ from datetime import datetime, timedelta, timezone
 
 from app.core.config import get_settings
 from app.core.observability import get_request_context
-from app.core.security import fingerprint_token, hash_password, issue_token, verify_password
+from app.core.security import (
+    fingerprint_token,
+    hash_account_password,
+    issue_token,
+    verify_account_password,
+)
 from app.models import AdminSession, AdminUser, User
 from app.repositories.admin import AdminRepository
 from app.repositories.auth import AuthRepository
@@ -73,11 +78,13 @@ class AdminService:
         for username, password, role in seed_users:
             if self.repository.get_admin_user_by_username(username) is not None:
                 continue
+            password_record = hash_account_password(password)
             self.repository.db.add(
                 AdminUser(
                     username=username,
                     display_name=username.replace('-', ' ').title(),
-                    password_hash=hash_password(password),
+                    password_hash=password_record.value,
+                    password_algo=password_record.algorithm,
                     role=role,
                     status='active',
                 )
@@ -86,7 +93,12 @@ class AdminService:
 
     def login(self, payload: AdminLoginRequest, *, client_ip: str) -> AdminLoginResponse:
         admin_user = self.repository.get_admin_user_by_username(payload.username)
-        if admin_user is None or not verify_password(payload.password, admin_user.password_hash):
+        verification = (
+            verify_account_password(payload.password, admin_user.password_hash, password_algo=admin_user.password_algo)
+            if admin_user is not None
+            else None
+        )
+        if admin_user is None or verification is None or not verification.verified:
             self._raise_with_audit(
                 event_type='admin_login_failed',
                 error_code='invalid_credentials',
@@ -105,6 +117,8 @@ class AdminService:
                 target_user_id=f'admin_{admin_user.id}',
                 details={'reason': 'forbidden', 'client_ip': client_ip},
             )
+        if verification.needs_rehash:
+            self._maybe_upgrade_password_hash(admin_user, payload.password)
 
         access_token = issue_token('admin_access')
         expires_at = utc_now_naive() + timedelta(seconds=self.settings.ADMIN_ACCESS_TOKEN_TTL_SECONDS)
@@ -129,6 +143,15 @@ class AdminService:
             token_type='Bearer',
             user=self._build_identity(admin_user),
         )
+
+    @staticmethod
+    def _maybe_upgrade_password_hash(admin_user: AdminUser, password: str) -> None:
+        try:
+            password_record = hash_account_password(password)
+        except Exception:
+            return
+        admin_user.password_hash = password_record.value
+        admin_user.password_algo = password_record.algorithm
 
     def get_session(self, access_token: str) -> AdminCurrentSessionResponse:
         admin_user, session = self._require_admin_session(access_token, permission=ADMIN_PERMISSION_SESSION_READ)

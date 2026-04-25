@@ -5,6 +5,7 @@ from pathlib import Path
 from alembic import command
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, inspect
 
 from app.core.config import get_settings
@@ -57,6 +58,10 @@ def get_current_revision(database_url: str | None = None) -> str | None:
             return MigrationContext.configure(connection).get_current_revision()
     finally:
         engine.dispose()
+
+
+def get_head_revision(database_url: str | None = None) -> str:
+    return ScriptDirectory.from_config(build_alembic_config(database_url)).get_current_head()
 
 
 def has_untracked_schema_state(database_url: str | None = None) -> bool:

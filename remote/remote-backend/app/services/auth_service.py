@@ -6,7 +6,13 @@ from datetime import datetime, timedelta
 
 from app.core.config import get_settings
 from app.core.observability import get_request_context
-from app.core.security import fingerprint_token, hash_password, issue_token, verify_password
+from app.core.security import (
+    fingerprint_token,
+    hash_account_password,
+    hash_refresh_token,
+    issue_token,
+    verify_account_password,
+)
 from app.models import Device, License, User, UserCredential, UserDevice, UserEntitlement
 from app.repositories.auth import AuthRepository
 from app.services.control_service import AuthorizationPolicyService
@@ -71,7 +77,14 @@ class AuthService:
         user = User(username='alice', display_name='Alice', email='alice@example.com', status='active', tenant_id='tenant_1')
         self.repository.db.add(user)
         self.repository.db.flush()
-        self.repository.db.add(UserCredential(user_id=user.id, password_hash=hash_password('secret')))
+        password_record = hash_account_password('secret')
+        self.repository.db.add(
+            UserCredential(
+                user_id=user.id,
+                password_hash=password_record.value,
+                password_algo=password_record.algorithm,
+            )
+        )
         self.repository.db.add(
             License(
                 user_id=user.id,
@@ -101,7 +114,12 @@ class AuthService:
             )
 
         credential = self.repository.get_user_credential(user.id)
-        if credential is None or not verify_password(payload.password, credential.password_hash):
+        verification = (
+            verify_account_password(payload.password, credential.password_hash, password_algo=credential.password_algo)
+            if credential is not None
+            else None
+        )
+        if credential is None or verification is None or not verification.verified:
             self._raise_with_audit(
                 event_type='auth_login_failed',
                 error_code='invalid_credentials',
@@ -131,6 +149,8 @@ class AuthService:
             failure_event='auth_login_failed',
             target_device_id=payload.device_id,
         )
+        if verification.needs_rehash:
+            self._maybe_upgrade_password_hash(credential, payload.password)
         device, binding = self._ensure_allowed_device(user, payload.device_id, payload.client_version, failure_event='auth_login_failed')
         access_token = issue_token('access')
         refresh_token = issue_token('refresh')
@@ -144,7 +164,7 @@ class AuthService:
         )
         self.repository.create_refresh_token(
             session_pk=session.id,
-            token_hash=hash_password(refresh_token),
+            token_hash=hash_refresh_token(refresh_token),
             expires_at=utc_now_naive() + timedelta(seconds=self.settings.REFRESH_TOKEN_TTL_SECONDS),
         )
         self.repository.touch_binding(binding)
@@ -253,7 +273,7 @@ class AuthService:
         expires_at = utc_now_naive() + timedelta(seconds=self.settings.ACCESS_TOKEN_TTL_SECONDS)
         self.repository.rotate_refresh_token(
             source=refresh_token,
-            new_token_hash=hash_password(next_refresh_token),
+            new_token_hash=hash_refresh_token(next_refresh_token),
             expires_at=utc_now_naive() + timedelta(seconds=self.settings.REFRESH_TOKEN_TTL_SECONDS),
         )
         self.repository.update_session_access(
@@ -652,6 +672,16 @@ class AuthService:
         self.repository.touch_session(session)
         self.repository.touch_binding(binding)
         self.repository.touch_device(device)
+
+    @staticmethod
+    def _maybe_upgrade_password_hash(credential: UserCredential, password: str) -> None:
+        try:
+            password_record = hash_account_password(password)
+        except Exception:
+            return
+        credential.password_hash = password_record.value
+        credential.password_algo = password_record.algorithm
+        credential.password_updated_at = utc_now_naive()
 
     def _ensure_allowed_device(self, user: User, device_id: str, client_version: str, *, failure_event: str) -> tuple[Device, UserDevice]:
         binding = self.repository.get_active_binding_for_user(user.id)

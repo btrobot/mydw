@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
-from app.core.security import verify_password
+from app.core.security import verify_refresh_token
 from app.utils.time import utc_now_naive
 from app.models import AuditLog, Device, EndUserSession, License, RefreshToken, User, UserCredential, UserDevice, UserEntitlement
 
@@ -153,7 +153,7 @@ class AuthRepository:
             .order_by(RefreshToken.id.desc())
         ).scalars().all()
         for candidate in candidates:
-            if verify_password(refresh_token, candidate.token_hash):
+            if verify_refresh_token(refresh_token, candidate.token_hash):
                 return candidate
         return None
 
