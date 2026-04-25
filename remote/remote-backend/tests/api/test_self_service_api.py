@@ -21,6 +21,15 @@ from app.schemas.auth import (
     SelfUserIdentity,
 )
 from app.services.auth_service import AuthServiceError
+from tests.support.route_contract import (
+    ErrorContractCase,
+    RecordingRouteService,
+    assert_error_response,
+    assert_json_model_response,
+    assert_single_service_call,
+    bearer_headers,
+    expected_access_token,
+)
 
 
 @dataclass(frozen=True)
@@ -120,41 +129,31 @@ SELF_READ_ROUTE_CASES = [
 ]
 
 
-class FakeSelfService:
+class FakeSelfService(RecordingRouteService):
     def __init__(self) -> None:
-        self.calls: list[dict[str, Any]] = []
-        self.responses: dict[str, Any] = {
-            case.service_method: case.success_response for case in SELF_READ_ROUTE_CASES
-        }
-        self.responses["revoke_self_session"] = SelfSessionRevokeResponse(
+        responses = {case.service_method: case.success_response for case in SELF_READ_ROUTE_CASES}
+        responses["revoke_self_session"] = SelfSessionRevokeResponse(
             success=True,
             session_id="sess_2",
             auth_state="revoked",
             already_revoked=False,
         )
-        self.errors: dict[str, AuthServiceError] = {}
-
-    def _handle(self, method: str, **kwargs: Any) -> Any:
-        self.calls.append({"method": method, **kwargs})
-        error = self.errors.get(method)
-        if error is not None:
-            raise error
-        return self.responses[method]
+        super().__init__(responses)
 
     def self_me(self, access_token: str) -> SelfMeResponse:
-        return self._handle("self_me", access_token=access_token)
+        return self.handle("self_me", access_token=access_token)
 
     def list_self_devices(self, access_token: str, *, limit: int = 20, offset: int = 0) -> SelfDeviceListResponse:
-        return self._handle("list_self_devices", access_token=access_token, limit=limit, offset=offset)
+        return self.handle("list_self_devices", access_token=access_token, limit=limit, offset=offset)
 
     def list_self_sessions(self, access_token: str, *, limit: int = 20, offset: int = 0) -> SelfSessionListResponse:
-        return self._handle("list_self_sessions", access_token=access_token, limit=limit, offset=offset)
+        return self.handle("list_self_sessions", access_token=access_token, limit=limit, offset=offset)
 
     def list_self_activity(self, access_token: str, *, limit: int = 20, offset: int = 0) -> SelfActivityListResponse:
-        return self._handle("list_self_activity", access_token=access_token, limit=limit, offset=offset)
+        return self.handle("list_self_activity", access_token=access_token, limit=limit, offset=offset)
 
     def revoke_self_session(self, access_token: str, session_id: str) -> SelfSessionRevokeResponse:
-        return self._handle("revoke_self_session", access_token=access_token, session_id=session_id)
+        return self.handle("revoke_self_session", access_token=access_token, session_id=session_id)
 
 
 @pytest.fixture
@@ -172,12 +171,11 @@ def test_self_service_read_routes_forward_bearer_token_and_query_params(case: Se
     with TestClient(app) as client:
         response = client.get(
             case.path,
-            headers={"Authorization": "Bearer access_token"},
+            headers=bearer_headers("access_token"),
         )
 
-    assert response.status_code == 200
-    assert response.json() == case.success_response.model_dump(mode="json")
-    assert service.calls == [{"method": case.service_method, **case.expected_call}]
+    assert_json_model_response(response, case.success_response)
+    assert_single_service_call(service.calls, method=case.service_method, **case.expected_call)
 
 
 @pytest.mark.parametrize("case", SELF_READ_ROUTE_CASES, ids=[case.name for case in SELF_READ_ROUTE_CASES])
@@ -197,29 +195,30 @@ def test_self_service_read_routes_surface_401_403_semantics(
     expected_details: dict[str, Any],
     app,
 ) -> None:
+    error_case = ErrorContractCase(
+        status=expected_status,
+        error_code=expected_error_code,
+        message=expected_message,
+        details=expected_details,
+    )
     service = FakeSelfService()
     service.errors[case.service_method] = AuthServiceError(
-        expected_error_code,
-        expected_message,
-        status_code=expected_status,
-        details=expected_details,
+        error_case.error_code,
+        error_case.message,
+        status_code=error_case.status,
+        details=error_case.details,
     )
     app.dependency_overrides[self_api.get_auth_service] = lambda: service
 
-    headers = None if expected_status == 401 else {"Authorization": "Bearer access_token"}
-
     with TestClient(app) as client:
-        response = client.get(case.path, headers=headers)
+        response = client.get(
+            case.path,
+            headers=bearer_headers(None if expected_status == 401 else "access_token"),
+        )
 
-    assert response.status_code == expected_status
-    assert response.json() == {
-        "error_code": expected_error_code,
-        "message": expected_message,
-        "details": expected_details,
-    }
-    expected_call = dict(case.expected_call)
-    expected_call["access_token"] = "" if expected_status == 401 else "access_token"
-    assert service.calls == [{"method": case.service_method, **expected_call}]
+    assert_error_response(response, error_case)
+    expected_call = dict(case.expected_call, access_token=expected_access_token(expected_status, "access_token"))
+    assert_single_service_call(service.calls, method=case.service_method, **expected_call)
 
 
 def test_self_session_revoke_forwards_bearer_token_and_session_id(app) -> None:
@@ -229,7 +228,7 @@ def test_self_session_revoke_forwards_bearer_token_and_session_id(app) -> None:
     with TestClient(app) as client:
         response = client.post(
             "/self/sessions/sess_2/revoke",
-            headers={"Authorization": "Bearer access_token"},
+            headers=bearer_headers("access_token"),
         )
 
     assert response.status_code == 200
@@ -239,13 +238,12 @@ def test_self_session_revoke_forwards_bearer_token_and_session_id(app) -> None:
         "auth_state": "revoked",
         "already_revoked": False,
     }
-    assert service.calls == [
-        {
-            "method": "revoke_self_session",
-            "access_token": "access_token",
-            "session_id": "sess_2",
-        }
-    ]
+    assert_single_service_call(
+        service.calls,
+        method="revoke_self_session",
+        access_token="access_token",
+        session_id="sess_2",
+    )
 
 
 @pytest.mark.parametrize(
@@ -264,30 +262,31 @@ def test_self_session_revoke_surfaces_401_403_404_semantics(
     expected_details: dict[str, Any],
     app,
 ) -> None:
+    error_case = ErrorContractCase(
+        status=expected_status,
+        error_code=expected_error_code,
+        message=expected_message,
+        details=expected_details,
+    )
     service = FakeSelfService()
     service.errors["revoke_self_session"] = AuthServiceError(
-        expected_error_code,
-        expected_message,
-        status_code=expected_status,
-        details=expected_details,
+        error_case.error_code,
+        error_case.message,
+        status_code=error_case.status,
+        details=error_case.details,
     )
     app.dependency_overrides[self_api.get_auth_service] = lambda: service
 
-    headers = None if expected_status == 401 else {"Authorization": "Bearer access_token"}
-
     with TestClient(app) as client:
-        response = client.post("/self/sessions/sess_2/revoke", headers=headers)
+        response = client.post(
+            "/self/sessions/sess_2/revoke",
+            headers=bearer_headers(None if expected_status == 401 else "access_token"),
+        )
 
-    assert response.status_code == expected_status
-    assert response.json() == {
-        "error_code": expected_error_code,
-        "message": expected_message,
-        "details": expected_details,
-    }
-    assert service.calls == [
-        {
-            "method": "revoke_self_session",
-            "access_token": "" if expected_status == 401 else "access_token",
-            "session_id": "sess_2",
-        }
-    ]
+    assert_error_response(response, error_case)
+    assert_single_service_call(
+        service.calls,
+        method="revoke_self_session",
+        access_token=expected_access_token(expected_status, "access_token"),
+        session_id="sess_2",
+    )

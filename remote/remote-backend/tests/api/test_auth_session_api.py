@@ -9,40 +9,40 @@ from app.api import auth as auth_api
 from app.main import create_app
 from app.schemas.auth import LogoutRequest, LogoutResponse, MeResponse, UserIdentity
 from app.services.auth_service import AuthServiceError
+from tests.support.route_contract import (
+    ErrorContractCase,
+    RecordingRouteService,
+    assert_error_response,
+    assert_json_model_response,
+    assert_single_service_call,
+    bearer_headers,
+    expected_access_token,
+)
 
 
-class FakeAuthSessionService:
+class FakeAuthSessionService(RecordingRouteService):
     def __init__(
         self,
         *,
         logout_response: LogoutResponse | None = None,
         me_response: MeResponse | None = None,
     ) -> None:
-        self.logout_response = logout_response
-        self.me_response = me_response
-        self.logout_error: AuthServiceError | None = None
-        self.me_error: AuthServiceError | None = None
-        self.logout_calls: list[dict[str, str]] = []
-        self.me_calls: list[dict[str, str]] = []
+        responses = {}
+        if logout_response is not None:
+            responses["logout"] = logout_response
+        if me_response is not None:
+            responses["me"] = me_response
+        super().__init__(responses)
 
     def logout(self, payload: LogoutRequest) -> LogoutResponse:
-        self.logout_calls.append(
-            {
-                "refresh_token": payload.refresh_token,
-                "device_id": payload.device_id,
-            }
+        return self.handle(
+            "logout",
+            refresh_token=payload.refresh_token,
+            device_id=payload.device_id,
         )
-        if self.logout_error is not None:
-            raise self.logout_error
-        assert self.logout_response is not None
-        return self.logout_response
 
     def me(self, access_token: str) -> MeResponse:
-        self.me_calls.append({"access_token": access_token})
-        if self.me_error is not None:
-            raise self.me_error
-        assert self.me_response is not None
-        return self.me_response
+        return self.handle("me", access_token=access_token)
 
 
 @pytest.fixture
@@ -84,12 +84,12 @@ def test_logout_returns_success_payload_and_forwards_request_payload(app) -> Non
 
     assert response.status_code == 200
     assert response.json() == {"success": True}
-    assert service.logout_calls == [
-        {
-            "refresh_token": "refresh_token",
-            "device_id": "device_1",
-        }
-    ]
+    assert_single_service_call(
+        service.calls,
+        method="logout",
+        refresh_token="refresh_token",
+        device_id="device_1",
+    )
 
 
 @pytest.mark.parametrize(
@@ -133,7 +133,7 @@ def test_logout_surfaces_service_error_semantics(
     expected_body: dict[str, object],
 ) -> None:
     service = FakeAuthSessionService(logout_response=LogoutResponse(success=True))
-    service.logout_error = error
+    service.errors["logout"] = error
     app.dependency_overrides[auth_api.get_auth_service] = lambda: service
 
     with TestClient(app) as client:
@@ -145,14 +145,21 @@ def test_logout_surfaces_service_error_semantics(
             },
         )
 
-    assert response.status_code == expected_status
-    assert response.json() == expected_body
-    assert service.logout_calls == [
-        {
-            "refresh_token": "refresh_token",
-            "device_id": "device_1",
-        }
-    ]
+    assert_error_response(
+        response,
+        ErrorContractCase(
+            status=expected_status,
+            error_code=expected_body["error_code"],
+            message=expected_body["message"],
+            details=expected_body["details"],
+        ),
+    )
+    assert_single_service_call(
+        service.calls,
+        method="logout",
+        refresh_token="refresh_token",
+        device_id="device_1",
+    )
 
 
 def test_me_returns_success_payload_and_extracts_bearer_token(app) -> None:
@@ -162,25 +169,15 @@ def test_me_returns_success_payload_and_extracts_bearer_token(app) -> None:
     with TestClient(app) as client:
         response = client.get(
             "/me",
-            headers={"Authorization": "Bearer access_token"},
+            headers=bearer_headers("access_token"),
         )
 
-    assert response.status_code == 200
-    assert response.json() == {
-        "user": {
-            "id": "u_1",
-            "username": "alice",
-            "display_name": "Alice",
-            "tenant_id": "tenant_1",
-        },
-        "license_status": "active",
-        "entitlements": ["dashboard:view"],
-        "device_id": "device_1",
-        "device_status": "bound",
-        "offline_grace_until": "2026-05-02T00:00:00",
-        "minimum_supported_version": "0.2.0",
-    }
-    assert service.me_calls == [{"access_token": "access_token"}]
+    assert_json_model_response(response, _make_me_response())
+    assert_single_service_call(
+        service.calls,
+        method="me",
+        access_token="access_token",
+    )
 
 
 @pytest.mark.parametrize(
@@ -224,16 +221,26 @@ def test_me_surfaces_service_error_semantics(
     expected_body: dict[str, object],
 ) -> None:
     service = FakeAuthSessionService(me_response=_make_me_response())
-    service.me_error = error
+    service.errors["me"] = error
     app.dependency_overrides[auth_api.get_auth_service] = lambda: service
 
-    headers = None if expected_status == 401 else {"Authorization": "Bearer access_token"}
-
     with TestClient(app) as client:
-        response = client.get("/me", headers=headers)
+        response = client.get(
+            "/me",
+            headers=bearer_headers(None if expected_status == 401 else "access_token"),
+        )
 
-    assert response.status_code == expected_status
-    assert response.json() == expected_body
-    assert service.me_calls == [
-        {"access_token": "" if expected_status == 401 else "access_token"}
-    ]
+    assert_error_response(
+        response,
+        ErrorContractCase(
+            status=expected_status,
+            error_code=expected_body["error_code"],
+            message=expected_body["message"],
+            details=expected_body["details"],
+        ),
+    )
+    assert_single_service_call(
+        service.calls,
+        method="me",
+        access_token=expected_access_token(expected_status, "access_token"),
+    )

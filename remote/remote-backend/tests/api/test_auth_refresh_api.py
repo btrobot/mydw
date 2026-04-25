@@ -10,27 +10,29 @@ from app.core.rate_limit import InMemoryRateLimiter
 from app.main import create_app
 from app.schemas.auth import AuthSuccessResponse, RefreshRequest, UserIdentity
 from app.services.auth_service import AuthServiceError
+from tests.support.route_contract import (
+    ErrorContractCase,
+    RecordingRouteService,
+    assert_error_response,
+    assert_json_model_response,
+    assert_single_service_call,
+)
 
 
-class FakeAuthRefreshService:
+class FakeAuthRefreshService(RecordingRouteService):
     def __init__(self, *, response: AuthSuccessResponse | None = None, error: AuthServiceError | None = None) -> None:
-        self.response = response
-        self.error = error
-        self.calls: list[dict[str, str]] = []
+        super().__init__({"refresh": response} if response is not None else {})
+        if error is not None:
+            self.errors["refresh"] = error
 
     def refresh(self, payload: RefreshRequest, *, client_ip: str) -> AuthSuccessResponse:
-        self.calls.append(
-            {
-                "refresh_token": payload.refresh_token,
-                "device_id": payload.device_id,
-                "client_version": payload.client_version,
-                "client_ip": client_ip,
-            }
+        return self.handle(
+            "refresh",
+            refresh_token=payload.refresh_token,
+            device_id=payload.device_id,
+            client_version=payload.client_version,
+            client_ip=client_ip,
         )
-        if self.error is not None:
-            raise self.error
-        assert self.response is not None
-        return self.response
 
 
 @pytest.fixture
@@ -80,33 +82,15 @@ def test_refresh_returns_success_payload_and_forwards_client_context(app) -> Non
             },
         )
 
-    assert response.status_code == 200
-    assert response.json() == {
-        "access_token": "access_token_next",
-        "refresh_token": "refresh_token_next",
-        "expires_at": "2026-05-01T00:00:00",
-        "token_type": "Bearer",
-        "user": {
-            "id": "u_1",
-            "username": "alice",
-            "display_name": "Alice",
-            "tenant_id": "tenant_1",
-        },
-        "license_status": "active",
-        "entitlements": ["dashboard:view"],
-        "device_id": "device_1",
-        "device_status": "bound",
-        "offline_grace_until": None,
-        "minimum_supported_version": "0.2.0",
-    }
-    assert service.calls == [
-        {
-            "refresh_token": "refresh_token",
-            "device_id": "device_1",
-            "client_version": "0.2.0",
-            "client_ip": "testclient",
-        }
-    ]
+    assert_json_model_response(response, _make_success_response())
+    assert_single_service_call(
+        service.calls,
+        method="refresh",
+        refresh_token="refresh_token",
+        device_id="device_1",
+        client_version="0.2.0",
+        client_ip="testclient",
+    )
 
 
 @pytest.mark.parametrize(
@@ -149,6 +133,12 @@ def test_refresh_surfaces_service_error_semantics(
     expected_status: int,
     expected_body: dict[str, object],
 ) -> None:
+    error_case = ErrorContractCase(
+        status=expected_status,
+        error_code=expected_body["error_code"],
+        message=expected_body["message"],
+        details=expected_body["details"],
+    )
     service = FakeAuthRefreshService(error=error)
     app.dependency_overrides[auth_api.get_auth_service] = lambda: service
 
@@ -162,9 +152,15 @@ def test_refresh_surfaces_service_error_semantics(
             },
         )
 
-    assert response.status_code == expected_status
-    assert response.json() == expected_body
-    assert len(service.calls) == 1
+    assert_error_response(response, error_case)
+    assert_single_service_call(
+        service.calls,
+        method="refresh",
+        refresh_token="refresh_token",
+        device_id="device_1",
+        client_version="0.2.0",
+        client_ip="testclient",
+    )
 
 
 def test_refresh_returns_429_before_calling_service_when_rate_limit_bucket_is_full(app, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -201,4 +197,11 @@ def test_refresh_returns_429_before_calling_service_when_rate_limit_bucket_is_fu
         "message": "Too many refresh attempts, please retry later.",
         "details": {},
     }
-    assert len(service.calls) == 1
+    assert_single_service_call(
+        service.calls,
+        method="refresh",
+        refresh_token="refresh_token",
+        device_id="device_1",
+        client_version="0.2.0",
+        client_ip="testclient",
+    )

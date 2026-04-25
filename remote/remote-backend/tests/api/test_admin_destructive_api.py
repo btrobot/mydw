@@ -10,6 +10,14 @@ from app.api import admin as admin_api
 from app.main import create_app
 from app.schemas.admin import AdminActionResponse, AdminDeviceRebindRequest
 from app.services.admin_service import AdminServiceError
+from tests.support.route_contract import (
+    ErrorContractCase,
+    RecordingRouteService,
+    assert_error_response,
+    assert_single_service_call,
+    bearer_headers,
+    expected_access_token,
+)
 
 
 @dataclass(frozen=True)
@@ -69,23 +77,17 @@ ROUTE_CASES = [
 ]
 
 
-class FakeAdminDestructiveService:
+class FakeAdminDestructiveService(RecordingRouteService):
     def __init__(self) -> None:
-        self.calls: list[dict[str, Any]] = []
-        self.errors: dict[str, AdminServiceError] = {}
+        super().__init__()
 
     def _handle(self, method: str, access_token: str, resource_value: str, payload: dict[str, Any] | None = None) -> AdminActionResponse:
-        self.calls.append(
-            {
-                "method": method,
-                "access_token": access_token,
-                "resource_value": resource_value,
-                "payload": payload,
-            }
+        self.handle(
+            method,
+            access_token=access_token,
+            resource_value=resource_value,
+            payload=payload,
         )
-        error = self.errors.get(method)
-        if error is not None:
-            raise error
         return AdminActionResponse(success=True)
 
     def revoke_user(self, access_token: str, user_id: str) -> AdminActionResponse:
@@ -122,20 +124,19 @@ def test_destructive_routes_forward_bearer_token_and_payload(case: DestructiveRo
     with TestClient(app) as client:
         response = client.post(
             case.path,
-            headers={"Authorization": "Bearer admin_access_token"},
+            headers=bearer_headers("admin_access_token"),
             json=case.payload,
         )
 
     assert response.status_code == 200
     assert response.json() == {"success": True}
-    assert service.calls == [
-        {
-            "method": case.service_method,
-            "access_token": "admin_access_token",
-            "resource_value": case.resource_value,
-            "payload": case.payload,
-        }
-    ]
+    assert_single_service_call(
+        service.calls,
+        method=case.service_method,
+        access_token="admin_access_token",
+        resource_value=case.resource_value,
+        payload=case.payload,
+    )
 
 
 @pytest.mark.parametrize("case", ROUTE_CASES, ids=[case.name for case in ROUTE_CASES])
@@ -156,35 +157,33 @@ def test_destructive_routes_surface_401_403_404_semantics(
     expected_details: dict[str, Any] | None,
     app,
 ) -> None:
-    service = FakeAdminDestructiveService()
-    service.errors[case.service_method] = AdminServiceError(
-        expected_error_code,
-        expected_message,
-        status_code=expected_status,
+    error_case = ErrorContractCase(
+        status=expected_status,
+        error_code=expected_error_code,
+        message=expected_message,
         details=expected_details if expected_details is not None else {case.resource_key: case.resource_value},
     )
+    service = FakeAdminDestructiveService()
+    service.errors[case.service_method] = AdminServiceError(
+        error_case.error_code,
+        error_case.message,
+        status_code=error_case.status,
+        details=error_case.details,
+    )
     app.dependency_overrides[admin_api.get_admin_service] = lambda: service
-
-    headers = None if expected_status == 401 else {"Authorization": "Bearer admin_access_token"}
 
     with TestClient(app) as client:
         response = client.post(
             case.path,
-            headers=headers,
+            headers=bearer_headers(None if expected_status == 401 else "admin_access_token"),
             json=case.payload,
         )
 
-    assert response.status_code == expected_status
-    assert response.json() == {
-        "error_code": expected_error_code,
-        "message": expected_message,
-        "details": expected_details if expected_details is not None else {case.resource_key: case.resource_value},
-    }
-    assert service.calls == [
-        {
-            "method": case.service_method,
-            "access_token": "" if expected_status == 401 else "admin_access_token",
-            "resource_value": case.resource_value,
-            "payload": case.payload,
-        }
-    ]
+    assert_error_response(response, error_case)
+    assert_single_service_call(
+        service.calls,
+        method=case.service_method,
+        access_token=expected_access_token(expected_status, "admin_access_token"),
+        resource_value=case.resource_value,
+        payload=case.payload,
+    )
