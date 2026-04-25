@@ -3,13 +3,14 @@ import { Alert, Button, Card, Descriptions, Empty, Flex, Form, Input, List, Sele
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { OffsetPaginationControls } from '../../components/pagination/OffsetPaginationControls.js';
 import { EmptyState } from '../../components/states/EmptyState.js';
 import { ErrorState } from '../../components/states/ErrorState.js';
 import { LoadingState } from '../../components/states/LoadingState.js';
 import {
   AdminApiError,
   canEditUsersRole,
-  formatPageSummary,
+  DEFAULT_ADMIN_LIST_PAGE_SIZE,
   getAdminUserDetail,
   getAdminUsers,
   isAuthExpiredError,
@@ -18,6 +19,7 @@ import {
   revokeAdminUser,
   type AdminUserRecord,
   type AdminUsersFilters,
+  type OffsetPaginationFilters,
 } from '../../features/auth/auth-client.js';
 import { useAuth } from '../../features/auth/auth-context.js';
 
@@ -25,6 +27,8 @@ const EMPTY_FILTERS: AdminUsersFilters = {
   query: '',
   status: '',
   licenseStatus: '',
+  limit: DEFAULT_ADMIN_LIST_PAGE_SIZE,
+  offset: 0,
 };
 
 function formatValue(value: string | number | null | undefined): string {
@@ -91,6 +95,19 @@ export function UsersPage(): JSX.Element {
     }
 
     setSelectedUserId(nextSelectedUserId);
+  }
+
+  function applyPagination(nextPagination: OffsetPaginationFilters): void {
+    setActionFeedback(null);
+    setActionError(null);
+    setDraftFilters((current) => ({
+      ...current,
+      ...nextPagination,
+    }));
+    setAppliedFilters((current) => ({
+      ...current,
+      ...nextPagination,
+    }));
   }
 
   const userActionMutation = useMutation({
@@ -200,7 +217,14 @@ export function UsersPage(): JSX.Element {
           onFinish={() => {
             setActionFeedback(null);
             setActionError(null);
-            setAppliedFilters({ ...draftFilters });
+            setDraftFilters((current) => ({
+              ...current,
+              offset: 0,
+            }));
+            setAppliedFilters({
+              ...draftFilters,
+              offset: 0,
+            });
           }}
         >
           <Flex gap={16} wrap="wrap" align="end">
@@ -270,11 +294,12 @@ export function UsersPage(): JSX.Element {
 
       <Flex gap={16} align="stretch" wrap="wrap">
         <Card title={`Users (${usersQuery.data?.total ?? 0})`} style={{ flex: '1 1 360px', minWidth: 320 }}>
-          {usersQuery.data ? (
-            <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-              {formatPageSummary(usersQuery.data)}
-            </Typography.Text>
-          ) : null}
+          <OffsetPaginationControls
+            filters={appliedFilters}
+            response={usersQuery.data}
+            loading={usersQuery.isFetching}
+            onChange={applyPagination}
+          />
           {usersQuery.isError ? (
             <ErrorState
               title="User list unavailable"

@@ -48,13 +48,21 @@ export type PaginatedResponse<T> = {
   page_size: number;
 };
 
+export type OffsetPaginationFilters = {
+  limit: number;
+  offset: number;
+};
+
+export const DEFAULT_ADMIN_LIST_PAGE_SIZE = 50;
+export const ADMIN_PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
+
 export type AdminUserListResponse = PaginatedResponse<AdminUserRecord>;
 
 export type AdminActionResponse = {
   success: boolean;
 };
 
-export type AdminUsersFilters = {
+export type AdminUsersFilters = OffsetPaginationFilters & {
   query: string;
   status: string;
   licenseStatus: string;
@@ -71,7 +79,7 @@ export type AdminDeviceRecord = {
 
 export type AdminDeviceListResponse = PaginatedResponse<AdminDeviceRecord>;
 
-export type AdminDevicesFilters = {
+export type AdminDevicesFilters = OffsetPaginationFilters & {
   query: string;
   status: string;
   userId: string;
@@ -94,7 +102,7 @@ export type AdminSessionRecord = {
 
 export type AdminSessionListResponse = PaginatedResponse<AdminSessionRecord>;
 
-export type AdminSessionsFilters = {
+export type AdminSessionsFilters = OffsetPaginationFilters & {
   query: string;
   authState: string;
   userId: string;
@@ -131,6 +139,39 @@ export type AdminAuditFilters = {
 
 export function formatPageSummary<T>(response: PaginatedResponse<T>): string {
   return `Page ${response.page} · page size ${response.page_size} · total ${response.total}`;
+}
+
+export function hasPreviousPage(filters: OffsetPaginationFilters): boolean {
+  return filters.offset > 0;
+}
+
+export function hasNextPage<T>(response: PaginatedResponse<T> | undefined, filters: OffsetPaginationFilters): boolean {
+  if (!response) {
+    return false;
+  }
+
+  return filters.offset + response.items.length < response.total;
+}
+
+export function shiftOffsetPagination<T extends OffsetPaginationFilters>(
+  filters: T,
+  direction: 'prev' | 'next'
+): T {
+  const nextOffset =
+    direction === 'prev' ? Math.max(0, filters.offset - filters.limit) : filters.offset + filters.limit;
+
+  return {
+    ...filters,
+    offset: nextOffset,
+  };
+}
+
+export function replacePaginationPageSize<T extends OffsetPaginationFilters>(filters: T, limit: number): T {
+  return {
+    ...filters,
+    limit,
+    offset: 0,
+  };
 }
 
 type RemoteAdminWindow = Window & {
@@ -260,11 +301,17 @@ export function isAuthExpiredError(errorCode?: string): boolean {
   return errorCode === 'token_expired';
 }
 
+function appendPaginationQuery(params: URLSearchParams, filters: OffsetPaginationFilters): void {
+  params.set('limit', String(filters.limit));
+  params.set('offset', String(filters.offset));
+}
+
 export function buildUsersQuery(filters: AdminUsersFilters): string {
   const params = new URLSearchParams();
   if (filters.query) params.set('q', filters.query);
   if (filters.status) params.set('status', filters.status);
   if (filters.licenseStatus) params.set('license_status', filters.licenseStatus);
+  appendPaginationQuery(params, filters);
   const query = params.toString();
   return query ? `?${query}` : '';
 }
@@ -274,6 +321,7 @@ export function buildDevicesQuery(filters: AdminDevicesFilters): string {
   if (filters.query) params.set('q', filters.query);
   if (filters.status) params.set('device_status', filters.status);
   if (filters.userId) params.set('user_id', filters.userId);
+  appendPaginationQuery(params, filters);
   const query = params.toString();
   return query ? `?${query}` : '';
 }
@@ -284,6 +332,7 @@ export function buildSessionsQuery(filters: AdminSessionsFilters): string {
   if (filters.authState) params.set('auth_state', filters.authState);
   if (filters.userId) params.set('user_id', filters.userId);
   if (filters.deviceId) params.set('device_id', filters.deviceId);
+  appendPaginationQuery(params, filters);
   const query = params.toString();
   return query ? `?${query}` : '';
 }
@@ -312,8 +361,7 @@ export function buildAuditLogQuery(filters: AdminAuditFilters): string {
   if (filters.targetSessionId) params.set('target_session_id', filters.targetSessionId);
   if (filters.createdFrom) params.set('created_from', toUtcAuditFilterTimestamp(filters.createdFrom, 'start'));
   if (filters.createdTo) params.set('created_to', toUtcAuditFilterTimestamp(filters.createdTo, 'end'));
-  params.set('limit', String(filters.limit));
-  params.set('offset', String(filters.offset));
+  appendPaginationQuery(params, filters);
   const query = params.toString();
   return query ? `?${query}` : '';
 }

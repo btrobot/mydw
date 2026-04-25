@@ -17,17 +17,18 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { OffsetPaginationControls } from '../../components/pagination/OffsetPaginationControls.js';
 import { EmptyState } from '../../components/states/EmptyState.js';
 import { ErrorState } from '../../components/states/ErrorState.js';
 import { LoadingState } from '../../components/states/LoadingState.js';
 import {
   AdminApiError,
   buildAuditLogQuery,
-  formatPageSummary,
   getAdminAuditLogs,
   isAuthExpiredError,
   type AdminAuditFilters,
   type AdminAuditRecord,
+  type OffsetPaginationFilters,
 } from '../../features/auth/auth-client.js';
 import { useAuth } from '../../features/auth/auth-context.js';
 
@@ -112,16 +113,16 @@ export function AuditLogsPage(): JSX.Element {
     setAppliedFilters(nextFilters);
   }
 
-  function shiftPage(direction: 'prev' | 'next'): void {
-    const nextOffset =
-      direction === 'prev'
-        ? Math.max(0, appliedFilters.offset - appliedFilters.limit)
-        : appliedFilters.offset + appliedFilters.limit;
-
-    applyFilters({
-      ...appliedFilters,
-      offset: nextOffset,
-    });
+  function applyPagination(nextPagination: OffsetPaginationFilters): void {
+    setSelectedAuditId(null);
+    setDraftFilters((current) => ({
+      ...current,
+      ...nextPagination,
+    }));
+    setAppliedFilters((current) => ({
+      ...current,
+      ...nextPagination,
+    }));
   }
 
   if (!accessToken) {
@@ -138,7 +139,6 @@ export function AuditLogsPage(): JSX.Element {
   const remainingEntries = selectedAudit
     ? Object.entries(selectedAudit.details).filter(([key]) => !HIGHLIGHTED_DETAIL_KEYS.includes(key))
     : [];
-  const hasNextPage = (appliedFilters.offset + (auditQuery.data?.items.length ?? 0)) < (auditQuery.data?.total ?? 0);
   const queryPreview = buildAuditLogQuery(appliedFilters);
 
   return (
@@ -256,20 +256,6 @@ export function AuditLogsPage(): JSX.Element {
                 }
               />
             </Form.Item>
-            <Form.Item label="Limit" style={{ minWidth: 120, marginBottom: 0 }}>
-              <InputNumber
-                min={1}
-                max={200}
-                value={draftFilters.limit}
-                style={{ width: '100%' }}
-                onChange={(value) =>
-                  setDraftFilters((current) => ({
-                    ...current,
-                    limit: typeof value === 'number' ? value : current.limit,
-                  }))
-                }
-              />
-            </Form.Item>
             <Form.Item label="Offset" style={{ minWidth: 120, marginBottom: 0 }}>
               <InputNumber
                 min={0}
@@ -288,12 +274,6 @@ export function AuditLogsPage(): JSX.Element {
                 Refresh audit logs
               </Button>
               <Button onClick={() => applyFilters(DEFAULT_FILTERS)}>Clear filters</Button>
-              <Button disabled={appliedFilters.offset === 0 || auditQuery.isFetching} onClick={() => shiftPage('prev')}>
-                Previous page
-              </Button>
-              <Button disabled={!hasNextPage || auditQuery.isFetching} onClick={() => shiftPage('next')}>
-                Next page
-              </Button>
             </Space>
           </Flex>
         </Form>
@@ -302,11 +282,13 @@ export function AuditLogsPage(): JSX.Element {
       <Flex gap={16} align="stretch" wrap="wrap">
         <Card title={`Audit events (${auditQuery.data?.total ?? 0})`} style={{ flex: '1 1 420px', minWidth: 340 }}>
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-            <Typography.Text type="secondary">
-              {auditQuery.data
-                ? `${formatPageSummary(auditQuery.data)} · showing ${auditQuery.data.items.length} records from offset ${appliedFilters.offset}.`
-                : `Showing 0 records from offset ${appliedFilters.offset}.`}
-            </Typography.Text>
+            <OffsetPaginationControls
+              filters={appliedFilters}
+              response={auditQuery.data}
+              loading={auditQuery.isFetching}
+              summarySuffix={`showing ${auditQuery.data?.items.length ?? 0} records from offset ${appliedFilters.offset}`}
+              onChange={applyPagination}
+            />
             <code data-testid="audit-query-preview" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
               {queryPreview}
             </code>

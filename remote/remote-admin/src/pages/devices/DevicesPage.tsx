@@ -3,14 +3,15 @@ import { Alert, Button, Card, Descriptions, Empty, Flex, Form, Input, List, Sele
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { OffsetPaginationControls } from '../../components/pagination/OffsetPaginationControls.js';
 import { EmptyState } from '../../components/states/EmptyState.js';
 import { ErrorState } from '../../components/states/ErrorState.js';
 import { LoadingState } from '../../components/states/LoadingState.js';
 import {
   AdminApiError,
   canEditUsersRole,
+  DEFAULT_ADMIN_LIST_PAGE_SIZE,
   disableAdminDevice,
-  formatPageSummary,
   getAdminDeviceDetail,
   getAdminDevices,
   isAuthExpiredError,
@@ -19,6 +20,7 @@ import {
   unbindAdminDevice,
   type AdminDeviceRecord,
   type AdminDevicesFilters,
+  type OffsetPaginationFilters,
 } from '../../features/auth/auth-client.js';
 import { useAuth } from '../../features/auth/auth-context.js';
 
@@ -26,6 +28,8 @@ const EMPTY_FILTERS: AdminDevicesFilters = {
   query: '',
   status: '',
   userId: '',
+  limit: DEFAULT_ADMIN_LIST_PAGE_SIZE,
+  offset: 0,
 };
 
 function formatValue(value: string | number | null | undefined): string {
@@ -87,6 +91,19 @@ export function DevicesPage(): JSX.Element {
     }
 
     setSelectedDeviceId(nextSelectedDeviceId);
+  }
+
+  function applyPagination(nextPagination: OffsetPaginationFilters): void {
+    setActionFeedback(null);
+    setActionError(null);
+    setDraftFilters((current) => ({
+      ...current,
+      ...nextPagination,
+    }));
+    setAppliedFilters((current) => ({
+      ...current,
+      ...nextPagination,
+    }));
   }
 
   const deviceActionMutation = useMutation({
@@ -216,7 +233,14 @@ export function DevicesPage(): JSX.Element {
           onFinish={() => {
             setActionFeedback(null);
             setActionError(null);
-            setAppliedFilters({ ...draftFilters });
+            setDraftFilters((current) => ({
+              ...current,
+              offset: 0,
+            }));
+            setAppliedFilters({
+              ...draftFilters,
+              offset: 0,
+            });
           }}
         >
           <Flex gap={16} wrap="wrap" align="end">
@@ -282,11 +306,12 @@ export function DevicesPage(): JSX.Element {
 
       <Flex gap={16} align="stretch" wrap="wrap">
         <Card title={`Devices (${devicesQuery.data?.total ?? 0})`} style={{ flex: '1 1 360px', minWidth: 320 }}>
-          {devicesQuery.data ? (
-            <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-              {formatPageSummary(devicesQuery.data)}
-            </Typography.Text>
-          ) : null}
+          <OffsetPaginationControls
+            filters={appliedFilters}
+            response={devicesQuery.data}
+            loading={devicesQuery.isFetching}
+            onChange={applyPagination}
+          />
           {devicesQuery.isError ? (
             <ErrorState
               title="Device list unavailable"

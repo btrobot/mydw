@@ -19,7 +19,14 @@ import {
 } from '../dist/app/App.js';
 import {
   buildAuditLogQuery as buildReactAuditLogQuery,
+  buildDevicesQuery as buildReactDevicesQuery,
+  buildSessionsQuery as buildReactSessionsQuery,
+  buildUsersQuery as buildReactUsersQuery,
   formatPageSummary,
+  hasNextPage,
+  hasPreviousPage,
+  replacePaginationPageSize,
+  shiftOffsetPagination,
   toUtcAuditFilterTimestamp,
 } from '../dist/features/auth/auth-client.js';
 
@@ -363,11 +370,43 @@ test('buildUsersQuery, buildDevicesQuery, and buildSessionsQuery encode filter s
   assert.equal(buildSessionsQuery({ query: 'sess_1', authState: 'authenticated_active', userId: 'u_1', deviceId: 'device_1' }), '?q=sess_1&auth_state=authenticated_active&user_id=u_1&device_id=device_1');
 });
 
+test('React list query helpers include stable limit and offset parameters', () => {
+  assert.equal(
+    buildReactUsersQuery({ query: 'alice', status: 'active', licenseStatus: 'revoked', limit: 25, offset: 50 }),
+    '?q=alice&status=active&license_status=revoked&limit=25&offset=50'
+  );
+  assert.equal(
+    buildReactDevicesQuery({ query: 'device_1', status: 'disabled', userId: 'u_1', limit: 10, offset: 20 }),
+    '?q=device_1&device_status=disabled&user_id=u_1&limit=10&offset=20'
+  );
+  assert.equal(
+    buildReactSessionsQuery({
+      query: 'sess_1',
+      authState: 'authenticated_active',
+      userId: 'u_1',
+      deviceId: 'device_1',
+      limit: 50,
+      offset: 100,
+    }),
+    '?q=sess_1&auth_state=authenticated_active&user_id=u_1&device_id=device_1&limit=50&offset=100'
+  );
+});
+
 test('formatPageSummary keeps paginated list copy consistent across admin resources', () => {
   assert.equal(
     formatPageSummary({ items: users, total: 12, page: 2, page_size: 10 }),
     'Page 2 · page size 10 · total 12'
   );
+});
+
+test('offset pagination helpers keep page navigation state consistent', () => {
+  assert.equal(hasPreviousPage({ limit: 25, offset: 0 }), false);
+  assert.equal(hasPreviousPage({ limit: 25, offset: 25 }), true);
+  assert.equal(hasNextPage({ items: users, total: 26, page: 1, page_size: 25 }, { limit: 25, offset: 0 }), true);
+  assert.equal(hasNextPage({ items: users, total: 1, page: 1, page_size: 25 }, { limit: 25, offset: 0 }), false);
+  assert.deepEqual(shiftOffsetPagination({ limit: 25, offset: 25 }, 'prev'), { limit: 25, offset: 0 });
+  assert.deepEqual(shiftOffsetPagination({ limit: 25, offset: 25 }, 'next'), { limit: 25, offset: 50 });
+  assert.deepEqual(replacePaginationPageSize({ limit: 25, offset: 75 }, 50), { limit: 50, offset: 0 });
 });
 
 test('audit page renders empty and loading operational states', () => {
