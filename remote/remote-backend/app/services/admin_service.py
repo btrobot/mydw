@@ -41,6 +41,7 @@ from app.services.admin_authz import (
     require_permission,
 )
 from app.services.control_service import DeviceControlService, SessionControlService, UserControlService
+from app.utils.pagination import resolve_page_metadata
 from app.utils.time import utc_now_naive
 
 
@@ -172,7 +173,7 @@ class AdminService:
                 offset=offset,
             )
         ]
-        page, page_size = self._resolve_page_metadata(limit=limit, offset=offset, returned_count=len(items))
+        page, page_size = resolve_page_metadata(limit=limit, offset=offset, returned_count=len(items))
         self._write_audit(
             'admin_users_listed',
             actor_id=f'admin_{admin_user.id}',
@@ -262,7 +263,7 @@ class AdminService:
                 offset=offset,
             )
         ]
-        page, page_size = self._resolve_page_metadata(limit=limit, offset=offset, returned_count=len(items))
+        page, page_size = resolve_page_metadata(limit=limit, offset=offset, returned_count=len(items))
         self._write_audit(
             'admin_devices_listed',
             actor_id=f'admin_{admin_user.id}',
@@ -344,7 +345,7 @@ class AdminService:
                 offset=offset,
             )
         ]
-        page, page_size = self._resolve_page_metadata(limit=limit, offset=offset, returned_count=len(items))
+        page, page_size = resolve_page_metadata(limit=limit, offset=offset, returned_count=len(items))
         self._write_audit(
             'admin_sessions_listed',
             actor_id=f'admin_{admin_user.id}',
@@ -407,7 +408,7 @@ class AdminService:
             offset=offset,
         )
         items = [self._build_audit_response(row) for row in audit_rows]
-        page, page_size = self._resolve_page_metadata(limit=limit, offset=offset, returned_count=len(items))
+        page, page_size = resolve_page_metadata(limit=limit, offset=offset, returned_count=len(items))
         self._write_audit(
             'admin_audit_logs_listed',
             actor_id=f'admin_{admin_user.id}',
@@ -685,13 +686,6 @@ class AdminService:
         if value.tzinfo is None:
             return value
         return value.astimezone(timezone.utc).replace(tzinfo=None)
-
-    @staticmethod
-    def _resolve_page_metadata(*, limit: int | None, offset: int, returned_count: int) -> tuple[int, int]:
-        page_size = limit if limit is not None else returned_count
-        if page_size <= 0:
-            return 1, 0
-        return (offset // page_size) + 1, page_size
 
     def _raise_with_audit(
         self,

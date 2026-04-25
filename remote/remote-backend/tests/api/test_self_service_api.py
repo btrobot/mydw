@@ -84,6 +84,8 @@ SELF_READ_ROUTE_CASES = [
                 )
             ],
             total=1,
+            page=1,
+            page_size=10,
         ),
         expected_call={"access_token": "access_token", "limit": 10, "offset": 5},
     ),
@@ -104,6 +106,8 @@ SELF_READ_ROUTE_CASES = [
                 )
             ],
             total=1,
+            page=1,
+            page_size=10,
         ),
         expected_call={"access_token": "access_token", "limit": 10, "offset": 5},
     ),
@@ -123,6 +127,8 @@ SELF_READ_ROUTE_CASES = [
                 )
             ],
             total=1,
+            page=1,
+            page_size=10,
         ),
         expected_call={"access_token": "access_token", "limit": 10, "offset": 5},
     ),

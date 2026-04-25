@@ -10,6 +10,7 @@ from app.core.security import fingerprint_token, hash_password, issue_token, ver
 from app.models import Device, License, User, UserCredential, UserDevice, UserEntitlement
 from app.repositories.auth import AuthRepository
 from app.services.control_service import AuthorizationPolicyService
+from app.utils.pagination import resolve_page_metadata
 from app.utils.time import utc_now_naive
 from app.schemas.auth import (
     AuthSuccessResponse,
@@ -436,6 +437,7 @@ class AuthService:
             for row in paged
             if row.device is not None
         ]
+        page, page_size = resolve_page_metadata(limit=limit, offset=offset, returned_count=len(items))
         self._write_audit(
             'auth_self_devices_listed',
             target_user_id=str(user.id),
@@ -444,7 +446,7 @@ class AuthService:
             details={'limit': limit, 'offset': offset, 'count': len(items), 'total': len(ordered)},
         )
         self.repository.db.commit()
-        return SelfDeviceListResponse(items=items, total=len(ordered))
+        return SelfDeviceListResponse(items=items, total=len(ordered), page=page, page_size=page_size)
 
     def list_self_sessions(self, access_token: str, *, limit: int = 20, offset: int = 0) -> SelfSessionListResponse:
         session, user, device, _license_record, binding, _entitlements = self._resolve_self_context(
@@ -473,6 +475,7 @@ class AuthService:
             )
             for row in paged
         ]
+        page, page_size = resolve_page_metadata(limit=limit, offset=offset, returned_count=len(items))
         self._write_audit(
             'auth_self_sessions_listed',
             target_user_id=str(user.id),
@@ -481,7 +484,7 @@ class AuthService:
             details={'limit': limit, 'offset': offset, 'count': len(items), 'total': len(ordered)},
         )
         self.repository.db.commit()
-        return SelfSessionListResponse(items=items, total=len(ordered))
+        return SelfSessionListResponse(items=items, total=len(ordered), page=page, page_size=page_size)
 
     def list_self_activity(self, access_token: str, *, limit: int = 20, offset: int = 0) -> SelfActivityListResponse:
         session, user, device, _license_record, binding, _entitlements = self._resolve_self_context(
@@ -493,6 +496,7 @@ class AuthService:
         total = self.repository.count_audit_logs_for_user(user.id, event_types=raw_event_types)
         logs = self.repository.list_audit_logs_for_user(user.id, event_types=raw_event_types, limit=limit, offset=offset)
         items = [self._build_self_activity_response(row) for row in logs]
+        page, page_size = resolve_page_metadata(limit=limit, offset=offset, returned_count=len(items))
         self._write_audit(
             'auth_self_activity_listed',
             target_user_id=str(user.id),
@@ -501,7 +505,7 @@ class AuthService:
             details={'limit': limit, 'offset': offset, 'count': len(items), 'total': total},
         )
         self.repository.db.commit()
-        return SelfActivityListResponse(items=items, total=total)
+        return SelfActivityListResponse(items=items, total=total, page=page, page_size=page_size)
 
     def revoke_self_session(self, access_token: str, session_id: str) -> SelfSessionRevokeResponse:
         current_session, user, device, _license_record, binding, _entitlements = self._resolve_self_context(

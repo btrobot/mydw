@@ -4,6 +4,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.schemas.pagination import PageMetadata
+
 
 class LoginRequest(BaseModel):
     username: str
@@ -89,9 +91,8 @@ class SelfDeviceResponse(BaseModel):
     is_current: bool
 
 
-class SelfDeviceListResponse(BaseModel):
+class SelfDeviceListResponse(PageMetadata):
     items: list[SelfDeviceResponse]
-    total: int
 
 
 class SelfSessionResponse(BaseModel):
@@ -104,9 +105,8 @@ class SelfSessionResponse(BaseModel):
     is_current: bool
 
 
-class SelfSessionListResponse(BaseModel):
+class SelfSessionListResponse(PageMetadata):
     items: list[SelfSessionResponse]
-    total: int
 
 
 class SelfActivityResponse(BaseModel):
@@ -118,9 +118,8 @@ class SelfActivityResponse(BaseModel):
     session_id: str | None = None
 
 
-class SelfActivityListResponse(BaseModel):
+class SelfActivityListResponse(PageMetadata):
     items: list[SelfActivityResponse]
-    total: int
 
 
 class SelfSessionRevokeResponse(BaseModel):

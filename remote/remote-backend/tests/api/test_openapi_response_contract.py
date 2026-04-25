@@ -20,6 +20,9 @@ LIST_SCHEMA_NAMES = [
     'AdminDeviceListResponse',
     'AdminSessionListResponse',
     'AuditLogListResponse',
+    'SelfDeviceListResponse',
+    'SelfSessionListResponse',
+    'SelfActivityListResponse',
 ]
 
 
@@ -343,7 +346,7 @@ def test_openapi_route_responses_match_documented_contract(case: OpenApiRouteCas
 
 
 @pytest.mark.parametrize('schema_name', LIST_SCHEMA_NAMES)
-def test_openapi_admin_list_schemas_include_page_metadata(schema_name: str, openapi_schema: dict) -> None:
+def test_openapi_paginated_list_schemas_include_page_metadata(schema_name: str, openapi_schema: dict) -> None:
     schema = openapi_schema['components']['schemas'][schema_name]
     properties = schema['properties']
 
