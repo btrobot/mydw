@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.api.openapi_responses import error_responses
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.rate_limit import create_rate_limiter
@@ -64,7 +65,7 @@ def _error_response(exc: AdminServiceError) -> JSONResponse:
     )
 
 
-@router.post('/login', response_model=AdminLoginResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}, 429: {'model': ErrorResponse}})
+@router.post('/login', response_model=AdminLoginResponse, responses=error_responses(401, 403, 429))
 def admin_login(payload: AdminLoginRequest, request: Request, service: AdminService = Depends(get_admin_service)) -> AdminLoginResponse | JSONResponse:
     client_ip = request.client.host if request.client else 'unknown'
     if not admin_login_rate_limiter.allow(f'{client_ip}:{payload.username}'):
@@ -81,7 +82,7 @@ def admin_login(payload: AdminLoginRequest, request: Request, service: AdminServ
         return _error_response(exc)
 
 
-@router.get('/session', response_model=AdminCurrentSessionResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}})
+@router.get('/session', response_model=AdminCurrentSessionResponse, responses=error_responses(401, 403))
 def admin_session(
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
     service: AdminService = Depends(get_admin_service),
@@ -92,7 +93,7 @@ def admin_session(
         return _error_response(exc)
 
 
-@router.get('/users', response_model=AdminUserListResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}})
+@router.get('/users', response_model=AdminUserListResponse, responses=error_responses(401, 403))
 def list_users(
     q: str | None = None,
     status: str | None = None,
@@ -115,7 +116,7 @@ def list_users(
         return _error_response(exc)
 
 
-@router.get('/users/{user_id}', response_model=AdminUserResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}, 404: {'model': ErrorResponse}})
+@router.get('/users/{user_id}', response_model=AdminUserResponse, responses=error_responses(401, 403, 404))
 def get_user(
     user_id: str,
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
@@ -127,7 +128,7 @@ def get_user(
         return _error_response(exc)
 
 
-@router.patch('/users/{user_id}', response_model=AdminUserResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}, 404: {'model': ErrorResponse}})
+@router.patch('/users/{user_id}', response_model=AdminUserResponse, responses=error_responses(401, 403, 404))
 def update_user(
     user_id: str,
     payload: AdminUserUpdateRequest,
@@ -140,7 +141,7 @@ def update_user(
         return _error_response(exc)
 
 
-@router.post('/users/{user_id}/revoke', response_model=AdminActionResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}, 404: {'model': ErrorResponse}})
+@router.post('/users/{user_id}/revoke', response_model=AdminActionResponse, responses=error_responses(401, 403, 404))
 def revoke_user(
     user_id: str,
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
@@ -152,7 +153,7 @@ def revoke_user(
         return _error_response(exc)
 
 
-@router.post('/users/{user_id}/restore', response_model=AdminActionResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}, 404: {'model': ErrorResponse}})
+@router.post('/users/{user_id}/restore', response_model=AdminActionResponse, responses=error_responses(401, 403, 404))
 def restore_user(
     user_id: str,
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
@@ -164,7 +165,7 @@ def restore_user(
         return _error_response(exc)
 
 
-@router.get('/devices', response_model=AdminDeviceListResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}})
+@router.get('/devices', response_model=AdminDeviceListResponse, responses=error_responses(401, 403))
 def list_devices(
     q: str | None = None,
     device_status: str | None = None,
@@ -187,7 +188,7 @@ def list_devices(
         return _error_response(exc)
 
 
-@router.get('/devices/{device_id}', response_model=AdminDeviceResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}, 404: {'model': ErrorResponse}})
+@router.get('/devices/{device_id}', response_model=AdminDeviceResponse, responses=error_responses(401, 403, 404))
 def get_device(
     device_id: str,
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
@@ -199,7 +200,7 @@ def get_device(
         return _error_response(exc)
 
 
-@router.post('/devices/{device_id}/unbind', response_model=AdminActionResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}, 404: {'model': ErrorResponse}})
+@router.post('/devices/{device_id}/unbind', response_model=AdminActionResponse, responses=error_responses(401, 403, 404))
 def unbind_device(
     device_id: str,
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
@@ -211,7 +212,7 @@ def unbind_device(
         return _error_response(exc)
 
 
-@router.post('/devices/{device_id}/disable', response_model=AdminActionResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}, 404: {'model': ErrorResponse}})
+@router.post('/devices/{device_id}/disable', response_model=AdminActionResponse, responses=error_responses(401, 403, 404))
 def disable_device(
     device_id: str,
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
@@ -223,7 +224,7 @@ def disable_device(
         return _error_response(exc)
 
 
-@router.post('/devices/{device_id}/rebind', response_model=AdminActionResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}, 404: {'model': ErrorResponse}})
+@router.post('/devices/{device_id}/rebind', response_model=AdminActionResponse, responses=error_responses(401, 403, 404))
 def rebind_device(
     device_id: str,
     payload: AdminDeviceRebindRequest,
@@ -236,7 +237,7 @@ def rebind_device(
         return _error_response(exc)
 
 
-@router.get('/sessions', response_model=AdminSessionListResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}})
+@router.get('/sessions', response_model=AdminSessionListResponse, responses=error_responses(401, 403))
 def list_sessions(
     q: str | None = None,
     auth_state: str | None = None,
@@ -261,7 +262,7 @@ def list_sessions(
         return _error_response(exc)
 
 
-@router.post('/sessions/{session_id}/revoke', response_model=AdminActionResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}, 404: {'model': ErrorResponse}})
+@router.post('/sessions/{session_id}/revoke', response_model=AdminActionResponse, responses=error_responses(401, 403, 404))
 def revoke_session(
     session_id: str,
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
@@ -273,7 +274,7 @@ def revoke_session(
         return _error_response(exc)
 
 
-@router.get('/audit-logs', response_model=AuditLogListResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}})
+@router.get('/audit-logs', response_model=AuditLogListResponse, responses=error_responses(401, 403))
 def list_audit_logs(
     event_type: str | None = None,
     actor_id: str | None = None,
@@ -304,7 +305,7 @@ def list_audit_logs(
         return _error_response(exc)
 
 
-@router.get('/metrics/summary', response_model=AdminMetricsSummaryResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}})
+@router.get('/metrics/summary', response_model=AdminMetricsSummaryResponse, responses=error_responses(401, 403))
 def metrics_summary(
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
     service: AdminService = Depends(get_admin_service),

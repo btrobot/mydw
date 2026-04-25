@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.api.openapi_responses import error_responses
 from app.core.db import get_db
 from app.repositories.auth import AuthRepository
 from app.schemas.auth import (
@@ -45,7 +46,7 @@ def _error_response(exc: AuthServiceError) -> JSONResponse:
     )
 
 
-@router.get('/me', response_model=SelfMeResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}})
+@router.get('/me', response_model=SelfMeResponse, responses=error_responses(401, 403))
 def self_me(
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
     service: AuthService = Depends(get_auth_service),
@@ -56,7 +57,7 @@ def self_me(
         return _error_response(exc)
 
 
-@router.get('/devices', response_model=SelfDeviceListResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}})
+@router.get('/devices', response_model=SelfDeviceListResponse, responses=error_responses(401, 403))
 def self_devices(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
@@ -69,7 +70,7 @@ def self_devices(
         return _error_response(exc)
 
 
-@router.get('/sessions', response_model=SelfSessionListResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}})
+@router.get('/sessions', response_model=SelfSessionListResponse, responses=error_responses(401, 403))
 def self_sessions(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
@@ -82,7 +83,7 @@ def self_sessions(
         return _error_response(exc)
 
 
-@router.get('/activity', response_model=SelfActivityListResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}})
+@router.get('/activity', response_model=SelfActivityListResponse, responses=error_responses(401, 403))
 def self_activity(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
@@ -95,7 +96,7 @@ def self_activity(
         return _error_response(exc)
 
 
-@router.post('/sessions/{session_id}/revoke', response_model=SelfSessionRevokeResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}, 404: {'model': ErrorResponse}})
+@router.post('/sessions/{session_id}/revoke', response_model=SelfSessionRevokeResponse, responses=error_responses(401, 403, 404))
 def self_revoke_session(
     session_id: str,
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),

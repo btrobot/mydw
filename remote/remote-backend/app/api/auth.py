@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.rate_limit import InMemoryRateLimiter, create_rate_limiter
+from app.api.openapi_responses import error_responses
 from app.repositories.auth import AuthRepository
 from app.schemas.auth import (
     AuthSuccessResponse,
@@ -66,7 +67,7 @@ def _extract_bearer_token(credentials: HTTPAuthorizationCredentials | None) -> s
     return credentials.credentials.strip()
 
 
-@router.post('/login', response_model=AuthSuccessResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}, 429: {'model': ErrorResponse}})
+@router.post('/login', response_model=AuthSuccessResponse, responses=error_responses(401, 403, 429))
 def login(payload: LoginRequest, request: Request, service: AuthService = Depends(get_auth_service)) -> AuthSuccessResponse | JSONResponse:
     client_ip = request.client.host if request.client else 'unknown'
     if not login_rate_limiter.allow(f'{client_ip}:{payload.username}'):
@@ -77,7 +78,7 @@ def login(payload: LoginRequest, request: Request, service: AuthService = Depend
         return _error_response(exc)
 
 
-@router.post('/refresh', response_model=AuthSuccessResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}, 429: {'model': ErrorResponse}})
+@router.post('/refresh', response_model=AuthSuccessResponse, responses=error_responses(401, 403, 429))
 def refresh(payload: RefreshRequest, request: Request, service: AuthService = Depends(get_auth_service)) -> AuthSuccessResponse | JSONResponse:
     client_ip = request.client.host if request.client else 'unknown'
     if not refresh_rate_limiter.allow(f'{client_ip}:{payload.device_id}'):
@@ -88,7 +89,7 @@ def refresh(payload: RefreshRequest, request: Request, service: AuthService = De
         return _error_response(exc)
 
 
-@router.post('/logout', response_model=LogoutResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}})
+@router.post('/logout', response_model=LogoutResponse, responses=error_responses(401, 403))
 def logout(payload: LogoutRequest, service: AuthService = Depends(get_auth_service)) -> LogoutResponse | JSONResponse:
     try:
         return service.logout(payload)
@@ -96,7 +97,7 @@ def logout(payload: LogoutRequest, service: AuthService = Depends(get_auth_servi
         return _error_response(exc)
 
 
-@router.get('/me', response_model=MeResponse, responses={401: {'model': ErrorResponse}, 403: {'model': ErrorResponse}})
+@router.get('/me', response_model=MeResponse, responses=error_responses(401, 403))
 def me(
     credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
     service: AuthService = Depends(get_auth_service),
