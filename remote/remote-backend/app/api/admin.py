@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.db import get_db
-from app.core.rate_limit import InMemoryRateLimiter
+from app.core.rate_limit import create_rate_limiter
 from app.repositories.admin import AdminRepository
 from app.schemas.admin import (
     AdminMetricsSummaryResponse,
@@ -31,9 +31,12 @@ from app.services.admin_service import AdminService, AdminServiceError
 
 router = APIRouter(prefix='/admin', tags=['admin'])
 settings = get_settings()
-admin_login_rate_limiter = InMemoryRateLimiter(
+admin_login_rate_limiter = create_rate_limiter(
+    backend=settings.LOGIN_RATE_LIMIT_BACKEND,
+    scope='admin_login',
     window_seconds=settings.ADMIN_LOGIN_RATE_LIMIT_WINDOW_SECONDS,
     max_attempts=settings.ADMIN_LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
+    sqlite_path=settings.LOGIN_RATE_LIMIT_SQLITE_PATH,
 )
 bearer_auth = HTTPBearer(auto_error=False, scheme_name='BearerAuth')
 

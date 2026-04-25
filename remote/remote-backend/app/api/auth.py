@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.db import get_db
-from app.core.rate_limit import InMemoryRateLimiter
+from app.core.rate_limit import InMemoryRateLimiter, create_rate_limiter
 from app.repositories.auth import AuthRepository
 from app.schemas.auth import (
     AuthSuccessResponse,
@@ -22,7 +22,13 @@ from app.services.auth_service import AuthService, AuthServiceError
 
 router = APIRouter(prefix='', tags=['auth'])
 settings = get_settings()
-login_rate_limiter = InMemoryRateLimiter(window_seconds=settings.LOGIN_RATE_LIMIT_WINDOW_SECONDS, max_attempts=settings.LOGIN_RATE_LIMIT_MAX_ATTEMPTS)
+login_rate_limiter = create_rate_limiter(
+    backend=settings.LOGIN_RATE_LIMIT_BACKEND,
+    scope='auth_login',
+    window_seconds=settings.LOGIN_RATE_LIMIT_WINDOW_SECONDS,
+    max_attempts=settings.LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
+    sqlite_path=settings.LOGIN_RATE_LIMIT_SQLITE_PATH,
+)
 refresh_rate_limiter = InMemoryRateLimiter(window_seconds=settings.REFRESH_RATE_LIMIT_WINDOW_SECONDS, max_attempts=settings.REFRESH_RATE_LIMIT_MAX_ATTEMPTS)
 bearer_auth = HTTPBearer(auto_error=False, scheme_name='BearerAuth')
 

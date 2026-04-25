@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     HOST: str = "127.0.0.1"
     PORT: int = 8100
     DATABASE_URL: str = f"sqlite:///{(DATA_DIR / 'remote_auth.db').as_posix()}"
+    LOGIN_RATE_LIMIT_BACKEND: str = "sqlite"
+    LOGIN_RATE_LIMIT_SQLITE_PATH: str = str(DATA_DIR / "login_rate_limits.sqlite3")
     LOGIN_RATE_LIMIT_WINDOW_SECONDS: int = 60
     LOGIN_RATE_LIMIT_MAX_ATTEMPTS: int = 5
     REFRESH_RATE_LIMIT_WINDOW_SECONDS: int = 60
@@ -46,8 +48,9 @@ class Settings(BaseSettings):
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     settings = Settings()
-    if settings.DATABASE_URL.startswith("sqlite:///"):
+    if settings.DATABASE_URL.startswith("sqlite:///") or settings.LOGIN_RATE_LIMIT_BACKEND.strip().lower() == "sqlite":
         DATA_DIR.mkdir(parents=True, exist_ok=True)
+        Path(settings.LOGIN_RATE_LIMIT_SQLITE_PATH).parent.mkdir(parents=True, exist_ok=True)
     return settings
 
 
