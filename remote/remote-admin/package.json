@@ -5,10 +5,27 @@
   "version": "0.1.0",
   "description": "Phase 1 protected remote admin shell with independent admin auth",
   "scripts": {
-    "dev": "node -e \"console.log('Build remote-admin, then open index.html (optionally ?apiBase=http://127.0.0.1:8100). Default backend base is http://127.0.0.1:8100.')\"",
-    "typecheck": "node ../../frontend/node_modules/typescript/bin/tsc -p tsconfig.json --noEmit",
-    "build": "node ../../frontend/node_modules/typescript/bin/tsc -p tsconfig.json",
-    "test": "node --test tests/app.test.mjs",
+    "dev": "vite --open /react-index.html",
+    "dev:legacy": "node -e \"console.log('Build remote-admin, then open index.html (optionally ?apiBase=http://127.0.0.1:8100). Default backend base is http://127.0.0.1:8100.')\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.json",
+    "build:react": "vite build",
+    "preview:react": "vite preview --open /react-index.html",
+    "test": "npm run build && node --test tests/app.test.mjs",
     "lint": "node -e \"process.exit(0)\""
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.17.0",
+    "antd": "^5.12.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.21.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.2.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.10"
   }
 }

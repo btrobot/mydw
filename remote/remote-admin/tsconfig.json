@@ -4,10 +4,14 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "strict": true,
-    "lib": ["ES2020", "DOM"],
+    "jsx": "react-jsx",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "rootDir": "src",
     "outDir": "dist",
-    "noEmit": false
+    "noEmit": false,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
   },
   "include": ["src"]
 }
