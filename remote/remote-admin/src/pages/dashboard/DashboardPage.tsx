@@ -53,7 +53,7 @@ export function DashboardPage(): JSX.Element {
           Dashboard
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          Signed in as {session?.user.display_name ?? session?.user.username}. This is the Day 2 React shell backed by the existing admin API.
+          Signed in as {session?.user.display_name ?? session?.user.username}. All core admin routes now run in the React app on top of the existing admin API.
         </Typography.Paragraph>
       </div>
 
@@ -61,7 +61,7 @@ export function DashboardPage(): JSX.Element {
         type="info"
         showIcon
         message="Migration status"
-        description="Dashboard remains stable in Day 3 while the users list/detail route begins migrating into the new protected shell."
+        description="Day 4 shifts from page migration to production-hardening: login error semantics, rate-limit coverage, and backend verification now take priority."
       />
 
       <Row gutter={[16, 16]}>

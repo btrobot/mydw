@@ -41,7 +41,7 @@ export function AppShell(): JSX.Element {
             Remote Admin Next
           </Typography.Title>
           <Typography.Paragraph style={{ color: 'rgba(255,255,255,0.7)', margin: '8px 0 0' }}>
-            Day 3 React shell
+            Day 4 React admin app
           </Typography.Paragraph>
         </div>
         <Menu

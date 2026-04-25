@@ -39,7 +39,7 @@ export function LoginPage(): JSX.Element {
               Remote Admin Next
             </Typography.Title>
             <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-              Day 3 keeps the React shell on the existing admin backend while tightening auth boundary handling.
+              Day 4 keeps the React admin app on the existing backend while locking login error semantics and session recovery behavior.
             </Typography.Paragraph>
           </div>
 
