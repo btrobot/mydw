@@ -71,4 +71,5 @@ if errorlevel 1 (
 
 echo.
 echo [INFO] Open %REMOTE_ADMIN_URL%
+echo [INFO] Multi-user users update smoke: npm --prefix remote\remote-admin run smoke:users:update:multi
 start "" "%REMOTE_ADMIN_URL%"
