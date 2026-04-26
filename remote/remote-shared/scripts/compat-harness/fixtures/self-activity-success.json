@@ -25,5 +25,7 @@
       "session_id": "sess_123"
     }
   ],
+  "page": 1,
+  "page_size": 20,
   "total": 3
 }

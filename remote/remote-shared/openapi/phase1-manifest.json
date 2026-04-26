@@ -2,11 +2,11 @@
   "version": "phase1-v1",
   "openapi_source": {
     "file": "remote-auth-v1.yaml",
-    "sha256": "cc66e7917d5846a38713901db43b9745bad211617e5f230e5448accb214b779e"
+    "sha256": "5abd9d6a9169052b9cb551c88c4e6cf99560de6c1c55380a4271e0aa469f996d"
   },
   "openapi_runtime": {
     "file": "remote-auth-runtime.json",
-    "sha256": "3fa6995e06f849868e3ce72265b16c27ddb3e6dbb9fed214441dcb9dd3f85479"
+    "sha256": "39c287f5823b06134901f075f677986e5cc3f451c8562f6879970d4c8c70c8f4"
   },
   "docs": [
     {
@@ -15,7 +15,7 @@
     },
     {
       "file": "admin-mvp-api-contract-v1.md",
-      "sha256": "c9480e9d35ee621b82f98165a58c48b4f8d1ca83cc65cb2c7ede116a8177018b"
+      "sha256": "01efe2df5d369c7a0df9e28dd6aa4cfdc734409d435e1d4fe7476f0e04629bc7"
     },
     {
       "file": "auth-domain-boundaries.md",
@@ -67,11 +67,11 @@
     },
     {
       "file": "remote-admin-platform-ui-spec-v1.md",
-      "sha256": "5782cc086b3e9ca77544e13fc332bd3856bf0eb74aad061565137474a6bfd4bd"
+      "sha256": "4fd39f210e5ad957b90e122ce8fd5a2a86f0dd49f37086ff3aeeff5030badd71"
     },
     {
       "file": "remote-admin-ui-refresh-lite-pr-plan.md",
-      "sha256": "6689e66db9e636b83dfe911a99c8efb89b8ef1101320d5fac069447080da95c7"
+      "sha256": "5a0bc87035c2bcb2ffe71baa04ca1e32f80010510d6a15d4bf736a8744ef3e85"
     },
     {
       "file": "remote-full-system-deployment-topology-v1.md",
@@ -103,7 +103,7 @@
     },
     {
       "file": "staging-deploy-checklist.md",
-      "sha256": "e8fdb6700be2c8a3bcb1c61bb14180c46d9def6bd5c6b928e43f9e2ac666be9e"
+      "sha256": "17bcb3c5b5a9f4209e13475b6a68425b5260fa543bf18d5f7f7dfeccb1472ab7"
     },
     {
       "file": "staging-env-dry-run-artifact-v1.md",
@@ -169,11 +169,11 @@
     },
     {
       "file": "self-activity-success.json",
-      "sha256": "4e62505a6b0ff45d070da4ecd6dac551dbf5ded73e682f56fc3cd55d68412c1e"
+      "sha256": "f44849337deb977321f471858e74483cba0f5bd53fa0a32d56efb5a0ec97df1c"
     },
     {
       "file": "self-devices-success.json",
-      "sha256": "6996b4a8278393a5006bcd61f2b5a1ed635c28bdb471d80bbeb938eaaa9a45a2"
+      "sha256": "9279d2173ee7d2e2881a3aec9db2898ff6f273f6c2fe4f65d2f93121a05050c1"
     },
     {
       "file": "self-me-success.json",
@@ -185,7 +185,7 @@
     },
     {
       "file": "self-sessions-success.json",
-      "sha256": "f12be627bd32f7966e0c2ba4e70a41af97cf0ba9bdca25acc50c1746e50d5000"
+      "sha256": "3f57170d039f2c85ef4c6d913e3defead231653efaf032e1c58acd09f24e5cb7"
     }
   ],
   "error_code_matrix": {

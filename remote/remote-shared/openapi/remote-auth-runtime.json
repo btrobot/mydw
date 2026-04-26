@@ -46,14 +46,24 @@
             "title": "Items",
             "type": "array"
           },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
           "total": {
             "title": "Total",
             "type": "integer"
           }
         },
         "required": [
-          "items",
-          "total"
+          "total",
+          "page",
+          "page_size",
+          "items"
         ],
         "title": "AdminDeviceListResponse",
         "type": "object"
@@ -288,14 +298,24 @@
             "title": "Items",
             "type": "array"
           },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
           "total": {
             "title": "Total",
             "type": "integer"
           }
         },
         "required": [
-          "items",
-          "total"
+          "total",
+          "page",
+          "page_size",
+          "items"
         ],
         "title": "AdminSessionListResponse",
         "type": "object"
@@ -358,6 +378,140 @@
         "title": "AdminSessionResponse",
         "type": "object"
       },
+      "AdminStepUpVerifyRequest": {
+        "properties": {
+          "password": {
+            "title": "Password",
+            "type": "string"
+          },
+          "scope": {
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password",
+          "scope"
+        ],
+        "title": "AdminStepUpVerifyRequest",
+        "type": "object"
+      },
+      "AdminStepUpVerifyResponse": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "scope": {
+            "title": "Scope",
+            "type": "string"
+          },
+          "step_up_token": {
+            "title": "Step Up Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "step_up_token",
+          "scope",
+          "expires_at",
+          "method"
+        ],
+        "title": "AdminStepUpVerifyResponse",
+        "type": "object"
+      },
+      "AdminUserCreateRequest": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "entitlements": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Entitlements",
+            "type": "array"
+          },
+          "license_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Expires At"
+          },
+          "license_status": {
+            "default": "active",
+            "enum": [
+              "active",
+              "revoked",
+              "disabled"
+            ],
+            "title": "License Status",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 256,
+            "minLength": 8,
+            "title": "Password",
+            "type": "string"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id"
+          },
+          "username": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "AdminUserCreateRequest",
+        "type": "object"
+      },
       "AdminUserListResponse": {
         "properties": {
           "items": {
@@ -367,14 +521,24 @@
             "title": "Items",
             "type": "array"
           },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
           "total": {
             "title": "Total",
             "type": "integer"
           }
         },
         "required": [
-          "items",
-          "total"
+          "total",
+          "page",
+          "page_size",
+          "items"
         ],
         "title": "AdminUserListResponse",
         "type": "object"
@@ -557,14 +721,24 @@
             "title": "Items",
             "type": "array"
           },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
           "total": {
             "title": "Total",
             "type": "integer"
           }
         },
         "required": [
-          "items",
-          "total"
+          "total",
+          "page",
+          "page_size",
+          "items"
         ],
         "title": "AuditLogListResponse",
         "type": "object"
@@ -937,14 +1111,24 @@
             "title": "Items",
             "type": "array"
           },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
           "total": {
             "title": "Total",
             "type": "integer"
           }
         },
         "required": [
-          "items",
-          "total"
+          "total",
+          "page",
+          "page_size",
+          "items"
         ],
         "title": "SelfActivityListResponse",
         "type": "object"
@@ -1009,14 +1193,24 @@
             "title": "Items",
             "type": "array"
           },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
           "total": {
             "title": "Total",
             "type": "integer"
           }
         },
         "required": [
-          "items",
-          "total"
+          "total",
+          "page",
+          "page_size",
+          "items"
         ],
         "title": "SelfDeviceListResponse",
         "type": "object"
@@ -1146,14 +1340,24 @@
             "title": "Items",
             "type": "array"
           },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
           "total": {
             "title": "Total",
             "type": "integer"
           }
         },
         "required": [
-          "items",
-          "total"
+          "total",
+          "page",
+          "page_size",
+          "items"
         ],
         "title": "SelfSessionListResponse",
         "type": "object"
@@ -1775,6 +1979,22 @@
               "title": "Device Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-Step-Up-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Step-Up-Token"
+            }
           }
         ],
         "responses": {
@@ -1851,6 +2071,22 @@
             "schema": {
               "title": "Device Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Step-Up-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Step-Up-Token"
             }
           }
         ],
@@ -1938,6 +2174,22 @@
             "schema": {
               "title": "Device Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Step-Up-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Step-Up-Token"
             }
           }
         ],
@@ -2330,6 +2582,22 @@
               "title": "Session Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-Step-Up-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Step-Up-Token"
+            }
           }
         ],
         "responses": {
@@ -2390,6 +2658,82 @@
           }
         ],
         "summary": "Revoke Session",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/step-up/password/verify": {
+      "post": {
+        "operationId": "verify_step_up_password_admin_step_up_password_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminStepUpVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminStepUpVerifyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Verify Step Up Password",
         "tags": [
           "admin"
         ]
@@ -2528,6 +2872,88 @@
         "tags": [
           "admin"
         ]
+      },
+      "post": {
+        "operationId": "create_user_admin_users_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Step-Up-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Step-Up-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminUserCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Create User",
+        "tags": [
+          "admin"
+        ]
       }
     },
     "/admin/users/{user_id}": {
@@ -2617,6 +3043,22 @@
               "title": "User Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-Step-Up-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Step-Up-Token"
+            }
           }
         ],
         "requestBody": {
@@ -2704,6 +3146,22 @@
               "title": "User Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-Step-Up-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Step-Up-Token"
+            }
           }
         ],
         "responses": {
@@ -2780,6 +3238,22 @@
             "schema": {
               "title": "User Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Step-Up-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Step-Up-Token"
             }
           }
         ],

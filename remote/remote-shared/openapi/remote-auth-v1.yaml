@@ -385,6 +385,45 @@ paths:
           minimum: 0
           title: Offset
           type: integer
+    post:
+      summary: Admin create user
+      security:
+      - BearerAuth: []
+      parameters:
+      - in: header
+        name: X-Step-Up-Token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Step-Up-Token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUserCreateRequest'
+      responses:
+        '200':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserResponse'
+        '401':
+          description: Expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Admin access forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422': *id001
   /admin/users/{user_id}:
     get:
       summary: Admin get user
@@ -1228,12 +1267,20 @@ components:
       type: object
       required:
       - items
+      - page
+      - page_size
       - total
       properties:
         items:
           type: array
           items:
             $ref: '#/components/schemas/SelfDeviceResponse'
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
         total:
           type: integer
     SelfSessionResponse:
@@ -1267,12 +1314,20 @@ components:
       type: object
       required:
       - items
+      - page
+      - page_size
       - total
       properties:
         items:
           type: array
           items:
             $ref: '#/components/schemas/SelfSessionResponse'
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
         total:
           type: integer
     SelfActivityResponse:
@@ -1300,12 +1355,20 @@ components:
       type: object
       required:
       - items
+      - page
+      - page_size
       - total
       properties:
         items:
           type: array
           items:
             $ref: '#/components/schemas/SelfActivityResponse'
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
         total:
           type: integer
     SelfSessionRevokeResponse:
@@ -1380,14 +1443,67 @@ components:
       type: object
       required:
       - items
+      - page
+      - page_size
       - total
       properties:
         items:
           type: array
           items:
             $ref: '#/components/schemas/AdminUserResponse'
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
         total:
           type: integer
+    AdminUserCreateRequest:
+      type: object
+      required:
+      - username
+      - password
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 128
+        password:
+          type: string
+          minLength: 8
+          maxLength: 256
+        display_name:
+          anyOf:
+          - type: string
+            maxLength: 256
+          - type: 'null'
+        email:
+          anyOf:
+          - type: string
+            maxLength: 256
+          - type: 'null'
+        tenant_id:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+        license_status:
+          type: string
+          enum:
+          - active
+          - revoked
+          - disabled
+          default: active
+        license_expires_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+        entitlements:
+          type: array
+          items:
+            type: string
     AdminUserUpdateRequest:
       type: object
       properties:
@@ -1425,12 +1541,20 @@ components:
       type: object
       required:
       - items
+      - page
+      - page_size
       - total
       properties:
         items:
           type: array
           items:
             $ref: '#/components/schemas/AdminDeviceResponse'
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
         total:
           type: integer
     AdminDeviceRebindRequest:
@@ -1468,12 +1592,20 @@ components:
       type: object
       required:
       - items
+      - page
+      - page_size
       - total
       properties:
         items:
           type: array
           items:
             $ref: '#/components/schemas/AdminSessionResponse'
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
         total:
           type: integer
     AuditLogResponse:
@@ -1525,12 +1657,20 @@ components:
       type: object
       required:
       - items
+      - page
+      - page_size
       - total
       properties:
         items:
           type: array
           items:
             $ref: '#/components/schemas/AuditLogResponse'
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
         total:
           type: integer
     AdminMetricsSummaryResponse:
