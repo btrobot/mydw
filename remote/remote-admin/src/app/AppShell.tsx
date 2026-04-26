@@ -187,7 +187,7 @@ export function AppShell(): JSX.Element {
             </Space>
           </div>
 
-          <div style={{ flex: 1, minHeight: 0 }}>
+          <div style={{ minHeight: 0 }}>
             <Menu
               theme="dark"
               mode="inline"
