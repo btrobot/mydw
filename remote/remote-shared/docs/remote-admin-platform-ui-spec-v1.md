@@ -520,6 +520,7 @@ Mobile:
 
 Actions:
 - `Refresh`
+- `Create User`
 
 ### Filter bar
 
@@ -600,6 +601,26 @@ Buttons:
 - Revoke User
 - Restore User
 
+### Modal: Create user
+
+Entry:
+- page header action: `Create User`
+
+Fields:
+- Username
+- Initial Password
+- Display Name
+- Email
+- Tenant ID
+- License Status
+- License Expires At
+- Entitlements CSV
+
+Behavior:
+- submit the minimal `POST /admin/users` contract
+- create first, then request password confirmation only if backend returns step-up required semantics
+- on success, close the modal, refresh the list, and focus the created user detail
+
 ### Dialogs
 
 #### Revoke user dialog
@@ -624,6 +645,7 @@ Fields:
 #### `support_readonly`
 - detail visible
 - edit form disabled
+- create action disabled
 - revoke / restore disabled
 - inline note shown:
   `This role is read-only. Escalate to auth_admin or super_admin for write actions.`
@@ -654,6 +676,7 @@ Fields:
 ### Acceptance criteria
 
 - operator can search users by all currently supported identifiers
+- operator can create a user from the page header without leaving the master-detail workspace
 - selected user can be edited without losing filter context
 - role restrictions are visually obvious
 - quick links carry the user filter into Devices, Sessions, and Audit Logs

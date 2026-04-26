@@ -85,6 +85,17 @@ export type AdminUserUpdateRequest = {
   entitlements?: string[] | null;
 };
 
+export type AdminUserCreateRequest = {
+  username: string;
+  password: string;
+  display_name?: string | null;
+  email?: string | null;
+  tenant_id?: string | null;
+  license_status?: 'active' | 'revoked' | 'disabled';
+  license_expires_at?: string | null;
+  entitlements?: string[];
+};
+
 export type AdminUsersFilters = OffsetPaginationFilters & {
   query: string;
   status: string;
@@ -205,7 +216,7 @@ export class AdminApiError extends Error {
   constructor(
     readonly errorCode?: string,
     message = 'Request failed',
-    readonly details?: Record<string, unknown>
+    readonly details?: unknown
   ) {
     super(message);
   }
@@ -224,12 +235,16 @@ export async function requestJson<T>(path: string, init: RequestInit): Promise<T
   const payload = (await response.json()) as Record<string, unknown>;
 
   if (!response.ok) {
+    const validationDetails = Array.isArray(payload.detail) ? payload.detail : undefined;
+    const errorDetails =
+      validationDetails ??
+      (typeof payload.details === 'object' && payload.details !== null
+        ? (payload.details as Record<string, unknown>)
+        : undefined);
     throw new AdminApiError(
       typeof payload.error_code === 'string' ? payload.error_code : undefined,
       typeof payload.message === 'string' ? payload.message : 'Request failed',
-      typeof payload.details === 'object' && payload.details !== null
-        ? (payload.details as Record<string, unknown>)
-        : undefined
+      errorDetails
     );
   }
 
@@ -496,6 +511,18 @@ export async function updateAdminUser(
 ): Promise<AdminUserRecord> {
   return requestJson<AdminUserRecord>(`/admin/users/${userId}`, {
     method: 'PATCH',
+    headers: createAdminAuthHeaders(accessToken, { contentType: true, stepUpToken }),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function createAdminUser(
+  accessToken: string,
+  payload: AdminUserCreateRequest,
+  stepUpToken?: string | null
+): Promise<AdminUserRecord> {
+  return requestJson<AdminUserRecord>('/admin/users', {
+    method: 'POST',
     headers: createAdminAuthHeaders(accessToken, { contentType: true, stepUpToken }),
     body: JSON.stringify(payload),
   });

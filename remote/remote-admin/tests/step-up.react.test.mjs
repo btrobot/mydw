@@ -307,6 +307,142 @@ test('users sensitive update retries with step-up token after backend requires c
   }
 });
 
+test('users page opens a create-user modal with the minimal baseline fields', async () => {
+  const harness = await openUsersStepUpHarness();
+
+  try {
+    await harness.page.getByRole('button', { name: 'Create user' }).first().click();
+    const createDialog = harness.page.getByRole('dialog', { name: 'Create user' });
+    await harness.page.getByText('Create a managed user with an initial password, baseline license state, and entitlements. The list and detail panel will refresh after a successful create.').waitFor();
+    await createDialog.getByLabel('Username').waitFor();
+    await createDialog.getByLabel('Initial password').waitFor();
+    await createDialog.getByRole('combobox', { name: 'License status' }).waitFor();
+  } finally {
+    await harness.close();
+  }
+});
+
+test('users create retries with step-up token and refreshes list/detail onto the new user', async () => {
+  const harness = await openUsersStepUpHarness({
+    createResponses: [
+      {
+        status: 403,
+        body: {
+          error_code: 'step_up_required',
+          message: 'Step-up verification required',
+        },
+      },
+    ],
+  });
+
+  try {
+    await harness.page.getByRole('button', { name: 'Create user' }).first().click();
+    const createDialog = harness.page.getByRole('dialog', { name: 'Create user' });
+    await createDialog.getByLabel('Username').fill('alice2');
+    await createDialog.getByLabel('Initial password').fill('TempSecret123!');
+    await createDialog.getByLabel('Display name').fill('Alice 2');
+    await createDialog.getByLabel('Email').fill('alice2@example.com');
+    await createDialog.getByLabel('Tenant ID').fill('tenant_2');
+    await createDialog.getByLabel('Entitlements (comma or newline separated)').fill('dashboard:view, publish:run');
+    await createDialog.getByRole('button', { name: 'Create user' }).click();
+
+    await harness.page.getByText('Confirm password: Create user').waitFor();
+    await harness.page.getByText(
+      'Confirm your password before creating a managed user. The admin API will issue a short-lived step-up token for the protected create request.'
+    ).waitFor();
+    await harness.page.getByPlaceholder('Enter your password').fill('admin-secret');
+    await harness.page.getByRole('button', { name: 'Confirm and continue' }).click();
+
+    await harness.page.getByText(
+      'User created. The list and detail panel were refreshed from the backend.'
+    ).waitFor();
+
+    assert.equal(harness.calls.createRequests.length, 2);
+    assert.deepEqual(harness.calls.createRequests[0].body, {
+      username: 'alice2',
+      password: 'TempSecret123!',
+      display_name: 'Alice 2',
+      email: 'alice2@example.com',
+      tenant_id: 'tenant_2',
+      license_status: 'active',
+      entitlements: ['dashboard:view', 'publish:run'],
+    });
+    assert.equal(harness.calls.createRequests[0].headers.authorization, 'Bearer admin_access_token');
+    assert.equal(harness.calls.createRequests[0].headers['x-step-up-token'], undefined);
+    assert.deepEqual(harness.calls.verifyBodies[0], {
+      password: 'admin-secret',
+      scope: 'users.write',
+    });
+    assert.equal(harness.calls.createRequests[1].headers['x-step-up-token'], 'admin_step_up_1');
+    await harness.page.getByText('alice2').first().waitFor();
+    await harness.page.getByText('Alice 2').first().waitFor();
+  } finally {
+    await harness.close();
+  }
+});
+
+test('users create surfaces backend 422 validation details in the modal form', async () => {
+  const harness = await openUsersStepUpHarness({
+    createResponses: [
+      {
+        status: 422,
+        body: {
+          detail: [
+            {
+              loc: ['body', 'username'],
+              msg: 'Username already exists.',
+              type: 'value_error',
+            },
+          ],
+        },
+      },
+    ],
+  });
+
+  try {
+    await harness.page.getByRole('button', { name: 'Create user' }).first().click();
+    const createDialog = harness.page.getByRole('dialog', { name: 'Create user' });
+    await createDialog.getByLabel('Username').fill('alice');
+    await createDialog.getByLabel('Initial password').fill('TempSecret123!');
+    await createDialog.getByRole('button', { name: 'Create user' }).click();
+
+    await harness.page.getByText('Username already exists.').waitFor();
+    assert.equal(harness.calls.createRequests.length, 1);
+    assert.equal(harness.calls.verifyBodies.length, 0);
+  } finally {
+    await harness.close();
+  }
+});
+
+test('users create token expiry redirects back to login before opening step-up', async () => {
+  const harness = await openUsersStepUpHarness({
+    createResponses: [
+      {
+        status: 401,
+        body: {
+          error_code: 'token_expired',
+          message: 'Session expired',
+        },
+      },
+    ],
+  });
+
+  try {
+    await harness.page.getByRole('button', { name: 'Create user' }).first().click();
+    const createDialog = harness.page.getByRole('dialog', { name: 'Create user' });
+    await createDialog.getByLabel('Username').fill('alice2');
+    await createDialog.getByLabel('Initial password').fill('TempSecret123!');
+    await createDialog.getByRole('button', { name: 'Create user' }).click();
+
+    await harness.page.waitForURL(/#\/login$/);
+    await harness.page.getByText('Your admin session expired. Please sign in again.').waitFor();
+    assert.equal(harness.calls.createRequests.length, 1);
+    assert.equal(harness.calls.verifyBodies.length, 0);
+  } finally {
+    await harness.close();
+  }
+});
+
 test('devices page opens a password-confirmation modal before disable', async () => {
   const harness = await openDevicesStepUpHarness();
 
@@ -572,11 +708,13 @@ async function openUsersStepUpHarness(options = {}) {
     revokeHeaders: [],
     restoreHeaders: [],
     updateRequests: [],
+    createRequests: [],
   };
 
-  let currentUser = { ...(options.initialUser ?? ACTIVE_USER) };
+  let managedUsers = [{ ...(options.initialUser ?? ACTIVE_USER) }];
   const verifyResponses = [...(options.verifyResponses ?? [])];
   const updateResponses = [...(options.updateResponses ?? [])];
+  const createResponses = [...(options.createResponses ?? [])];
 
   await page.addInitScript((token) => {
     window.localStorage.setItem('remote_admin_access_token', token);
@@ -593,16 +731,20 @@ async function openUsersStepUpHarness(options = {}) {
 
     if (request.method() === 'GET' && url.pathname === '/admin/users') {
       await fulfillJson(route, {
-        items: [{ ...currentUser }],
-        total: 1,
+        items: managedUsers.map((user) => ({ ...user })),
+        total: managedUsers.length,
         page: 1,
         page_size: 50,
       });
       return;
     }
 
-    if (request.method() === 'GET' && url.pathname === '/admin/users/u_1') {
-      await fulfillJson(route, { ...currentUser });
+    if (request.method() === 'GET' && url.pathname.startsWith('/admin/users/u_')) {
+      const targetUser = managedUsers.find((user) => user.id === url.pathname.split('/').at(-1));
+      await fulfillJson(route, targetUser ? { ...targetUser } : {
+        error_code: 'not_found',
+        message: 'User not found',
+      }, targetUser ? 200 : 404);
       return;
     }
 
@@ -624,20 +766,22 @@ async function openUsersStepUpHarness(options = {}) {
 
     if (request.method() === 'POST' && url.pathname === '/admin/users/u_1/revoke') {
       calls.revokeHeaders.push(request.headers());
-      currentUser = {
-        ...currentUser,
-        status: 'revoked',
-        license_status: 'revoked',
-      };
+      managedUsers = managedUsers.map((user) =>
+        user.id === 'u_1'
+          ? {
+              ...user,
+              status: 'revoked',
+              license_status: 'revoked',
+            }
+          : user
+      );
       await fulfillJson(route, { success: true });
       return;
     }
 
     if (request.method() === 'POST' && url.pathname === '/admin/users/u_1/restore') {
       calls.restoreHeaders.push(request.headers());
-      currentUser = {
-        ...ACTIVE_USER,
-      };
+      managedUsers = managedUsers.map((user) => (user.id === 'u_1' ? { ...ACTIVE_USER } : user));
       await fulfillJson(route, { success: true });
       return;
     }
@@ -655,24 +799,63 @@ async function openUsersStepUpHarness(options = {}) {
         return;
       }
 
-      currentUser = {
-        ...currentUser,
-        ...body,
-      };
+      managedUsers = managedUsers.map((user) => {
+        if (user.id !== 'u_1') {
+          return user;
+        }
 
-      if (body.license_status === 'revoked') {
-        currentUser = {
-          ...currentUser,
-          status: 'revoked',
+        let nextUser = {
+          ...user,
+          ...body,
         };
-      } else if (body.license_status === 'active') {
-        currentUser = {
-          ...currentUser,
-          status: 'active',
-        };
+
+        if (body.license_status === 'revoked') {
+          nextUser = {
+            ...nextUser,
+            status: 'revoked',
+          };
+        } else if (body.license_status === 'active') {
+          nextUser = {
+            ...nextUser,
+            status: 'active',
+          };
+        }
+
+        return nextUser;
+      });
+
+      await fulfillJson(route, { ...managedUsers.find((user) => user.id === 'u_1') });
+      return;
+    }
+
+    if (request.method() === 'POST' && url.pathname === '/admin/users') {
+      const body = JSON.parse(request.postData() ?? '{}');
+      calls.createRequests.push({
+        headers: request.headers(),
+        body,
+      });
+
+      const response = createResponses.shift();
+      if (response) {
+        await fulfillJson(route, response.body, response.status);
+        return;
       }
 
-      await fulfillJson(route, { ...currentUser });
+      const createdUser = {
+        id: 'u_2',
+        username: body.username,
+        display_name: body.display_name ?? null,
+        email: body.email ?? null,
+        tenant_id: body.tenant_id ?? null,
+        status: body.license_status === 'disabled' ? 'disabled' : 'active',
+        license_status: body.license_status ?? 'active',
+        license_expires_at: body.license_expires_at ?? null,
+        entitlements: body.entitlements ?? [],
+        device_count: 0,
+        last_seen_at: null,
+      };
+      managedUsers = [createdUser, ...managedUsers.filter((user) => user.id !== createdUser.id)];
+      await fulfillJson(route, createdUser);
       return;
     }
 

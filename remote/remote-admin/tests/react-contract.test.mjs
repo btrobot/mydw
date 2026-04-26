@@ -8,6 +8,7 @@ import {
   buildSessionsQuery,
   buildUsersQuery,
   canEditUsersRole,
+  createAdminUser,
   createAdminAuthHeaders,
   formatPageSummary,
   hasNextPage,
@@ -327,6 +328,98 @@ test('update admin user client posts PATCH payload and optional step-up header',
         entitlements: ['dashboard:view'],
       })
     );
+  } finally {
+    globalThis.window = originalWindow;
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('create admin user client posts POST payload, forwards optional step-up header, and preserves 422 details', async () => {
+  const originalWindow = globalThis.window;
+  const originalFetch = globalThis.fetch;
+  const payload = {
+    username: 'alice2',
+    password: 'TempSecret123!',
+    display_name: 'Alice 2',
+    email: 'alice2@example.com',
+    tenant_id: 'tenant_1',
+    license_status: 'active',
+    license_expires_at: '2026-07-01T00:00:00Z',
+    entitlements: ['dashboard:view'],
+  };
+  let requestInput;
+  let requestInit;
+  let requestCount = 0;
+  globalThis.window = { location: { search: '' } };
+  globalThis.fetch = async (input, init) => {
+    requestInput = input;
+    requestInit = init;
+    requestCount += 1;
+    if (requestCount === 1) {
+      return new Response(
+        JSON.stringify({
+          detail: [
+            {
+              loc: ['body', 'username'],
+              msg: 'Username already exists.',
+              type: 'value_error',
+            },
+          ],
+        }),
+        {
+          status: 422,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({
+        id: 'u_2',
+        username: 'alice2',
+        display_name: 'Alice 2',
+        email: 'alice2@example.com',
+        tenant_id: 'tenant_1',
+        status: 'active',
+        license_status: 'active',
+        license_expires_at: '2026-07-01T00:00:00Z',
+        entitlements: ['dashboard:view'],
+        device_count: 0,
+        last_seen_at: null,
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  };
+
+  try {
+    await assert.rejects(
+      () => createAdminUser('admin_access_token', payload),
+      (error) => {
+        assert.equal(error.errorCode, undefined);
+        assert.deepEqual(error.details, [
+          {
+            loc: ['body', 'username'],
+            msg: 'Username already exists.',
+            type: 'value_error',
+          },
+        ]);
+        return true;
+      }
+    );
+
+    const response = await createAdminUser('admin_access_token', payload, 'step_up_1');
+    assert.equal(response.id, 'u_2');
+    assert.equal(String(requestInput), 'http://127.0.0.1:8100/admin/users');
+    assert.equal(requestInit.method, 'POST');
+    assert.deepEqual(requestInit.headers, {
+      Authorization: 'Bearer admin_access_token',
+      'Content-Type': 'application/json',
+      'X-Step-Up-Token': 'step_up_1',
+    });
+    assert.equal(requestInit.body, JSON.stringify(payload));
   } finally {
     globalThis.window = originalWindow;
     globalThis.fetch = originalFetch;

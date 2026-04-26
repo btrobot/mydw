@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Button, Card, Descriptions, Empty, Flex, Form, Input, List, Select, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Descriptions, Empty, Flex, Form, Input, List, Modal, Select, Space, Tag, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -17,8 +17,10 @@ import {
 import {
   ADMIN_STEP_UP_SCOPE_USERS_WRITE,
   AdminApiError,
+  type AdminUserCreateRequest,
   type AdminUserUpdateRequest,
   canEditUsersRole,
+  createAdminUser,
   DEFAULT_ADMIN_LIST_PAGE_SIZE,
   getAdminUserDetail,
   getAdminUsers,
@@ -49,10 +51,32 @@ type UserEditDraft = {
   entitlements: string;
 };
 
+type CreateUserFormValues = {
+  username: string;
+  password: string;
+  display_name: string;
+  email: string;
+  tenant_id: string;
+  license_status: 'active' | 'revoked' | 'disabled';
+  license_expires_at: string;
+  entitlements: string;
+};
+
 const EMPTY_USER_EDIT_DRAFT: UserEditDraft = {
   displayName: '',
   licenseStatus: '',
   licenseExpiresAt: '',
+  entitlements: '',
+};
+
+const EMPTY_CREATE_USER_FORM_VALUES: CreateUserFormValues = {
+  username: '',
+  password: '',
+  display_name: '',
+  email: '',
+  tenant_id: '',
+  license_status: 'active',
+  license_expires_at: '',
   entitlements: '',
 };
 
@@ -120,6 +144,55 @@ function buildUserUpdatePayload(detail: AdminUserRecord, draft: UserEditDraft): 
   return payload;
 }
 
+function buildUserCreatePayload(values: CreateUserFormValues): AdminUserCreateRequest {
+  const normalizedLicenseExpiry = values.license_expires_at.trim();
+
+  return {
+    username: values.username.trim(),
+    password: values.password,
+    display_name: values.display_name.trim() || undefined,
+    email: values.email.trim() || undefined,
+    tenant_id: values.tenant_id.trim() || undefined,
+    license_status: values.license_status,
+    license_expires_at: normalizedLicenseExpiry || undefined,
+    entitlements: parseEntitlementsInput(values.entitlements),
+  };
+}
+
+function applyValidationErrorsToForm(
+  form: ReturnType<typeof Form.useForm<CreateUserFormValues>>[0],
+  error: unknown
+): boolean {
+  if (!(error instanceof AdminApiError) || !Array.isArray(error.details)) {
+    return false;
+  }
+
+  const fieldErrors = error.details
+    .map((issue) => {
+      if (!issue || typeof issue !== 'object') {
+        return null;
+      }
+      const loc = Array.isArray((issue as { loc?: unknown }).loc) ? (issue as { loc: unknown[] }).loc : null;
+      const msg = typeof (issue as { msg?: unknown }).msg === 'string' ? (issue as { msg: string }).msg : 'Invalid value.';
+      const fieldName = typeof loc?.[loc.length - 1] === 'string' ? (loc[loc.length - 1] as string) : null;
+      if (!fieldName) {
+        return null;
+      }
+      return {
+        name: fieldName as keyof CreateUserFormValues,
+        errors: [msg],
+      };
+    })
+    .filter((value): value is { name: keyof CreateUserFormValues; errors: string[] } => value !== null);
+
+  if (fieldErrors.length === 0) {
+    return false;
+  }
+
+  form.setFields(fieldErrors);
+  return true;
+}
+
 function renderEntitlements(user: AdminUserRecord): JSX.Element {
   if (user.entitlements.length === 0) {
     return <Tag>none</Tag>;
@@ -138,10 +211,13 @@ export function UsersPage(): JSX.Element {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { accessToken, session, handleExpiredSession } = useAuth();
+  const [createForm] = Form.useForm<CreateUserFormValues>();
   const [draftFilters, setDraftFilters] = useState<AdminUsersFilters>(EMPTY_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<AdminUsersFilters>(EMPTY_FILTERS);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<UserEditDraft>(EMPTY_USER_EDIT_DRAFT);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createFormError, setCreateFormError] = useState<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -170,14 +246,34 @@ export function UsersPage(): JSX.Element {
     enabled: Boolean(accessToken && selectedUserId),
   });
 
-  async function refreshUsersState(preferredUserId: string): Promise<void> {
+  async function refreshUsersState(
+    preferredUserId: string,
+    options?: {
+      revealInDefaultList?: boolean;
+    }
+  ): Promise<void> {
     if (!accessToken) return;
 
-    const listResult = await usersQuery.refetch();
-    const items = listResult.data?.items ?? [];
+    let nextFilters = appliedFilters;
+    let listResult = await queryClient.fetchQuery({
+      queryKey: ['adminUsers', appliedFilters],
+      queryFn: () => getAdminUsers(accessToken, appliedFilters),
+    });
+
+    if (options?.revealInDefaultList && !listResult.items.some((item) => item.id === preferredUserId)) {
+      nextFilters = EMPTY_FILTERS;
+      setDraftFilters(EMPTY_FILTERS);
+      setAppliedFilters(EMPTY_FILTERS);
+      listResult = await queryClient.fetchQuery({
+        queryKey: ['adminUsers', EMPTY_FILTERS],
+        queryFn: () => getAdminUsers(accessToken, EMPTY_FILTERS),
+      });
+    }
+
+    const items = listResult.items ?? [];
     const nextSelectedUserId = items.some((item) => item.id === preferredUserId)
       ? preferredUserId
-      : (items[0]?.id ?? null);
+      : (options?.revealInDefaultList ? preferredUserId : (items[0]?.id ?? null));
 
     if (nextSelectedUserId) {
       await queryClient.fetchQuery({
@@ -186,6 +282,9 @@ export function UsersPage(): JSX.Element {
       });
     }
 
+    if (nextFilters === appliedFilters) {
+      await usersQuery.refetch();
+    }
     setSelectedUserId(nextSelectedUserId);
   }
 
@@ -293,6 +392,27 @@ export function UsersPage(): JSX.Element {
     },
   });
 
+  const userCreateMutation = useMutation({
+    mutationFn: async ({
+      payload,
+      stepUpToken,
+    }: {
+      payload: AdminUserCreateRequest;
+      stepUpToken?: string | null;
+    }) => {
+      if (!accessToken) {
+        throw new Error('Missing admin session');
+      }
+
+      return createAdminUser(accessToken, payload, stepUpToken);
+    },
+    onMutate: () => {
+      setCreateFormError(null);
+      setActionFeedback(null);
+      setActionError(null);
+    },
+  });
+
   useEffect(() => {
     const error = usersQuery.error ?? detailQuery.error;
     if (error instanceof AdminApiError && isAuthExpiredError(error.errorCode)) {
@@ -320,6 +440,7 @@ export function UsersPage(): JSX.Element {
   const isRevoking = userActionMutation.isPending && userActionMutation.variables?.action === 'revoke';
   const isRestoring = userActionMutation.isPending && userActionMutation.variables?.action === 'restore';
   const isSavingChanges = userUpdateMutation.isPending;
+  const isCreatingUser = userCreateMutation.isPending;
   const selectedDetail = detailQuery.data;
   const selectedUserIsRevoked =
     selectedDetail?.status === 'revoked' || selectedDetail?.license_status === 'revoked';
@@ -393,6 +514,91 @@ export function UsersPage(): JSX.Element {
     }
   }
 
+  async function handleCreateUserSuccess(createdUserId: string): Promise<void> {
+    try {
+      await refreshUsersState(createdUserId, { revealInDefaultList: true });
+      createForm.resetFields();
+      createForm.setFieldsValue(EMPTY_CREATE_USER_FORM_VALUES);
+      setCreateFormError(null);
+      setCreateModalOpen(false);
+      setActionFeedback('User created. The list and detail panel were refreshed from the backend.');
+    } catch (error) {
+      if (error instanceof AdminApiError && isAuthExpiredError(error.errorCode)) {
+        handleExpiredSession();
+        navigate('/login', { replace: true, state: { from: '/users' } });
+        return;
+      }
+
+      setActionError('User was created, but the follow-up refresh failed. Retry the list or detail query.');
+    }
+  }
+
+  async function runUserCreate(values: CreateUserFormValues): Promise<void> {
+    const payload = buildUserCreatePayload(values);
+    createForm.setFields(
+      (Object.keys(EMPTY_CREATE_USER_FORM_VALUES) as Array<keyof CreateUserFormValues>).map((name) => ({
+        name,
+        errors: [],
+      }))
+    );
+
+    try {
+      const createdUser = await userCreateMutation.mutateAsync({ payload });
+      await handleCreateUserSuccess(createdUser.id);
+      return;
+    } catch (error) {
+      if (error instanceof AdminApiError && isAuthExpiredError(error.errorCode)) {
+        handleExpiredSession();
+        navigate('/login', { replace: true, state: { from: '/users' } });
+        return;
+      }
+
+      if (
+        error instanceof AdminApiError &&
+        (error.errorCode === 'step_up_required' ||
+          error.errorCode === 'step_up_invalid' ||
+          error.errorCode === 'step_up_expired')
+      ) {
+        try {
+          const stepUpToken = await requestStepUp({
+            scope: ADMIN_STEP_UP_SCOPE_USERS_WRITE,
+            actionLabel: 'Create user',
+            description:
+              'Confirm your password before creating a managed user. The admin API will issue a short-lived step-up token for the protected create request.',
+          });
+          const createdUser = await userCreateMutation.mutateAsync({ payload, stepUpToken });
+          await handleCreateUserSuccess(createdUser.id);
+          return;
+        } catch (stepUpError) {
+          if (isAdminStepUpCancelledError(stepUpError)) {
+            return;
+          }
+
+          if (stepUpError instanceof AdminApiError && isAuthExpiredError(stepUpError.errorCode)) {
+            handleExpiredSession();
+            navigate('/login', { replace: true, state: { from: '/users' } });
+            return;
+          }
+
+          if (applyValidationErrorsToForm(createForm, stepUpError)) {
+            return;
+          }
+
+          setCreateFormError(
+            stepUpError instanceof AdminApiError ? mapAdminActionError(stepUpError.errorCode) : mapAdminActionError()
+          );
+          return;
+        }
+      }
+
+      if (applyValidationErrorsToForm(createForm, error)) {
+        return;
+      }
+
+      setCreateFormError(error instanceof AdminApiError ? mapAdminActionError(error.errorCode) : mapAdminActionError());
+    }
+  }
+
   if (!accessToken) {
     return <ErrorState title="Admin session missing" description={formatAdminMissingSession('users')} />;
   }
@@ -403,14 +609,30 @@ export function UsersPage(): JSX.Element {
 
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
-      <div>
-        <Typography.Title level={2} style={{ marginBottom: 8 }}>
-          Users
-        </Typography.Title>
-        <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          Search and review managed users, then revoke or restore access with role-aware safeguards and backend-backed refresh.
-        </Typography.Paragraph>
-      </div>
+      <Flex justify="space-between" align="flex-start" gap={16} wrap="wrap">
+        <div>
+          <Typography.Title level={2} style={{ marginBottom: 8 }}>
+            Users
+          </Typography.Title>
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+            Search and review managed users, then create, edit, revoke, or restore access with role-aware safeguards and backend-backed refresh.
+          </Typography.Paragraph>
+        </div>
+        <Button
+          type="primary"
+          disabled={!canWrite || isCreatingUser || isSavingChanges || isRevoking || isRestoring}
+          onClick={() => {
+            setActionFeedback(null);
+            setActionError(null);
+            setCreateFormError(null);
+            createForm.resetFields();
+            createForm.setFieldsValue(EMPTY_CREATE_USER_FORM_VALUES);
+            setCreateModalOpen(true);
+          }}
+        >
+          Create user
+        </Button>
+      </Flex>
 
       <Alert
         type={canWrite ? 'success' : 'warning'}
@@ -418,8 +640,8 @@ export function UsersPage(): JSX.Element {
         message={canWrite ? 'Write access available' : 'Read-only access'}
         description={
           canWrite
-            ? 'Display name changes save directly, while license and entitlement updates reuse backend step-up verification before the list and detail panel refresh.'
-            : 'This role can review users, but edit, revoke, and restore controls remain disabled.'
+            ? 'Create, revoke, and restore actions reuse backend step-up verification. Display name changes save directly, while sensitive license and entitlement updates request password confirmation only when the backend requires it.'
+            : 'This role can review users, but create, edit, revoke, and restore controls remain disabled.'
         }
       />
 
@@ -730,8 +952,8 @@ export function UsersPage(): JSX.Element {
                 message="Danger zone"
                 description={
                   canWrite
-                    ? 'Sensitive edits plus revoke and restore actions are audited server-side. License and entitlement changes require password confirmation, a short-lived step-up token, and a backend refresh after success.'
-                    : 'This role can review users, but edit, revoke, and restore actions remain disabled.'
+                    ? 'Create plus sensitive edit, revoke, and restore actions are audited server-side. Protected flows require password confirmation, a short-lived step-up token, and a backend refresh after success.'
+                    : 'This role can review users, but create, edit, revoke, and restore actions remain disabled.'
                 }
               />
             </Space>
@@ -747,6 +969,126 @@ export function UsersPage(): JSX.Element {
           )}
         </Card>
       </Flex>
+      <Modal
+        open={createModalOpen}
+        title="Create user"
+        onCancel={() => {
+          if (isCreatingUser) {
+            return;
+          }
+          setCreateFormError(null);
+          createForm.resetFields();
+          createForm.setFieldsValue(EMPTY_CREATE_USER_FORM_VALUES);
+          setCreateModalOpen(false);
+        }}
+        destroyOnHidden
+        footer={null}
+        maskClosable={!isCreatingUser}
+        closable={!isCreatingUser}
+      >
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+            Create a managed user with an initial password, baseline license state, and entitlements. The list and detail panel will refresh after a successful create.
+          </Typography.Paragraph>
+
+          {createFormError ? <Alert type="error" showIcon message={createFormError} /> : null}
+
+          <Form<CreateUserFormValues>
+            form={createForm}
+            layout="vertical"
+            initialValues={EMPTY_CREATE_USER_FORM_VALUES}
+            onValuesChange={() => setCreateFormError(null)}
+            onFinish={(values) => {
+              void runUserCreate(values);
+            }}
+          >
+            <Form.Item
+              label="Username"
+              name="username"
+              rules={[{ required: true, message: 'Please enter a username.' }]}
+            >
+              <Input placeholder="alice2" disabled={isCreatingUser} />
+            </Form.Item>
+
+            <Form.Item
+              label="Initial password"
+              name="password"
+              rules={[
+                { required: true, message: 'Please enter an initial password.' },
+                { min: 8, message: 'Use at least 8 characters for the initial password.' },
+              ]}
+            >
+              <Input.Password autoComplete="new-password" placeholder="TempSecret123!" disabled={isCreatingUser} />
+            </Form.Item>
+
+            <Flex gap={16} wrap="wrap" align="start">
+              <Form.Item label="Display name" name="display_name" style={{ minWidth: 220, flex: 1, marginBottom: 0 }}>
+                <Input placeholder="Alice Example" disabled={isCreatingUser} />
+              </Form.Item>
+              <Form.Item label="Email" name="email" style={{ minWidth: 220, flex: 1, marginBottom: 0 }}>
+                <Input placeholder="alice@example.com" disabled={isCreatingUser} />
+              </Form.Item>
+            </Flex>
+
+            <Flex gap={16} wrap="wrap" align="start" style={{ marginTop: 16 }}>
+              <Form.Item label="Tenant ID" name="tenant_id" style={{ minWidth: 220, flex: 1, marginBottom: 0 }}>
+                <Input placeholder="tenant_1" disabled={isCreatingUser} />
+              </Form.Item>
+              <Form.Item
+                label="License status"
+                name="license_status"
+                style={{ minWidth: 220, flex: 1, marginBottom: 0 }}
+              >
+                <Select
+                  disabled={isCreatingUser}
+                  options={[
+                    { value: 'active', label: 'active' },
+                    { value: 'revoked', label: 'revoked' },
+                    { value: 'disabled', label: 'disabled' },
+                  ]}
+                />
+              </Form.Item>
+            </Flex>
+
+            <Form.Item
+              label="License expiry (ISO-8601)"
+              name="license_expires_at"
+              style={{ marginBottom: 16, marginTop: 16 }}
+            >
+              <Input placeholder="2026-07-01T00:00:00Z" disabled={isCreatingUser} />
+            </Form.Item>
+
+            <Form.Item
+              label="Entitlements (comma or newline separated)"
+              name="entitlements"
+              style={{ marginBottom: 0 }}
+            >
+              <Input.TextArea
+                autoSize={{ minRows: 2, maxRows: 4 }}
+                placeholder="dashboard:view, publish:run"
+                disabled={isCreatingUser}
+              />
+            </Form.Item>
+
+            <Space style={{ width: '100%', justifyContent: 'flex-end', marginTop: 24 }}>
+              <Button
+                onClick={() => {
+                  setCreateFormError(null);
+                  createForm.resetFields();
+                  createForm.setFieldsValue(EMPTY_CREATE_USER_FORM_VALUES);
+                  setCreateModalOpen(false);
+                }}
+                disabled={isCreatingUser}
+              >
+                Cancel
+              </Button>
+              <Button type="primary" htmlType="submit" loading={isCreatingUser}>
+                Create user
+              </Button>
+            </Space>
+          </Form>
+        </Space>
+      </Modal>
       {stepUpModal}
     </Space>
   );
