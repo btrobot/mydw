@@ -24,6 +24,11 @@ import {
   message,
 } from 'antd'
 
+import { InlineNotice } from '@/components/feedback/InlineNotice'
+import { PageEmpty } from '@/components/feedback/PageEmpty'
+import { PageError } from '@/components/feedback/PageError'
+import { PageHeader } from '@/components/ui/PageHeader'
+
 import {
   useControlPublish,
   usePublishStatus,
@@ -148,17 +153,19 @@ export default function Dashboard() {
 
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
-      <Alert
-        type="info"
-        showIcon
-        message="运行与发布总览"
-        description="这里用于查看系统运行态、发布器状态与关键日志；日常作品处理请进入工作台，AIClip 工作流仍从作品详情进入。"
-        action={(
+      <PageHeader
+        title="运行与发布总览"
+        subtitle="查看系统运行态、发布器状态与关键日志。"
+        extra={(
           <Space wrap data-testid="dashboard-primary-cta">
             <Button type="primary" onClick={() => navigate('/creative/workbench')} data-testid="dashboard-open-workbench">进入作品工作台</Button>
             <Button onClick={() => navigate('/task/list')} icon={<UnorderedListOutlined />} data-testid="dashboard-open-task-list">查看任务管理</Button>
           </Space>
         )}
+      />
+      <InlineNotice
+        message="日常作品处理请进入工作台"
+        description="AIClip 工作流仍从作品详情进入；这里主要承接运行态观察与发布控制。"
       />
 
       <Card title="任务运行概览" size="small" extra={<Text type="secondary">用于观察队列与上传进度，不承担作品主入口职责</Text>}>
@@ -181,12 +188,10 @@ export default function Dashboard() {
             data-testid="dashboard-task-stats-error"
           />
         ) : taskStatsEmpty ? (
-          <Alert
-            type="info"
-            showIcon
-            message="当前暂无任务"
+          <PageEmpty
+            title="当前暂无任务"
             description="当前没有待处理、上传中或失败任务；这里会在运行态发生变化时更新。"
-            data-testid="dashboard-task-stats-empty"
+            testId="dashboard-task-stats-empty"
           />
         ) : (
           <div data-testid="dashboard-task-stats-success">
@@ -269,17 +274,15 @@ export default function Dashboard() {
                 <Text type="secondary">正在加载系统统计…</Text>
               </Flex>
             ) : systemStatsQuery.isError ? (
-              <Alert
-                type="warning"
-                showIcon
-                message="系统统计暂时不可用"
+              <PageError
+                title="系统统计暂时不可用"
                 description="账号 / 商品统计请求失败，因此当前不会再回落成 0 或占位符。"
-                action={(
+                extra={(
                   <Button size="small" icon={<ReloadOutlined />} onClick={retryRuntime}>
                     重试
                   </Button>
                 )}
-                data-testid="dashboard-system-stats-error"
+                testId="dashboard-system-stats-error"
               />
             ) : (
               <Row gutter={[16, 16]} data-testid="dashboard-system-stats-success">
@@ -311,25 +314,21 @@ export default function Dashboard() {
             <Text type="secondary">正在加载系统日志…</Text>
           </Flex>
         ) : logsQuery.isError ? (
-          <Alert
-            type="warning"
-            showIcon
-            message="系统日志暂时不可用"
+          <PageError
+            title="系统日志暂时不可用"
             description="日志请求失败，当前不会把失败误显示成“暂无日志”。"
-            action={(
+            extra={(
               <Button size="small" icon={<ReloadOutlined />} onClick={retryRuntime}>
                 重试
               </Button>
             )}
-            data-testid="dashboard-logs-error"
+            testId="dashboard-logs-error"
           />
         ) : logsEmpty ? (
-          <Alert
-            type="info"
-            showIcon
-            message="当前暂无日志"
+          <PageEmpty
+            title="当前暂无日志"
             description="最近没有新的系统日志；如需刷新运行态，可使用上方入口或重试。"
-            data-testid="dashboard-logs-empty"
+            testId="dashboard-logs-empty"
           />
         ) : (
           <div data-testid="dashboard-logs-success">

@@ -7,8 +7,8 @@
  * ```
  */
 
-// Re-export QueryProvider from provider
-export { QueryProvider } from '@/providers/QueryProvider'
+// Re-export QueryProvider from app provider
+export { QueryProvider } from '@/app/providers/QueryProvider'
 
 // Account Hooks
 export {

@@ -1,7 +1,7 @@
 import { Alert, Flex, Spin } from 'antd'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
-import LayoutComponent from '@/components/Layout'
+import AppShell from '@/app/shell/AppShell'
 import { useSystemConfig } from '@/hooks/useSystem'
 import { getCreativeFlowDefaultPath } from '@/features/creative/creativeFlow'
 
@@ -45,7 +45,7 @@ export const ProtectedAppShell = () => {
   const location = useLocation()
 
   if (authState === 'authenticated_active') {
-    return <LayoutComponent />
+    return <AppShell />
   }
 
   if (authState === 'authenticated_grace') {
@@ -53,7 +53,7 @@ export const ProtectedAppShell = () => {
       return (
         <>
           <GraceBanner />
-          <LayoutComponent />
+          <AppShell />
         </>
       )
     }

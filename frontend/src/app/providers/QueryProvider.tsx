@@ -1,7 +1,3 @@
-/**
- * React Query Provider
- * 为整个应用提供 React Query 的查询缓存能力
- */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
 
@@ -15,7 +11,7 @@ export const QueryProvider = ({ children }: QueryProviderProps) => {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 60 * 1000, // 1 minute
+            staleTime: 60 * 1000,
             retry: 1,
             refetchOnWindowFocus: false,
           },
@@ -23,7 +19,7 @@ export const QueryProvider = ({ children }: QueryProviderProps) => {
             retry: 0,
           },
         },
-      })
+      }),
   )
 
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
