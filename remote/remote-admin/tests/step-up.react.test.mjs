@@ -44,6 +44,20 @@ const REVOKED_USER = {
   license_status: 'revoked',
 };
 
+const SECOND_USER = {
+  id: 'u_2',
+  username: 'bob',
+  display_name: 'Bob',
+  email: 'bob@example.com',
+  tenant_id: 'tenant_2',
+  status: 'active',
+  license_status: 'disabled',
+  license_expires_at: null,
+  entitlements: ['users:read'],
+  device_count: 2,
+  last_seen_at: '2026-04-29T00:00:00Z',
+};
+
 const ACTIVE_DEVICE = {
   device_id: 'device_1',
   user_id: 'u_1',
@@ -271,6 +285,25 @@ test('users display-name update saves without step-up and refreshes list/detail 
   }
 });
 
+test('users reset restores the selected detail draft without issuing an update request', async () => {
+  const harness = await openUsersStepUpHarness();
+
+  try {
+    const displayNameInput = harness.page.getByLabel('Display name');
+    const entitlementsInput = harness.page.getByLabel('Entitlements (comma or newline separated)');
+
+    await displayNameInput.fill('Alice Draft');
+    await entitlementsInput.fill('dashboard:view, publish:run');
+    await harness.page.getByRole('button', { name: 'Reset' }).click();
+
+    assert.equal(await displayNameInput.inputValue(), 'Alice');
+    assert.equal(await entitlementsInput.inputValue(), 'dashboard:view');
+    assert.equal(harness.calls.updateRequests.length, 0);
+  } finally {
+    await harness.close();
+  }
+});
+
 test('users update can clear license expiry after backend step-up confirmation', async () => {
   const harness = await openUsersStepUpHarness({
     updateResponses: [
@@ -331,6 +364,35 @@ test('users restore removes the selected row from a revoked-only filter and reap
     await harness.page.getByText('Alice').first().waitFor();
     await harness.page.getByText('Current state: active-or-readable').waitFor();
     assert.equal(harness.calls.restoreHeaders.length, 1);
+  } finally {
+    await harness.close();
+  }
+});
+
+test('users switching selection replaces unsaved edits with the newly selected detail state', async () => {
+  const harness = await openUsersStepUpHarness({
+    initialUsers: [ACTIVE_USER, SECOND_USER],
+  });
+
+  try {
+    const displayNameInput = harness.page.getByLabel('Display name');
+    const entitlementsInput = harness.page.getByLabel('Entitlements (comma or newline separated)');
+
+    await displayNameInput.fill('Alice Draft');
+    await entitlementsInput.fill('dashboard:view, publish:run');
+
+    await harness.page.getByText('Bob').first().click();
+    await harness.page.getByText('bob@example.com').first().waitFor();
+
+    assert.equal(await displayNameInput.inputValue(), 'Bob');
+    assert.equal(await entitlementsInput.inputValue(), 'users:read');
+    assert.equal(harness.calls.updateRequests.length, 0);
+
+    await harness.page.getByText('Alice').first().click();
+    await harness.page.getByText('alice@example.com').first().waitFor();
+
+    assert.equal(await displayNameInput.inputValue(), 'Alice');
+    assert.equal(await entitlementsInput.inputValue(), 'dashboard:view');
   } finally {
     await harness.close();
   }
@@ -827,7 +889,7 @@ async function openUsersStepUpHarness(options = {}) {
     createRequests: [],
   };
 
-  let managedUsers = [{ ...(options.initialUser ?? ACTIVE_USER) }];
+  let managedUsers = (options.initialUsers ?? [options.initialUser ?? ACTIVE_USER]).map((user) => ({ ...user }));
   const verifyResponses = [...(options.verifyResponses ?? [])];
   const updateResponses = [...(options.updateResponses ?? [])];
   const createResponses = [...(options.createResponses ?? [])];
