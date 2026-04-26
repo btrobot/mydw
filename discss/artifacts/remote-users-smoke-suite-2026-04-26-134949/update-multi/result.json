@@ -1,0 +1,175 @@
+{
+  "loginUrl": "http://127.0.0.1:4173/dist-react/index.html?apiBase=http://127.0.0.1:8100#/login",
+  "usersUrl": "http://127.0.0.1:4173/dist-react/index.html?apiBase=http://127.0.0.1:8100#/users",
+  "usernamePrefix": "smoke_multi_update_20260426055111",
+  "createdUsers": [
+    {
+      "id": "u_16",
+      "username": "smoke_multi_update_20260426055111_a",
+      "display_name": "Smoke Multi User A"
+    },
+    {
+      "id": "u_17",
+      "username": "smoke_multi_update_20260426055111_b",
+      "display_name": "Smoke Multi User B Edited"
+    }
+  ],
+  "loginPassed": true,
+  "createUsersPassed": true,
+  "switchDraftIsolationPassed": true,
+  "resetPassed": true,
+  "updateDirectPassed": true,
+  "updateSensitivePassed": true,
+  "apiVerificationPassed": true,
+  "screenshots": {
+    "filteredList": "filtered-two-users.png",
+    "switchIsolation": "switch-isolation-clean-b.png",
+    "resetRestored": "reset-restored-a.png",
+    "updateDirect": "update-direct-b.png",
+    "updateSensitive": "update-sensitive-b.png",
+    "failure": "failure-state.png"
+  },
+  "requests": {
+    "stepUpVerify": [
+      {
+        "path": "/admin/step-up/password/verify",
+        "headers": {
+          "sec-ch-ua-platform": "\"Windows\"",
+          "authorization": "Bearer <redacted>",
+          "referer": "http://127.0.0.1:4173/",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36",
+          "sec-ch-ua": "\"HeadlessChrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+          "content-type": "application/json",
+          "sec-ch-ua-mobile": "?0"
+        },
+        "body": {
+          "password": "admin-secret",
+          "scope": "users.write"
+        }
+      },
+      {
+        "path": "/admin/step-up/password/verify",
+        "headers": {
+          "sec-ch-ua-platform": "\"Windows\"",
+          "authorization": "Bearer <redacted>",
+          "referer": "http://127.0.0.1:4173/",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36",
+          "sec-ch-ua": "\"HeadlessChrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+          "content-type": "application/json",
+          "sec-ch-ua-mobile": "?0"
+        },
+        "body": {
+          "password": "admin-secret",
+          "scope": "users.write"
+        }
+      },
+      {
+        "path": "/admin/step-up/password/verify",
+        "headers": {
+          "sec-ch-ua-platform": "\"Windows\"",
+          "authorization": "Bearer <redacted>",
+          "referer": "http://127.0.0.1:4173/",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36",
+          "sec-ch-ua": "\"HeadlessChrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+          "content-type": "application/json",
+          "sec-ch-ua-mobile": "?0"
+        },
+        "body": {
+          "password": "admin-secret",
+          "scope": "users.write"
+        }
+      }
+    ],
+    "patchUser": [
+      {
+        "path": "/admin/users/u_17",
+        "headers": {
+          "sec-ch-ua-platform": "\"Windows\"",
+          "authorization": "Bearer <redacted>",
+          "referer": "http://127.0.0.1:4173/",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36",
+          "sec-ch-ua": "\"HeadlessChrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+          "content-type": "application/json",
+          "sec-ch-ua-mobile": "?0"
+        },
+        "body": {
+          "display_name": "Smoke Multi User B Edited"
+        }
+      },
+      {
+        "path": "/admin/users/u_17",
+        "headers": {
+          "sec-ch-ua-platform": "\"Windows\"",
+          "authorization": "Bearer <redacted>",
+          "referer": "http://127.0.0.1:4173/",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36",
+          "sec-ch-ua": "\"HeadlessChrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+          "content-type": "application/json",
+          "sec-ch-ua-mobile": "?0"
+        },
+        "body": {
+          "license_expires_at": "2026-12-31T00:00:00Z",
+          "entitlements": [
+            "dashboard:view",
+            "publish:run",
+            "support:read"
+          ]
+        }
+      },
+      {
+        "path": "/admin/users/u_17",
+        "headers": {
+          "sec-ch-ua-platform": "\"Windows\"",
+          "authorization": "Bearer <redacted>",
+          "referer": "http://127.0.0.1:4173/",
+          "x-step-up-token": "<redacted>",
+          "sec-ch-ua": "\"HeadlessChrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+          "sec-ch-ua-mobile": "?0",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36",
+          "content-type": "application/json"
+        },
+        "body": {
+          "license_expires_at": "2026-12-31T00:00:00Z",
+          "entitlements": [
+            "dashboard:view",
+            "publish:run",
+            "support:read"
+          ]
+        }
+      }
+    ]
+  },
+  "checkpoints": {
+    "patchCountBeforeSwitch": 0,
+    "patchCountAfterSwitchToB": 0,
+    "patchCountAfterReset": 0
+  },
+  "timestamps": {
+    "startedAt": "2026-04-26T05:51:11.414Z",
+    "finishedAt": "2026-04-26T05:51:21.387Z"
+  },
+  "apiVerification": {
+    "listTotal": 2,
+    "detailA": {
+      "id": "u_16",
+      "username": "smoke_multi_update_20260426055111_a",
+      "display_name": "Smoke Multi User A",
+      "entitlements": [
+        "dashboard:view"
+      ]
+    },
+    "detailB": {
+      "id": "u_17",
+      "username": "smoke_multi_update_20260426055111_b",
+      "display_name": "Smoke Multi User B Edited",
+      "status": "active",
+      "license_status": "active",
+      "license_expires_at": "2026-12-31T00:00:00",
+      "entitlements": [
+        "dashboard:view",
+        "publish:run",
+        "support:read"
+      ]
+    }
+  }
+}

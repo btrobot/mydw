@@ -1,0 +1,16 @@
+{
+  "appUrl": "http://127.0.0.1:4173/dist-react/index.html?apiBase=http://127.0.0.1:8100#/login",
+  "username": "smoke_user_20260426054950",
+  "created": true,
+  "reloadedLookupPassed": true,
+  "screenshots": {
+    "modal": "create-modal.png",
+    "success": "create-success.png",
+    "reloaded": "create-reloaded-search.png",
+    "failure": "failure-state.png"
+  },
+  "timestamps": {
+    "startedAt": "2026-04-26T05:49:50.273Z",
+    "finishedAt": "2026-04-26T05:49:55.874Z"
+  }
+}

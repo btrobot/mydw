@@ -1,0 +1,51 @@
+{
+  "loginUrl": "http://127.0.0.1:4173/dist-react/index.html?apiBase=http://127.0.0.1:8100#/login",
+  "usersUrl": "http://127.0.0.1:4173/dist-react/index.html?apiBase=http://127.0.0.1:8100#/users",
+  "usernamePrefix": "smoke_multi_update_20260426054605",
+  "createdUsers": [],
+  "loginPassed": true,
+  "createUsersPassed": false,
+  "switchDraftIsolationPassed": false,
+  "resetPassed": false,
+  "updateDirectPassed": false,
+  "updateSensitivePassed": false,
+  "apiVerificationPassed": false,
+  "screenshots": {
+    "filteredList": "filtered-two-users.png",
+    "switchIsolation": "switch-isolation-clean-b.png",
+    "resetRestored": "reset-restored-a.png",
+    "updateDirect": "update-direct-b.png",
+    "updateSensitive": "update-sensitive-b.png",
+    "failure": "failure-state.png"
+  },
+  "requests": {
+    "stepUpVerify": [
+      {
+        "path": "/admin/step-up/password/verify",
+        "headers": {
+          "sec-ch-ua-platform": "\"Windows\"",
+          "authorization": "Bearer <redacted>",
+          "referer": "http://127.0.0.1:4173/",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36",
+          "sec-ch-ua": "\"HeadlessChrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+          "content-type": "application/json",
+          "sec-ch-ua-mobile": "?0"
+        },
+        "body": {
+          "password": "admin-secret",
+          "scope": "users.write"
+        }
+      }
+    ],
+    "patchUser": []
+  },
+  "checkpoints": {},
+  "timestamps": {
+    "startedAt": "2026-04-26T05:46:05.632Z",
+    "failedAt": "2026-04-26T05:46:28.385Z"
+  },
+  "error": {
+    "message": "locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('User created. The list and detail panel were refreshed from the backend.') to be visible\u001b[22m\n",
+    "stack": "locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('User created. The list and detail panel were refreshed from the backend.') to be visible\u001b[22m\n\n    at createUserViaUi (E:\\ais\\mydw\\remote\\remote-admin\\scripts\\smoke-users-update-multi.mjs:171:100)\n    at async file:///E:/ais/mydw/remote/remote-admin/scripts/smoke-users-update-multi.mjs:203:3"
+  }
+}

@@ -1,0 +1,190 @@
+{
+  "loginUrl": "http://127.0.0.1:4173/dist-react/index.html?apiBase=http://127.0.0.1:8100#/login",
+  "usersUrl": "http://127.0.0.1:4173/dist-react/index.html?apiBase=http://127.0.0.1:8100#/users",
+  "username": "smoke_update_20260426042846",
+  "createdUserId": "u_7",
+  "createPassed": true,
+  "updateDirectPassed": true,
+  "updateSensitivePassed": true,
+  "revokePassed": true,
+  "restorePassed": true,
+  "apiVerificationPassed": true,
+  "screenshots": {
+    "create": "create-success.png",
+    "updateDirect": "update-direct-success.png",
+    "updateSensitive": "update-sensitive-success.png",
+    "revoke": "revoke-success.png",
+    "restoreReloaded": "restore-reloaded-search.png",
+    "failure": "failure-state.png"
+  },
+  "requests": {
+    "stepUpVerify": [
+      {
+        "headers": {
+          "sec-ch-ua-platform": "\"Windows\"",
+          "authorization": "Bearer <redacted>",
+          "referer": "http://127.0.0.1:4173/",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36",
+          "sec-ch-ua": "\"HeadlessChrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+          "content-type": "application/json",
+          "sec-ch-ua-mobile": "?0"
+        },
+        "body": {
+          "password": "admin-secret",
+          "scope": "users.write"
+        }
+      },
+      {
+        "headers": {
+          "sec-ch-ua-platform": "\"Windows\"",
+          "authorization": "Bearer <redacted>",
+          "referer": "http://127.0.0.1:4173/",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36",
+          "sec-ch-ua": "\"HeadlessChrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+          "content-type": "application/json",
+          "sec-ch-ua-mobile": "?0"
+        },
+        "body": {
+          "password": "admin-secret",
+          "scope": "users.write"
+        }
+      },
+      {
+        "headers": {
+          "sec-ch-ua-platform": "\"Windows\"",
+          "authorization": "Bearer <redacted>",
+          "referer": "http://127.0.0.1:4173/",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36",
+          "sec-ch-ua": "\"HeadlessChrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+          "content-type": "application/json",
+          "sec-ch-ua-mobile": "?0"
+        },
+        "body": {
+          "password": "admin-secret",
+          "scope": "users.write"
+        }
+      },
+      {
+        "headers": {
+          "sec-ch-ua-platform": "\"Windows\"",
+          "authorization": "Bearer <redacted>",
+          "referer": "http://127.0.0.1:4173/",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36",
+          "sec-ch-ua": "\"HeadlessChrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+          "content-type": "application/json",
+          "sec-ch-ua-mobile": "?0"
+        },
+        "body": {
+          "password": "admin-secret",
+          "scope": "users.write"
+        }
+      }
+    ],
+    "patchUser": [
+      {
+        "path": "/admin/users/u_7",
+        "headers": {
+          "sec-ch-ua-platform": "\"Windows\"",
+          "authorization": "Bearer <redacted>",
+          "referer": "http://127.0.0.1:4173/",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36",
+          "sec-ch-ua": "\"HeadlessChrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+          "content-type": "application/json",
+          "sec-ch-ua-mobile": "?0"
+        },
+        "body": {
+          "display_name": "Smoke Update User Edited"
+        }
+      },
+      {
+        "path": "/admin/users/u_7",
+        "headers": {
+          "sec-ch-ua-platform": "\"Windows\"",
+          "authorization": "Bearer <redacted>",
+          "referer": "http://127.0.0.1:4173/",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36",
+          "sec-ch-ua": "\"HeadlessChrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+          "content-type": "application/json",
+          "sec-ch-ua-mobile": "?0"
+        },
+        "body": {
+          "license_expires_at": "2026-12-31T00:00:00Z",
+          "entitlements": [
+            "dashboard:view",
+            "publish:run",
+            "support:read"
+          ]
+        }
+      },
+      {
+        "path": "/admin/users/u_7",
+        "headers": {
+          "sec-ch-ua-platform": "\"Windows\"",
+          "authorization": "Bearer <redacted>",
+          "referer": "http://127.0.0.1:4173/",
+          "x-step-up-token": "<redacted>",
+          "sec-ch-ua": "\"HeadlessChrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+          "sec-ch-ua-mobile": "?0",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36",
+          "content-type": "application/json"
+        },
+        "body": {
+          "license_expires_at": "2026-12-31T00:00:00Z",
+          "entitlements": [
+            "dashboard:view",
+            "publish:run",
+            "support:read"
+          ]
+        }
+      }
+    ],
+    "revokeUser": [
+      {
+        "path": "/admin/users/u_7/revoke",
+        "headers": {
+          "sec-ch-ua-platform": "\"Windows\"",
+          "authorization": "Bearer <redacted>",
+          "referer": "http://127.0.0.1:4173/",
+          "x-step-up-token": "<redacted>",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36",
+          "sec-ch-ua": "\"HeadlessChrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+          "sec-ch-ua-mobile": "?0"
+        }
+      }
+    ],
+    "restoreUser": [
+      {
+        "path": "/admin/users/u_7/restore",
+        "headers": {
+          "sec-ch-ua-platform": "\"Windows\"",
+          "authorization": "Bearer <redacted>",
+          "referer": "http://127.0.0.1:4173/",
+          "x-step-up-token": "<redacted>",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36",
+          "sec-ch-ua": "\"HeadlessChrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+          "sec-ch-ua-mobile": "?0"
+        }
+      }
+    ]
+  },
+  "timestamps": {
+    "startedAt": "2026-04-26T04:28:46.351Z",
+    "finishedAt": "2026-04-26T04:28:59.268Z"
+  },
+  "apiVerification": {
+    "listTotal": 1,
+    "detail": {
+      "id": "u_7",
+      "username": "smoke_update_20260426042846",
+      "display_name": "Smoke Update User Edited",
+      "status": "active",
+      "license_status": "active",
+      "license_expires_at": "2026-12-31T00:00:00",
+      "entitlements": [
+        "dashboard:view",
+        "publish:run",
+        "support:read"
+      ]
+    }
+  }
+}
