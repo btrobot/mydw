@@ -8,6 +8,13 @@ import { EmptyState } from '../../components/states/EmptyState.js';
 import { ErrorState } from '../../components/states/ErrorState.js';
 import { LoadingState } from '../../components/states/LoadingState.js';
 import {
+  formatAdminDetailError,
+  formatAdminListError,
+  formatAdminMissingSession,
+  formatFilteredEmptyState,
+  formatSelectionEmptyState,
+} from '../../components/states/adminCopy.js';
+import {
   ADMIN_STEP_UP_SCOPE_DEVICES_WRITE,
   AdminApiError,
   canEditUsersRole,
@@ -239,7 +246,7 @@ export function DevicesPage(): JSX.Element {
   }
 
   if (!accessToken) {
-    return <ErrorState title="Admin session missing" description="Please sign in again before loading managed devices." />;
+    return <ErrorState title="Admin session missing" description={formatAdminMissingSession('devices')} />;
   }
 
   if (devicesQuery.isLoading && !devicesQuery.data) {
@@ -356,7 +363,7 @@ export function DevicesPage(): JSX.Element {
           {devicesQuery.isError ? (
             <ErrorState
               title="Device list unavailable"
-              description="The device list could not be loaded from the admin API."
+              description={formatAdminListError('device')}
               retryLabel="Retry devices"
               onRetry={() => void devicesQuery.refetch()}
             />
@@ -400,7 +407,7 @@ export function DevicesPage(): JSX.Element {
               )}
             />
           ) : (
-            <EmptyState description="No devices matched the current filters." />
+            <EmptyState description={formatFilteredEmptyState('devices')} />
           )}
         </Card>
 
@@ -410,7 +417,7 @@ export function DevicesPage(): JSX.Element {
           ) : detailQuery.isError ? (
             <ErrorState
               title="Device detail unavailable"
-              description="The selected device detail request failed."
+              description={formatAdminDetailError('device')}
               retryLabel="Retry detail"
               onRetry={() => void detailQuery.refetch()}
             />
@@ -504,17 +511,20 @@ export function DevicesPage(): JSX.Element {
                 message="Danger zone"
                 description={
                   canWrite
-                    ? 'Unbind / disable / rebind are audited server-side. Before each destructive action, this page confirms your password, obtains a short-lived step-up token, then immediately refetches list and detail data after success.'
-                    : 'This admin role can view device detail only. Device mutation controls remain disabled.'
+                    ? 'Unbind, disable, and rebind actions are audited server-side. Each action requires password confirmation, a short-lived step-up token, and a backend refresh after success.'
+                    : 'This role can review devices, but unbind, disable, and rebind actions remain disabled.'
                 }
               />
             </Space>
           ) : devicesQuery.isFetching ? (
             <LoadingState title="Refreshing device detail" />
           ) : selectedDevice ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Select a device to inspect detail." />
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description={formatSelectionEmptyState('a device', 'binding state')}
+            />
           ) : (
-            <EmptyState description="Choose a device from the list to inspect binding state." />
+            <EmptyState description={formatSelectionEmptyState('a device', 'binding state')} />
           )}
         </Card>
       </Flex>

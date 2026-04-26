@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { ErrorState } from '../../components/states/ErrorState.js';
 import { LoadingState } from '../../components/states/LoadingState.js';
+import { formatAdminLoadError, formatAdminMissingSession } from '../../components/states/adminCopy.js';
 import { AdminApiError, getDashboardMetrics, isAuthExpiredError } from '../../features/auth/auth-client.js';
 import { useAuth } from '../../features/auth/auth-context.js';
 
@@ -26,7 +27,7 @@ export function DashboardPage(): JSX.Element {
   }, [handleExpiredSession, metricsQuery.error, navigate]);
 
   if (!accessToken) {
-    return <ErrorState title="Admin session missing" description="Please sign in again before loading dashboard metrics." />;
+    return <ErrorState title="Admin session missing" description={formatAdminMissingSession('dashboard metrics')} />;
   }
 
   if (metricsQuery.isLoading) {
@@ -37,7 +38,7 @@ export function DashboardPage(): JSX.Element {
     return (
       <ErrorState
         title="Dashboard metrics unavailable"
-        description="The dashboard metric request failed for the current Remote Admin session."
+        description={formatAdminLoadError('dashboard metrics')}
         retryLabel="Retry metrics"
         onRetry={() => void metricsQuery.refetch()}
       />

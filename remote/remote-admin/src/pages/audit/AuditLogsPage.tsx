@@ -22,6 +22,12 @@ import { EmptyState } from '../../components/states/EmptyState.js';
 import { ErrorState } from '../../components/states/ErrorState.js';
 import { LoadingState } from '../../components/states/LoadingState.js';
 import {
+  formatAdminListError,
+  formatAdminMissingSession,
+  formatFilteredEmptyState,
+  formatSelectionEmptyState,
+} from '../../components/states/adminCopy.js';
+import {
   AdminApiError,
   buildAuditLogQuery,
   getAdminAuditLogs,
@@ -126,7 +132,7 @@ export function AuditLogsPage(): JSX.Element {
   }
 
   if (!accessToken) {
-    return <ErrorState title="Admin session missing" description="Please sign in again before loading audit logs." />;
+    return <ErrorState title="Admin session missing" description={formatAdminMissingSession('audit logs')} />;
   }
 
   if (auditQuery.isLoading && !auditQuery.data) {
@@ -295,7 +301,7 @@ export function AuditLogsPage(): JSX.Element {
             {auditQuery.isError ? (
               <ErrorState
                 title="Audit logs unavailable"
-                description="The audit investigation list could not be loaded from the admin API."
+                description={formatAdminListError('audit event')}
                 retryLabel="Retry audit logs"
                 onRetry={() => void auditQuery.refetch()}
               />
@@ -338,7 +344,7 @@ export function AuditLogsPage(): JSX.Element {
             ) : auditQuery.isFetching ? (
               <LoadingState title="Refreshing audit logs" />
             ) : (
-              <EmptyState description="No audit events matched the current filters." />
+              <EmptyState description={formatFilteredEmptyState('audit events')} />
             )}
           </Space>
         </Card>
@@ -392,9 +398,12 @@ export function AuditLogsPage(): JSX.Element {
           ) : auditQuery.isFetching ? (
             <LoadingState title="Refreshing audit detail" />
           ) : selectedAuditId ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Select an audit event to inspect detail." />
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description={formatSelectionEmptyState('an audit event', 'request tracing and normalized details')}
+            />
           ) : (
-            <EmptyState description="Choose an audit event from the list to inspect request tracing and normalized details." />
+            <EmptyState description={formatSelectionEmptyState('an audit event', 'request tracing and normalized details')} />
           )}
         </Card>
       </Flex>

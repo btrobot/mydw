@@ -8,6 +8,12 @@ import { EmptyState } from '../../components/states/EmptyState.js';
 import { ErrorState } from '../../components/states/ErrorState.js';
 import { LoadingState } from '../../components/states/LoadingState.js';
 import {
+  formatAdminListError,
+  formatAdminMissingSession,
+  formatFilteredEmptyState,
+  formatSelectionEmptyState,
+} from '../../components/states/adminCopy.js';
+import {
   ADMIN_STEP_UP_SCOPE_SESSIONS_REVOKE,
   AdminApiError,
   canEditUsersRole,
@@ -167,7 +173,7 @@ export function SessionsPage(): JSX.Element {
   }
 
   if (!accessToken) {
-    return <ErrorState title="Admin session missing" description="Please sign in again before loading sessions." />;
+    return <ErrorState title="Admin session missing" description={formatAdminMissingSession('sessions')} />;
   }
 
   if (sessionsQuery.isLoading && !sessionsQuery.data) {
@@ -297,7 +303,7 @@ export function SessionsPage(): JSX.Element {
           {sessionsQuery.isError ? (
             <ErrorState
               title="Sessions unavailable"
-              description="The sessions list could not be loaded from the admin API."
+              description={formatAdminListError('session')}
               retryLabel="Retry sessions"
               onRetry={() => void sessionsQuery.refetch()}
             />
@@ -339,7 +345,7 @@ export function SessionsPage(): JSX.Element {
               )}
             />
           ) : (
-            <EmptyState description="No sessions matched the current filters." />
+            <EmptyState description={formatFilteredEmptyState('sessions')} />
           )}
         </Card>
 
@@ -383,17 +389,20 @@ export function SessionsPage(): JSX.Element {
                 message="Danger zone"
                 description={
                   canWrite
-                    ? 'Session revoke is audited server-side. Before revoking a session, this page confirms your password, obtains a short-lived step-up token, then refreshes the filtered session list after success.'
-                    : 'This admin role can view session detail only. Revoke controls remain disabled.'
+                    ? 'Session revocation is audited server-side. Each action requires password confirmation, a short-lived step-up token, and a backend refresh after success.'
+                    : 'This role can review sessions, but revoke actions remain disabled.'
                 }
               />
             </Space>
           ) : sessionsQuery.isFetching ? (
             <LoadingState title="Refreshing selected session" />
           ) : selectedSessionId ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Select a session to inspect detail." />
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description={formatSelectionEmptyState('a session', 'auth state and revoke controls')}
+            />
           ) : (
-            <EmptyState description="Choose a session from the list to inspect auth state and revoke controls." />
+            <EmptyState description={formatSelectionEmptyState('a session', 'auth state and revoke controls')} />
           )}
         </Card>
       </Flex>

@@ -8,6 +8,13 @@ import { EmptyState } from '../../components/states/EmptyState.js';
 import { ErrorState } from '../../components/states/ErrorState.js';
 import { LoadingState } from '../../components/states/LoadingState.js';
 import {
+  formatAdminDetailError,
+  formatAdminListError,
+  formatAdminMissingSession,
+  formatFilteredEmptyState,
+  formatSelectionEmptyState,
+} from '../../components/states/adminCopy.js';
+import {
   ADMIN_STEP_UP_SCOPE_USERS_WRITE,
   AdminApiError,
   canEditUsersRole,
@@ -219,7 +226,7 @@ export function UsersPage(): JSX.Element {
   }
 
   if (!accessToken) {
-    return <ErrorState title="Admin session missing" description="Please sign in again before loading managed users." />;
+    return <ErrorState title="Admin session missing" description={formatAdminMissingSession('users')} />;
   }
 
   if (usersQuery.isLoading && !usersQuery.data) {
@@ -340,7 +347,7 @@ export function UsersPage(): JSX.Element {
           {usersQuery.isError ? (
             <ErrorState
               title="User list unavailable"
-              description="The user list could not be loaded from the admin API."
+              description={formatAdminListError('user')}
               retryLabel="Retry users"
               onRetry={() => void usersQuery.refetch()}
             />
@@ -385,7 +392,7 @@ export function UsersPage(): JSX.Element {
               )}
             />
           ) : (
-            <EmptyState description="No managed users matched the current filters." />
+            <EmptyState description={formatFilteredEmptyState('users')} />
           )}
         </Card>
 
@@ -395,7 +402,7 @@ export function UsersPage(): JSX.Element {
           ) : detailQuery.isError ? (
             <ErrorState
               title="User detail unavailable"
-              description="The selected user detail request failed."
+              description={formatAdminDetailError('user')}
               retryLabel="Retry detail"
               onRetry={() => void detailQuery.refetch()}
             />
@@ -455,17 +462,20 @@ export function UsersPage(): JSX.Element {
                 message="Danger zone"
                 description={
                   canWrite
-                    ? 'Revoke / restore are audited server-side. Before each destructive action, this page confirms your password, obtains a short-lived step-up token, then immediately refetches list and detail data after success.'
-                    : 'This admin role can view user detail only. Revoke / restore controls remain disabled.'
+                    ? 'Revoke and restore actions are audited server-side. Each action requires password confirmation, a short-lived step-up token, and a backend refresh after success.'
+                    : 'This role can review users, but revoke and restore actions remain disabled.'
                 }
               />
             </Space>
           ) : usersQuery.isFetching ? (
             <LoadingState title="Refreshing user detail" />
           ) : selectedUser ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Select a user to inspect detail." />
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description={formatSelectionEmptyState('a user', 'authorization detail')}
+            />
           ) : (
-            <EmptyState description="Choose a user from the list to inspect authorization detail." />
+            <EmptyState description={formatSelectionEmptyState('a user', 'authorization detail')} />
           )}
         </Card>
       </Flex>
