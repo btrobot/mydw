@@ -17,6 +17,7 @@ import {
 import {
   ADMIN_STEP_UP_SCOPE_USERS_WRITE,
   AdminApiError,
+  type AdminUserUpdateRequest,
   canEditUsersRole,
   DEFAULT_ADMIN_LIST_PAGE_SIZE,
   getAdminUserDetail,
@@ -25,6 +26,7 @@ import {
   mapAdminActionError,
   restoreAdminUser,
   revokeAdminUser,
+  updateAdminUser,
   type AdminUserRecord,
   type AdminUsersFilters,
   type OffsetPaginationFilters,
@@ -40,9 +42,82 @@ const EMPTY_FILTERS: AdminUsersFilters = {
   offset: 0,
 };
 
+type UserEditDraft = {
+  displayName: string;
+  licenseStatus: string;
+  licenseExpiresAt: string;
+  entitlements: string;
+};
+
+const EMPTY_USER_EDIT_DRAFT: UserEditDraft = {
+  displayName: '',
+  licenseStatus: '',
+  licenseExpiresAt: '',
+  entitlements: '',
+};
+
 function formatValue(value: string | number | null | undefined): string {
   if (value === null || value === undefined || value === '') return 'n/a';
   return String(value);
+}
+
+function formatUserEditDraft(detail?: AdminUserRecord | null): UserEditDraft {
+  if (!detail) {
+    return EMPTY_USER_EDIT_DRAFT;
+  }
+
+  return {
+    displayName: detail.display_name ?? '',
+    licenseStatus: detail.license_status ?? '',
+    licenseExpiresAt: detail.license_expires_at ?? '',
+    entitlements: detail.entitlements.join(', '),
+  };
+}
+
+function parseEntitlementsInput(value: string): string[] {
+  const seen = new Set<string>();
+  const parsed: string[] = [];
+  for (const entry of value.split(/[\n,]/)) {
+    const normalized = entry.trim();
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    parsed.push(normalized);
+  }
+  return parsed;
+}
+
+function areStringArraysEqual(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((value, index) => value === right[index]);
+}
+
+function buildUserUpdatePayload(detail: AdminUserRecord, draft: UserEditDraft): AdminUserUpdateRequest {
+  const payload: AdminUserUpdateRequest = {};
+
+  if (draft.displayName !== (detail.display_name ?? '')) {
+    payload.display_name = draft.displayName;
+  }
+
+  if (draft.licenseStatus !== (detail.license_status ?? '')) {
+    payload.license_status = draft.licenseStatus;
+  }
+
+  const normalizedLicenseExpiry = draft.licenseExpiresAt.trim();
+  if (normalizedLicenseExpiry && normalizedLicenseExpiry !== (detail.license_expires_at ?? '')) {
+    payload.license_expires_at = normalizedLicenseExpiry;
+  }
+
+  const normalizedEntitlements = parseEntitlementsInput(draft.entitlements);
+  if (!areStringArraysEqual(normalizedEntitlements, detail.entitlements)) {
+    payload.entitlements = normalizedEntitlements;
+  }
+
+  return payload;
 }
 
 function renderEntitlements(user: AdminUserRecord): JSX.Element {
@@ -66,6 +141,7 @@ export function UsersPage(): JSX.Element {
   const [draftFilters, setDraftFilters] = useState<AdminUsersFilters>(EMPTY_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<AdminUsersFilters>(EMPTY_FILTERS);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<UserEditDraft>(EMPTY_USER_EDIT_DRAFT);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -181,6 +257,42 @@ export function UsersPage(): JSX.Element {
     },
   });
 
+  const userUpdateMutation = useMutation({
+    mutationFn: async ({
+      userId,
+      payload,
+      stepUpToken,
+    }: {
+      userId: string;
+      payload: AdminUserUpdateRequest;
+      stepUpToken?: string | null;
+    }) => {
+      if (!accessToken) {
+        throw new Error('Missing admin session');
+      }
+
+      return updateAdminUser(accessToken, userId, payload, stepUpToken);
+    },
+    onMutate: () => {
+      setActionFeedback(null);
+      setActionError(null);
+    },
+    onSuccess: async (_response, variables) => {
+      try {
+        await refreshUsersState(variables.userId);
+        setActionFeedback('User changes saved. The list and detail panel were refreshed from the backend.');
+      } catch (error) {
+        if (error instanceof AdminApiError && isAuthExpiredError(error.errorCode)) {
+          handleExpiredSession();
+          navigate('/login', { replace: true, state: { from: '/users' } });
+          return;
+        }
+
+        setActionError('User changes were saved, but the follow-up refresh failed. Retry the list or detail query.');
+      }
+    },
+  });
+
   useEffect(() => {
     const error = usersQuery.error ?? detailQuery.error;
     if (error instanceof AdminApiError && isAuthExpiredError(error.errorCode)) {
@@ -201,8 +313,13 @@ export function UsersPage(): JSX.Element {
     }
   }, [selectedUserId, usersQuery.data?.items]);
 
+  useEffect(() => {
+    setEditDraft(formatUserEditDraft(detailQuery.data));
+  }, [detailQuery.data]);
+
   const isRevoking = userActionMutation.isPending && userActionMutation.variables?.action === 'revoke';
   const isRestoring = userActionMutation.isPending && userActionMutation.variables?.action === 'restore';
+  const isSavingChanges = userUpdateMutation.isPending;
   const selectedDetail = detailQuery.data;
   const selectedUserIsRevoked =
     selectedDetail?.status === 'revoked' || selectedDetail?.license_status === 'revoked';
@@ -222,6 +339,57 @@ export function UsersPage(): JSX.Element {
       if (isAdminStepUpCancelledError(error)) {
         return;
       }
+    }
+  }
+
+  async function runUserUpdate(user: AdminUserRecord): Promise<void> {
+    const payload = buildUserUpdatePayload(user, editDraft);
+    if (Object.keys(payload).length === 0) {
+      setActionError(null);
+      setActionFeedback('No user changes to save.');
+      return;
+    }
+
+    try {
+      await userUpdateMutation.mutateAsync({ userId: user.id, payload });
+    } catch (error) {
+      if (error instanceof AdminApiError && isAuthExpiredError(error.errorCode)) {
+        handleExpiredSession();
+        navigate('/login', { replace: true, state: { from: '/users' } });
+        return;
+      }
+
+      if (
+        error instanceof AdminApiError &&
+        (error.errorCode === 'step_up_required' ||
+          error.errorCode === 'step_up_invalid' ||
+          error.errorCode === 'step_up_expired')
+      ) {
+        try {
+          const stepUpToken = await requestStepUp({
+            scope: ADMIN_STEP_UP_SCOPE_USERS_WRITE,
+            actionLabel: 'Save user changes',
+            description:
+              'Confirm your password before saving sensitive user changes. The admin API will issue a short-lived step-up token for the protected update request.',
+          });
+          await userUpdateMutation.mutateAsync({ userId: user.id, payload, stepUpToken });
+          return;
+        } catch (stepUpError) {
+          if (isAdminStepUpCancelledError(stepUpError)) {
+            return;
+          }
+
+          if (stepUpError instanceof AdminApiError && isAuthExpiredError(stepUpError.errorCode)) {
+            handleExpiredSession();
+            navigate('/login', { replace: true, state: { from: '/users' } });
+            return;
+          }
+
+          throw stepUpError;
+        }
+      }
+
+      setActionError(error instanceof AdminApiError ? mapAdminActionError(error.errorCode) : mapAdminActionError());
     }
   }
 
@@ -250,8 +418,8 @@ export function UsersPage(): JSX.Element {
         message={canWrite ? 'Write access available' : 'Read-only access'}
         description={
           canWrite
-            ? 'Revoke and restore actions now require step-up verification, then refresh the list and detail panel after each successful action.'
-            : 'This role can review users, but revoke and restore controls remain disabled.'
+            ? 'Display name changes save directly, while license and entitlement updates reuse backend step-up verification before the list and detail panel refresh.'
+            : 'This role can review users, but edit, revoke, and restore controls remain disabled.'
         }
       />
 
@@ -427,10 +595,110 @@ export function UsersPage(): JSX.Element {
                 </Descriptions.Item>
               </Descriptions>
 
+              <Card size="small" title="Edit user">
+                <Form
+                  layout="vertical"
+                  onFinish={() => {
+                    if (!selectedDetail) return;
+                    setActionFeedback(null);
+                    setActionError(null);
+                    void runUserUpdate(selectedDetail);
+                  }}
+                >
+                  <Flex gap={16} wrap="wrap" align="end">
+                    <Form.Item label="Display name" style={{ minWidth: 220, flex: 1, marginBottom: 0 }}>
+                      <Input
+                        aria-label="Display name"
+                        value={editDraft.displayName}
+                        placeholder="Alice"
+                        disabled={!canWrite || isSavingChanges || isRevoking || isRestoring}
+                        onChange={(event) =>
+                          setEditDraft((current) => ({
+                            ...current,
+                            displayName: event.target.value,
+                          }))
+                        }
+                      />
+                    </Form.Item>
+                    <Form.Item label="License status" style={{ minWidth: 220, flex: 1, marginBottom: 0 }}>
+                      <Select
+                        aria-label="License status"
+                        data-testid="user-license-status-select"
+                        value={editDraft.licenseStatus}
+                        disabled={!canWrite || isSavingChanges || isRevoking || isRestoring}
+                        onChange={(value) =>
+                          setEditDraft((current) => ({
+                            ...current,
+                            licenseStatus: value,
+                          }))
+                        }
+                        options={[
+                          { value: 'active', label: 'active' },
+                          { value: 'revoked', label: 'revoked' },
+                          { value: 'disabled', label: 'disabled' },
+                        ]}
+                      />
+                    </Form.Item>
+                    <Form.Item label="License expiry (ISO-8601)" style={{ minWidth: 280, flex: 1, marginBottom: 0 }}>
+                      <Input
+                        aria-label="License expiry (ISO-8601)"
+                        value={editDraft.licenseExpiresAt}
+                        placeholder="2026-07-01T00:00:00Z"
+                        disabled={!canWrite || isSavingChanges || isRevoking || isRestoring}
+                        onChange={(event) =>
+                          setEditDraft((current) => ({
+                            ...current,
+                            licenseExpiresAt: event.target.value,
+                          }))
+                        }
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      label="Entitlements (comma or newline separated)"
+                      style={{ minWidth: 320, flex: '1 1 100%', marginBottom: 0 }}
+                    >
+                      <Input.TextArea
+                        aria-label="Entitlements (comma or newline separated)"
+                        autoSize={{ minRows: 2, maxRows: 4 }}
+                        value={editDraft.entitlements}
+                        placeholder="dashboard:view, publish:run"
+                        disabled={!canWrite || isSavingChanges || isRevoking || isRestoring}
+                        onChange={(event) =>
+                          setEditDraft((current) => ({
+                            ...current,
+                            entitlements: event.target.value,
+                          }))
+                        }
+                      />
+                    </Form.Item>
+                    <Space>
+                      <Button
+                        type="primary"
+                        htmlType="submit"
+                        disabled={!canWrite || isRevoking || isRestoring}
+                        loading={isSavingChanges}
+                      >
+                        Save changes
+                      </Button>
+                      <Button
+                        disabled={!canWrite || isSavingChanges || isRevoking || isRestoring}
+                        onClick={() => {
+                          setActionFeedback(null);
+                          setActionError(null);
+                          setEditDraft(formatUserEditDraft(selectedDetail));
+                        }}
+                      >
+                        Reset
+                      </Button>
+                    </Space>
+                  </Flex>
+                </Form>
+              </Card>
+
               <Flex gap={12} wrap="wrap">
                 <Button
                   danger
-                  disabled={!canWrite || isRevoking || isRestoring}
+                  disabled={!canWrite || isRevoking || isRestoring || isSavingChanges}
                   loading={isRevoking}
                   onClick={() => {
                     if (!selectedDetail) return;
@@ -440,7 +708,7 @@ export function UsersPage(): JSX.Element {
                   Revoke user
                 </Button>
                 <Button
-                  disabled={!canWrite || isRevoking || isRestoring}
+                  disabled={!canWrite || isRevoking || isRestoring || isSavingChanges}
                   loading={isRestoring}
                   onClick={() => {
                     if (!selectedDetail) return;
@@ -462,8 +730,8 @@ export function UsersPage(): JSX.Element {
                 message="Danger zone"
                 description={
                   canWrite
-                    ? 'Revoke and restore actions are audited server-side. Each action requires password confirmation, a short-lived step-up token, and a backend refresh after success.'
-                    : 'This role can review users, but revoke and restore actions remain disabled.'
+                    ? 'Sensitive edits plus revoke and restore actions are audited server-side. License and entitlement changes require password confirmation, a short-lived step-up token, and a backend refresh after success.'
+                    : 'This role can review users, but edit, revoke, and restore actions remain disabled.'
                 }
               />
             </Space>

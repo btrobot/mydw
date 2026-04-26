@@ -21,6 +21,7 @@ import {
   revokeAdminUser,
   shiftOffsetPagination,
   toUtcAuditFilterTimestamp,
+  updateAdminUser,
   verifyAdminStepUpPassword,
 } from '../dist/features/auth/auth-client.js';
 import {
@@ -265,6 +266,67 @@ test('destructive admin client forwards X-Step-Up-Token header', async () => {
       Authorization: 'Bearer admin_access_token',
       'X-Step-Up-Token': 'step_up_1',
     });
+  } finally {
+    globalThis.window = originalWindow;
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('update admin user client posts PATCH payload and optional step-up header', async () => {
+  const originalWindow = globalThis.window;
+  const originalFetch = globalThis.fetch;
+  let requestInput;
+  let requestInit;
+  globalThis.window = { location: { search: '' } };
+  globalThis.fetch = async (input, init) => {
+    requestInput = input;
+    requestInit = init;
+    return new Response(
+      JSON.stringify({
+        id: 'u_1',
+        username: 'alice',
+        display_name: 'Alice Updated',
+        email: 'alice@example.com',
+        tenant_id: 'tenant_1',
+        status: 'active',
+        license_status: 'active',
+        license_expires_at: '2026-07-01T00:00:00Z',
+        entitlements: ['dashboard:view'],
+        device_count: 1,
+        last_seen_at: '2026-04-30T00:00:00Z',
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  };
+
+  try {
+    const response = await updateAdminUser(
+      'admin_access_token',
+      'u_1',
+      {
+        display_name: 'Alice Updated',
+        entitlements: ['dashboard:view'],
+      },
+      'step_up_1'
+    );
+    assert.equal(response.display_name, 'Alice Updated');
+    assert.equal(String(requestInput), 'http://127.0.0.1:8100/admin/users/u_1');
+    assert.equal(requestInit.method, 'PATCH');
+    assert.deepEqual(requestInit.headers, {
+      Authorization: 'Bearer admin_access_token',
+      'Content-Type': 'application/json',
+      'X-Step-Up-Token': 'step_up_1',
+    });
+    assert.equal(
+      requestInit.body,
+      JSON.stringify({
+        display_name: 'Alice Updated',
+        entitlements: ['dashboard:view'],
+      })
+    );
   } finally {
     globalThis.window = originalWindow;
     globalThis.fetch = originalFetch;

@@ -226,6 +226,87 @@ test('users restore step-up reactivates a revoked user with the same token flow'
   }
 });
 
+test('users display-name update saves without step-up and refreshes list/detail state', async () => {
+  const harness = await openUsersStepUpHarness();
+
+  try {
+    const displayNameInput = harness.page.getByLabel('Display name');
+    await displayNameInput.fill('Alice Updated');
+    await harness.page.getByRole('button', { name: 'Save changes' }).click();
+
+    await harness.page.getByText(
+      'User changes saved. The list and detail panel were refreshed from the backend.'
+    ).waitFor();
+
+    assert.equal(harness.calls.verifyBodies.length, 0);
+    assert.equal(harness.calls.updateRequests.length, 1);
+    assert.equal(harness.calls.updateRequests[0].headers.authorization, 'Bearer admin_access_token');
+    assert.equal(harness.calls.updateRequests[0].headers['x-step-up-token'], undefined);
+    assert.deepEqual(harness.calls.updateRequests[0].body, {
+      display_name: 'Alice Updated',
+    });
+    await harness.page.getByText('Alice Updated').first().waitFor();
+  } finally {
+    await harness.close();
+  }
+});
+
+test('users sensitive update retries with step-up token after backend requires confirmation', async () => {
+  const harness = await openUsersStepUpHarness({
+    updateResponses: [
+      {
+        status: 403,
+        body: {
+          error_code: 'step_up_required',
+          message: 'Step-up verification required',
+        },
+      },
+    ],
+  });
+
+  try {
+    const licenseStatus = harness.page.getByRole('combobox', { name: 'License status' });
+    await licenseStatus.focus();
+    await harness.page.keyboard.press('ArrowDown');
+    await harness.page.keyboard.press('ArrowDown');
+    await harness.page.keyboard.press('Enter');
+    await harness.page.getByLabel('Entitlements (comma or newline separated)').fill('dashboard:view, publish:run');
+    await harness.page.getByRole('button', { name: 'Save changes' }).click();
+
+    await harness.page.getByText('Confirm password: Save user changes').waitFor();
+    await harness.page.getByText(
+      'Confirm your password before saving sensitive user changes. The admin API will issue a short-lived step-up token for the protected update request.'
+    ).waitFor();
+    await harness.page.getByPlaceholder('Enter your password').fill('admin-secret');
+    await harness.page.getByRole('button', { name: 'Confirm and continue' }).click();
+
+    await harness.page.getByText(
+      'User changes saved. The list and detail panel were refreshed from the backend.'
+    ).waitFor();
+
+    assert.equal(harness.calls.updateRequests.length, 2);
+    assert.deepEqual(harness.calls.updateRequests[0].body, {
+      license_status: 'revoked',
+      entitlements: ['dashboard:view', 'publish:run'],
+    });
+    assert.equal(harness.calls.updateRequests[0].headers['x-step-up-token'], undefined);
+    assert.equal(harness.calls.verifyBodies.length, 1);
+    assert.deepEqual(harness.calls.verifyBodies[0], {
+      password: 'admin-secret',
+      scope: 'users.write',
+    });
+    assert.equal(harness.calls.updateRequests[1].headers['x-step-up-token'], 'admin_step_up_1');
+    assert.deepEqual(harness.calls.updateRequests[1].body, {
+      license_status: 'revoked',
+      entitlements: ['dashboard:view', 'publish:run'],
+    });
+    await harness.page.getByText('publish:run').first().waitFor();
+    await harness.page.getByText('Current state: revoked').waitFor();
+  } finally {
+    await harness.close();
+  }
+});
+
 test('devices page opens a password-confirmation modal before disable', async () => {
   const harness = await openDevicesStepUpHarness();
 
@@ -490,10 +571,12 @@ async function openUsersStepUpHarness(options = {}) {
     verifyHeaders: [],
     revokeHeaders: [],
     restoreHeaders: [],
+    updateRequests: [],
   };
 
   let currentUser = { ...(options.initialUser ?? ACTIVE_USER) };
   const verifyResponses = [...(options.verifyResponses ?? [])];
+  const updateResponses = [...(options.updateResponses ?? [])];
 
   await page.addInitScript((token) => {
     window.localStorage.setItem('remote_admin_access_token', token);
@@ -556,6 +639,40 @@ async function openUsersStepUpHarness(options = {}) {
         ...ACTIVE_USER,
       };
       await fulfillJson(route, { success: true });
+      return;
+    }
+
+    if (request.method() === 'PATCH' && url.pathname === '/admin/users/u_1') {
+      const body = JSON.parse(request.postData() ?? '{}');
+      calls.updateRequests.push({
+        headers: request.headers(),
+        body,
+      });
+
+      const response = updateResponses.shift();
+      if (response) {
+        await fulfillJson(route, response.body, response.status);
+        return;
+      }
+
+      currentUser = {
+        ...currentUser,
+        ...body,
+      };
+
+      if (body.license_status === 'revoked') {
+        currentUser = {
+          ...currentUser,
+          status: 'revoked',
+        };
+      } else if (body.license_status === 'active') {
+        currentUser = {
+          ...currentUser,
+          status: 'active',
+        };
+      }
+
+      await fulfillJson(route, { ...currentUser });
       return;
     }
 

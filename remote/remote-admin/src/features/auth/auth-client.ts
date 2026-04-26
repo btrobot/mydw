@@ -78,6 +78,13 @@ export type AdminActionResponse = {
   success: boolean;
 };
 
+export type AdminUserUpdateRequest = {
+  display_name?: string | null;
+  license_status?: string | null;
+  license_expires_at?: string | null;
+  entitlements?: string[] | null;
+};
+
 export type AdminUsersFilters = OffsetPaginationFilters & {
   query: string;
   status: string;
@@ -478,6 +485,19 @@ export async function restoreAdminUser(
   return requestJson<AdminActionResponse>(`/admin/users/${userId}/restore`, {
     method: 'POST',
     headers: createAdminAuthHeaders(accessToken, { stepUpToken }),
+  });
+}
+
+export async function updateAdminUser(
+  accessToken: string,
+  userId: string,
+  payload: AdminUserUpdateRequest,
+  stepUpToken?: string | null
+): Promise<AdminUserRecord> {
+  return requestJson<AdminUserRecord>(`/admin/users/${userId}`, {
+    method: 'PATCH',
+    headers: createAdminAuthHeaders(accessToken, { contentType: true, stepUpToken }),
+    body: JSON.stringify(payload),
   });
 }
 
