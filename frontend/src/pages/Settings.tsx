@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { Alert, App, Button, Card, Descriptions, Form, Input, Select, Space, Switch, Typography } from 'antd'
 import { useBackup, useSystemConfig, useUpdateSystemConfig } from '@/hooks/useSystem'
+import { InlineNotice } from '@/components/feedback/InlineNotice'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { creativeFlowModeMeta } from '@/features/creative/creativeFlow'
 
 const { Paragraph, Text } = Typography
@@ -59,6 +61,14 @@ export default function Settings() {
 
   return (
     <Space direction="vertical" style={{ width: '100%' }} size="large">
+      <PageHeader
+        title="\u7cfb\u7edf\u8bbe\u7f6e"
+        subtitle="\u5c06\u8fd0\u884c\u65f6\u53c2\u6570\u3001\u6570\u636e\u5907\u4efd\u4e0e\u53ea\u8bfb\u7cfb\u7edf\u4fe1\u606f\u6536\u675f\u5728\u540c\u4e00\u4e2a\u7b56\u7565\u9875\u5185\uff0c\u907f\u514d\u914d\u7f6e\u3001\u8bf4\u660e\u548c\u64cd\u4f5c\u5165\u53e3\u5206\u6563\u3002"
+      />
+      <InlineNotice
+        message="\u53ef\u7f16\u8f91\u7684\u8fd0\u884c\u65f6\u914d\u7f6e\u4e0e\u53ea\u8bfb\u542f\u52a8\u671f\u914d\u7f6e\u5df2\u7ecf\u5728\u8fd9\u4e2a\u9875\u9762\u5185\u660e\u786e\u5206\u5c42"
+        description="\u4f18\u5148\u5728\u300c\u8fd0\u884c\u65f6\u8bbe\u7f6e\u300d\u4e2d\u8c03\u6574\u53ef\u7acb\u5373\u751f\u6548\u7684\u9009\u9879\uff0c\u9700\u8981\u91cd\u542f\u7684\u53c2\u6570\u5219\u4ee5\u53ea\u8bfb\u8bf4\u660e\u5f62\u5f0f\u5c55\u793a\uff0c\u907f\u514d\u4f2a\u88c5\u6210\u300c\u4fdd\u5b58\u6210\u529f\u300d\u3002"
+      />
       <Card title="运行时设置">
         <Paragraph type="secondary">
           当前受支持的 runtime-config 项：<Text code>material_base_path</Text>、

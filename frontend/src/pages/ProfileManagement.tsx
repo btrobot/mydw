@@ -25,6 +25,8 @@ import {
   useSetDefaultProfile,
 } from '../hooks/useProfile'
 import type { PublishProfileResponse, PublishProfileCreate, PublishProfileUpdate, CompositionMode } from '../hooks/useProfile'
+import { InlineNotice } from '@/components/feedback/InlineNotice'
+import { PageHeader } from '@/components/ui/PageHeader'
 
 // ============ Profile Form Values ============
 
@@ -341,14 +343,22 @@ export default function ProfileManagement() {
   ]
 
   return (
-    <>
-      <Card
-        title="合成配置"
-        extra={
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <PageHeader
+        title="\u53d1\u5e03\u914d\u7f6e"
+        subtitle="\u5c06\u5408\u6210\u65b9\u5f0f\u3001\u5168\u5c40\u8bdd\u9898\u4e0e\u91cd\u8bd5\u7b56\u7565\u6536\u675f\u4e3a\u7a33\u5b9a\u7684\u53d1\u5e03\u6863\u6848\uff0c\u8ba9\u521b\u5efa\u3001\u7f16\u8f91\u548c\u9ed8\u8ba4\u5207\u6362\u90fd\u5728\u540c\u4e00\u5c42\u7ea7\u5185\u5b8c\u6210\u3002"
+        extra={(
           <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-            新建合成配置
+            {'\u65b0\u5efa\u5408\u6210\u914d\u7f6e'}
           </Button>
-        }
+        )}
+      />
+      <InlineNotice
+        message="\u9ed8\u8ba4\u53d1\u5e03\u914d\u7f6e\u4f1a\u76f4\u63a5\u5f71\u54cd\u521b\u5efa\u4efb\u52a1\u4e0e\u4f5c\u54c1\u7f16\u6392\u9636\u6bb5\u7684\u7d20\u6750\u5408\u6210\u8def\u5f84"
+        description="\u5efa\u8bae\u5148\u7a33\u5b9a\u9ed8\u8ba4\u6863\u6848\uff0c\u518d\u4e3a\u7279\u6b8a\u573a\u666f\u6dfb\u52a0\u4f8b\u5916\u914d\u7f6e\uff1b\u5220\u9664\u88ab\u4f9d\u8d56\u7684\u914d\u7f6e\u524d\uff0c\u5148\u5b8c\u6210\u66ff\u4ee3\u6216\u9ed8\u8ba4\u5207\u6362\u3002"
+      />
+      <Card
+        title="合成配置列表"
       >
         <Table<PublishProfileResponse>
           rowKey="id"
@@ -361,6 +371,6 @@ export default function ProfileManagement() {
       </Card>
 
       <ProfileModal open={modalOpen} editing={editing} onClose={handleClose} />
-    </>
+    </Space>
   )
 }
