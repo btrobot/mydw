@@ -9,7 +9,7 @@ echo ========================
 call :print_status "backend" 8000 "http://127.0.0.1:8000"
 call :print_status "frontend" 5173 "http://localhost:5173"
 call :print_status "remote-backend" 8100 "http://127.0.0.1:8100"
-call :print_status "remote-admin" 4173 "http://127.0.0.1:4173/dist-react/react-index.html?apiBase=http://127.0.0.1:8100 (legacy: /index.html?apiBase=http://127.0.0.1:8100)"
+call :print_status "remote-admin" 4173 "http://127.0.0.1:4173/dist-react/react-index.html?apiBase=http://127.0.0.1:8100 (fallback: /index.html?apiBase=http://127.0.0.1:8100)"
 goto :eof
 
 :print_status

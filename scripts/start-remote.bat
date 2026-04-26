@@ -13,7 +13,7 @@ echo Remote one-click
 echo ========================
 echo Remote backend: %REMOTE_BACKEND_URL%
 echo Remote admin  : %REMOTE_ADMIN_REACT_URL%
-echo Legacy fallback: %REMOTE_ADMIN_LEGACY_URL%
+echo Fallback entry: %REMOTE_ADMIN_LEGACY_URL%
 echo.
 
 where python >nul 2>nul
@@ -73,5 +73,5 @@ if errorlevel 1 (
 
 echo.
 echo [INFO] Open %REMOTE_ADMIN_REACT_URL%
-echo [INFO] Legacy fallback remains at %REMOTE_ADMIN_LEGACY_URL%
+echo [INFO] Fallback entry remains at %REMOTE_ADMIN_LEGACY_URL%
 start "" "%REMOTE_ADMIN_REACT_URL%"

@@ -37,7 +37,7 @@ export function DashboardPage(): JSX.Element {
     return (
       <ErrorState
         title="Dashboard metrics unavailable"
-        description="The new React shell is up, but the dashboard metric request failed."
+        description="The dashboard metric request failed for the current Remote Admin session."
         retryLabel="Retry metrics"
         onRetry={() => void metricsQuery.refetch()}
       />
@@ -53,7 +53,7 @@ export function DashboardPage(): JSX.Element {
           Dashboard
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          Signed in as {session?.user.display_name ?? session?.user.username}. All core admin routes now run in the React app on top of the existing admin API.
+          Signed in as {session?.user.display_name ?? session?.user.username}. All core admin routes run on top of the existing admin API.
         </Typography.Paragraph>
       </div>
 

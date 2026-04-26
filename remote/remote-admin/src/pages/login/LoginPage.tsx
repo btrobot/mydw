@@ -36,10 +36,10 @@ export function LoginPage(): JSX.Element {
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           <div>
             <Typography.Title level={3} style={{ marginBottom: 8 }}>
-              Remote Admin Next
+              Remote Admin
             </Typography.Title>
             <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-              Day 4 keeps the React admin app on the existing backend while locking login error semantics and session recovery behavior.
+              Sign in to the protected admin control plane on top of the existing remote authorization backend.
             </Typography.Paragraph>
           </div>
 
