@@ -240,7 +240,7 @@ export function UsersPage(): JSX.Element {
           Users
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          Search and inspect managed users, then revoke or restore access with role-aware safeguards and backend-backed refresh.
+          Search and review managed users, then revoke or restore access with role-aware safeguards and backend-backed refresh.
         </Typography.Paragraph>
       </div>
 
@@ -250,8 +250,8 @@ export function UsersPage(): JSX.Element {
         message={canWrite ? 'Write access available' : 'Read-only access'}
         description={
           canWrite
-            ? 'Revoke / restore now ask for password confirmation first, then automatically refresh list/detail state after each successful action.'
-            : 'This role can inspect users, but revoke / restore controls remain disabled.'
+            ? 'Revoke and restore actions now require step-up verification, then refresh the list and detail panel after each successful action.'
+            : 'This role can review users, but revoke and restore controls remain disabled.'
         }
       />
 

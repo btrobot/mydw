@@ -115,7 +115,7 @@ export function SessionsPage(): JSX.Element {
     onSuccess: async (_response, variables) => {
       try {
         await refreshSessionsState(variables.sessionId);
-        setActionFeedback('Session revoked. The sessions list and selected detail were refreshed from the backend.');
+        setActionFeedback('Session revoked. The list and detail panel were refreshed from the backend.');
       } catch (error) {
         if (error instanceof AdminApiError && isAuthExpiredError(error.errorCode)) {
           handleExpiredSession();
@@ -187,7 +187,7 @@ export function SessionsPage(): JSX.Element {
           Sessions
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          Inspect live auth continuity, filter by user or device, and revoke sessions with the same protected confirmation flow used across admin actions.
+          Review live auth continuity, filter by user or device, and revoke sessions with the same protected confirmation flow used across admin actions.
         </Typography.Paragraph>
       </div>
 
@@ -197,8 +197,8 @@ export function SessionsPage(): JSX.Element {
         message={canWrite ? 'Write access available' : 'Read-only access'}
         description={
           canWrite
-            ? 'Session revoke now asks for password confirmation first, then refreshes the filtered list after each successful action.'
-            : 'This role can inspect sessions, but revoke controls remain disabled.'
+            ? 'Session revocation now requires step-up verification, then refreshes the list and detail panel after each successful action.'
+            : 'This role can review sessions, but revoke controls remain disabled.'
         }
       />
 

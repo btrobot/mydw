@@ -270,8 +270,8 @@ export function DevicesPage(): JSX.Element {
         message={canWrite ? 'Write access available' : 'Read-only access'}
         description={
           canWrite
-            ? 'Unbind / disable / rebind now ask for password confirmation first, then refresh list/detail state after each successful device action.'
-            : 'This role can inspect devices, but all device mutations remain disabled.'
+            ? 'Unbind, disable, and rebind actions now require step-up verification, then refresh the list and detail panel after each successful action.'
+            : 'This role can review devices, but unbind, disable, and rebind controls remain disabled.'
         }
       />
 

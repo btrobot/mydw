@@ -4,6 +4,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 import { AdminApiError, mapLoginError } from '../../features/auth/auth-client.js';
 import { useAuth } from '../../features/auth/auth-context.js';
+import { REMOTE_ADMIN_PRODUCT_NAME } from '../../routes/route-helpers.js';
 
 type LoginFormValues = {
   username: string;
@@ -18,7 +19,7 @@ export function LoginPage(): JSX.Element {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = 'Remote Admin';
+    document.title = REMOTE_ADMIN_PRODUCT_NAME;
   }, []);
 
   if (status === 'authenticated') {
@@ -40,10 +41,10 @@ export function LoginPage(): JSX.Element {
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           <div>
             <Typography.Title level={3} style={{ marginBottom: 8 }}>
-              Remote Admin
+              {REMOTE_ADMIN_PRODUCT_NAME}
             </Typography.Title>
             <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-              Sign in to the protected admin control plane on top of the existing remote authorization backend.
+              Sign in to Remote Admin, the protected admin control plane on top of the existing admin API.
             </Typography.Paragraph>
           </div>
 

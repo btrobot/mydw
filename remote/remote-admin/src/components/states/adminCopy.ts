@@ -19,5 +19,5 @@ export function formatFilteredEmptyState(resource: string): string {
 }
 
 export function formatSelectionEmptyState(item: string, detail: string): string {
-  return `Select ${item} from the list to inspect ${detail}.`;
+  return `Select ${item} from the list to review ${detail}.`;
 }

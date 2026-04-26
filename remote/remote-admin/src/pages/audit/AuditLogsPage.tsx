@@ -154,15 +154,15 @@ export function AuditLogsPage(): JSX.Element {
           Audit logs
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          Investigate admin-visible events with stable filter ordering, UTC-safe time boundaries, and page-scoped detail inspection.
+          Review admin-visible events with stable filter ordering, UTC-safe time boundaries, and a page-scoped detail panel.
         </Typography.Paragraph>
       </div>
 
       <Alert
         type="info"
         showIcon
-        message="Backend-driven investigation"
-        description="Audit logs stay backend-driven: filters query the existing admin API, selection is derived from the current page, and no optimistic local state is introduced."
+        message="Backend-driven audit review"
+        description="Audit logs stay backend-driven: filters query the existing admin API, selection stays page-scoped, and no optimistic local state is introduced."
       />
 
       <Card>

@@ -2,13 +2,14 @@ export type AdminAuthStatus = 'restoring' | 'anonymous' | 'authenticated';
 
 export const ADMIN_LOGIN_PATH = '/login';
 export const ADMIN_DASHBOARD_PATH = '/dashboard';
+export const REMOTE_ADMIN_PRODUCT_NAME = 'Remote Admin';
 
 export const ADMIN_PAGE_TITLES: Record<string, string> = {
   [ADMIN_DASHBOARD_PATH]: 'Dashboard',
   '/users': 'Users',
   '/devices': 'Devices',
   '/sessions': 'Sessions',
-  '/audit-logs': 'Audit Logs',
+  '/audit-logs': 'Audit logs',
 };
 
 export function resolveRootAdminPath(status: AdminAuthStatus): string {
@@ -28,5 +29,5 @@ export function resolveProtectedAdminRedirect(status: AdminAuthStatus, pathname:
 }
 
 export function getAdminPageTitle(pathname: string): string {
-  return ADMIN_PAGE_TITLES[pathname] ?? 'Remote Admin';
+  return ADMIN_PAGE_TITLES[pathname] ?? REMOTE_ADMIN_PRODUCT_NAME;
 }

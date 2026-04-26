@@ -124,7 +124,7 @@ export function useAdminStepUp(options: {
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
             {promptState?.description ??
-              'Before continuing, confirm your admin password. A short-lived verification token will be used for this action only.'}
+              'Before continuing, confirm your admin password. A short-lived step-up token will be used for this action only.'}
           </Typography.Paragraph>
 
           {errorMessage ? <Typography.Text type="danger">{errorMessage}</Typography.Text> : null}

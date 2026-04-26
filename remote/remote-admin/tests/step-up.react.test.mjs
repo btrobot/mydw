@@ -411,7 +411,7 @@ test('sessions step-up success submits verify request and forwards step-up token
     await harness.page.getByRole('button', { name: 'Confirm and continue' }).click();
 
     await harness.page.getByText(
-      'Session revoked. The sessions list and selected detail were refreshed from the backend.'
+      'Session revoked. The list and detail panel were refreshed from the backend.'
     ).waitFor();
 
     assert.equal(harness.calls.verifyBodies.length, 1);

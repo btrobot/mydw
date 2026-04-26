@@ -79,7 +79,7 @@ test('protected route helper keeps auth redirect contract stable', () => {
 
 test('page title helper maps known routes and falls back safely', () => {
   assert.equal(getAdminPageTitle('/dashboard'), 'Dashboard');
-  assert.equal(getAdminPageTitle('/audit-logs'), 'Audit Logs');
+  assert.equal(getAdminPageTitle('/audit-logs'), 'Audit logs');
   assert.equal(getAdminPageTitle('/unknown'), 'Remote Admin');
 });
 

@@ -10,7 +10,7 @@ import {
   createSidebarContainerStyle,
 } from './adminTheme.js';
 import { useAuth } from '../features/auth/auth-context.js';
-import { getAdminPageTitle } from '../routes/route-helpers.js';
+import { getAdminPageTitle, REMOTE_ADMIN_PRODUCT_NAME } from '../routes/route-helpers.js';
 
 interface NavDefinition {
   key: string;
@@ -102,10 +102,10 @@ export function AppShell(): JSX.Element {
   const { session, logout } = useAuth();
   const { token } = theme.useToken();
   const [collapsed, setCollapsed] = useState(false);
-  const selectedKey = getAdminPageTitle(location.pathname) === 'Remote Admin' ? '/dashboard' : location.pathname;
+  const selectedKey = getAdminPageTitle(location.pathname) === REMOTE_ADMIN_PRODUCT_NAME ? '/dashboard' : location.pathname;
   const pageTitle = getAdminPageTitle(selectedKey);
   useEffect(() => {
-    document.title = `${pageTitle} · Remote Admin`;
+    document.title = `${pageTitle} · ${REMOTE_ADMIN_PRODUCT_NAME}`;
   }, [pageTitle]);
   const navItems = useMemo<MenuProps['items']>(
     () =>
@@ -170,13 +170,13 @@ export function AppShell(): JSX.Element {
                       color: ADMIN_SHELL_COLORS.brandAccent,
                     }}
                   >
-                    Remote control plane
+                    Remote Admin control plane
                   </div>
                   <Typography.Title level={4} style={{ color: ADMIN_SHELL_COLORS.siderTextStrong, margin: 0 }}>
-                    Remote Admin
+                    {REMOTE_ADMIN_PRODUCT_NAME}
                   </Typography.Title>
                   <Typography.Paragraph style={{ color: ADMIN_SHELL_COLORS.siderTextMuted, margin: 0 }}>
-                    Protected operator shell for identity, devices, sessions, and audit review.
+                    Protected admin control plane for users, devices, sessions, and audit logs.
                   </Typography.Paragraph>
                 </>
               ) : null}
@@ -258,7 +258,7 @@ export function AppShell(): JSX.Element {
         >
           <div>
             <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
-              Remote admin workspace
+              Remote Admin workspace
             </Typography.Text>
             <Typography.Title level={4} style={{ margin: 0 }}>
               {pageTitle}
