@@ -12,6 +12,8 @@ import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns, ActionType } from '@ant-design/pro-components'
 import { listVideosApiVideosGet } from '@/api'
 
+import { InlineNotice } from '@/components/feedback/InlineNotice'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { useCreateVideo, useDeleteVideo, useUploadVideo, useScanVideos, useBatchDeleteVideos } from '@/hooks'
 import type { VideoResponse, VideoListResponse } from '@/types/material'
 import { formatSize, formatDuration } from '@/utils/format'
@@ -213,11 +215,25 @@ export default function VideoList() {
   ]
 
   return (
-    <>
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <PageHeader
+        title="\u89c6\u9891\u7ba1\u7406"
+        subtitle="\u5c06\u9996\u5c4f\u4f5c\u4e3a\u89c6\u9891\u8d44\u4ea7\u7684\u68c0\u7d22\u3001\u4e0a\u4f20\u3001\u6821\u9a8c\u4e0e\u64ad\u653e\u9884\u89c8\u5165\u53e3\uff0c\u4fdd\u6301\u5546\u54c1\u5173\u8054\u4e0e\u6279\u91cf\u64cd\u4f5c\u5728\u540c\u4e00\u5957\u5de5\u4f5c\u6d41\u4e2d\u5b8c\u6210\u3002"
+        extra={(
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
+            {'\u624b\u52a8\u6dfb\u52a0'}
+          </Button>
+        )}
+      />
+      <InlineNotice
+        message="\u5148\u9009\u62e9\u5173\u8054\u5546\u54c1\u518d\u4e0a\u4f20\uff0c\u53ef\u4ee5\u51cf\u5c11\u540e\u7eed\u8865\u5173\u8054\u548c\u6574\u7406\u6210\u672c"
+        description="\u626b\u63cf\u5bfc\u5165\u9002\u5408\u6279\u91cf\u5165\u5e93\uff0c\u624b\u52a8\u6dfb\u52a0\u9002\u5408\u8865\u5f55\u6587\u4ef6\u8def\u5f84\uff1b\u5217\u8868\u533a\u57df\u53ea\u8d1f\u8d23\u7b5b\u9009\u3001\u72b6\u6001\u5b9a\u4f4d\u548c\u64ad\u653e\u9884\u89c8\u3002"
+      />
       <ProTable<VideoResponse>
         actionRef={actionRef}
         rowKey="id"
         columns={columns}
+        headerTitle={false}
         request={async (params) => {
           const response = await listVideosApiVideosGet({
             query: params.name ? { keyword: params.name as string } : undefined,
@@ -264,9 +280,6 @@ export default function VideoList() {
           <Button key="scan" icon={<ScanOutlined />} onClick={handleScan} loading={scanVideos.isPending}>
             扫描导入
           </Button>,
-          <Button key="add" icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
-            手动添加
-          </Button>,
         ]}
         pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
         size="small"
@@ -310,6 +323,6 @@ export default function VideoList() {
           </Form.Item>
         </Form>
       </Modal>
-    </>
+    </Space>
   )
 }

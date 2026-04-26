@@ -9,6 +9,8 @@ import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns, ActionType } from '@ant-design/pro-components'
 import { listProductsApiProductsGet } from '@/api'
 
+import { InlineNotice } from '@/components/feedback/InlineNotice'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { useCreateProductV2, useDeleteProductV2, useUpdateProductV2, useBatchDeleteProducts, useParseProductMaterials } from '@/hooks'
 import type { ProductResponse, ProductListResponse, ParseStatus } from '@/types/material'
 import { handleApiError } from '@/utils/error'
@@ -186,11 +188,29 @@ export default function ProductList() {
   ]
 
   return (
-    <>
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <PageHeader
+        title="\u5546\u54c1\u7ba1\u7406"
+        subtitle="\u5c06\u5546\u54c1\u5217\u8868\u4f5c\u4e3a\u7d20\u6750\u89e3\u6790\u3001\u72b6\u6001\u8ffd\u8e2a\u4e0e\u8d44\u4ea7\u8986\u76d6\u60c5\u51b5\u7684\u5165\u53e3\uff0c\u8ba9\u521b\u5efa\u3001\u7f16\u8f91\u548c\u91cd\u8bd5\u5728\u540c\u4e00\u5c42\u7ea7\u5185\u5b8c\u6210\u3002"
+        extra={(
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => { setEditingProduct(null); form.resetFields(); setModalOpen(true) }}
+          >
+            {'\u6dfb\u52a0\u5546\u54c1'}
+          </Button>
+        )}
+      />
+      <InlineNotice
+        message="\u89e3\u6790\u5931\u8d25\u7684\u5546\u54c1\u4f1a\u5728\u5f53\u524d\u5217\u8868\u4e2d\u76f4\u63a5\u66b4\u9732\uff0c\u4fbf\u4e8e\u5feb\u901f\u91cd\u8bd5\u548c\u4fee\u6b63"
+        description="\u672c\u9875\u4f18\u5148\u627f\u8f7d\u5546\u54c1\u7d20\u6750\u7684\u51c6\u5165\u4e0e\u89e3\u6790\u72b6\u6001\u7ba1\u7406\uff0c\u5177\u4f53\u7d20\u6750\u5185\u5bb9\u4ecd\u4ece\u5546\u54c1\u8be6\u60c5\u9875\u8fdb\u5165\u5904\u7406\u3002"
+      />
       <ProTable<ProductResponse>
         actionRef={actionRef}
         rowKey="id"
         columns={columns}
+        headerTitle={false}
         request={async (params) => {
           const response = await listProductsApiProductsGet({
             query: params.name ? { name: params.name as string } : undefined,
@@ -209,16 +229,7 @@ export default function ProductList() {
             </Button>
           </Popconfirm>
         )}
-        toolBarRender={() => [
-          <Button
-            key="add"
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => { setEditingProduct(null); form.resetFields(); setModalOpen(true) }}
-          >
-            添加商品
-          </Button>,
-        ]}
+        toolBarRender={false}
         pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条` }}
         size="small"
         search={{ labelWidth: 'auto' }}
@@ -261,6 +272,6 @@ export default function ProductList() {
           )}
         </Form>
       </Modal>
-    </>
+    </Space>
   )
 }
