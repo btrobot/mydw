@@ -25,12 +25,13 @@ from app.schemas.admin import (
     AdminLoginRequest,
     AdminLoginResponse,
     AdminSessionListResponse,
+    AdminUserCreateRequest,
     AdminUserListResponse,
     AdminUserResponse,
     AdminUserUpdateRequest,
 )
 from app.schemas.auth import ErrorResponse
-from app.services.admin_service import AdminService, AdminServiceError
+from app.services.admin_service import AdminService, AdminServiceError, AdminServiceValidationError
 
 router = APIRouter(prefix='/admin', tags=['admin'])
 settings = get_settings()
@@ -71,6 +72,13 @@ def _error_response(exc: AdminServiceError) -> JSONResponse:
             message=str(exc),
             details=exc.details,
         ).model_dump(),
+    )
+
+
+def _validation_error_response(detail: list[dict]) -> JSONResponse:
+    return JSONResponse(
+        status_code=422,
+        content={'detail': detail},
     )
 
 
@@ -159,6 +167,21 @@ def get_user(
 ) -> AdminUserResponse | JSONResponse:
     try:
         return service.get_user(_extract_bearer_token(credentials), user_id)
+    except AdminServiceError as exc:
+        return _error_response(exc)
+
+
+@router.post('/users', response_model=AdminUserResponse, responses=error_responses(401, 403))
+def create_user(
+    payload: AdminUserCreateRequest,
+    step_up_token: str | None = Header(default=None, alias='X-Step-Up-Token'),
+    credentials: HTTPAuthorizationCredentials | None = Security(bearer_auth),
+    service: AdminService = Depends(get_admin_service),
+) -> AdminUserResponse | JSONResponse:
+    try:
+        return service.create_user(_extract_bearer_token(credentials), payload, step_up_token=step_up_token)
+    except AdminServiceValidationError as exc:
+        return _validation_error_response(exc.detail)
     except AdminServiceError as exc:
         return _error_response(exc)
 

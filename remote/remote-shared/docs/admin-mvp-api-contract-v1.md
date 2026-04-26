@@ -9,6 +9,7 @@ Phase 0 freezes only the admin MVP surface, not the full admin platform.
 - `POST /admin/login`
 - `GET /admin/session`
 - `GET /admin/users`
+- `POST /admin/users`
 - `GET /admin/users/{user_id}`
 - `PATCH /admin/users/{user_id}`
 - `POST /admin/users/{user_id}/revoke`

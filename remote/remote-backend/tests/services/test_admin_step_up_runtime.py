@@ -11,12 +11,12 @@ from app.core.security import hash_account_password
 from app.migrations.alembic import ensure_database_on_head
 from app.models import AdminStepUpGrant, AdminUser, Device, EndUserSession, License, User, UserDevice, UserEntitlement
 from app.repositories.admin import AdminRepository
-from app.schemas.admin import AdminLoginRequest, AdminStepUpVerifyRequest, AdminUserUpdateRequest
+from app.schemas.admin import AdminLoginRequest, AdminStepUpVerifyRequest, AdminUserCreateRequest, AdminUserUpdateRequest
 from app.services.admin_authz import (
     ADMIN_PERMISSION_DEVICES_WRITE,
     ADMIN_PERMISSION_USERS_WRITE,
 )
-from app.services.admin_service import AdminService, AdminServiceError
+from app.services.admin_service import AdminService, AdminServiceError, AdminServiceValidationError
 from app.utils.time import utc_now_naive
 
 
@@ -154,6 +154,106 @@ def test_update_user_sensitive_fields_require_step_up(migrated_database: str) ->
 
     assert exc_info.value.error_code == "step_up_required"
     assert exc_info.value.status_code == 403
+
+
+def test_create_user_requires_step_up(migrated_database: str) -> None:
+    _seed_runtime_data()
+
+    with session_scope() as session:
+        service = AdminService(AdminRepository(session))
+        login = service.login(AdminLoginRequest(username="admin", password="admin-secret"), client_ip="127.0.0.1")
+
+        with pytest.raises(AdminServiceError) as exc_info:
+            service.create_user(
+                login.access_token,
+                AdminUserCreateRequest(
+                    username="alice2",
+                    password="TempSecret123!",
+                    license_status="active",
+                    entitlements=["dashboard:view"],
+                ),
+            )
+
+    assert exc_info.value.error_code == "step_up_required"
+    assert exc_info.value.status_code == 403
+
+
+def test_create_user_succeeds_with_valid_step_up_token(migrated_database: str) -> None:
+    _seed_runtime_data()
+
+    with session_scope() as session:
+        service = AdminService(AdminRepository(session))
+        login = service.login(AdminLoginRequest(username="admin", password="admin-secret"), client_ip="127.0.0.1")
+        step_up = service.verify_step_up_password(
+            login.access_token,
+            AdminStepUpVerifyRequest(password="admin-secret", scope=ADMIN_PERMISSION_USERS_WRITE),
+            client_ip="127.0.0.1",
+        )
+
+        response = service.create_user(
+            login.access_token,
+            AdminUserCreateRequest(
+                username="alice2",
+                password="TempSecret123!",
+                display_name="Alice 2",
+                email="alice2@example.com",
+                tenant_id="tenant_2",
+                license_status="disabled",
+                entitlements=["dashboard:view", "publish:run", "dashboard:view"],
+            ),
+            step_up_token=step_up.step_up_token,
+        )
+
+        created_user = session.query(User).filter_by(username="alice2").one()
+        credential = created_user.credential
+        license_record = created_user.license
+        entitlements = sorted(row.entitlement for row in created_user.entitlements)
+
+        assert response.id == f"u_{created_user.id}"
+        assert response.username == "alice2"
+        assert response.display_name == "Alice 2"
+        assert response.status == "disabled"
+        assert response.license_status == "disabled"
+        assert credential is not None
+        assert credential.password_hash != "TempSecret123!"
+        assert credential.password_algo == "argon2id"
+        assert license_record is not None
+        assert license_record.license_status == "disabled"
+        assert license_record.disabled_at is not None
+        assert entitlements == ["dashboard:view", "publish:run"]
+
+
+def test_create_user_duplicate_username_returns_validation_error(migrated_database: str) -> None:
+    _seed_runtime_data()
+
+    with session_scope() as session:
+        service = AdminService(AdminRepository(session))
+        login = service.login(AdminLoginRequest(username="admin", password="admin-secret"), client_ip="127.0.0.1")
+        step_up = service.verify_step_up_password(
+            login.access_token,
+            AdminStepUpVerifyRequest(password="admin-secret", scope=ADMIN_PERMISSION_USERS_WRITE),
+            client_ip="127.0.0.1",
+        )
+
+        with pytest.raises(AdminServiceValidationError) as exc_info:
+            service.create_user(
+                login.access_token,
+                AdminUserCreateRequest(
+                    username="alice",
+                    password="TempSecret123!",
+                    license_status="active",
+                    entitlements=[],
+                ),
+                step_up_token=step_up.step_up_token,
+            )
+
+    assert exc_info.value.detail == [
+        {
+            "loc": ["body", "username"],
+            "msg": "Username already exists.",
+            "type": "value_error",
+        }
+    ]
 
 
 def test_wrong_scope_step_up_token_is_rejected(migrated_database: str) -> None:

@@ -182,6 +182,17 @@ ROUTE_CASES = [
         },
     ),
     OpenApiRouteCase(
+        name='admin_create_user',
+        path='/admin/users',
+        method='post',
+        success_ref='#/components/schemas/AdminUserResponse',
+        response_refs={
+            '401': ERROR_RESPONSE_REF,
+            '403': ERROR_RESPONSE_REF,
+            '422': VALIDATION_ERROR_REF,
+        },
+    ),
+    OpenApiRouteCase(
         name='admin_get_user',
         path='/admin/users/{user_id}',
         method='get',

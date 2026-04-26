@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -61,6 +62,17 @@ class AdminUserResponse(BaseModel):
 
 class AdminUserListResponse(PageMetadata):
     items: list[AdminUserResponse]
+
+
+class AdminUserCreateRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=128)
+    password: str = Field(min_length=8, max_length=256)
+    display_name: str | None = Field(default=None, max_length=256)
+    email: str | None = Field(default=None, max_length=256)
+    tenant_id: str | None = Field(default=None, max_length=128)
+    license_status: Literal['active', 'revoked', 'disabled'] = 'active'
+    license_expires_at: datetime | None = None
+    entitlements: list[str] = Field(default_factory=list)
 
 
 class AdminUserUpdateRequest(BaseModel):

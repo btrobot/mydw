@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy.exc import IntegrityError
+
 from app.core.config import get_settings
 from app.core.observability import get_request_context
 from app.core.security import (
@@ -34,6 +36,7 @@ from app.schemas.admin import (
     AdminSessionResponse,
     AdminUserListResponse,
     AdminUserResponse,
+    AdminUserCreateRequest,
     AdminUserUpdateRequest,
 )
 from app.services.admin_authz import (
@@ -60,6 +63,12 @@ class AdminServiceError(Exception):
         self.error_code = error_code
         self.status_code = status_code
         self.details = details or {}
+
+
+class AdminServiceValidationError(Exception):
+    def __init__(self, detail: list[dict]) -> None:
+        super().__init__('Validation error')
+        self.detail = detail
 
 
 STEP_UP_METHOD_PASSWORD = 'password'
@@ -278,6 +287,72 @@ class AdminService:
         )
         self.repository.db.commit()
         return self._build_user_response(target)
+
+    def create_user(
+        self,
+        access_token: str,
+        payload: AdminUserCreateRequest,
+        *,
+        step_up_token: str | None = None,
+    ) -> AdminUserResponse:
+        admin_user, _ = self._require_admin_session(
+            access_token,
+            permission=ADMIN_PERMISSION_USERS_WRITE,
+            step_up_scope=ADMIN_PERMISSION_USERS_WRITE,
+            step_up_token=step_up_token,
+        )
+        normalized_username = payload.username.strip()
+        if self.repository.get_managed_user_by_username(normalized_username) is not None:
+            raise AdminServiceValidationError(
+                [self._validation_error_detail('username', 'Username already exists.')]
+            )
+
+        password_record = hash_account_password(payload.password)
+        normalized_entitlements = self._normalize_entitlements(payload.entitlements)
+        initial_user_status = 'disabled' if payload.license_status == 'disabled' else 'active'
+        user = self.repository.create_managed_user(
+            username=normalized_username,
+            display_name=self._normalize_optional_text(payload.display_name),
+            email=self._normalize_optional_text(payload.email),
+            tenant_id=self._normalize_optional_text(payload.tenant_id),
+            status=initial_user_status,
+        )
+        self.repository.create_user_credential(
+            user_id=user.id,
+            password_hash=password_record.value,
+            password_algo=password_record.algorithm,
+        )
+        license_record = self.repository.create_license(
+            user_id=user.id,
+            license_status=payload.license_status,
+            expires_at=payload.license_expires_at,
+        )
+        self._apply_new_user_license_state(license_record, payload.license_status)
+        self.repository.replace_entitlements(user.id, normalized_entitlements)
+        self._write_audit(
+            'admin_user_created',
+            actor_id=f'admin_{admin_user.id}',
+            target_user_id=str(user.id),
+            details={
+                'user_id': f'u_{user.id}',
+                'username': normalized_username,
+                'license_status': payload.license_status,
+                'entitlements': normalized_entitlements,
+            },
+        )
+        try:
+            self.repository.db.commit()
+        except IntegrityError as exc:
+            rollback = getattr(self.repository.db, 'rollback', None)
+            if callable(rollback):
+                rollback()
+            raise AdminServiceValidationError(
+                [self._validation_error_detail('username', 'Username already exists.')]
+            ) from exc
+
+        created_user = self.repository.get_user_detail(user.id)
+        assert created_user is not None
+        return self._build_user_response(created_user)
 
     def update_user(
         self,
@@ -625,6 +700,46 @@ class AdminService:
             self.user_control.revoke_user(user_id, actor_type='admin', actor_id=actor_id)
         else:
             raise AdminServiceError('forbidden', f'Unsupported license_status update: {status}', status_code=403)
+
+    @staticmethod
+    def _apply_new_user_license_state(license_record, status: str) -> None:
+        now = utc_now_naive()
+        if status == 'revoked':
+            license_record.revoked_at = now
+            license_record.disabled_at = None
+        elif status == 'disabled':
+            license_record.disabled_at = now
+            license_record.revoked_at = None
+        else:
+            license_record.revoked_at = None
+            license_record.disabled_at = None
+
+    @staticmethod
+    def _normalize_optional_text(value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+    @staticmethod
+    def _normalize_entitlements(entitlements: list[str]) -> list[str]:
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for entitlement in entitlements:
+            item = entitlement.strip()
+            if not item or item in seen:
+                continue
+            seen.add(item)
+            normalized.append(item)
+        return normalized
+
+    @staticmethod
+    def _validation_error_detail(field: str, message: str, error_type: str = 'value_error') -> dict:
+        return {
+            'loc': ['body', field],
+            'msg': message,
+            'type': error_type,
+        }
 
     def _load_target_user(self, user_id: str) -> User:
         try:

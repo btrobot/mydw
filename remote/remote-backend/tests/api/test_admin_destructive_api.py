@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any
 
 import pytest
@@ -9,7 +10,7 @@ from fastapi.testclient import TestClient
 from app.api import admin as admin_api
 from app.main import create_app
 from app.schemas.admin import AdminActionResponse, AdminDeviceRebindRequest, AdminUserResponse
-from app.services.admin_service import AdminServiceError
+from app.services.admin_service import AdminServiceError, AdminServiceValidationError
 from tests.support.route_contract import (
     ErrorContractCase,
     RecordingRouteService,
@@ -257,6 +258,207 @@ def test_update_user_route_forwards_step_up_token(app) -> None:
             "license_status": None,
             "license_expires_at": None,
             "entitlements": ["dashboard:view"],
+        },
+        step_up_token="step-up-token",
+    )
+
+
+def test_create_user_route_forwards_step_up_token(app) -> None:
+    class FakeAdminCreateUserService(RecordingRouteService):
+        def create_user(self, access_token: str, payload, *, step_up_token: str | None = None) -> AdminUserResponse:
+            self.handle(
+                "create_user",
+                access_token=access_token,
+                payload=payload.model_dump(),
+                step_up_token=step_up_token,
+            )
+            return AdminUserResponse(
+                id="u_2",
+                username=payload.username,
+                display_name=payload.display_name,
+                email=payload.email,
+                tenant_id=payload.tenant_id,
+                status="active",
+                license_status=payload.license_status,
+                license_expires_at=payload.license_expires_at,
+                entitlements=payload.entitlements,
+                device_count=0,
+                last_seen_at=None,
+            )
+
+    service = FakeAdminCreateUserService()
+    app.dependency_overrides[admin_api.get_admin_service] = lambda: service
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/admin/users",
+            headers={**(bearer_headers("admin_access_token") or {}), "X-Step-Up-Token": "step-up-token"},
+            json={
+                "username": "alice2",
+                "password": "TempSecret123!",
+                "display_name": "Alice 2",
+                "email": "alice2@example.com",
+                "tenant_id": "tenant_1",
+                "license_status": "active",
+                "license_expires_at": "2026-07-01T00:00:00Z",
+                "entitlements": ["dashboard:view"],
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json()["id"] == "u_2"
+    assert_single_service_call(
+        service.calls,
+        method="create_user",
+        access_token="admin_access_token",
+        payload={
+            "username": "alice2",
+            "password": "TempSecret123!",
+            "display_name": "Alice 2",
+            "email": "alice2@example.com",
+            "tenant_id": "tenant_1",
+            "license_status": "active",
+            "license_expires_at": datetime(2026, 7, 1, 0, 0, 0, tzinfo=timezone.utc),
+            "entitlements": ["dashboard:view"],
+        },
+        step_up_token="step-up-token",
+    )
+
+
+@pytest.mark.parametrize(
+    ("expected_status", "expected_error_code", "expected_message", "expected_details"),
+    [
+        (401, "token_expired", "Access token expired or invalid", {"reason": "token_expired"}),
+        (403, "forbidden", "Admin access forbidden", {"reason": "forbidden"}),
+    ],
+    ids=["401", "403"],
+)
+def test_create_user_route_surfaces_401_and_403_semantics(
+    expected_status: int,
+    expected_error_code: str,
+    expected_message: str,
+    expected_details: dict[str, Any],
+    app,
+) -> None:
+    class FakeAdminCreateUserService(RecordingRouteService):
+        def create_user(self, access_token: str, payload, *, step_up_token: str | None = None):
+            return self.handle(
+                "create_user",
+                access_token=access_token,
+                payload=payload.model_dump(),
+                step_up_token=step_up_token,
+            )
+
+    service = FakeAdminCreateUserService()
+    service.errors["create_user"] = AdminServiceError(
+        expected_error_code,
+        expected_message,
+        status_code=expected_status,
+        details=expected_details,
+    )
+    app.dependency_overrides[admin_api.get_admin_service] = lambda: service
+    payload = {
+        "username": "alice2",
+        "password": "TempSecret123!",
+        "license_status": "active",
+        "entitlements": [],
+    }
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/admin/users",
+            headers=(
+                None
+                if expected_status == 401
+                else {**(bearer_headers("admin_access_token") or {}), "X-Step-Up-Token": "step-up-token"}
+            ),
+            json=payload,
+        )
+
+    assert_error_response(
+        response,
+        ErrorContractCase(
+            status=expected_status,
+            error_code=expected_error_code,
+            message=expected_message,
+            details=expected_details,
+        ),
+    )
+    assert_single_service_call(
+        service.calls,
+        method="create_user",
+        access_token=expected_access_token(expected_status, "admin_access_token"),
+        payload={
+            "username": "alice2",
+            "password": "TempSecret123!",
+            "display_name": None,
+            "email": None,
+            "tenant_id": None,
+            "license_status": "active",
+            "license_expires_at": None,
+            "entitlements": [],
+        },
+        step_up_token=None if expected_status == 401 else "step-up-token",
+    )
+
+
+def test_create_user_route_surfaces_validation_detail_as_422(app) -> None:
+    class FakeAdminCreateUserService(RecordingRouteService):
+        def create_user(self, access_token: str, payload, *, step_up_token: str | None = None):
+            return self.handle(
+                "create_user",
+                access_token=access_token,
+                payload=payload.model_dump(),
+                step_up_token=step_up_token,
+            )
+
+    service = FakeAdminCreateUserService()
+    service.errors["create_user"] = AdminServiceValidationError(
+        [
+            {
+                "loc": ["body", "username"],
+                "msg": "Username already exists.",
+                "type": "value_error",
+            }
+        ]
+    )
+    app.dependency_overrides[admin_api.get_admin_service] = lambda: service
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/admin/users",
+            headers={**(bearer_headers("admin_access_token") or {}), "X-Step-Up-Token": "step-up-token"},
+            json={
+                "username": "alice",
+                "password": "TempSecret123!",
+                "license_status": "active",
+                "entitlements": [],
+            },
+        )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": [
+            {
+                "loc": ["body", "username"],
+                "msg": "Username already exists.",
+                "type": "value_error",
+            }
+        ]
+    }
+    assert_single_service_call(
+        service.calls,
+        method="create_user",
+        access_token="admin_access_token",
+        payload={
+            "username": "alice",
+            "password": "TempSecret123!",
+            "display_name": None,
+            "email": None,
+            "tenant_id": None,
+            "license_status": "active",
+            "license_expires_at": None,
+            "entitlements": [],
         },
         step_up_token="step-up-token",
     )

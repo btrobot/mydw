@@ -63,7 +63,7 @@ The UI should not look like a narrow security tool. It should look like a **seri
 | Page | Primary backend surface |
 |---|---|
 | Dashboard | dashboard metrics + recent failures + recent destructive actions |
-| Users | `GET /admin/users`, `GET /admin/users/{id}`, `PATCH /admin/users/{id}`, `POST /admin/users/{id}/revoke`, `POST /admin/users/{id}/restore` |
+| Users | `GET /admin/users`, `POST /admin/users`, `GET /admin/users/{id}`, `PATCH /admin/users/{id}`, `POST /admin/users/{id}/revoke`, `POST /admin/users/{id}/restore` |
 | Devices | `GET /admin/devices`, `GET /admin/devices/{id}`, `POST /admin/devices/{id}/unbind`, `POST /admin/devices/{id}/disable`, `POST /admin/devices/{id}/rebind` |
 | Sessions | `GET /admin/sessions`, `POST /admin/sessions/{id}/revoke` |
 | Audit Logs | `GET /admin/audit-logs` |

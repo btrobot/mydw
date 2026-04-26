@@ -14,6 +14,7 @@ from app.models import (
     EndUserSession,
     License,
     User,
+    UserCredential,
     UserDevice,
     UserEntitlement,
 )
@@ -188,6 +189,61 @@ class AdminRepository:
             )
             .where(User.id == user_id)
         ).unique().scalars().first()
+
+    def get_managed_user_by_username(self, username: str) -> User | None:
+        return self.db.execute(select(User).where(User.username == username)).scalars().first()
+
+    def create_managed_user(
+        self,
+        *,
+        username: str,
+        display_name: str | None = None,
+        email: str | None = None,
+        tenant_id: str | None = None,
+        status: str = 'active',
+    ) -> User:
+        user = User(
+            username=username,
+            display_name=display_name,
+            email=email,
+            tenant_id=tenant_id,
+            status=status,
+        )
+        self.db.add(user)
+        self.db.flush()
+        return user
+
+    def create_user_credential(
+        self,
+        *,
+        user_id: int,
+        password_hash: str,
+        password_algo: str,
+    ) -> UserCredential:
+        credential = UserCredential(
+            user_id=user_id,
+            password_hash=password_hash,
+            password_algo=password_algo,
+        )
+        self.db.add(credential)
+        self.db.flush()
+        return credential
+
+    def create_license(
+        self,
+        *,
+        user_id: int,
+        license_status: str = 'active',
+        expires_at: datetime | None = None,
+    ) -> License:
+        license_record = License(
+            user_id=user_id,
+            license_status=license_status,
+            expires_at=expires_at,
+        )
+        self.db.add(license_record)
+        self.db.flush()
+        return license_record
 
     @staticmethod
     def _apply_device_filters(query, *, q: str | None = None, device_status: str | None = None, user_id: int | None = None):
