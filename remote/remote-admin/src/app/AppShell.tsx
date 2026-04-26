@@ -3,6 +3,12 @@ import type { MenuProps } from 'antd';
 import { useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
+import {
+  ADMIN_SHELL_COLORS,
+  ADMIN_SHELL_DIMENSIONS,
+  createShellCardStyle,
+  createSidebarContainerStyle,
+} from './adminTheme.js';
 import { useAuth } from '../features/auth/auth-context.js';
 
 interface NavDefinition {
@@ -55,12 +61,12 @@ function getRoleTagColor(role: string): string {
 function renderNavIcon(shortLabel: string): JSX.Element {
   return (
     <Avatar
-      size={30}
+      size={ADMIN_SHELL_DIMENSIONS.navIconSize}
       shape="square"
       style={{
-        background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.92), rgba(37, 99, 235, 0.78))',
-        color: '#eff6ff',
-        fontSize: 11,
+        background: ADMIN_SHELL_COLORS.navGlyphGradient,
+        color: ADMIN_SHELL_COLORS.navGlyphText,
+        fontSize: ADMIN_SHELL_DIMENSIONS.navGlyphSize,
         fontWeight: 700,
         letterSpacing: '0.08em',
       }}
@@ -85,7 +91,7 @@ function renderNavLabel(title: string, description: string): JSX.Element {
       </span>
       <span
         style={{
-          color: 'rgba(226, 232, 240, 0.72)',
+          color: ADMIN_SHELL_COLORS.siderTextMuted,
           fontSize: 12,
           lineHeight: '16px',
           whiteSpace: 'normal',
@@ -123,36 +129,24 @@ export function AppShell(): JSX.Element {
   return (
     <Layout style={{ minHeight: '100vh', background: token.colorBgLayout }}>
       <Layout.Sider
-        width={280}
+        width={ADMIN_SHELL_DIMENSIONS.siderWidth}
         breakpoint="lg"
-        collapsedWidth={88}
+        collapsedWidth={ADMIN_SHELL_DIMENSIONS.siderCollapsedWidth}
         collapsible
         collapsed={collapsed}
         onCollapse={setCollapsed}
         style={{
-          borderInlineEnd: '1px solid rgba(148, 163, 184, 0.14)',
-          boxShadow: 'inset -1px 0 0 rgba(255, 255, 255, 0.04)',
+          borderInlineEnd: `1px solid ${ADMIN_SHELL_COLORS.siderBorder}`,
+          boxShadow: `inset -1px 0 0 ${ADMIN_SHELL_COLORS.siderInsetLine}`,
           overflow: 'hidden',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            minHeight: '100%',
-            flexDirection: 'column',
-            gap: 18,
-            padding: '16px 16px 72px',
-            background:
-              'radial-gradient(circle at top, rgba(37, 99, 235, 0.22), transparent 34%), linear-gradient(180deg, rgba(8, 21, 35, 1), rgba(10, 25, 41, 1))',
-          }}
-        >
+        <div style={createSidebarContainerStyle()}>
           <div
             style={{
-              borderRadius: token.borderRadiusLG,
-              border: '1px solid rgba(148, 163, 184, 0.16)',
-              background: 'rgba(15, 23, 42, 0.56)',
+              ...createShellCardStyle(token.borderRadiusLG, ADMIN_SHELL_COLORS.siderPanelBg),
               padding: collapsed ? '14px 10px' : '18px 16px',
-              color: '#f8fafc',
+              color: ADMIN_SHELL_COLORS.siderTextStrong,
             }}
           >
             <Space direction="vertical" size={collapsed ? 10 : 6} style={{ width: '100%' }}>
@@ -160,8 +154,8 @@ export function AppShell(): JSX.Element {
                 size={collapsed ? 36 : 42}
                 shape="square"
                 style={{
-                  background: 'linear-gradient(135deg, #38bdf8, #2563eb)',
-                  color: '#eff6ff',
+                  background: ADMIN_SHELL_COLORS.brandGradient,
+                  color: ADMIN_SHELL_COLORS.navGlyphText,
                   fontWeight: 700,
                   fontSize: collapsed ? 14 : 16,
                   alignSelf: collapsed ? 'center' : 'flex-start',
@@ -171,13 +165,21 @@ export function AppShell(): JSX.Element {
               </Avatar>
               {!collapsed ? (
                 <>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7dd3fc' }}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: '0.12em',
+                      textTransform: 'uppercase',
+                      color: ADMIN_SHELL_COLORS.brandAccent,
+                    }}
+                  >
                     Remote control plane
                   </div>
-                  <Typography.Title level={4} style={{ color: '#f8fafc', margin: 0 }}>
+                  <Typography.Title level={4} style={{ color: ADMIN_SHELL_COLORS.siderTextStrong, margin: 0 }}>
                     Remote Admin
                   </Typography.Title>
-                  <Typography.Paragraph style={{ color: 'rgba(226,232,240,0.72)', margin: 0 }}>
+                  <Typography.Paragraph style={{ color: ADMIN_SHELL_COLORS.siderTextMuted, margin: 0 }}>
                     Protected operator shell for identity, devices, sessions, and audit review.
                   </Typography.Paragraph>
                 </>
@@ -199,9 +201,7 @@ export function AppShell(): JSX.Element {
 
           <div
             style={{
-              borderRadius: token.borderRadiusLG,
-              border: '1px solid rgba(148, 163, 184, 0.16)',
-              background: 'rgba(15, 23, 42, 0.5)',
+              ...createShellCardStyle(token.borderRadiusLG, ADMIN_SHELL_COLORS.siderPanelSoftBg),
               padding: collapsed ? 10 : 14,
             }}
           >
@@ -209,8 +209,8 @@ export function AppShell(): JSX.Element {
               <Avatar
                 size={34}
                 style={{
-                  background: 'rgba(59, 130, 246, 0.22)',
-                  color: '#bfdbfe',
+                  background: ADMIN_SHELL_COLORS.collapsedOperatorBg,
+                  color: ADMIN_SHELL_COLORS.collapsedOperatorText,
                   display: 'flex',
                   marginInline: 'auto',
                 }}
@@ -219,10 +219,18 @@ export function AppShell(): JSX.Element {
               </Avatar>
             ) : (
               <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94a3b8' }}>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: '0.1em',
+                    textTransform: 'uppercase',
+                    color: ADMIN_SHELL_COLORS.siderGroupTitle,
+                  }}
+                >
                   Operator access
                 </div>
-                <div style={{ color: '#f8fafc', fontWeight: 600 }}>
+                <div style={{ color: ADMIN_SHELL_COLORS.siderTextStrong, fontWeight: 600 }}>
                   {session?.user.display_name ?? session?.user.username ?? 'Admin'}
                 </div>
                 <Space size={[8, 8]} wrap>
@@ -231,7 +239,7 @@ export function AppShell(): JSX.Element {
                     Session protected
                   </Tag>
                 </Space>
-                <Typography.Text style={{ color: 'rgba(226,232,240,0.72)' }}>
+                <Typography.Text style={{ color: ADMIN_SHELL_COLORS.siderTextMuted }}>
                   Destructive actions require step-up verification before the API call is allowed.
                 </Typography.Text>
               </Space>
@@ -249,7 +257,7 @@ export function AppShell(): JSX.Element {
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: 16,
-            borderBottom: '1px solid rgba(148, 163, 184, 0.16)',
+            borderBottom: `1px solid ${ADMIN_SHELL_COLORS.headerBorder}`,
           }}
         >
           <div>
@@ -268,8 +276,8 @@ export function AppShell(): JSX.Element {
                 textAlign: 'right',
                 padding: '8px 12px',
                 borderRadius: token.borderRadius,
-                background: 'rgba(248, 250, 252, 0.96)',
-                border: '1px solid rgba(148, 163, 184, 0.16)',
+                background: ADMIN_SHELL_COLORS.headerPanelBg,
+                border: `1px solid ${ADMIN_SHELL_COLORS.headerBorder}`,
               }}
             >
               <Typography.Text strong>{session?.user.display_name ?? session?.user.username ?? 'Admin'}</Typography.Text>
@@ -288,7 +296,7 @@ export function AppShell(): JSX.Element {
           </Space>
         </Layout.Header>
 
-        <Layout.Content style={{ padding: 28, background: token.colorBgLayout }}>
+        <Layout.Content style={{ padding: ADMIN_SHELL_DIMENSIONS.contentPadding, background: token.colorBgLayout }}>
           <Outlet />
         </Layout.Content>
       </Layout>
