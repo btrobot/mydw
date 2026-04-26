@@ -42,6 +42,8 @@ Authoritative planning assets for the next upgrade stage:
 
 Copy `remote/.env.example` to the repo-root `.env` and adjust values.
 
+For a Linux host deployment baseline, prefer `remote/.env.linux.example`.
+
 ### 2. Start the backend
 
 ```bash
@@ -84,16 +86,22 @@ remote/remote-admin/dist-react/index.html?apiBase=http://127.0.0.1:8100
 
 ## Linux deployment
 
-For a Linux host deployment baseline, use:
+For a Linux host deployment baseline, copy `remote/.env.linux.example` to the
+repo-root `.env`, then use:
 
 ```bash
-docker compose -f remote/remote-shared/deploy/docker-compose.linux.yml up -d --build
+remote/remote-shared/deploy/deploy.sh
 ```
 
 See:
 
+- `remote/.env.linux.example`
 - `remote/remote-shared/docs/linux-deployment-runbook.md`
+- `remote/remote-shared/deploy/deploy.sh`
+- `remote/remote-shared/deploy/upgrade.sh`
+- `remote/remote-shared/deploy/rollback.sh`
 - `remote/remote-shared/deploy/nginx.remote-full-system-linux.conf`
+- `remote/remote-shared/deploy/nginx.remote-full-system-https.conf.template`
 - `remote/remote-shared/deploy/remote-compose.service`
 
 ## Phase 4 release gate quickstart

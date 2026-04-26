@@ -8,7 +8,8 @@ Wants=network-online.target
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=/opt/mydw
-ExecStart=/usr/bin/docker compose -f /opt/mydw/remote/remote-shared/deploy/docker-compose.linux.yml up -d --build
+ExecStart=/opt/mydw/remote/remote-shared/deploy/deploy.sh
+ExecReload=/opt/mydw/remote/remote-shared/deploy/upgrade.sh
 ExecStop=/usr/bin/docker compose -f /opt/mydw/remote/remote-shared/deploy/docker-compose.linux.yml down
 TimeoutStartSec=0
 

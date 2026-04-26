@@ -32,7 +32,9 @@ The Linux deployment baseline uses:
 - `Dockerfile`
 - `public/config.js`
 - `scripts/render-runtime-config.sh`
+- `../.env.linux.example`
 - `../remote-shared/deploy/docker-compose.linux.yml`
+- `../remote-shared/deploy/nginx.remote-full-system-https.conf.template`
 
 At runtime the container writes `config.js` from
 `REMOTE_ADMIN_API_BASE_URL`, so the deployed admin should normally point to

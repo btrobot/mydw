@@ -100,7 +100,9 @@ The Docker deployment baseline lives at:
 
 - `Dockerfile`
 - `scripts/start-linux.sh`
+- `../.env.linux.example`
 - `../remote-shared/deploy/docker-compose.linux.yml`
+- `../remote-shared/deploy/deploy.sh`
 
 The container entrypoint runs `python scripts/migrate.py ensure-head` before
 starting uvicorn.
