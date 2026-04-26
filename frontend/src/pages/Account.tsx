@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import {
   Table,
   Button,
+  Card,
   Space,
   Modal,
   Form,
@@ -45,6 +46,8 @@ import BatchDeleteButton from '../components/BatchDeleteButton'
 import ConnectionModal from '../components/ConnectionModal'
 import StatusBadge from '../components/StatusBadge'
 import type { AccountCreate, AccountUpdate } from '@/api'
+import { InlineNotice } from '@/components/feedback/InlineNotice'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { handleApiError } from '@/utils/error'
 
 const { Text } = Typography
@@ -590,82 +593,93 @@ export default function Account() {
   ])
 
   return (
-    <>
-      <AccountToolbar
-        onSearch={handleSearch}
-        onTagChange={handleTagChange}
-        tagOptions={tagOptions}
-        onAdd={handleAdd}
-        selectedCount={selectedIds.length}
-        onBatchDelete={handleBatchDelete}
-        batchDeleting={batchDeleteAccounts.isPending}
-        onBatchCheck={handleBatchCheck}
-        batchChecking={batchHealthCheck.isPending}
-        batchProgress={batchStatus?.progress ?? 0}
-        batchTotal={batchStatus?.total ?? 0}
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <PageHeader
+        title="\u8d26\u53f7\u7ba1\u7406"
+        subtitle="\u5728\u540c\u4e00\u4e2a\u9996\u5c4f\u5185\u5b8c\u6210\u8d26\u53f7\u68c0\u7d22\u3001\u6279\u91cf\u68c0\u67e5\u3001\u767b\u5f55\u8fde\u63a5\u548c\u9884\u89c8\u63a7\u5236\u3002"
       />
-
-      {batchResult && (
-        <Alert
-          style={{ marginBottom: 16 }}
-          type={batchResult.expired_count > 0 || batchResult.error_count > 0 ? 'warning' : 'success'}
-          message={`批量检查完成：${batchResult.valid_count} 个有效，${batchResult.expired_count} 个已过期，${batchResult.error_count} 个异常`}
-          closable
-          onClose={() => setBatchResult(null)}
-          showIcon
-        />
-      )}
-
-      {(batchStatus?.in_progress || (batchStatus?.logs && batchStatus.logs.length > 0)) && (
-        <div
-          ref={logPanelRef}
-          style={{
-            marginBottom: 16,
-            padding: '8px 12px',
-            background: '#fafafa',
-            border: '1px solid #f0f0f0',
-            borderRadius: 6,
-            maxHeight: 200,
-            overflowY: 'auto',
-            fontSize: 13,
-            fontFamily: 'monospace',
-          }}
-        >
-          {(batchStatus.logs ?? []).map((log, i) => (
-            <div
-              key={i}
-              style={{
-                padding: '2px 0',
-                color: log.includes('[ERROR]') ? '#ff4d4f' : log.includes('[EXPIRED]') ? '#faad14' : '#52c41a',
-              }}
-            >
-              {log}
-            </div>
-          ))}
-          {batchStatus.in_progress && batchStatus.current_account_name && (
-            <div style={{ padding: '2px 0', color: '#1890ff' }}>
-              [{(batchStatus.progress ?? 0) + 1}/{batchStatus.total}] {batchStatus.current_account_name} - 检查中...
-            </div>
-          )}
-        </div>
-      )}
-
-      <Table<AccountResponseExtended>
-        columns={columns}
-        dataSource={accounts}
-        rowKey="id"
-        rowSelection={{
-          selectedRowKeys: selectedIds,
-          onChange: (keys) => setSelectedIds(keys as number[]),
-        }}
-        loading={isLoading}
-        scroll={{ x: 1300 }}
-        pagination={{
-          pageSize: 10,
-          showSizeChanger: true,
-          showTotal: (total) => `共 ${total} 条`,
-        }}
+      <InlineNotice
+        type="info"
+        message="\u5148\u7528\u6807\u7b7e\u548c\u6279\u91cf\u68c0\u67e5\u6e05\u7406\u8d26\u53f7\u5065\u5eb7\u72b6\u6001"
+        description="\u6279\u91cf\u68c0\u67e5\u4f1a\u76f4\u63a5\u5728\u5f53\u524d\u9875\u9762\u8fd4\u56de\u8fdb\u5ea6\u4e0e\u65e5\u5fd7\uff0c\u4fbf\u4e8e\u5148\u5b8c\u6210\u6392\u969c\uff0c\u518d\u8fdb\u5165\u767b\u5f55\u6216\u9884\u89c8\u6d41\u7a0b\u3002"
       />
+      <Card size="small">
+              <AccountToolbar
+                onSearch={handleSearch}
+                onTagChange={handleTagChange}
+                tagOptions={tagOptions}
+                onAdd={handleAdd}
+                selectedCount={selectedIds.length}
+                onBatchDelete={handleBatchDelete}
+                batchDeleting={batchDeleteAccounts.isPending}
+                onBatchCheck={handleBatchCheck}
+                batchChecking={batchHealthCheck.isPending}
+                batchProgress={batchStatus?.progress ?? 0}
+                batchTotal={batchStatus?.total ?? 0}
+              />
+        
+              {batchResult && (
+                <Alert
+                  style={{ marginBottom: 16 }}
+                  type={batchResult.expired_count > 0 || batchResult.error_count > 0 ? 'warning' : 'success'}
+                  message={`批量检查完成：${batchResult.valid_count} 个有效，${batchResult.expired_count} 个已过期，${batchResult.error_count} 个异常`}
+                  closable
+                  onClose={() => setBatchResult(null)}
+                  showIcon
+                />
+              )}
+        
+              {(batchStatus?.in_progress || (batchStatus?.logs && batchStatus.logs.length > 0)) && (
+                <div
+                  ref={logPanelRef}
+                  style={{
+                    marginBottom: 16,
+                    padding: '8px 12px',
+                    background: '#fafafa',
+                    border: '1px solid #f0f0f0',
+                    borderRadius: 6,
+                    maxHeight: 200,
+                    overflowY: 'auto',
+                    fontSize: 13,
+                    fontFamily: 'monospace',
+                  }}
+                >
+                  {(batchStatus.logs ?? []).map((log, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        padding: '2px 0',
+                        color: log.includes('[ERROR]') ? '#ff4d4f' : log.includes('[EXPIRED]') ? '#faad14' : '#52c41a',
+                      }}
+                    >
+                      {log}
+                    </div>
+                  ))}
+                  {batchStatus.in_progress && batchStatus.current_account_name && (
+                    <div style={{ padding: '2px 0', color: '#1890ff' }}>
+                      [{(batchStatus.progress ?? 0) + 1}/{batchStatus.total}] {batchStatus.current_account_name} - 检查中...
+                    </div>
+                  )}
+                </div>
+              )}
+        
+              <Table<AccountResponseExtended>
+                columns={columns}
+                dataSource={accounts}
+                rowKey="id"
+                rowSelection={{
+                  selectedRowKeys: selectedIds,
+                  onChange: (keys) => setSelectedIds(keys as number[]),
+                }}
+                loading={isLoading}
+                scroll={{ x: 1300 }}
+                pagination={{
+                  pageSize: 10,
+                  showSizeChanger: true,
+                  showTotal: (total) => `共 ${total} 条`,
+                }}
+              />
+      </Card>
 
       {/* Add account modal */}
       <Modal
@@ -720,6 +734,6 @@ export default function Account() {
           onCancel={() => { setConnectionModalVisible(false); setSelectedAccount(null) }}
         />
       )}
-    </>
+    </Space>
   )
 }

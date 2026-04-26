@@ -8,6 +8,8 @@ import type { MenuProps } from 'antd'
 import type { ActionType, ProColumns, ProFormInstance } from '@ant-design/pro-components'
 
 import { listTasksApiTasksGet } from '@/api'
+import { InlineNotice } from '@/components/feedback/InlineNotice'
+import { PageHeader } from '@/components/ui/PageHeader'
 import type { ListTasksApiTasksGetData, TaskKind, TaskResponse, TaskStatus } from '@/api'
 import {
   useAccounts,
@@ -872,125 +874,138 @@ export default function TaskList() {
   ]
 
   return (
-    <ProTable<TaskRow, TaskListFormValues>
-      actionRef={actionRef}
-      formRef={formRef}
-      rowKey="id"
-      columns={columns}
-      headerTitle={<span data-testid="task-list-semantics">任务管理</span>}
-      request={async (params) => {
-        const query = buildTaskListQuery(params)
-        const { limit, offset, ...searchOnlyQuery } = query
-        syncSearchSnapshot(searchOnlyQuery)
-        const nextSearchParams = buildTaskListSearchParams(query, {
-          current: params.current,
-          pageSize: params.pageSize,
-        })
-        if (nextSearchParams.toString() !== searchParams.toString()) {
-          setSearchParams(nextSearchParams, { replace: true })
-        }
-        const response = await listTasksApiTasksGet({ query })
-        const data = response.data ?? { total: 0, items: [] }
-        return { data: data.items as TaskRow[], success: true, total: data.total }
-      }}
-      tableExtraRender={() => (
-        <Space direction="vertical" style={{ width: '100%' }} size={12}>
-          {creationSummary ? (
-            <Alert
-              type="success"
-              showIcon
-              closable
-              data-testid="task-list-created-summary"
-              onClose={() => setCreationSummary(null)}
-              message={`本次创建 ${creationSummary.count} 个任务`}
-              description={(
-                <Space wrap>
-                  <Typography.Text type="secondary">
-                    待合成 {creationSummary.draftTaskIds.length} 个，待上传 {creationSummary.readyTaskIds.length} 个。
-                  </Typography.Text>
-                  {creationSummary.draftTaskIds.length > 0 ? (
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <PageHeader
+        title={<span data-testid="task-list-semantics">{'\u4efb\u52a1\u7ba1\u7406'}</span>}
+        subtitle="\u5c06\u4efb\u52a1\u5217\u8868\u4f5c\u4e3a\u68c0\u7d22\u3001\u8bca\u65ad\u4e0e\u6279\u5904\u7406\u9762\u677f\uff0c\u521b\u5efa\u4e0e\u4f5c\u54c1\u7f16\u6392\u4ecd\u4ee5\u5de5\u4f5c\u53f0\u4e3a\u4e3b\u3002"
+        extra={(
+          <Space wrap>
+            <Button
+              type="primary"
+              onClick={() => navigate('/creative/workbench')}
+              data-testid="task-list-open-workbench"
+            >
+              {'\u53bb\u4f5c\u54c1\u5de5\u4f5c\u53f0'}
+            </Button>
+            <Button icon={<PlusOutlined />} onClick={() => navigate('/task/create')}>
+              {'\u517c\u5bb9\u5165\u53e3\uff1a\u65b0\u5efa\u4efb\u52a1'}
+            </Button>
+          </Space>
+        )}
+      />
+      <InlineNotice
+        message="\u5feb\u6377\u7b5b\u9009\u7528\u4e8e\u5b9a\u4f4d\u5f85\u5408\u6210\u3001\u5f85\u4e0a\u4f20\u4e0e\u5931\u8d25\u4efb\u52a1"
+        description="\u5982\u9700\u8fdb\u5165 AI Clip \u4f5c\u54c1\u7f16\u6392\uff0c\u8bf7\u76f4\u63a5\u4ece\u53f3\u4e0a\u89d2\u7684\u5de5\u4f5c\u53f0\u5165\u53e3\u8fdb\u5165\uff1b\u672c\u9875\u4f18\u5148\u627f\u8f7d\u961f\u5217\u89c2\u5bdf\u4e0e\u7ba1\u7406\u52a8\u4f5c\u3002"
+      />
+      <ProTable<TaskRow, TaskListFormValues>
+        actionRef={actionRef}
+        formRef={formRef}
+        rowKey="id"
+        columns={columns}
+        headerTitle={false}
+        request={async (params) => {
+          const query = buildTaskListQuery(params)
+          const { limit, offset, ...searchOnlyQuery } = query
+          syncSearchSnapshot(searchOnlyQuery)
+          const nextSearchParams = buildTaskListSearchParams(query, {
+            current: params.current,
+            pageSize: params.pageSize,
+          })
+          if (nextSearchParams.toString() !== searchParams.toString()) {
+            setSearchParams(nextSearchParams, { replace: true })
+          }
+          const response = await listTasksApiTasksGet({ query })
+          const data = response.data ?? { total: 0, items: [] }
+          return { data: data.items as TaskRow[], success: true, total: data.total }
+        }}
+        tableExtraRender={() => (
+          <Space direction="vertical" style={{ width: '100%' }} size={12}>
+            {creationSummary ? (
+              <Alert
+                type="success"
+                showIcon
+                closable
+                data-testid="task-list-created-summary"
+                onClose={() => setCreationSummary(null)}
+                message={`本次创建 ${creationSummary.count} 个任务`}
+                description={(
+                  <Space wrap>
+                    <Typography.Text type="secondary">
+                      待合成 {creationSummary.draftTaskIds.length} 个，待上传 {creationSummary.readyTaskIds.length} 个。
+                    </Typography.Text>
+                    {creationSummary.draftTaskIds.length > 0 ? (
+                      <Button
+                        size="small"
+                        type="primary"
+                        icon={<PlayCircleOutlined />}
+                        loading={batchSubmitComposition.isPending}
+                        data-testid="task-list-submit-created-composition"
+                        onClick={() => void handleSubmitCreatedDrafts()}
+                      >
+                        提交本次待合成
+                      </Button>
+                    ) : null}
                     <Button
                       size="small"
-                      type="primary"
-                      icon={<PlayCircleOutlined />}
-                      loading={batchSubmitComposition.isPending}
-                      data-testid="task-list-submit-created-composition"
-                      onClick={() => void handleSubmitCreatedDrafts()}
+                      onClick={() => handleQuickFilter('waitingCompose')}
+                      data-testid="task-list-filter-waiting-compose"
                     >
-                      提交本次待合成
+                      查看待合成
                     </Button>
-                  ) : null}
-                  <Button
-                    size="small"
-                    onClick={() => handleQuickFilter('waitingCompose')}
-                    data-testid="task-list-filter-waiting-compose"
-                  >
-                    查看待合成
-                  </Button>
-                </Space>
-              )}
-            />
-          ) : null}
-          <Space wrap>
-            <Typography.Text type="secondary">快捷筛选：</Typography.Text>
-            {quickFilters.map((filter) => (
-              <Button
-                key={filter.key}
-                size="small"
-                type={isPresetActive(searchSnapshot, filter.key) ? 'primary' : 'default'}
-                onClick={() => handleQuickFilter(filter.key)}
-              >
-                {filter.label}
-              </Button>
-            ))}
+                  </Space>
+                )}
+              />
+            ) : null}
+            <Space wrap>
+              <Typography.Text type="secondary">快捷筛选：</Typography.Text>
+              {quickFilters.map((filter) => (
+                <Button
+                  key={filter.key}
+                  size="small"
+                  type={isPresetActive(searchSnapshot, filter.key) ? 'primary' : 'default'}
+                  onClick={() => handleQuickFilter(filter.key)}
+                >
+                  {filter.label}
+                </Button>
+              ))}
+            </Space>
           </Space>
-        </Space>
-      )}
-      rowSelection={{
-        selectedRowKeys: selectedIds,
-        onChange: (keys) => setSelectedIds(keys as number[]),
-      }}
-      tableAlertOptionRender={() => (
-        <Popconfirm title={`确认删除已选中的 ${selectedIds.length} 个任务吗？`} onConfirm={() => void handleBatchDelete()}>
-          <Button danger size="small" icon={<DeleteOutlined />} loading={deleteTask.isPending}>
-            删除已选 {selectedIds.length} 项
-          </Button>
-        </Popconfirm>
-      )}
-      toolBarRender={() => [
-        <Button
-          key="workbench"
-          type="primary"
-          onClick={() => navigate('/creative/workbench')}
-          data-testid="task-list-open-workbench"
-        >
-          去作品工作台
-        </Button>,
-        <Button key="create" icon={<PlusOutlined />} onClick={() => navigate('/task/create')}>
-          兼容入口：新建任务
-        </Button>,
-        <Popconfirm key="clear" title="确认清空全部任务吗？" onConfirm={() => void handleClearAll()}>
-          <Button danger loading={deleteAllTasks.isPending}>清空全部任务</Button>
-        </Popconfirm>,
-      ]}
-      onRow={(record) => ({
-        onClick: () => openTaskDetail(record.id),
-        style: { cursor: 'pointer' },
-      })}
-      pagination={{
-        current: initialRouteState.current,
-        pageSize: initialRouteState.pageSize,
-        showTotal: (total) => `共 ${total} 条`,
-      }}
-      form={{
-        initialValues: initialRouteState.formValues,
-      }}
-      search={{
-        labelWidth: 'auto',
-        defaultCollapsed: true,
-        span: 6,
-      }}
-      size="small"
-    />
+        )}
+        rowSelection={{
+          selectedRowKeys: selectedIds,
+          onChange: (keys) => setSelectedIds(keys as number[]),
+        }}
+        tableAlertOptionRender={() => (
+          <Popconfirm title={`确认删除已选中的 ${selectedIds.length} 个任务吗？`} onConfirm={() => void handleBatchDelete()}>
+            <Button danger size="small" icon={<DeleteOutlined />} loading={deleteTask.isPending}>
+              删除已选 {selectedIds.length} 项
+            </Button>
+          </Popconfirm>
+        )}
+        toolBarRender={() => [
+          <Popconfirm key="clear" title="\u786e\u8ba4\u6e05\u7a7a\u5168\u90e8\u4efb\u52a1\u5417\uff1f" onConfirm={() => void handleClearAll()}>
+            <Button danger loading={deleteAllTasks.isPending}>{'\u6e05\u7a7a\u5168\u90e8\u4efb\u52a1'}</Button>
+          </Popconfirm>,
+        ]}
+        onRow={(record) => ({
+          onClick: () => openTaskDetail(record.id),
+          style: { cursor: 'pointer' },
+        })}
+        pagination={{
+          current: initialRouteState.current,
+          pageSize: initialRouteState.pageSize,
+          showTotal: (total) => `共 ${total} 条`,
+        }}
+        form={{
+          initialValues: initialRouteState.formValues,
+        }}
+        search={{
+          labelWidth: 'auto',
+          defaultCollapsed: true,
+          span: 6,
+        }}
+        size="small"
+      />
+    </Space>
   )
 }
