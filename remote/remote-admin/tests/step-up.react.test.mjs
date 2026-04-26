@@ -251,6 +251,44 @@ test('users display-name update saves without step-up and refreshes list/detail 
   }
 });
 
+test('users update can clear license expiry after backend step-up confirmation', async () => {
+  const harness = await openUsersStepUpHarness({
+    updateResponses: [
+      {
+        status: 403,
+        body: {
+          error_code: 'step_up_required',
+          message: 'Step-up verification required',
+        },
+      },
+    ],
+  });
+
+  try {
+    await harness.page.getByLabel('License expiry (ISO-8601)').fill('');
+    await harness.page.getByRole('button', { name: 'Save changes' }).click();
+
+    await harness.page.getByText('Confirm password: Save user changes').waitFor();
+    await harness.page.getByPlaceholder('Enter your password').fill('admin-secret');
+    await harness.page.getByRole('button', { name: 'Confirm and continue' }).click();
+
+    await harness.page.getByText(
+      'User changes saved. The list and detail panel were refreshed from the backend.'
+    ).waitFor();
+
+    assert.equal(harness.calls.updateRequests.length, 2);
+    assert.deepEqual(harness.calls.updateRequests[0].body, {
+      license_expires_at: null,
+    });
+    assert.equal(harness.calls.updateRequests[1].headers['x-step-up-token'], 'admin_step_up_1');
+    assert.deepEqual(harness.calls.updateRequests[1].body, {
+      license_expires_at: null,
+    });
+  } finally {
+    await harness.close();
+  }
+});
+
 test('users sensitive update retries with step-up token after backend requires confirmation', async () => {
   const harness = await openUsersStepUpHarness({
     updateResponses: [
@@ -302,6 +340,37 @@ test('users sensitive update retries with step-up token after backend requires c
     });
     await harness.page.getByText('publish:run').first().waitFor();
     await harness.page.getByText('Current state: revoked').waitFor();
+  } finally {
+    await harness.close();
+  }
+});
+
+test('users update surfaces backend validation details inline without opening step-up', async () => {
+  const harness = await openUsersStepUpHarness({
+    updateResponses: [
+      {
+        status: 422,
+        body: {
+          detail: [
+            {
+              loc: ['body', 'license_expires_at'],
+              msg: 'Input should be a valid datetime',
+              type: 'datetime_parsing',
+            },
+          ],
+        },
+      },
+    ],
+  });
+
+  try {
+    await harness.page.getByLabel('License expiry (ISO-8601)').fill('not-a-date');
+    await harness.page.getByRole('button', { name: 'Save changes' }).click();
+
+    await harness.page.getByText('Please fix the highlighted user fields and retry.').waitFor();
+    await harness.page.getByText('Input should be a valid datetime').waitFor();
+    assert.equal(harness.calls.updateRequests.length, 1);
+    assert.equal(harness.calls.verifyBodies.length, 0);
   } finally {
     await harness.close();
   }
@@ -808,6 +877,20 @@ async function openUsersStepUpHarness(options = {}) {
           ...user,
           ...body,
         };
+
+        if (Object.hasOwn(body, 'display_name')) {
+          nextUser = {
+            ...nextUser,
+            display_name: body.display_name,
+          };
+        }
+
+        if (Object.hasOwn(body, 'license_expires_at')) {
+          nextUser = {
+            ...nextUser,
+            license_expires_at: body.license_expires_at,
+          };
+        }
 
         if (body.license_status === 'revoked') {
           nextUser = {

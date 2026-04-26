@@ -51,6 +51,9 @@ type UserEditDraft = {
   entitlements: string;
 };
 
+type UserEditFieldName = 'display_name' | 'license_status' | 'license_expires_at' | 'entitlements';
+type UserEditFieldErrors = Partial<Record<UserEditFieldName, string>>;
+
 type CreateUserFormValues = {
   username: string;
   password: string;
@@ -122,9 +125,11 @@ function areStringArraysEqual(left: string[], right: string[]): boolean {
 
 function buildUserUpdatePayload(detail: AdminUserRecord, draft: UserEditDraft): AdminUserUpdateRequest {
   const payload: AdminUserUpdateRequest = {};
+  const normalizedDisplayName = draft.displayName.trim();
+  const currentDisplayName = detail.display_name ?? '';
 
-  if (draft.displayName !== (detail.display_name ?? '')) {
-    payload.display_name = draft.displayName;
+  if (normalizedDisplayName !== currentDisplayName) {
+    payload.display_name = normalizedDisplayName || null;
   }
 
   if (draft.licenseStatus !== (detail.license_status ?? '')) {
@@ -132,8 +137,9 @@ function buildUserUpdatePayload(detail: AdminUserRecord, draft: UserEditDraft): 
   }
 
   const normalizedLicenseExpiry = draft.licenseExpiresAt.trim();
-  if (normalizedLicenseExpiry && normalizedLicenseExpiry !== (detail.license_expires_at ?? '')) {
-    payload.license_expires_at = normalizedLicenseExpiry;
+  const currentLicenseExpiry = detail.license_expires_at ?? '';
+  if (normalizedLicenseExpiry !== currentLicenseExpiry) {
+    payload.license_expires_at = normalizedLicenseExpiry || null;
   }
 
   const normalizedEntitlements = parseEntitlementsInput(draft.entitlements);
@@ -159,31 +165,35 @@ function buildUserCreatePayload(values: CreateUserFormValues): AdminUserCreateRe
   };
 }
 
-function applyValidationErrorsToForm(
-  form: ReturnType<typeof Form.useForm<CreateUserFormValues>>[0],
-  error: unknown
-): boolean {
+function extractValidationIssues(error: unknown): Array<{ fieldName: string; message: string }> {
   if (!(error instanceof AdminApiError) || !Array.isArray(error.details)) {
-    return false;
+    return [];
   }
 
-  const fieldErrors = error.details
+  return error.details
     .map((issue) => {
       if (!issue || typeof issue !== 'object') {
         return null;
       }
       const loc = Array.isArray((issue as { loc?: unknown }).loc) ? (issue as { loc: unknown[] }).loc : null;
-      const msg = typeof (issue as { msg?: unknown }).msg === 'string' ? (issue as { msg: string }).msg : 'Invalid value.';
+      const message = typeof (issue as { msg?: unknown }).msg === 'string' ? (issue as { msg: string }).msg : 'Invalid value.';
       const fieldName = typeof loc?.[loc.length - 1] === 'string' ? (loc[loc.length - 1] as string) : null;
       if (!fieldName) {
         return null;
       }
-      return {
-        name: fieldName as keyof CreateUserFormValues,
-        errors: [msg],
-      };
+      return { fieldName, message };
     })
-    .filter((value): value is { name: keyof CreateUserFormValues; errors: string[] } => value !== null);
+    .filter((value): value is { fieldName: string; message: string } => value !== null);
+}
+
+function applyValidationErrorsToForm(
+  form: ReturnType<typeof Form.useForm<CreateUserFormValues>>[0],
+  error: unknown
+): boolean {
+  const fieldErrors = extractValidationIssues(error).map((issue) => ({
+    name: issue.fieldName as keyof CreateUserFormValues,
+    errors: [issue.message],
+  }));
 
   if (fieldErrors.length === 0) {
     return false;
@@ -216,6 +226,7 @@ export function UsersPage(): JSX.Element {
   const [appliedFilters, setAppliedFilters] = useState<AdminUsersFilters>(EMPTY_FILTERS);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<UserEditDraft>(EMPTY_USER_EDIT_DRAFT);
+  const [editFieldErrors, setEditFieldErrors] = useState<UserEditFieldErrors>({});
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createFormError, setCreateFormError] = useState<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
@@ -375,6 +386,7 @@ export function UsersPage(): JSX.Element {
     onMutate: () => {
       setActionFeedback(null);
       setActionError(null);
+      setEditFieldErrors({});
     },
     onSuccess: async (_response, variables) => {
       try {
@@ -435,6 +447,7 @@ export function UsersPage(): JSX.Element {
 
   useEffect(() => {
     setEditDraft(formatUserEditDraft(detailQuery.data));
+    setEditFieldErrors({});
   }, [detailQuery.data]);
 
   const isRevoking = userActionMutation.isPending && userActionMutation.variables?.action === 'revoke';
@@ -466,6 +479,7 @@ export function UsersPage(): JSX.Element {
   async function runUserUpdate(user: AdminUserRecord): Promise<void> {
     const payload = buildUserUpdatePayload(user, editDraft);
     if (Object.keys(payload).length === 0) {
+      setEditFieldErrors({});
       setActionError(null);
       setActionFeedback('No user changes to save.');
       return;
@@ -508,6 +522,20 @@ export function UsersPage(): JSX.Element {
 
           throw stepUpError;
         }
+      }
+
+      const fieldIssues = extractValidationIssues(error).filter((issue) =>
+        ['display_name', 'license_status', 'license_expires_at', 'entitlements'].includes(issue.fieldName)
+      );
+      if (fieldIssues.length > 0) {
+        setEditFieldErrors(
+          fieldIssues.reduce<UserEditFieldErrors>((acc, issue) => {
+            acc[issue.fieldName as UserEditFieldName] = issue.message;
+            return acc;
+          }, {})
+        );
+        setActionError('Please fix the highlighted user fields and retry.');
+        return;
       }
 
       setActionError(error instanceof AdminApiError ? mapAdminActionError(error.errorCode) : mapAdminActionError());
@@ -828,32 +856,46 @@ export function UsersPage(): JSX.Element {
                   }}
                 >
                   <Flex gap={16} wrap="wrap" align="end">
-                    <Form.Item label="Display name" style={{ minWidth: 220, flex: 1, marginBottom: 0 }}>
+                    <Form.Item
+                      label="Display name"
+                      style={{ minWidth: 220, flex: 1, marginBottom: 0 }}
+                      validateStatus={editFieldErrors.display_name ? 'error' : undefined}
+                      help={editFieldErrors.display_name}
+                    >
                       <Input
                         aria-label="Display name"
                         value={editDraft.displayName}
                         placeholder="Alice"
                         disabled={!canWrite || isSavingChanges || isRevoking || isRestoring}
-                        onChange={(event) =>
+                        status={editFieldErrors.display_name ? 'error' : undefined}
+                        onChange={(event) => {
+                          setEditFieldErrors((current) => ({ ...current, display_name: undefined }));
                           setEditDraft((current) => ({
                             ...current,
                             displayName: event.target.value,
-                          }))
-                        }
+                          }));
+                        }}
                       />
                     </Form.Item>
-                    <Form.Item label="License status" style={{ minWidth: 220, flex: 1, marginBottom: 0 }}>
+                    <Form.Item
+                      label="License status"
+                      style={{ minWidth: 220, flex: 1, marginBottom: 0 }}
+                      validateStatus={editFieldErrors.license_status ? 'error' : undefined}
+                      help={editFieldErrors.license_status}
+                    >
                       <Select
                         aria-label="License status"
                         data-testid="user-license-status-select"
                         value={editDraft.licenseStatus}
                         disabled={!canWrite || isSavingChanges || isRevoking || isRestoring}
-                        onChange={(value) =>
+                        status={editFieldErrors.license_status ? 'error' : undefined}
+                        onChange={(value) => {
+                          setEditFieldErrors((current) => ({ ...current, license_status: undefined }));
                           setEditDraft((current) => ({
                             ...current,
                             licenseStatus: value,
-                          }))
-                        }
+                          }));
+                        }}
                         options={[
                           { value: 'active', label: 'active' },
                           { value: 'revoked', label: 'revoked' },
@@ -861,23 +903,32 @@ export function UsersPage(): JSX.Element {
                         ]}
                       />
                     </Form.Item>
-                    <Form.Item label="License expiry (ISO-8601)" style={{ minWidth: 280, flex: 1, marginBottom: 0 }}>
+                    <Form.Item
+                      label="License expiry (ISO-8601)"
+                      style={{ minWidth: 280, flex: 1, marginBottom: 0 }}
+                      validateStatus={editFieldErrors.license_expires_at ? 'error' : undefined}
+                      help={editFieldErrors.license_expires_at}
+                    >
                       <Input
                         aria-label="License expiry (ISO-8601)"
                         value={editDraft.licenseExpiresAt}
                         placeholder="2026-07-01T00:00:00Z"
                         disabled={!canWrite || isSavingChanges || isRevoking || isRestoring}
-                        onChange={(event) =>
+                        status={editFieldErrors.license_expires_at ? 'error' : undefined}
+                        onChange={(event) => {
+                          setEditFieldErrors((current) => ({ ...current, license_expires_at: undefined }));
                           setEditDraft((current) => ({
                             ...current,
                             licenseExpiresAt: event.target.value,
-                          }))
-                        }
+                          }));
+                        }}
                       />
                     </Form.Item>
                     <Form.Item
                       label="Entitlements (comma or newline separated)"
                       style={{ minWidth: 320, flex: '1 1 100%', marginBottom: 0 }}
+                      validateStatus={editFieldErrors.entitlements ? 'error' : undefined}
+                      help={editFieldErrors.entitlements}
                     >
                       <Input.TextArea
                         aria-label="Entitlements (comma or newline separated)"
@@ -885,12 +936,14 @@ export function UsersPage(): JSX.Element {
                         value={editDraft.entitlements}
                         placeholder="dashboard:view, publish:run"
                         disabled={!canWrite || isSavingChanges || isRevoking || isRestoring}
-                        onChange={(event) =>
+                        status={editFieldErrors.entitlements ? 'error' : undefined}
+                        onChange={(event) => {
+                          setEditFieldErrors((current) => ({ ...current, entitlements: undefined }));
                           setEditDraft((current) => ({
                             ...current,
                             entitlements: event.target.value,
-                          }))
-                        }
+                          }));
+                        }}
                       />
                     </Form.Item>
                     <Space>
@@ -907,6 +960,7 @@ export function UsersPage(): JSX.Element {
                         onClick={() => {
                           setActionFeedback(null);
                           setActionError(null);
+                          setEditFieldErrors({});
                           setEditDraft(formatUserEditDraft(selectedDetail));
                         }}
                       >

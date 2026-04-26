@@ -369,17 +369,17 @@ class AdminService:
             step_up_token=step_up_token,
         )
         target = self._load_target_user(user_id)
-        changed_fields = payload.model_dump(exclude_none=True)
+        changed_fields = payload.model_dump(exclude_unset=True)
 
-        if payload.display_name is not None:
-            target.display_name = payload.display_name
+        if 'display_name' in changed_fields:
+            target.display_name = self._normalize_optional_text(payload.display_name)
 
         license_record = self.repository.ensure_license(target.id)
-        if payload.license_expires_at is not None:
+        if 'license_expires_at' in changed_fields:
             license_record.expires_at = payload.license_expires_at
 
-        if payload.entitlements is not None:
-            self.repository.replace_entitlements(target.id, payload.entitlements)
+        if 'entitlements' in changed_fields:
+            self.repository.replace_entitlements(target.id, self._normalize_entitlements(payload.entitlements or []))
 
         if payload.license_status is not None:
             self._apply_license_status(target.id, payload.license_status, actor_id=f'admin_{admin_user.id}')
@@ -913,7 +913,7 @@ class AdminService:
 
     @staticmethod
     def _requires_user_update_step_up(payload: AdminUserUpdateRequest) -> bool:
-        return bool(SENSITIVE_USER_UPDATE_FIELDS & set(payload.model_dump(exclude_none=True).keys()))
+        return bool(SENSITIVE_USER_UPDATE_FIELDS & set(payload.model_dump(exclude_unset=True).keys()))
 
     @staticmethod
     def _build_identity(admin_user: AdminUser) -> AdminIdentity:

@@ -156,6 +156,48 @@ def test_update_user_sensitive_fields_require_step_up(migrated_database: str) ->
     assert exc_info.value.status_code == 403
 
 
+def test_update_user_clearing_license_expiry_requires_step_up(migrated_database: str) -> None:
+    _seed_runtime_data()
+
+    with session_scope() as session:
+        service = AdminService(AdminRepository(session))
+        login = service.login(AdminLoginRequest(username="admin", password="admin-secret"), client_ip="127.0.0.1")
+
+        with pytest.raises(AdminServiceError) as exc_info:
+            service.update_user(
+                login.access_token,
+                "u_1",
+                AdminUserUpdateRequest(license_expires_at=None),
+            )
+
+    assert exc_info.value.error_code == "step_up_required"
+    assert exc_info.value.status_code == 403
+
+
+def test_update_user_can_clear_license_expiry_with_valid_step_up_token(migrated_database: str) -> None:
+    _seed_runtime_data()
+
+    with session_scope() as session:
+        service = AdminService(AdminRepository(session))
+        login = service.login(AdminLoginRequest(username="admin", password="admin-secret"), client_ip="127.0.0.1")
+        step_up = service.verify_step_up_password(
+            login.access_token,
+            AdminStepUpVerifyRequest(password="admin-secret", scope=ADMIN_PERMISSION_USERS_WRITE),
+            client_ip="127.0.0.1",
+        )
+
+        response = service.update_user(
+            login.access_token,
+            "u_1",
+            AdminUserUpdateRequest(license_expires_at=None),
+            step_up_token=step_up.step_up_token,
+        )
+
+        license_record = session.query(License).filter_by(user_id=1).one()
+        assert response.license_expires_at is None
+        assert license_record.expires_at is None
+
+
 def test_create_user_requires_step_up(migrated_database: str) -> None:
     _seed_runtime_data()
 
