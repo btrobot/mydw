@@ -10,7 +10,7 @@
     "build": "tsc -p tsconfig.json",
     "build:react": "vite build",
     "preview:react": "vite preview --open /index.html",
-    "test": "npm run build && node --test tests/app.test.mjs",
+    "test": "npm run build && node --test tests/react-contract.test.mjs",
     "test:react-step-up": "npm run build:react && node --test --test-concurrency=1 tests/step-up.react.test.mjs",
     "lint": "node -e \"process.exit(0)\""
   },

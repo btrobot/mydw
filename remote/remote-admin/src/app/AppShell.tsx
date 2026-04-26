@@ -10,6 +10,7 @@ import {
   createSidebarContainerStyle,
 } from './adminTheme.js';
 import { useAuth } from '../features/auth/auth-context.js';
+import { getAdminPageTitle } from '../routes/route-helpers.js';
 
 interface NavDefinition {
   key: string;
@@ -43,14 +44,6 @@ const NAV_GROUPS: Array<{
     items: [{ key: '/audit-logs', label: 'Audit logs', description: 'Event tracing and destructive actions', shortLabel: 'AU' }],
   },
 ];
-
-const PAGE_TITLES: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/users': 'Users',
-  '/devices': 'Devices',
-  '/sessions': 'Sessions',
-  '/audit-logs': 'Audit Logs',
-};
 
 function getRoleTagColor(role: string): string {
   if (role === 'super_admin') return 'red';
@@ -109,8 +102,8 @@ export function AppShell(): JSX.Element {
   const { session, logout } = useAuth();
   const { token } = theme.useToken();
   const [collapsed, setCollapsed] = useState(false);
-  const selectedKey = PAGE_TITLES[location.pathname] ? location.pathname : '/dashboard';
-  const pageTitle = PAGE_TITLES[selectedKey] ?? 'Remote Admin';
+  const selectedKey = getAdminPageTitle(location.pathname) === 'Remote Admin' ? '/dashboard' : location.pathname;
+  const pageTitle = getAdminPageTitle(selectedKey);
   useEffect(() => {
     document.title = `${pageTitle} · Remote Admin`;
   }, [pageTitle]);

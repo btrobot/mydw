@@ -9,6 +9,7 @@ import { LoginPage } from '../pages/login/LoginPage.js';
 import { SessionsPage } from '../pages/sessions/SessionsPage.js';
 import { UsersPage } from '../pages/users/UsersPage.js';
 import { LoadingState } from '../components/states/LoadingState.js';
+import { resolveProtectedAdminRedirect, resolveRootAdminPath } from './route-helpers.js';
 
 function RootRedirect(): JSX.Element {
   const { status } = useAuth();
@@ -17,7 +18,7 @@ function RootRedirect(): JSX.Element {
     return <LoadingState title="Restoring admin session" />;
   }
 
-  return <Navigate to={status === 'authenticated' ? '/dashboard' : '/login'} replace />;
+  return <Navigate to={resolveRootAdminPath(status)} replace />;
 }
 
 function ProtectedRoute(): JSX.Element {
@@ -28,8 +29,9 @@ function ProtectedRoute(): JSX.Element {
     return <LoadingState title="Checking admin access" />;
   }
 
-  if (status !== 'authenticated') {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  const redirectTo = resolveProtectedAdminRedirect(status, location.pathname);
+  if (redirectTo) {
+    return <Navigate to={redirectTo} replace state={{ from: location.pathname }} />;
   }
 
   return <Outlet />;
