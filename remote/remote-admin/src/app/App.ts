@@ -488,11 +488,11 @@ function wrapDocument(content: string): string {
         .error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 10px; padding: 12px 14px; }
         .hint { font-size: 13px; color: #6b7280; }
         .shell { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
-        .sidebar { background: #111827; color: #f9fafb; padding: 24px 18px; display: grid; gap: 20px; }
+        .sidebar { background: #111827; color: #f9fafb; padding: 24px 18px; display: flex; flex-direction: column; gap: 16px; }
         .brand { display: grid; gap: 6px; }
         .brand strong { font-size: 18px; }
         .brand span { color: #9ca3af; font-size: 13px; }
-        .nav { display: grid; gap: 8px; }
+        .nav { display: flex; flex-direction: column; gap: 8px; }
         .nav a { color: #d1d5db; text-decoration: none; padding: 10px 12px; border-radius: 10px; }
         .nav a.active { background: #374151; color: #fff; }
         .main { padding: 24px; display: grid; gap: 24px; }
