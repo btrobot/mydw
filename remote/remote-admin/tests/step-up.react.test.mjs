@@ -569,7 +569,7 @@ async function openUsersStepUpHarness(options = {}) {
     );
   });
 
-  await page.goto(`${appBaseUrl}/react-index.html#/users`);
+  await page.goto(`${appBaseUrl}/index.html#/users`);
   await page.getByRole('heading', { name: 'Users' }).waitFor();
   await page.getByText('Alice').first().waitFor();
   await page.getByRole('button', { name: 'Revoke user' }).waitFor();
@@ -690,7 +690,7 @@ async function openDevicesStepUpHarness(options = {}) {
     );
   });
 
-  await page.goto(`${appBaseUrl}/react-index.html#/devices`);
+  await page.goto(`${appBaseUrl}/index.html#/devices`);
   await page.getByRole('heading', { name: 'Devices' }).waitFor();
   await page.getByText('device_1').first().waitFor();
   await page.getByRole('button', { name: 'Disable device' }).waitFor();
@@ -777,7 +777,7 @@ async function openSessionsStepUpHarness(options = {}) {
     );
   });
 
-  await page.goto(`${appBaseUrl}/react-index.html#/sessions`);
+  await page.goto(`${appBaseUrl}/index.html#/sessions`);
   await page.getByRole('heading', { name: 'Sessions' }).waitFor();
   await page.getByText('sess_1').first().waitFor();
   await page.getByRole('button', { name: 'Revoke session' }).waitFor();
@@ -796,7 +796,7 @@ async function startStaticServer(rootDir) {
   const normalizedRootDir = normalize(rootDir);
   const server = http.createServer(async (request, response) => {
     const requestUrl = new URL(request.url ?? '/', 'http://127.0.0.1');
-    const pathname = requestUrl.pathname === '/' ? '/react-index.html' : requestUrl.pathname;
+    const pathname = requestUrl.pathname === '/' ? '/index.html' : requestUrl.pathname;
     const filePath = normalize(join(normalizedRootDir, pathname.replace(/^\/+/, '')));
 
     if (!filePath.startsWith(normalizedRootDir)) {

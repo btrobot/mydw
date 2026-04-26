@@ -1,6 +1,6 @@
 import { Avatar, Button, Layout, Menu, Space, Tag, Typography, theme } from 'antd';
 import type { MenuProps } from 'antd';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import {
@@ -111,6 +111,9 @@ export function AppShell(): JSX.Element {
   const [collapsed, setCollapsed] = useState(false);
   const selectedKey = PAGE_TITLES[location.pathname] ? location.pathname : '/dashboard';
   const pageTitle = PAGE_TITLES[selectedKey] ?? 'Remote Admin';
+  useEffect(() => {
+    document.title = `${pageTitle} · Remote Admin`;
+  }, [pageTitle]);
   const navItems = useMemo<MenuProps['items']>(
     () =>
       NAV_GROUPS.map((group) => ({

@@ -5,12 +5,11 @@
   "version": "0.1.0",
   "description": "Phase 1 protected remote admin shell with independent admin auth",
   "scripts": {
-    "dev": "vite --open /react-index.html",
-    "dev:legacy": "node -e \"console.log('Build remote-admin, then open index.html (optionally ?apiBase=http://127.0.0.1:8100). Default backend base is http://127.0.0.1:8100.')\"",
+    "dev": "vite --open /index.html",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json",
     "build:react": "vite build",
-    "preview:react": "vite preview --open /react-index.html",
+    "preview:react": "vite preview --open /index.html",
     "test": "npm run build && node --test tests/app.test.mjs",
     "test:react-step-up": "npm run build:react && node --test --test-concurrency=1 tests/step-up.react.test.mjs",
     "lint": "node -e \"process.exit(0)\""

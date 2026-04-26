@@ -20,16 +20,10 @@ npm run build:react
 Default static entry (matches `scripts/start-remote.bat`):
 
 ```text
-dist-react/react-index.html?apiBase=http://127.0.0.1:8100
+dist-react/index.html?apiBase=http://127.0.0.1:8100
 ```
 
-Fallback entry remains available at:
-
-```text
-index.html?apiBase=http://127.0.0.1:8100
-```
-
-Use `npm run dev` during development; the Vite dev server opens `/react-index.html`.
+Use `npm run dev` during development; the Vite dev server opens `/index.html`.
 
 ## Release gate
 

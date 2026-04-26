@@ -1,5 +1,5 @@
 import { Alert, Button, Card, Form, Input, Space, Typography } from 'antd';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 import { AdminApiError, mapLoginError } from '../../features/auth/auth-client.js';
@@ -16,6 +16,10 @@ export function LoginPage(): JSX.Element {
   const { status, login, authNotice, clearAuthNotice } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.title = 'Remote Admin';
+  }, []);
 
   if (status === 'authenticated') {
     return <Navigate to="/dashboard" replace />;
