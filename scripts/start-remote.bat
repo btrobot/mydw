@@ -71,5 +71,9 @@ if errorlevel 1 (
 
 echo.
 echo [INFO] Open %REMOTE_ADMIN_URL%
+echo [INFO] Users create smoke      : npm --prefix remote\remote-admin run smoke:users:create
+echo [INFO] Users update smoke      : npm --prefix remote\remote-admin run smoke:users:update
 echo [INFO] Multi-user users update smoke: npm --prefix remote\remote-admin run smoke:users:update:multi
+echo [INFO] All users smokes        : npm --prefix remote\remote-admin run smoke:users
+echo [INFO]                         ^(the suite auto-waits across admin step-up rate-limit windows^)
 start "" "%REMOTE_ADMIN_URL%"

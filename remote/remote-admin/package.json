@@ -12,7 +12,10 @@
     "preview:react": "vite preview --open /index.html",
     "test": "npm run build && node --test tests/react-contract.test.mjs",
     "test:react-step-up": "npm run build:react && node --test --test-concurrency=1 tests/step-up.react.test.mjs",
+    "smoke:users:create": "npm run build && npm run build:react && node scripts/run-smoke-users-create.mjs",
+    "smoke:users:update": "npm run build && npm run build:react && node scripts/run-smoke-users-update.mjs",
     "smoke:users:update:multi": "npm run build && npm run build:react && node scripts/run-smoke-users-update-multi.mjs",
+    "smoke:users": "npm run build && npm run build:react && node scripts/run-smoke-users-suite.mjs",
     "lint": "node -e \"process.exit(0)\""
   },
   "dependencies": {
