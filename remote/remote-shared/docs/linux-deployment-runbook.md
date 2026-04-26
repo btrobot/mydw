@@ -31,6 +31,9 @@ Copy `remote/.env.linux.example` to repo-root `.env`, then override at least:
 - `REMOTE_DEPLOY_BRANCH`
 - `REMOTE_DEPLOY_TLS_MODE`
 - `REMOTE_DEPLOY_SERVER_NAME`
+- `REMOTE_NGINX_RUNTIME_IMAGE`
+- `REMOTE_PYTHON_BASE_IMAGE`
+- `REMOTE_NODE_BASE_IMAGE`
 - `REMOTE_BACKEND_APP_ENV=staging`
 - `REMOTE_BACKEND_HOST=0.0.0.0`
 - `REMOTE_BACKEND_PORT=8100`
@@ -46,6 +49,22 @@ Recommended SQLite baseline on a single host:
 REMOTE_BACKEND_DATABASE_URL=sqlite:////data/remote_auth.db
 REMOTE_BACKEND_LOGIN_RATE_LIMIT_SQLITE_PATH=/data/login_rate_limits.sqlite3
 ```
+
+Recommended Tencent Cloud / mainland China mirror baseline:
+
+```env
+REMOTE_NGINX_RUNTIME_IMAGE=mirror.ccs.tencentyun.com/library/nginx:1.27-alpine
+REMOTE_PYTHON_BASE_IMAGE=mirror.ccs.tencentyun.com/library/python:3.12-slim
+REMOTE_NODE_BASE_IMAGE=mirror.ccs.tencentyun.com/library/node:20-alpine
+REMOTE_NGINX_BASE_IMAGE=mirror.ccs.tencentyun.com/library/nginx:1.27-alpine
+REMOTE_PIP_INDEX_URL=https://mirrors.cloud.tencent.com/pypi/simple
+REMOTE_PIP_TRUSTED_HOST=mirrors.cloud.tencent.com
+REMOTE_NPM_REGISTRY=https://registry.npmmirror.com
+```
+
+This bypasses a broken host-level Docker Hub mirror such as
+`mirror.baidubce.com`, because compose/build now pulls the base images from the
+explicit Tencent mirror host instead of relying on `docker.io`.
 
 If you want HTTPS, set:
 

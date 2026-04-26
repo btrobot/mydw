@@ -99,6 +99,19 @@ without a repo-root `.env`, the compose file now falls back to
 fallback is only a bootstrap convenience; replace the placeholder values before
 real staging/prod deployment.
 
+For Tencent Cloud / mainland China hosts, the Linux env template also includes
+explicit Tencent mirror image defaults plus Tencent PyPI / npmmirror package
+sources, so the deployment path does not depend on a host-level Docker Hub
+mirror being healthy.
+
+Default mirror values in that template:
+
+- `REMOTE_NGINX_RUNTIME_IMAGE=mirror.ccs.tencentyun.com/library/nginx:1.27-alpine`
+- `REMOTE_PYTHON_BASE_IMAGE=mirror.ccs.tencentyun.com/library/python:3.12-slim`
+- `REMOTE_NODE_BASE_IMAGE=mirror.ccs.tencentyun.com/library/node:20-alpine`
+- `REMOTE_PIP_INDEX_URL=https://mirrors.cloud.tencent.com/pypi/simple`
+- `REMOTE_NPM_REGISTRY=https://registry.npmmirror.com`
+
 See:
 
 - `remote/.env.linux.example`
