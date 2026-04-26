@@ -6,12 +6,14 @@ set PYTHONIOENCODING=utf-8
 cd /d "%~dp0.."
 
 set "REMOTE_BACKEND_URL=http://127.0.0.1:8100"
-set "REMOTE_ADMIN_URL=http://127.0.0.1:4173/index.html?apiBase=http://127.0.0.1:8100"
+set "REMOTE_ADMIN_REACT_URL=http://127.0.0.1:4173/dist-react/react-index.html?apiBase=http://127.0.0.1:8100"
+set "REMOTE_ADMIN_LEGACY_URL=http://127.0.0.1:4173/index.html?apiBase=http://127.0.0.1:8100"
 
 echo Remote one-click
 echo ========================
 echo Remote backend: %REMOTE_BACKEND_URL%
-echo Remote admin  : %REMOTE_ADMIN_URL%
+echo Remote admin  : %REMOTE_ADMIN_REACT_URL%
+echo Legacy fallback: %REMOTE_ADMIN_LEGACY_URL%
 echo.
 
 where python >nul 2>nul
@@ -39,6 +41,8 @@ if not exist "frontend\node_modules" (
 
 echo [INFO] Building remote-admin...
 call npm --prefix remote\remote-admin run build
+if errorlevel 1 exit /b 1
+call npm --prefix remote\remote-admin run build:react
 if errorlevel 1 exit /b 1
 
 echo [INFO] Bootstrapping remote admin account...
@@ -68,5 +72,6 @@ if errorlevel 1 (
 )
 
 echo.
-echo [INFO] Open %REMOTE_ADMIN_URL%
-start "" "%REMOTE_ADMIN_URL%"
+echo [INFO] Open %REMOTE_ADMIN_REACT_URL%
+echo [INFO] Legacy fallback remains at %REMOTE_ADMIN_LEGACY_URL%
+start "" "%REMOTE_ADMIN_REACT_URL%"
