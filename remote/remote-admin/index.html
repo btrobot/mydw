@@ -7,9 +7,13 @@
   </head>
   <body>
     <div id="app"></div>
-    <script>
+    <script type="module" src="./config.js"></script>
+    <script type="module">
+      const remoteAdminRuntimeConfig =
+        window.REMOTE_ADMIN_RUNTIME_CONFIG || {};
       window.REMOTE_ADMIN_API_BASE =
         window.REMOTE_ADMIN_API_BASE ||
+        remoteAdminRuntimeConfig.apiBase ||
         new URLSearchParams(window.location.search).get('apiBase') ||
         'http://127.0.0.1:8100';
     </script>

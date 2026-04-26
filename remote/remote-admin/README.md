@@ -25,6 +25,19 @@ dist-react/index.html?apiBase=http://127.0.0.1:8100
 
 Use `npm run dev` during development; the Vite dev server opens `/index.html`.
 
+## Linux deployment
+
+The Linux deployment baseline uses:
+
+- `Dockerfile`
+- `public/config.js`
+- `scripts/render-runtime-config.sh`
+- `../remote-shared/deploy/docker-compose.linux.yml`
+
+At runtime the container writes `config.js` from
+`REMOTE_ADMIN_API_BASE_URL`, so the deployed admin should normally point to
+`/api` behind the reverse proxy.
+
 ## Real smoke entries
 
 After `scripts/start-remote.bat` has started the backend and static server, run:

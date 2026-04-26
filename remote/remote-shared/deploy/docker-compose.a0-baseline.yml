@@ -27,7 +27,7 @@ services:
     depends_on:
       - remote-backend
     volumes:
-      - ../../remote-admin/dist:/usr/share/nginx/html:ro
+      - ../../remote-admin/dist-react:/usr/share/nginx/html:ro
 
   remote-portal:
     image: nginx:1.27-alpine
@@ -37,4 +37,3 @@ services:
       - remote-backend
     # This service is reserved for the future portal artifact.
     # Enable only after B0/B work lands and a static build exists.
-

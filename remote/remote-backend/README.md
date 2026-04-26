@@ -92,3 +92,15 @@ See:
 - `../.env.example`
 - `../remote-shared/docs/admin-bootstrap-runbook.md`
 - `../remote-shared/docs/staging-deploy-checklist.md`
+- `../remote-shared/docs/linux-deployment-runbook.md`
+
+## Linux deployment
+
+The Docker deployment baseline lives at:
+
+- `Dockerfile`
+- `scripts/start-linux.sh`
+- `../remote-shared/deploy/docker-compose.linux.yml`
+
+The container entrypoint runs `python scripts/migrate.py ensure-head` before
+starting uvicorn.

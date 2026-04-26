@@ -31,6 +31,7 @@ Authoritative planning assets for the next upgrade stage:
 - `remote/remote-shared/docs/remote-full-system-operating-model-v1.md`
 - `remote/remote-shared/docs/remote-full-system-env-config-matrix-v1.md`
 - `remote/remote-shared/docs/remote-full-system-deployment-topology-v1.md`
+- `remote/remote-shared/docs/linux-deployment-runbook.md`
 - `remote/remote-shared/docs/staging-env-dry-run-artifact-v1.md`
 - `remote/remote-shared/docs/restore-recovery-runbook.md`
 - `remote/remote-shared/docs/release-governance-tabletop-record-v1.md`
@@ -72,13 +73,28 @@ Do not add new database changes through deleted runner code paths or manual `sch
 
 ```bash
 npm --prefix remote/remote-admin run build
+npm --prefix remote/remote-admin run build:react
 ```
 
 Then open:
 
 ```text
-remote/remote-admin/index.html?apiBase=http://127.0.0.1:8100
+remote/remote-admin/dist-react/index.html?apiBase=http://127.0.0.1:8100
 ```
+
+## Linux deployment
+
+For a Linux host deployment baseline, use:
+
+```bash
+docker compose -f remote/remote-shared/deploy/docker-compose.linux.yml up -d --build
+```
+
+See:
+
+- `remote/remote-shared/docs/linux-deployment-runbook.md`
+- `remote/remote-shared/deploy/nginx.remote-full-system-linux.conf`
+- `remote/remote-shared/deploy/remote-compose.service`
 
 ## Phase 4 release gate quickstart
 
