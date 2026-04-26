@@ -181,14 +181,14 @@ export function SessionsPage(): JSX.Element {
           Sessions
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          Day 3.3 migrates sessions into React and reuses the same revoke-plus-refresh pattern already proven on users and devices.
+          Inspect live auth continuity, filter by user or device, and revoke sessions with the same protected confirmation flow used across admin actions.
         </Typography.Paragraph>
       </div>
 
       <Alert
         type={canWrite ? 'success' : 'warning'}
         showIcon
-        message={canWrite ? 'Write-capable role detected' : 'Read-only role detected'}
+        message={canWrite ? 'Write access available' : 'Read-only access'}
         description={
           canWrite
             ? 'Session revoke now asks for password confirmation first, then refreshes the filtered list after each successful action.'
@@ -297,7 +297,7 @@ export function SessionsPage(): JSX.Element {
           {sessionsQuery.isError ? (
             <ErrorState
               title="Sessions unavailable"
-              description="The React sessions list could not be loaded from the admin API."
+              description="The sessions list could not be loaded from the admin API."
               retryLabel="Retry sessions"
               onRetry={() => void sessionsQuery.refetch()}
             />

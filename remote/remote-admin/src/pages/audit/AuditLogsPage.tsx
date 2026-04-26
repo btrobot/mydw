@@ -148,15 +148,14 @@ export function AuditLogsPage(): JSX.Element {
           Audit logs
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          Day 3.4 migrates the read-only audit investigation route into React with stable filter ordering, UTC-safe time
-          boundaries, and list-derived detail inspection.
+          Investigate admin-visible events with stable filter ordering, UTC-safe time boundaries, and page-scoped detail inspection.
         </Typography.Paragraph>
       </div>
 
       <Alert
         type="info"
         showIcon
-        message="Read-only investigation route"
+        message="Backend-driven investigation"
         description="Audit logs stay backend-driven: filters query the existing admin API, selection is derived from the current page, and no optimistic local state is introduced."
       />
 
@@ -296,7 +295,7 @@ export function AuditLogsPage(): JSX.Element {
             {auditQuery.isError ? (
               <ErrorState
                 title="Audit logs unavailable"
-                description="The React audit investigation list could not be loaded from the admin API."
+                description="The audit investigation list could not be loaded from the admin API."
                 retryLabel="Retry audit logs"
                 onRetry={() => void auditQuery.refetch()}
               />

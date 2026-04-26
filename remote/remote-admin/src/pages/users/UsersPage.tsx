@@ -233,18 +233,18 @@ export function UsersPage(): JSX.Element {
           Users
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          Day 3 starts the users page migration with live filters, route-guard-safe detail loading, and a read-only-aware detail rail.
+          Search and inspect managed users, then revoke or restore access with role-aware safeguards and backend-backed refresh.
         </Typography.Paragraph>
       </div>
 
       <Alert
         type={canWrite ? 'success' : 'warning'}
         showIcon
-        message={canWrite ? 'Write-capable role detected' : 'Read-only role detected'}
+        message={canWrite ? 'Write access available' : 'Read-only access'}
         description={
           canWrite
             ? 'Revoke / restore now ask for password confirmation first, then automatically refresh list/detail state after each successful action.'
-            : 'This role can inspect users, but revoke / restore / edit controls stay disabled during and after migration.'
+            : 'This role can inspect users, but revoke / restore controls remain disabled.'
         }
       />
 
@@ -340,7 +340,7 @@ export function UsersPage(): JSX.Element {
           {usersQuery.isError ? (
             <ErrorState
               title="User list unavailable"
-              description="The React users list could not be loaded from the admin API."
+              description="The user list could not be loaded from the admin API."
               retryLabel="Retry users"
               onRetry={() => void usersQuery.refetch()}
             />

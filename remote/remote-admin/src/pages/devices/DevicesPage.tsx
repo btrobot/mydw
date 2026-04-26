@@ -253,14 +253,14 @@ export function DevicesPage(): JSX.Element {
           Devices
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          Day 3.2 migrates the devices list/detail route into React and reuses the users-style mutation refresh sequence.
+          Review device bindings, state, and client versions, then run protected device actions with backend-backed refresh.
         </Typography.Paragraph>
       </div>
 
       <Alert
         type={canWrite ? 'success' : 'warning'}
         showIcon
-        message={canWrite ? 'Write-capable role detected' : 'Read-only role detected'}
+        message={canWrite ? 'Write access available' : 'Read-only access'}
         description={
           canWrite
             ? 'Unbind / disable / rebind now ask for password confirmation first, then refresh list/detail state after each successful device action.'
@@ -356,7 +356,7 @@ export function DevicesPage(): JSX.Element {
           {devicesQuery.isError ? (
             <ErrorState
               title="Device list unavailable"
-              description="The React devices list could not be loaded from the admin API."
+              description="The device list could not be loaded from the admin API."
               retryLabel="Retry devices"
               onRetry={() => void devicesQuery.refetch()}
             />

@@ -60,8 +60,8 @@ export function DashboardPage(): JSX.Element {
       <Alert
         type="info"
         showIcon
-        message="Migration status"
-        description="Day 4 shifts from page migration to production-hardening: login error semantics, rate-limit coverage, and backend verification now take priority."
+        message="Operational status"
+        description="Remote Admin is connected to the shared admin API for metrics, sign-in protection, rate-limit handling, and backend-enforced policy checks."
       />
 
       <Row gutter={[16, 16]}>
