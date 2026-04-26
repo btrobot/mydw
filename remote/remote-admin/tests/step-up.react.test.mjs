@@ -226,6 +226,26 @@ test('users restore step-up reactivates a revoked user with the same token flow'
   }
 });
 
+test('users revoke removes the selected row from an active-only filter without leaving stale detail', async () => {
+  const harness = await openUsersStepUpHarness();
+
+  try {
+    await applyUsersStatusFilter(harness.page, 'active');
+    await harness.page.getByText('Alice').first().waitFor();
+
+    await harness.page.getByRole('button', { name: 'Revoke user' }).click();
+    await harness.page.getByPlaceholder('Enter your password').fill('admin-secret');
+    await harness.page.getByRole('button', { name: 'Confirm and continue' }).click();
+
+    await harness.page.getByText('Users (0)').waitFor();
+    await harness.page.getByText('No users matched the current filters.').waitFor();
+    await harness.page.getByText('Select a user from the list to review authorization detail.').waitFor();
+    assert.equal(harness.calls.revokeHeaders.length, 1);
+  } finally {
+    await harness.close();
+  }
+});
+
 test('users display-name update saves without step-up and refreshes list/detail state', async () => {
   const harness = await openUsersStepUpHarness();
 
@@ -284,6 +304,33 @@ test('users update can clear license expiry after backend step-up confirmation',
     assert.deepEqual(harness.calls.updateRequests[1].body, {
       license_expires_at: null,
     });
+  } finally {
+    await harness.close();
+  }
+});
+
+test('users restore removes the selected row from a revoked-only filter and reappears after clearing filters', async () => {
+  const harness = await openUsersStepUpHarness({
+    initialUser: REVOKED_USER,
+  });
+
+  try {
+    await applyUsersStatusFilter(harness.page, 'revoked');
+    await harness.page.getByText('Alice').first().waitFor();
+    await harness.page.getByText('Current state: revoked').waitFor();
+
+    await harness.page.getByRole('button', { name: 'Restore user' }).click();
+    await harness.page.getByPlaceholder('Enter your password').fill('admin-secret');
+    await harness.page.getByRole('button', { name: 'Confirm and continue' }).click();
+
+    await harness.page.getByText('Users (0)').waitFor();
+    await harness.page.getByText('No users matched the current filters.').waitFor();
+    await harness.page.getByText('Select a user from the list to review authorization detail.').waitFor();
+
+    await harness.page.getByRole('button', { name: 'Clear' }).click();
+    await harness.page.getByText('Alice').first().waitFor();
+    await harness.page.getByText('Current state: active-or-readable').waitFor();
+    assert.equal(harness.calls.restoreHeaders.length, 1);
   } finally {
     await harness.close();
   }
@@ -799,11 +846,15 @@ async function openUsersStepUpHarness(options = {}) {
     }
 
     if (request.method() === 'GET' && url.pathname === '/admin/users') {
+      const filteredUsers = filterManagedUsers(managedUsers, url);
+      const limit = Number(url.searchParams.get('limit') ?? '50');
+      const offset = Number(url.searchParams.get('offset') ?? '0');
+      const pagedUsers = filteredUsers.slice(offset, offset + limit);
       await fulfillJson(route, {
-        items: managedUsers.map((user) => ({ ...user })),
-        total: managedUsers.length,
-        page: 1,
-        page_size: 50,
+        items: pagedUsers.map((user) => ({ ...user })),
+        total: filteredUsers.length,
+        page: Math.floor(offset / Math.max(limit, 1)) + 1,
+        page_size: limit,
       });
       return;
     }
@@ -965,6 +1016,37 @@ async function openUsersStepUpHarness(options = {}) {
       await browser.close();
     },
   };
+}
+
+async function applyUsersStatusFilter(page, value) {
+  const filterCard = page.locator('.ant-card').filter({ has: page.getByRole('button', { name: 'Apply filters' }) }).first();
+  const statusSelector = filterCard.locator('.ant-form-item').filter({ hasText: 'Status' }).first().locator('.ant-select-selector');
+  await statusSelector.click();
+  await page.locator('.ant-select-dropdown:visible .ant-select-item-option-content').getByText(value, { exact: true }).click();
+  await page.getByRole('button', { name: 'Apply filters' }).click();
+}
+
+function filterManagedUsers(users, url) {
+  const query = (url.searchParams.get('q') ?? '').trim().toLowerCase();
+  const status = (url.searchParams.get('status') ?? '').trim().toLowerCase();
+  const licenseStatus = (url.searchParams.get('license_status') ?? '').trim().toLowerCase();
+
+  return users.filter((user) => {
+    if (status && String(user.status ?? '').toLowerCase() !== status) {
+      return false;
+    }
+    if (licenseStatus && String(user.license_status ?? '').toLowerCase() !== licenseStatus) {
+      return false;
+    }
+    if (!query) {
+      return true;
+    }
+
+    const haystack = [user.id, user.username, user.display_name, user.email, user.tenant_id]
+      .filter(Boolean)
+      .map((entry) => String(entry).toLowerCase());
+    return haystack.some((entry) => entry.includes(query));
+  });
 }
 
 async function openDevicesStepUpHarness(options = {}) {
