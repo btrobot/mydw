@@ -93,6 +93,12 @@ repo-root `.env`, then use:
 remote/remote-shared/deploy/deploy.sh
 ```
 
+If you directly run `docker compose -f remote/remote-shared/deploy/docker-compose.linux.yml ...`
+without a repo-root `.env`, the compose file now falls back to
+`remote/.env.linux.example` instead of failing on a missing env file. That
+fallback is only a bootstrap convenience; replace the placeholder values before
+real staging/prod deployment.
+
 See:
 
 - `remote/.env.linux.example`

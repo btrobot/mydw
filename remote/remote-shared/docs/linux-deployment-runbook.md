@@ -59,6 +59,13 @@ Then place the certificate files here before deployment:
 - `remote/remote-shared/deploy/certs/fullchain.pem`
 - `remote/remote-shared/deploy/certs/privkey.pem`
 
+If you run `docker compose -f remote/remote-shared/deploy/docker-compose.linux.yml ...`
+directly without a repo-root `.env`, Compose now falls back to
+`remote/.env.linux.example` for container env injection. That avoids the
+missing-file hard failure, but you should still create a real repo-root `.env`
+before any non-local staging/prod deployment so placeholder secrets and example
+hostnames are not used.
+
 ## 3. Build and start
 
 From the repository root:

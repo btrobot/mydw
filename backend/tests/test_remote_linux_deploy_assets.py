@@ -58,11 +58,16 @@ def test_remote_linux_env_template_and_scripts_exist() -> None:
 def test_remote_linux_compose_and_https_template_capture_expected_shape() -> None:
     compose = yaml.safe_load((DEPLOY_ROOT / 'docker-compose.linux.yml').read_text(encoding='utf-8'))
     reverse_proxy = compose['services']['reverse-proxy']
+    backend = compose['services']['remote-backend']
 
     assert './nginx.remote-full-system.generated.conf:/etc/nginx/conf.d/default.conf:ro' in reverse_proxy['volumes']
     assert './certs:/etc/nginx/certs:ro' in reverse_proxy['volumes']
     assert '${REMOTE_DEPLOY_HTTP_PORT:-80}:80' in reverse_proxy['ports']
     assert '${REMOTE_DEPLOY_HTTPS_PORT:-443}:443' in reverse_proxy['ports']
+    assert backend['env_file'][0]['path'] == '../../../remote/.env.linux.example'
+    assert backend['env_file'][0]['required'] is True
+    assert backend['env_file'][1]['path'] == '../../../.env'
+    assert backend['env_file'][1]['required'] is False
 
     https_template = (DEPLOY_ROOT / 'nginx.remote-full-system-https.conf.template').read_text(encoding='utf-8')
     assert '__REMOTE_SERVER_NAME__' in https_template
